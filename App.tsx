@@ -95,11 +95,12 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
   // Guided Registration State
-  const [regFlowStep, setRegFlowStep] = useState<'idle' | 'naming' | 'preparing' | 'prompting' | 'verifying' | 'success' | 'error'>('idle');
+  const [regFlowStep, setRegFlowStep] = useState<'idle' | 'naming' | 'preparing' | 'prompting' | 'verifying' | 'success' | 'error' | 'importing'>('idle');
   const [useSimulationMode, setUseSimulationMode] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [regDetails, setRegDetails] = useState<PasskeyRecord | null>(null);
   const [pendingPasskeyName, setPendingPasskeyName] = useState('');
+  const [pendingRawId, setPendingRawId] = useState('');
   const [activeError, setActiveError] = useState<SovereignError | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
@@ -257,11 +258,35 @@ const App: React.FC = () => {
 
   const triggerRegistrationFlow = () => {
     setShowTechnicalDetails(false);
-    if (passkeys.length === 0 && authStage === 'passkey') {
-      startGuidedRegistration('Primary Sovereign Key');
-    } else {
-      setRegFlowStep('naming');
-    }
+    setRegFlowStep('naming');
+  };
+
+  const triggerImportFlow = () => {
+    setShowTechnicalDetails(false);
+    setRegFlowStep('importing');
+  };
+
+  const handleManualImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingPasskeyName.trim() || !pendingRawId.trim()) return;
+
+    const newRecord: PasskeyRecord = {
+      id: 'imp-' + Math.random().toString(36).substring(7),
+      rawId: pendingRawId.trim(),
+      label: pendingPasskeyName.trim(),
+      type: 'public-key',
+      algorithm: 'Imported (Manual Signature)',
+      addedAt: new Date().toISOString(),
+      lastUsedAt: null,
+      status: 'active'
+    };
+
+    setPasskeys(prev => [newRecord, ...prev]);
+    addIdentityLog(`USER: Manually imported credential [${newRecord.label}]`, 'user');
+    showToast("Credential imported successfully", "success");
+    setPendingPasskeyName('');
+    setPendingRawId('');
+    setRegFlowStep('idle');
   };
 
   const startGuidedRegistration = async (customLabel?: string) => {
@@ -282,7 +307,7 @@ const App: React.FC = () => {
       const userId = window.crypto.getRandomValues(new Uint8Array(16));
       
       setRegFlowStep('prompting');
-      addIdentityLog('AUTH: Requesting platform authenticator signature', 'system');
+      addIdentityLog('AUTH: Requesting platform authenticator signature');
 
       let credential;
       if (useSimulationMode || !window.PublicKeyCredential) {
@@ -306,7 +331,7 @@ const App: React.FC = () => {
 
       if (credential) {
         setRegFlowStep('verifying');
-        addIdentityLog('AUTH: Verifying hardware credential block', 'system');
+        addIdentityLog('AUTH: Verifying hardware credential block');
         await new Promise(r => setTimeout(r, 1500));
 
         const credId = 'rawId' in credential ? bufferToBase64(credential.rawId as ArrayBuffer) : (credential as any).id;
@@ -352,7 +377,7 @@ const App: React.FC = () => {
     setActiveError(null);
 
     try {
-      addIdentityLog('AUTH: Verifying existing biometric signature', 'system');
+      addIdentityLog('AUTH: Verifying existing biometric signature');
       if (passkeys.length === 0) throw new Error("No hardware binding found.");
 
       const primary = passkeys[0];
@@ -488,34 +513,58 @@ const App: React.FC = () => {
   if (authStage === 'passkey') return (
     <div className="h-screen bg-[#020617] flex flex-col items-center justify-center font-inter p-6 relative overflow-hidden">
       <div className="scan-overlay"></div>
-      <div className="glass-card p-12 rounded-[4rem] border-orange-500/20 text-center max-w-md w-full relative z-10">
-        <div className="w-24 h-24 bg-orange-600/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-orange-500/20 shadow-[0_0_30px_rgba(249,115,22,0.1)] group">
-          <i className={`fas ${isAuthenticating ? 'fa-spinner fa-spin' : 'fa-fingerprint'} text-5xl text-orange-500 group-hover:scale-110 transition-transform duration-700`}></i>
-        </div>
-        <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Identity Verification</h2>
-        <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-12 leading-relaxed">
-          {passkeys.length > 0 ? 'Hardware passkey required to unlock sovereign node.' : 'Establish a physical hardware binding for this device.'}
-        </p>
-        
-        <div className="space-y-4">
-          <button 
-            onClick={() => passkeys.length > 0 ? handlePasskeyAuth() : triggerRegistrationFlow()} 
-            disabled={isAuthenticating} 
-            className="w-full py-6 bg-orange-600 hover:bg-orange-500 text-black font-black uppercase tracking-widest text-[11px] rounded-3xl transition-all shadow-[0_15px_40px_rgba(249,115,22,0.3)] disabled:opacity-50"
-          >
-            {isAuthenticating ? (regFlowStep === 'prompting' ? 'Hardware Handshake...' : 'Validating...') : (passkeys.length > 0 ? 'Assertion Verification' : 'Initialize Passkey')}
-          </button>
+      
+      {regFlowStep === 'idle' ? (
+        <div className="glass-card p-12 rounded-[4rem] border-orange-500/20 text-center max-w-md w-full relative z-10 animate-in fade-in zoom-in duration-500">
+          <div className="w-24 h-24 bg-orange-600/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-orange-500/20 shadow-[0_0_30px_rgba(249,115,22,0.1)] group">
+            <i className={`fas ${isAuthenticating ? 'fa-spinner fa-spin' : 'fa-fingerprint'} text-5xl text-orange-500 group-hover:scale-110 transition-transform duration-700`}></i>
+          </div>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Identity Verification</h2>
+          <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-12 leading-relaxed">
+            {passkeys.length > 0 ? 'Hardware passkey required to unlock sovereign node.' : 'Establish a physical hardware binding for this device.'}
+          </p>
           
-          <button 
-            onClick={() => setUseSimulationMode(!useSimulationMode)} 
-            className={`w-full py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${useSimulationMode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-slate-500 hover:text-white border border-transparent'}`}
-          >
-            {useSimulationMode ? 'Simulation Active (Sandboxed)' : 'Hardware Mode'}
-          </button>
-        </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => passkeys.length > 0 ? handlePasskeyAuth() : triggerRegistrationFlow()} 
+              disabled={isAuthenticating} 
+              className="w-full py-6 bg-orange-600 hover:bg-orange-500 text-black font-black uppercase tracking-widest text-[11px] rounded-3xl transition-all shadow-[0_15px_40px_rgba(249,115,22,0.3)] disabled:opacity-50"
+            >
+              {isAuthenticating ? 'Validating...' : (passkeys.length > 0 ? 'Assertion Verification' : 'Initialize Passkey')}
+            </button>
+            
+            <button 
+              onClick={() => setUseSimulationMode(!useSimulationMode)} 
+              className={`w-full py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all ${useSimulationMode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-slate-500 hover:text-white border border-transparent'}`}
+            >
+              {useSimulationMode ? 'Simulation Active (Sandboxed)' : 'Hardware Mode'}
+            </button>
+          </div>
 
-        {activeError && <p className="mt-8 text-rose-500 text-[10px] font-mono uppercase bg-rose-500/10 py-4 px-6 rounded-2xl border border-rose-500/20 animate-in fade-in slide-in-from-top-2">{activeError.message}</p>}
-      </div>
+          {activeError && <p className="mt-8 text-rose-500 text-[10px] font-mono uppercase bg-rose-500/10 py-4 px-6 rounded-2xl border border-rose-500/20 animate-in fade-in slide-in-from-top-2">{activeError.message}</p>}
+        </div>
+      ) : regFlowStep === 'importing' ? (
+        <div className="max-w-md w-full relative z-10 glass-card p-12 rounded-[4rem] border-orange-500/20 animate-in fade-in slide-in-from-bottom-6">
+           <ImportWizard 
+             pendingPasskeyName={pendingPasskeyName}
+             setPendingPasskeyName={setPendingPasskeyName}
+             pendingRawId={pendingRawId}
+             setPendingRawId={setPendingRawId}
+             setRegFlowStep={setRegFlowStep}
+             handleManualImport={handleManualImport}
+           />
+        </div>
+      ) : (
+        <div className="max-w-md w-full relative z-10 glass-card p-12 rounded-[4rem] border-orange-500/20 animate-in fade-in slide-in-from-bottom-6">
+           <NamingWizard 
+             regFlowStep={regFlowStep} 
+             pendingPasskeyName={pendingPasskeyName} 
+             setPendingPasskeyName={setPendingPasskeyName} 
+             setRegFlowStep={setRegFlowStep} 
+             startGuidedRegistration={startGuidedRegistration} 
+           />
+        </div>
+      )}
     </div>
   );
 
@@ -716,7 +765,10 @@ const App: React.FC = () => {
                           <div className="space-y-8 animate-in fade-in zoom-in duration-700">
                              <div className="flex items-center justify-between px-2">
                                <h5 className="text-[10px] font-black text-white uppercase tracking-[0.4em]">Active Credentials</h5>
-                               <button onClick={triggerRegistrationFlow} className="text-[9px] font-black uppercase text-orange-500 hover:text-white tracking-widest transition-all hover:scale-105 active:scale-95">Add Backup Key</button>
+                               <div className="flex gap-4">
+                                 <button onClick={triggerImportFlow} className="text-[9px] font-black uppercase text-slate-500 hover:text-white tracking-widest transition-all">Import Node</button>
+                                 <button onClick={triggerRegistrationFlow} className="text-[9px] font-black uppercase text-orange-500 hover:text-white tracking-widest transition-all">Add Backup Key</button>
+                               </div>
                              </div>
                              
                              <div className="bg-black/40 border border-white/5 rounded-[3rem] p-4 space-y-4">
@@ -754,11 +806,11 @@ const App: React.FC = () => {
                                            <div className="flex justify-between items-center pt-4">
                                               <div className="flex gap-4">
                                                  <span className="text-[8px] font-black text-emerald-500/60 uppercase border border-emerald-500/20 px-3 py-1 rounded-full bg-emerald-500/5">L3 Hardware</span>
-                                                 <span className="text-[8px] font-black text-blue-500/60 uppercase border border-blue-500/20 px-3 py-1 rounded-full bg-blue-500/5">Platform Auth</span>
+                                                 <span className="text-[8px] font-black text-blue-500/60 uppercase border border-blue-500/20 px-3 py-1 rounded-full bg-blue-500/5">{p.algorithm.includes('Imported') ? 'Manual Import' : 'Platform Auth'}</span>
                                               </div>
                                               <div className="text-right">
-                                                 <p className="text-[7px] font-black text-slate-700 uppercase tracking-widest mb-1">Last Signature</p>
-                                                 <span className="text-[10px] font-mono text-slate-400 font-medium">{p.lastUsedAt || 'Pending Auth'}</span>
+                                                 <p className="text-[7px] font-black text-slate-700 uppercase tracking-widest mb-1">Status Archive</p>
+                                                 <span className="text-[10px] font-mono text-slate-400 font-medium">{p.lastUsedAt || 'Pending Interaction'}</span>
                                               </div>
                                            </div>
                                         </div>
@@ -776,40 +828,32 @@ const App: React.FC = () => {
                                    </div>
                                    <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-6">Unbonded Node</h4>
                                    <p className="text-slate-400 text-xs font-medium uppercase tracking-widest max-w-sm mx-auto leading-relaxed mb-12">Secure your digital sovereign enclave by binding a physical hardware passkey via FIDO2/L3 protocols.</p>
-                                   <button onClick={triggerRegistrationFlow} className="px-14 py-6 bg-orange-600 hover:bg-orange-500 text-black font-black uppercase tracking-widest text-[11px] rounded-[2rem] transition-all shadow-2xl shadow-orange-900/50">Establish Hardware Binding</button>
+                                   <div className="flex gap-4">
+                                      <button onClick={triggerImportFlow} className="px-10 py-6 bg-white/5 border border-white/10 hover:border-white/20 text-slate-400 hover:text-white font-black uppercase tracking-widest text-[11px] rounded-[2rem] transition-all">Import Existing Node</button>
+                                      <button onClick={triggerRegistrationFlow} className="px-14 py-6 bg-orange-600 hover:bg-orange-500 text-black font-black uppercase tracking-widest text-[11px] rounded-[2rem] transition-all shadow-2xl shadow-orange-900/50">Establish Hardware Binding</button>
+                                   </div>
                                 </div>
                              )}
 
                              {regFlowStep === 'naming' && (
-                                <div className="animate-in slide-in-from-bottom-6 duration-500 w-full max-w-sm">
-                                   <div className="w-20 h-20 bg-orange-600/10 rounded-full flex items-center justify-center text-orange-500 border border-orange-500/20 mb-8 mx-auto">
-                                      <i className="fas fa-id-card-clip text-3xl"></i>
-                                   </div>
-                                   <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-4">Provisioning Alias</h4>
-                                   <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-10">Assign a name to this enclave credential</p>
-                                   
-                                   <div className="space-y-6">
-                                      <input 
-                                         type="text" 
-                                         autoFocus
-                                         value={pendingPasskeyName}
-                                         onChange={(e) => setPendingPasskeyName(e.target.value)}
-                                         placeholder="e.g. Pixel 9 Secure Element"
-                                         onKeyDown={(e) => e.key === 'Enter' && startGuidedRegistration()}
-                                         className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold placeholder:font-normal placeholder:opacity-30"
-                                      />
-                                      <div className="flex gap-4">
-                                         <button onClick={() => setRegFlowStep('idle')} className="flex-1 py-4 rounded-2xl border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
-                                         <button 
-                                            onClick={() => startGuidedRegistration()} 
-                                            disabled={!pendingPasskeyName.trim()}
-                                            className="flex-2 py-4 px-10 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-orange-900/30"
-                                         >
-                                            Initiate Handshake
-                                         </button>
-                                      </div>
-                                   </div>
-                                </div>
+                                <NamingWizard 
+                                  regFlowStep={regFlowStep} 
+                                  pendingPasskeyName={pendingPasskeyName} 
+                                  setPendingPasskeyName={setPendingPasskeyName} 
+                                  setRegFlowStep={setRegFlowStep} 
+                                  startGuidedRegistration={startGuidedRegistration} 
+                                />
+                             )}
+
+                             {regFlowStep === 'importing' && (
+                                <ImportWizard 
+                                  pendingPasskeyName={pendingPasskeyName}
+                                  setPendingPasskeyName={setPendingPasskeyName}
+                                  pendingRawId={pendingRawId}
+                                  setPendingRawId={setPendingRawId}
+                                  setRegFlowStep={setRegFlowStep}
+                                  handleManualImport={handleManualImport}
+                                />
                              )}
 
                              {regFlowStep === 'preparing' && (
@@ -943,20 +987,19 @@ const App: React.FC = () => {
                     <div className="lg:col-span-5 flex flex-col justify-between">
                        <div className="space-y-8">
                           <div className="p-8 bg-black/40 border border-white/5 rounded-[3rem] space-y-6">
-                             <h5 className="text-[10px] font-black text-white uppercase tracking-[0.4em] border-b border-white/5 pb-6">Registration Pipeline</h5>
+                             <h5 className="text-[10px] font-black text-white uppercase tracking-[0.4em] border-b border-white/5 pb-6">Identity Operations</h5>
                              <div className="space-y-4">
                                 {[
-                                   { key: 'naming', label: '1. Provision Alias', icon: 'fa-id-card-clip' },
-                                   { key: 'preparing', label: '2. Core Entropy Sync', icon: 'fa-microchip' },
-                                   { key: 'prompting', label: '3. Hardware Handshake', icon: 'fa-fingerprint' },
-                                   { key: 'verifying', label: '4. L3 Attestation Audit', icon: 'fa-shield-halved' },
-                                   { key: 'success', label: '5. Binding Manifested', icon: 'fa-circle-check' }
+                                   { key: 'naming', label: 'Biometric Registration', icon: 'fa-fingerprint', active: regFlowStep === 'naming' || regFlowStep === 'preparing' || regFlowStep === 'prompting' || regFlowStep === 'verifying' },
+                                   { key: 'importing', label: 'Manual Node Migration', icon: 'fa-file-import', active: regFlowStep === 'importing' },
+                                   { key: 'idle', label: 'Kernel Authority Audit', icon: 'fa-microchip', active: regFlowStep === 'idle' },
+                                   { key: 'success', label: 'Cryptographic Commit', icon: 'fa-circle-check', active: regFlowStep === 'success' }
                                 ].map((step) => (
-                                   <div key={step.key} className={`flex items-center gap-6 transition-all duration-500 ${regFlowStep === step.key ? 'opacity-100 translate-x-3' : 'opacity-20'}`}>
-                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs border ${regFlowStep === step.key ? 'bg-orange-600 border-orange-400 text-black shadow-[0_0_20px_orange]' : 'bg-slate-800 border-white/5 text-slate-500'}`}>
+                                   <div key={step.key} className={`flex items-center gap-6 transition-all duration-500 ${step.active ? 'opacity-100 translate-x-3' : 'opacity-20'}`}>
+                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs border ${step.active ? 'bg-orange-600 border-orange-400 text-black shadow-[0_0_20px_orange]' : 'bg-slate-800 border-white/5 text-slate-500'}`}>
                                          <i className={`fas ${step.icon}`}></i>
                                       </div>
-                                      <span className={`text-[10px] font-black uppercase tracking-widest ${regFlowStep === step.key ? 'text-white' : 'text-slate-600'}`}>
+                                      <span className={`text-[10px] font-black uppercase tracking-widest ${step.active ? 'text-white' : 'text-slate-600'}`}>
                                          {step.label}
                                       </span>
                                    </div>
@@ -1206,5 +1249,112 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+// --- Sub-components for cleaned up flow ---
+
+const NamingWizard: React.FC<{
+  pendingPasskeyName: string;
+  setPendingPasskeyName: (v: string) => void;
+  setRegFlowStep: (s: any) => void;
+  startGuidedRegistration: () => void;
+  regFlowStep: string;
+}> = ({ pendingPasskeyName, setPendingPasskeyName, setRegFlowStep, startGuidedRegistration }) => (
+  <div className="animate-in slide-in-from-bottom-6 duration-500 w-full">
+     <div className="w-20 h-20 bg-orange-600/10 rounded-full flex items-center justify-center text-orange-500 border border-orange-500/20 mb-8 mx-auto">
+        <i className="fas fa-id-card-clip text-3xl"></i>
+     </div>
+     <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 text-center">Provisioning Alias</h4>
+     <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em] mb-10 text-center leading-relaxed">Assign a descriptive identifier to this physical hardware binding</p>
+     
+     <div className="space-y-6">
+        <div className="relative">
+           <input 
+              type="text" 
+              autoFocus
+              value={pendingPasskeyName}
+              onChange={(e) => setPendingPasskeyName(e.target.value)}
+              placeholder="e.g. Pixel 9 Secure Element"
+              onKeyDown={(e) => e.key === 'Enter' && pendingPasskeyName.trim() && startGuidedRegistration()}
+              className="w-full bg-black/40 border border-white/10 rounded-2xl py-5 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold placeholder:font-normal placeholder:opacity-30"
+           />
+           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-30">
+              <i className="fas fa-shield-halved text-xs"></i>
+              <span className="text-[8px] font-mono font-bold">L3_CTX</span>
+           </div>
+        </div>
+        
+        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 flex items-center gap-4">
+           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+           <span className="text-[9px] font-mono text-emerald-500/80 uppercase font-bold tracking-wider">Protocol Ready: FIDO2_WEBAUTHN_2026</span>
+        </div>
+
+        <div className="flex gap-4">
+           <button onClick={() => setRegFlowStep('idle')} className="flex-1 py-4 rounded-2xl border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
+           <button 
+              onClick={() => startGuidedRegistration()} 
+              disabled={!pendingPasskeyName.trim()}
+              className="flex-[2] py-4 px-10 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-orange-900/30"
+           >
+              Initiate Handshake
+           </button>
+        </div>
+     </div>
+  </div>
+);
+
+const ImportWizard: React.FC<{
+  pendingPasskeyName: string;
+  setPendingPasskeyName: (v: string) => void;
+  pendingRawId: string;
+  setPendingRawId: (v: string) => void;
+  setRegFlowStep: (s: any) => void;
+  handleManualImport: (e: React.FormEvent) => void;
+}> = ({ pendingPasskeyName, setPendingPasskeyName, pendingRawId, setPendingRawId, setRegFlowStep, handleManualImport }) => (
+  <div className="animate-in slide-in-from-bottom-6 duration-500 w-full">
+     <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-white/5 mb-8 mx-auto shadow-inner">
+        <i className="fas fa-file-import text-3xl"></i>
+     </div>
+     <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-2 text-center">Node Migration</h4>
+     <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-10 text-center leading-relaxed">Sovereign Identifier Import Protocol</p>
+     
+     <form onSubmit={handleManualImport} className="space-y-6">
+        <div>
+           <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Node Identifier Label</label>
+           <input 
+              required
+              type="text" 
+              autoFocus
+              value={pendingPasskeyName}
+              onChange={(e) => setPendingPasskeyName(e.target.value)}
+              placeholder="e.g. Titan M2 Backup Root"
+              className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold placeholder:font-normal placeholder:opacity-30"
+           />
+        </div>
+
+        <div>
+           <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Raw Credential Payload (Base64)</label>
+           <textarea 
+              required
+              rows={3}
+              value={pendingRawId}
+              onChange={(e) => setPendingRawId(e.target.value)}
+              placeholder="PASTE_ENCLAVE_BLOB_HERE..."
+              className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-xs text-orange-500/80 focus:outline-none focus:border-orange-500/40 transition-all font-mono placeholder:font-normal placeholder:opacity-20 resize-none"
+           />
+        </div>
+        
+        <div className="flex gap-4 pt-4">
+           <button type="button" onClick={() => setRegFlowStep('idle')} className="flex-1 py-4 rounded-2xl border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
+           <button 
+              type="submit"
+              disabled={!pendingPasskeyName.trim() || !pendingRawId.trim()}
+              className="flex-[2] py-4 px-10 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-orange-900/30"
+           >
+              Import Identity Artifact
+           </button>
+        </div>
+     </form>
+  </div>
+);
 
 export default App;
