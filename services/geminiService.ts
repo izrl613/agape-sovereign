@@ -6,15 +6,15 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Simulates fetching "Live" threat intelligence from a secure storage bucket.
- * Uses Gemini to generate up-to-date privacy threats for 2025/2026.
+ * Uses Gemini to generate up-to-date privacy threats for 2026.
  */
 export const fetchLatestDefinitions = async (currentCount: number): Promise<PrivacyDefinition[]> => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate 4 NEW, fictional but realistic privacy threat definitions for 2026 that might be found in a user's digital footprint. 
-      Focus on AdTech, Data Brokers, or AI scrapers. 
-      Start ID with "DEF-LIVE-${currentCount}".
+      contents: `Generate 4 NEW, advanced privacy threat signatures for the year 2026. 
+      Focus on decentralized AI scrapers, biometric data harvesters, and AdTech quantum-fingerprinting. 
+      Start ID with "DEF-SOVEREIGN-${currentCount}".
       Format: JSON Array.`,
       config: {
         responseMimeType: "application/json",
@@ -24,8 +24,8 @@ export const fetchLatestDefinitions = async (currentCount: number): Promise<Priv
             type: Type.OBJECT,
             properties: {
               id: { type: Type.STRING },
-              entity: { type: Type.STRING, description: "Name of data broker or service" },
-              pattern: { type: Type.STRING, description: "The technical mechanism used (e.g. 'Canvas Fingerprinting')" },
+              entity: { type: Type.STRING, description: "Threat Actor Name" },
+              pattern: { type: Type.STRING, description: "Technical mechanism (e.g. 'Neural Hooking')" },
               risk: { type: Type.STRING, enum: ['critical', 'high', 'moderate'] }
             }
           }
@@ -40,19 +40,18 @@ export const fetchLatestDefinitions = async (currentCount: number): Promise<Priv
 };
 
 /**
- * Simulates an IMAP fetch by generating a batch of raw email headers/metadata 
- * based on the provider type.
+ * Simulates a deep packet fetch from a 2026 provider.
  */
 export const simulateInboxFetch = async (providerName: string) => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Generate a JSON dataset of 6 raw emails found in a ${providerName} inbox.
-      Include a mix of:
-      1. Dangerous Data Broker notifications (e.g. "You've been added to...").
-      2. Tracking Pixel laden marketing newsletters.
-      3. Sensitive Financial documents (Bank statements).
-      4. Normal personal emails.
+      contents: `Generate a JSON dataset of 6 sensitive digital artifacts found in a 2026 ${providerName} archive.
+      Include:
+      1. One confirmed malicious identity scraper (Acxiom 2.0).
+      2. One highly sensitive encrypted fiscal strategy document.
+      3. One biometric audit log.
+      4. Two normal personal communications.
       
       Output format: JSON Array of objects with 'id', 'sender', 'subject', 'snippet'.`,
       config: {
@@ -71,30 +70,29 @@ export const simulateInboxFetch = async (providerName: string) => {
         }
       }
     });
-    return response.text; // Returns the JSON string directly for the validator
+    return response.text;
   } catch (error) {
-    console.error("IMAP Simulation Failure:", error);
+    console.error("Sovereign Fetch Failure:", error);
     return "[]";
   }
 };
 
 /**
- * Validates a batch of emails against the 2026 ECPA Privacy Database.
- * Determines if an item needs to be NUKED (purged) or FT KNOXED (vaulted).
+ * Validates a batch of communications against the 2026 Sovereign Audit Database.
  */
 export const validateLiveEmailBatch = async (emailJson: string) => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `ACT AS: ECPA 2026 Sovereign Auditor.
-      INPUT: LiveEmailBatch Data.
-      TASK: Cross-reference input with the ECPA Privacy Database.
+      contents: `ACT AS: Agape Sovereign Core Auditor (v3.0).
+      INPUT: 2026 Digital Artifacts.
+      TASK: Audit input for privacy vulnerabilities under ECPA 2026 guidelines.
       CATEGORIES:
-      - NUKE: For known data brokers (Acxiom, Epsilon), dark patterns, or metadata harvesters.
-      - FT_KNOX: For sensitive personal comms that require ECPA-hardened encryption vaulting.
-      - IGNORE: For verified safe internal system notifications.
+      - NUKE: For invasive trackers or known identity brokers.
+      - FT_KNOX: For sensitive personal artifacts requiring L3 Vault hardening.
+      - IGNORE: For verified safe internal node notifications.
       
-      BATCH DATA: ${emailJson}`,
+      DATA: ${emailJson}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -106,7 +104,7 @@ export const validateLiveEmailBatch = async (emailJson: string) => {
               sender: { type: Type.STRING },
               subject: { type: Type.STRING },
               suggestedAction: { type: Type.STRING, enum: ['NUKE', 'FT_KNOX', 'IGNORE'] },
-              validationLog: { type: Type.STRING, description: "Legal basis for the action under 2026 ECPA." },
+              validationLog: { type: Type.STRING, description: "Reasoning based on ECPA 2026." },
               riskLevel: { type: Type.STRING, enum: ['critical', 'high', 'moderate', 'safe'] }
             },
             required: ['id', 'sender', 'subject', 'suggestedAction', 'validationLog', 'riskLevel']
@@ -116,7 +114,7 @@ export const validateLiveEmailBatch = async (emailJson: string) => {
     });
     return JSON.parse(response.text || '[]');
   } catch (error) {
-    console.error("Alpha Validation Failure:", error);
+    console.error("Audit Analysis Failure:", error);
     return [];
   }
 };
@@ -125,16 +123,17 @@ export const getArchitectAdvice = async (query: string, context: string) => {
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: `Architect Query: ${query}\nContext: ${context}`,
+      contents: `Sovereign Query: ${query}\nSystem Status: ${context}`,
       config: {
         systemInstruction: `You are the Agape Sovereign Architect. 
-        Focus on resolving Google Cloud Run Gen 1 deployment errors, FIDO2 Passkey binding, and GitHub CI/CD syncing. 
-        Your goal is to transition this Alpha build to a production-ready Sovereign Node.`,
+        Focus on resolving complex 2026 privacy architectures, FIDO2/L3 hardware bindings, and zero-trust cloud run deployments. 
+        Your tone is professional, technical, and protective. 
+        Provide advice that prioritizes user sovereignty above all else.`,
         thinkingConfig: { thinkingBudget: 2048 }
       }
     });
     return response.text;
   } catch (error) {
-    return "Alpha response buffer timeout.";
+    return "Sovereign core response timeout. Retrying link...";
   }
 };

@@ -63,3 +63,24 @@ export interface ChatMessage {
   timestamp: string;
   isPinned?: boolean;
 }
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key: string;
+  createdAt: string;
+  expiresAt: string;
+  isVisible: boolean;
+  status: 'active' | 'expiring_soon' | 'expired';
+}
+
+export interface PasskeyRecord {
+  id: string;
+  rawId: string;
+  label: string;
+  type: string;
+  algorithm: string;
+  addedAt: string;
+  lastUsedAt: string | null;
+  status: 'active' | 'verified' | 'revoked';
+}

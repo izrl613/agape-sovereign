@@ -18,9 +18,17 @@ export const PRIVACY_DEFINITIONS_DB = [
 
 export const SCRIPTS = {
   SOVEREIGN_HEALER: (projectId: string, serviceName: string) => `
-# SOVEREIGN ENCLAVE RESTORATION
+# SOVEREIGN ENCLAVE RESTORATION WITH HEALTH CHECKS
 gcloud services enable run.googleapis.com iap.googleapis.com
-gcloud run deploy ${serviceName} --no-allow-unauthenticated
+
+# Deploying with HTTP Health Probes enabled
+gcloud run deploy ${serviceName} \\
+  --no-allow-unauthenticated \\
+  --liveness-probe-path=/healthz \\
+  --startup-probe-path=/healthz \\
+  --timeout=300 \\
+  --cpu=1 \\
+  --memory=512Mi
 `,
   ACM_LEVEL_CREATE: `gcloud access-context-manager levels create PASSKEY_ENFORCED`
 };
