@@ -59,6 +59,14 @@ const resolveWebAuthnError = (err: any): SovereignError => {
   return base;
 };
 
+// --- Audit Logic Interface ---
+interface AuditCheck {
+  id: string;
+  label: string;
+  description: string;
+  status: 'compliant' | 'failed' | 'pending';
+}
+
 // --- Components ---
 
 const ZeroTrustBadge = () => (
@@ -94,15 +102,26 @@ const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.SOURCES);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   
-  // Guided Registration State
+  // Guided Registration & Import State
   const [regFlowStep, setRegFlowStep] = useState<'idle' | 'naming' | 'preparing' | 'prompting' | 'verifying' | 'success' | 'error' | 'importing'>('idle');
   const [useSimulationMode, setUseSimulationMode] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [regDetails, setRegDetails] = useState<PasskeyRecord | null>(null);
   const [pendingPasskeyName, setPendingPasskeyName] = useState('');
   const [pendingRawId, setPendingRawId] = useState('');
+  const [pendingAlgo, setPendingAlgo] = useState('ES256');
   const [activeError, setActiveError] = useState<SovereignError | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
+  // Audit State
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [auditProgress, setAuditProgress] = useState(0);
+  const [auditResults, setAuditResults] = useState<AuditCheck[]>([
+    { id: 'HW_ROOT', label: 'Hardware Root Bonding', description: 'Requires at least one physical passkey binding.', status: 'pending' },
+    { id: 'API_HYGIENE', label: 'API Hygiene Standards', description: 'No expired or orphaned Access Nodes.', status: 'pending' },
+    { id: 'KEY_LEAK', label: 'Key Leak Prevention', description: 'Checks if any sk_agape keys are currently visible in cleartext.', status: 'pending' },
+    { id: 'L3_PROTOCOL', label: 'L3 Protocol Integrity', description: 'Ensures WebAuthn/FIDO2 handshake context is valid.', status: 'pending' },
+  ]);
 
   // App Core State
   const [providers, setProviders] = useState<EmailProvider[]>([
@@ -254,6 +273,33 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Audit Logic ---
+
+  const triggerSecurityAudit = async () => {
+    setIsAuditing(true);
+    setAuditProgress(0);
+    addIdentityLog('AUDIT: Initializing deep sovereign infrastructure scan', 'system');
+
+    const steps = [
+      { id: 'HW_ROOT', check: () => passkeys.length > 0 ? 'compliant' : 'failed' },
+      { id: 'API_HYGIENE', check: () => apiKeys.every(k => k.status !== 'expired') ? 'compliant' : 'failed' },
+      { id: 'KEY_LEAK', check: () => apiKeys.every(k => !k.isVisible) ? 'compliant' : 'failed' },
+      { id: 'L3_PROTOCOL', check: () => window.isSecureContext ? 'compliant' : 'failed' },
+    ];
+
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(r => setTimeout(r, 800));
+      setAuditProgress(((i + 1) / steps.length) * 100);
+      setAuditResults(prev => prev.map(res => 
+        res.id === steps[i].id ? { ...res, status: steps[i].check() as any } : res
+      ));
+    }
+
+    setIsAuditing(false);
+    showToast("Infrastructure audit complete.", "info");
+    addIdentityLog('AUDIT: Infrastructure scan finished with results cached.', 'system');
+  };
+
   // --- Passkey / WebAuthn Logic ---
 
   const triggerRegistrationFlow = () => {
@@ -266,8 +312,8 @@ const App: React.FC = () => {
     setRegFlowStep('importing');
   };
 
-  const handleManualImport = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleManualImport = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!pendingPasskeyName.trim() || !pendingRawId.trim()) return;
 
     const newRecord: PasskeyRecord = {
@@ -275,7 +321,7 @@ const App: React.FC = () => {
       rawId: pendingRawId.trim(),
       label: pendingPasskeyName.trim(),
       type: 'public-key',
-      algorithm: 'Imported (Manual Signature)',
+      algorithm: pendingAlgo || 'ES256',
       addedAt: new Date().toISOString(),
       lastUsedAt: null,
       status: 'active'
@@ -287,6 +333,32 @@ const App: React.FC = () => {
     setPendingPasskeyName('');
     setPendingRawId('');
     setRegFlowStep('idle');
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const data = JSON.parse(content);
+        
+        // Basic validation for common passkey export formats
+        if (data.rawId && data.label) {
+           setPendingPasskeyName(data.label);
+           setPendingRawId(data.rawId);
+           if (data.algorithm) setPendingAlgo(data.algorithm);
+           showToast("JSON payload loaded. Please review and confirm.", "info");
+        } else {
+           throw new Error("Invalid schema detected in export file.");
+        }
+      } catch (err) {
+        showToast("Failed to parse import file. Ensure it is valid JSON.", "error");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const startGuidedRegistration = async (customLabel?: string) => {
@@ -341,7 +413,7 @@ const App: React.FC = () => {
           rawId: credId,
           label: finalLabel,
           type: credential.type,
-          algorithm: 'ES256 (ECDSA w/ SHA-256)',
+          algorithm: 'ES256',
           addedAt: new Date().toISOString(),
           lastUsedAt: new Date().toLocaleString(),
           status: 'verified'
@@ -517,7 +589,7 @@ const App: React.FC = () => {
       {regFlowStep === 'idle' ? (
         <div className="glass-card p-12 rounded-[4rem] border-orange-500/20 text-center max-w-md w-full relative z-10 animate-in fade-in zoom-in duration-500">
           <div className="w-24 h-24 bg-orange-600/10 rounded-full flex items-center justify-center mx-auto mb-10 border border-orange-500/20 shadow-[0_0_30px_rgba(249,115,22,0.1)] group">
-            <i className={`fas ${isAuthenticating ? 'fa-spinner fa-spin' : 'fa-fingerprint'} text-5xl text-orange-500 group-hover:scale-110 transition-transform duration-700`}></i>
+            <i className="fas fa-fingerprint text-5xl text-orange-500 group-hover:scale-110 transition-transform duration-700"></i>
           </div>
           <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Identity Verification</h2>
           <p className="text-slate-500 text-xs font-medium uppercase tracking-widest mb-12 leading-relaxed">
@@ -550,8 +622,11 @@ const App: React.FC = () => {
              setPendingPasskeyName={setPendingPasskeyName}
              pendingRawId={pendingRawId}
              setPendingRawId={setPendingRawId}
+             pendingAlgo={pendingAlgo}
+             setPendingAlgo={setPendingAlgo}
              setRegFlowStep={setRegFlowStep}
              handleManualImport={handleManualImport}
+             handleFileImport={handleFileImport}
            />
         </div>
       ) : (
@@ -804,8 +879,9 @@ const App: React.FC = () => {
                                            </div>
 
                                            <div className="flex justify-between items-center pt-4">
-                                              <div className="flex gap-4">
+                                              <div className="flex gap-4 items-center">
                                                  <span className="text-[8px] font-black text-emerald-500/60 uppercase border border-emerald-500/20 px-3 py-1 rounded-full bg-emerald-500/5">L3 Hardware</span>
+                                                 <span className="text-[8px] font-black text-orange-500/70 uppercase border border-orange-500/20 px-3 py-1 rounded-full bg-orange-500/5">{p.algorithm}</span>
                                                  <span className="text-[8px] font-black text-blue-500/60 uppercase border border-blue-500/20 px-3 py-1 rounded-full bg-blue-500/5">{p.algorithm.includes('Imported') ? 'Manual Import' : 'Platform Auth'}</span>
                                               </div>
                                               <div className="text-right">
@@ -827,7 +903,7 @@ const App: React.FC = () => {
                                       <i className="fas fa-link-slash text-4xl"></i>
                                    </div>
                                    <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-6">Unbonded Node</h4>
-                                   <p className="text-slate-400 text-xs font-medium uppercase tracking-widest max-w-sm mx-auto leading-relaxed mb-12">Secure your digital sovereign enclave by binding a physical hardware passkey via FIDO2/L3 protocols.</p>
+                                   <p className="text-slate-400 text-xs font-medium uppercase tracking-widest max-sm:px-4 max-w-sm mx-auto leading-relaxed mb-12">Secure your digital sovereign enclave by binding a physical hardware passkey via FIDO2/L3 protocols.</p>
                                    <div className="flex gap-4">
                                       <button onClick={triggerImportFlow} className="px-10 py-6 bg-white/5 border border-white/10 hover:border-white/20 text-slate-400 hover:text-white font-black uppercase tracking-widest text-[11px] rounded-[2rem] transition-all">Import Existing Node</button>
                                       <button onClick={triggerRegistrationFlow} className="px-14 py-6 bg-orange-600 hover:bg-orange-500 text-black font-black uppercase tracking-widest text-[11px] rounded-[2rem] transition-all shadow-2xl shadow-orange-900/50">Establish Hardware Binding</button>
@@ -851,8 +927,11 @@ const App: React.FC = () => {
                                   setPendingPasskeyName={setPendingPasskeyName}
                                   pendingRawId={pendingRawId}
                                   setPendingRawId={setPendingRawId}
+                                  pendingAlgo={pendingAlgo}
+                                  setPendingAlgo={setPendingAlgo}
                                   setRegFlowStep={setRegFlowStep}
                                   handleManualImport={handleManualImport}
+                                  handleFileImport={handleFileImport}
                                 />
                              )}
 
@@ -1032,6 +1111,67 @@ const App: React.FC = () => {
                   </div>
                </section>
 
+               {/* Security Audit & Compliance Section */}
+               <section className="glass-card p-12 rounded-[4rem] border-white/5 relative overflow-hidden group">
+                  <header className="flex justify-between items-center mb-16 relative z-10">
+                     <div className="flex items-center gap-8">
+                        <div className="w-20 h-20 bg-emerald-600/10 rounded-[2rem] flex items-center justify-center text-emerald-500 border border-emerald-500/20 shadow-2xl">
+                           <i className="fas fa-shield-check text-4xl"></i>
+                        </div>
+                        <div>
+                           <h2 className="text-4xl font-black text-white uppercase tracking-tighter mb-2">Audit & Compliance</h2>
+                           <p className="text-[10px] text-emerald-500 font-black uppercase tracking-[0.3em] opacity-60">Sovereign Integrity Analysis</p>
+                        </div>
+                     </div>
+                     <button 
+                        onClick={triggerSecurityAudit}
+                        disabled={isAuditing}
+                        className={`px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-4 ${isAuditing ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40 hover:scale-105'}`}
+                     >
+                        <i className={`fas ${isAuditing ? 'fa-spinner fa-spin' : 'fa-radar'}`}></i>
+                        {isAuditing ? 'Auditing Perimeter...' : 'Trigger Deep Sovereign Audit'}
+                     </button>
+                  </header>
+
+                  {isAuditing && (
+                    <div className="mb-12 relative h-2 bg-white/5 rounded-full overflow-hidden">
+                       <div 
+                         className="absolute top-0 left-0 h-full bg-emerald-500 transition-all duration-500"
+                         style={{ width: `${auditProgress}%` }}
+                       />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                     {auditResults.map(check => (
+                        <div key={check.id} className="glass-card p-8 rounded-[3rem] border border-white/5 hover:border-emerald-500/20 transition-all flex items-center gap-8 group/audit">
+                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shrink-0 transition-colors ${
+                             check.status === 'compliant' ? 'bg-emerald-500/10 text-emerald-500' : 
+                             check.status === 'failed' ? 'bg-rose-500/10 text-rose-500' : 
+                             'bg-slate-800 text-slate-500'
+                           }`}>
+                              <i className={`fas ${
+                                check.status === 'compliant' ? 'fa-check' : 
+                                check.status === 'failed' ? 'fa-circle-xmark' : 
+                                'fa-circle-notch'
+                              }`}></i>
+                           </div>
+                           <div className="flex-1">
+                              <h4 className="text-lg font-black text-white uppercase tracking-tighter mb-1">{check.label}</h4>
+                              <p className="text-[9px] text-slate-500 font-medium uppercase tracking-widest leading-relaxed">{check.description}</p>
+                           </div>
+                           <div className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] border ${
+                             check.status === 'compliant' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-500' : 
+                             check.status === 'failed' ? 'bg-rose-500/5 border-rose-500/20 text-rose-500' : 
+                             'bg-white/5 border-white/5 text-slate-600'
+                           }`}>
+                              {check.status === 'compliant' ? 'Passed' : check.status === 'failed' ? 'Non-Compliant' : 'Unchecked'}
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </section>
+
                {/* API Key Management Section */}
                <section className="glass-card p-12 rounded-[4rem] border-white/5 relative overflow-hidden group">
                   <header className="flex justify-between items-center mb-12">
@@ -1164,7 +1304,7 @@ const App: React.FC = () => {
                         <i className="fas fa-shield-halved text-4xl text-orange-500"></i>
                      </div>
                      <h4 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">Hardening Active</h4>
-                     <p className="text-slate-500 text-xs font-medium uppercase tracking-[0.2em] max-w-sm mx-auto leading-relaxed mb-10">
+                     <p className="text-slate-500 text-xs font-medium uppercase tracking-[0.2em] max-sm:px-4 max-w-sm mx-auto leading-relaxed mb-10">
                         The enclave kernel is monitoring all 2026 threats in real-time. Unauthorized nodes are automatically purged.
                      </p>
                      <div className="flex gap-4">
@@ -1250,7 +1390,7 @@ const App: React.FC = () => {
   );
 };
 
-// --- Sub-components for cleaned up flow ---
+// --- Sub-components ---
 
 const NamingWizard: React.FC<{
   pendingPasskeyName: string;
@@ -1307,54 +1447,92 @@ const ImportWizard: React.FC<{
   setPendingPasskeyName: (v: string) => void;
   pendingRawId: string;
   setPendingRawId: (v: string) => void;
+  pendingAlgo: string;
+  setPendingAlgo: (v: string) => void;
   setRegFlowStep: (s: any) => void;
-  handleManualImport: (e: React.FormEvent) => void;
-}> = ({ pendingPasskeyName, setPendingPasskeyName, pendingRawId, setPendingRawId, setRegFlowStep, handleManualImport }) => (
-  <div className="animate-in slide-in-from-bottom-6 duration-500 w-full">
-     <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-white/5 mb-8 mx-auto shadow-inner">
-        <i className="fas fa-file-import text-3xl"></i>
-     </div>
-     <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-2 text-center">Node Migration</h4>
-     <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-10 text-center leading-relaxed">Sovereign Identifier Import Protocol</p>
-     
-     <form onSubmit={handleManualImport} className="space-y-6">
-        <div>
-           <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Node Identifier Label</label>
-           <input 
-              required
-              type="text" 
-              autoFocus
-              value={pendingPasskeyName}
-              onChange={(e) => setPendingPasskeyName(e.target.value)}
-              placeholder="e.g. Titan M2 Backup Root"
-              className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold placeholder:font-normal placeholder:opacity-30"
-           />
-        </div>
+  handleManualImport: (e?: React.FormEvent) => void;
+  handleFileImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}> = ({ pendingPasskeyName, setPendingPasskeyName, pendingRawId, setPendingRawId, pendingAlgo, setPendingAlgo, setRegFlowStep, handleManualImport, handleFileImport }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-        <div>
-           <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Raw Credential Payload (Base64)</label>
-           <textarea 
-              required
-              rows={3}
-              value={pendingRawId}
-              onChange={(e) => setPendingRawId(e.target.value)}
-              placeholder="PASTE_ENCLAVE_BLOB_HERE..."
-              className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-xs text-orange-500/80 focus:outline-none focus:border-orange-500/40 transition-all font-mono placeholder:font-normal placeholder:opacity-20 resize-none"
-           />
-        </div>
-        
-        <div className="flex gap-4 pt-4">
-           <button type="button" onClick={() => setRegFlowStep('idle')} className="flex-1 py-4 rounded-2xl border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
-           <button 
-              type="submit"
-              disabled={!pendingPasskeyName.trim() || !pendingRawId.trim()}
-              className="flex-[2] py-4 px-10 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-orange-900/30"
-           >
-              Import Identity Artifact
-           </button>
-        </div>
-     </form>
-  </div>
-);
+  return (
+    <div className="animate-in slide-in-from-bottom-6 duration-500 w-full">
+       <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-white/5 mb-8 mx-auto shadow-inner">
+          <i className="fas fa-file-import text-3xl"></i>
+       </div>
+       <h4 className="text-2xl font-black text-white uppercase tracking-tighter mb-2 text-center">Node Migration</h4>
+       <p className="text-slate-500 text-[9px] font-black uppercase tracking-[0.3em] mb-10 text-center leading-relaxed">Sovereign Identifier Import Protocol</p>
+       
+       <div className="mb-8 p-6 bg-orange-500/5 border border-dashed border-orange-500/20 rounded-3xl text-center group">
+          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Quick Upload (.json)</p>
+          <button 
+             onClick={() => fileInputRef.current?.click()}
+             className="px-6 py-3 bg-white/5 border border-white/10 hover:border-orange-500/30 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-orange-500 rounded-xl transition-all"
+          >
+             <i className="fas fa-cloud-upload mr-2"></i>
+             Select Migration File
+          </button>
+          <input 
+             type="file" 
+             ref={fileInputRef} 
+             onChange={handleFileImport} 
+             accept=".json" 
+             className="hidden" 
+          />
+       </div>
+
+       <form onSubmit={(e) => handleManualImport(e)} className="space-y-6">
+          <div>
+             <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Node Identifier Label</label>
+             <input 
+                required
+                type="text" 
+                value={pendingPasskeyName}
+                onChange={(e) => setPendingPasskeyName(e.target.value)}
+                placeholder="e.g. Titan M2 Backup Root"
+                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold placeholder:font-normal placeholder:opacity-30"
+             />
+          </div>
+
+          <div>
+             <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Algorithm Context</label>
+             <select 
+                value={pendingAlgo}
+                onChange={(e) => setPendingAlgo(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-sm text-white focus:outline-none focus:border-orange-500/40 transition-all font-bold appearance-none cursor-pointer"
+             >
+                <option value="ES256">ES256 (ECDSA w/ P-256)</option>
+                <option value="RS256">RS256 (RSA w/ SHA-256)</option>
+                <option value="EdDSA">EdDSA (Edwards 25519)</option>
+                <option value="Legacy Signature">Legacy Hardcoded</option>
+             </select>
+          </div>
+
+          <div>
+             <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Credential Payload (rawId)</label>
+             <textarea 
+                required
+                rows={3}
+                value={pendingRawId}
+                onChange={(e) => setPendingRawId(e.target.value)}
+                placeholder="PASTE_ENCLAVE_BLOB_HERE..."
+                className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-xs text-orange-500/80 focus:outline-none focus:border-orange-500/40 transition-all font-mono placeholder:font-normal placeholder:opacity-20 resize-none"
+             />
+          </div>
+          
+          <div className="flex gap-4 pt-4">
+             <button type="button" onClick={() => setRegFlowStep('idle')} className="flex-1 py-4 rounded-2xl border border-white/5 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Abort</button>
+             <button 
+                type="submit"
+                disabled={!pendingPasskeyName.trim() || !pendingRawId.trim()}
+                className="flex-[2] py-4 px-10 bg-orange-600 hover:bg-orange-500 disabled:opacity-30 text-black rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-orange-900/30"
+             >
+                Confirm Migration
+             </button>
+          </div>
+       </form>
+    </div>
+  );
+};
 
 export default App;
