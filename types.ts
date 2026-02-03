@@ -1,12 +1,4 @@
 
-export enum SetupStep {
-  PREREQUISITES = 'prerequisites',
-  TERRAFORM = 'terraform',
-  MCP_SERVER = 'mcp_server',
-  CLOUDFLARE = 'cloudflare',
-  TROUBLESHOOTING = 'troubleshooting'
-}
-
 export enum AppView {
   SOURCES = 'sources',
   SCANNER = 'scanner',
@@ -20,6 +12,8 @@ export enum RiskLevel {
   MODERATE = 'moderate',
   SAFE = 'safe'
 }
+
+export type DiscoveryType = 'PII' | 'SECRET' | 'IDENTITY_BROKER' | 'BIOMETRIC' | 'GENERAL';
 
 export interface EmailProvider {
   id: string;
@@ -38,6 +32,7 @@ export interface PrivacyThreat {
   detectedVia: string;
   timestamp: string;
   suggestedAction?: 'NUKE' | 'FT_KNOX' | 'IGNORE';
+  discoveryType?: DiscoveryType;
 }
 
 export interface VaultItem {
@@ -47,13 +42,6 @@ export interface VaultItem {
   timestamp: string;
   type: 'document' | 'image' | 'thread';
   encryption: 'AES-256-GCM';
-}
-
-export interface PrivacyDefinition {
-  id: string;
-  entity: string;
-  pattern: string;
-  risk: string;
 }
 
 export interface ChatMessage {
@@ -99,6 +87,8 @@ export interface EnclaveProfile {
   concurrency: number;
   cpuMode: 'always_on' | 'on_demand';
   postQuantumEnabled: boolean;
+  retentionPolicy: 'ephemeral' | '24h' | '7d' | '30d' | 'infinite';
+  residencyRegion: 'us-sovereign' | 'eu-sovereign' | 'asia-hardened';
 }
 
 export interface SystemVitals {
@@ -106,4 +96,12 @@ export interface SystemVitals {
   memoryUsage: number;
   activeRequests: number;
   uptime: string;
+  teeStatus: 'ENCRYPTED' | 'ATTESTED' | 'UNSECURED';
+}
+
+export interface ComplianceItem {
+  id: string;
+  label: string;
+  status: 'passed' | 'failed' | 'pending';
+  description: string;
 }
