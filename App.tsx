@@ -17,15 +17,55 @@ const getFutureDate = (days: number) => {
   return date.toISOString().split('T')[0];
 };
 
-// --- Error Mapping ---
+// --- Enhanced Error Mapping ---
 interface SovereignError { title: string; message: string; tip: string; rawName: string; }
 const resolveWebAuthnError = (err: any): SovereignError => {
   const rawName = err.name || 'UnknownError';
-  const base = { rawName, title: "Protocol Failure", message: err.message, tip: "Verify hardware connection and retry the attestation sequence." };
+  const base = { 
+    rawName, 
+    title: "Protocol Failure", 
+    message: err.message || "An unexpected error occurred during the cryptographic handshake.", 
+    tip: "Verify hardware connection and retry the attestation sequence." 
+  };
+  
   switch (err.name) {
-    case 'NotAllowedError': return { ...base, title: "Handshake Interrupted", tip: "Keep your device unlocked." };
-    case 'SecurityError': return { ...base, title: "Transport Insecurity", tip: "Ensure you are using HTTPS." };
-    default: return base;
+    case 'NotAllowedError': 
+      return { 
+        ...base, 
+        title: "Handshake Interrupted", 
+        message: "The user denied the request or the operation timed out.",
+        tip: "Ensure your security key is inserted, unlocked, and you interact with the browser prompt promptly." 
+      };
+    case 'InvalidStateError':
+      return {
+        ...base,
+        title: "Node Conflict",
+        message: "This hardware token is already associated with an identity in the local ledger.",
+        tip: "If you are trying to re-register, delete the existing record from 'Hardware Identity Nodes' first."
+      };
+    case 'NotSupportedError':
+      return {
+        ...base,
+        title: "Platform Restriction",
+        message: "This browser or operating system does not support Sovereign L3 attestation.",
+        tip: "Try using a modern Chromium-based browser or check if your hardware key supports FIDO2/WebAuthn."
+      };
+    case 'SecurityError': 
+      return { 
+        ...base, 
+        title: "Transport Insecurity", 
+        message: "The operation is not permitted in the current security context.",
+        tip: "Sovereign attestation requires a secure HTTPS connection and a valid top-level domain context." 
+      };
+    case 'AbortError':
+      return {
+        ...base,
+        title: "Operation Aborted",
+        message: "The attestation sequence was terminated by the user or the system kernel.",
+        tip: "Check for conflicting security prompts and ensure no other application is accessing the hardware key."
+      };
+    default: 
+      return base;
   }
 };
 
@@ -253,12 +293,15 @@ const App: React.FC = () => {
   const startGuidedRegistration = async () => {
     setIsAuthenticating(true);
     setRegFlowStep('preparing');
+    setActiveError(null);
     try {
       await new Promise(r => setTimeout(r, 1000));
       setRegFlowStep('prompting');
       let cred;
       if (useSimulationMode) {
         await new Promise(r => setTimeout(r, 1000));
+        // Randomly simulate error if in dev mode to test UX
+        if (Math.random() < 0.2) throw { name: 'NotAllowedError', message: 'User denied the simulated request.' };
         cred = { id: 'SIM-' + Math.random().toString(36).substr(2, 9), type: 'public-key' };
       } else {
         cred = await navigator.credentials.create({ 
@@ -281,8 +324,10 @@ const App: React.FC = () => {
         showToast("Hardware bound.", "success");
       }
     } catch (e: any) {
-      setActiveError(resolveWebAuthnError(e));
+      const errReport = resolveWebAuthnError(e);
+      setActiveError(errReport);
       setRegFlowStep('error');
+      addIdentityLog(`CRITICAL: Attestation Failure: ${errReport.rawName} - ${errReport.message}`, 'critical');
     } finally { setIsAuthenticating(false); }
   };
 
@@ -340,7 +385,7 @@ const App: React.FC = () => {
   if (authStage === 'passkey') return (
     <div className="h-screen bg-[#020617] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="neon-atmosphere"></div>
-      <div className="glass-card p-12 rounded-[4rem] border-blue-500/20 text-center max-w-xl w-full relative z-10 transition-all duration-500">
+      <div className={`glass-card p-12 rounded-[4rem] text-center max-w-xl w-full relative z-10 transition-all duration-500 border-2 ${regFlowStep === 'error' ? 'border-rose-500/40 shadow-rose-900/20' : 'border-blue-500/20'}`}>
         {regFlowStep === 'idle' ? (
           <>
             <i className="fas fa-fingerprint text-6xl text-blue-500 mb-8"></i>
@@ -371,7 +416,7 @@ const App: React.FC = () => {
           </div>
         ) : regFlowStep === 'naming' ? (
           <div className="text-center max-w-sm mx-auto">
-            <h2 className="text-xl font-black text-white mb-8">NODE ALIAS</h2>
+            <h2 className="text-xl font-black text-white mb-8 uppercase tracking-widest">NODE ALIAS</h2>
             <input type="text" value={pendingPasskeyName} onChange={e => setPendingPasskeyName(e.target.value)} placeholder="e.g. Architect Core" className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white mb-6 focus:border-blue-500/50 outline-none" />
             <div className="flex gap-4">
               <button onClick={() => setRegFlowStep('choice')} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px]">Cancel</button>
@@ -408,6 +453,31 @@ const App: React.FC = () => {
             <i className="fas fa-check-double text-emerald-500 text-5xl mb-6"></i>
             <h2 className="text-2xl font-black text-white mb-8 uppercase">Enclave Bound</h2>
             <button onClick={() => setAuthStage('app')} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Enter Production Environment</button>
+          </div>
+        ) : regFlowStep === 'error' && activeError ? (
+          <div className="text-center py-6">
+            <div className="w-20 h-20 bg-rose-500/10 border border-rose-500/20 rounded-3xl flex items-center justify-center text-rose-500 mx-auto mb-8 animate-bounce">
+              <i className="fas fa-triangle-exclamation text-3xl"></i>
+            </div>
+            <h2 className="text-2xl font-black text-rose-500 uppercase tracking-tighter mb-4">{activeError.title}</h2>
+            <p className="text-xs text-slate-300 font-medium leading-relaxed px-6 mb-8">{activeError.message}</p>
+            
+            <div className="bg-black/30 border border-white/5 rounded-[2rem] p-6 mb-8 text-left">
+              <div className="flex items-center gap-3 mb-3">
+                 <i className="fas fa-lightbulb text-orange-500 text-xs"></i>
+                 <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Sovereign Tip</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold leading-relaxed uppercase">{activeError.tip}</p>
+            </div>
+
+            <div className="flex flex-col gap-4">
+               <button onClick={startGuidedRegistration} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-900/40">
+                 Retry Attestation Sequence
+               </button>
+               <button onClick={() => setRegFlowStep('choice')} className="w-full py-4 text-slate-600 hover:text-white transition-colors font-black uppercase text-[10px] tracking-[0.2em]">
+                 Select Different Method
+               </button>
+            </div>
           </div>
         ) : (
           <div className="py-12 flex flex-col items-center">
