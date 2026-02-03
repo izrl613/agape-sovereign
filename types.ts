@@ -64,6 +64,13 @@ export interface ChatMessage {
   isPinned?: boolean;
 }
 
+export interface ApiKeyEvent {
+  id: string;
+  type: 'provision' | 'revocation' | 'visibility_toggle';
+  timestamp: string;
+  details: string;
+}
+
 export interface ApiKey {
   id: string;
   name: string;
@@ -71,7 +78,8 @@ export interface ApiKey {
   createdAt: string;
   expiresAt: string;
   isVisible: boolean;
-  status: 'active' | 'expiring_soon' | 'expired';
+  status: 'active' | 'expiring_soon' | 'expired' | 'revoked';
+  auditTrail: ApiKeyEvent[];
 }
 
 export interface PasskeyRecord {
@@ -83,4 +91,19 @@ export interface PasskeyRecord {
   addedAt: string;
   lastUsedAt: string | null;
   status: 'active' | 'verified' | 'revoked';
+}
+
+export interface EnclaveProfile {
+  minInstances: number;
+  maxInstances: number;
+  concurrency: number;
+  cpuMode: 'always_on' | 'on_demand';
+  postQuantumEnabled: boolean;
+}
+
+export interface SystemVitals {
+  cpuUsage: number;
+  memoryUsage: number;
+  activeRequests: number;
+  uptime: string;
 }

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,6 +12,7 @@
       :root {
         --enclave-bg: #020617;
         --sovereign-orange: #f97316;
+        --sovereign-blue: #2563eb;
         --sovereign-emerald: #10b981;
         --sovereign-rose: #f43f5e;
       }
@@ -29,17 +29,52 @@
         font-family: 'JetBrains Mono', monospace;
       }
 
+      /* Global Atmospheric Pulse */
+      .neon-atmosphere {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background: 
+          radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 40%),
+          radial-gradient(circle at 80% 80%, rgba(249, 115, 22, 0.08) 0%, transparent 40%);
+        animation: atmosphere-drift 15s ease-in-out infinite alternate;
+      }
+
+      @keyframes atmosphere-drift {
+        0% { opacity: 0.5; transform: scale(1) translate(0, 0); }
+        100% { opacity: 1; transform: scale(1.1) translate(2%, 2%); }
+      }
+
       .glass-card {
-        background: rgba(15, 23, 42, 0.6);
+        background: rgba(15, 23, 42, 0.4);
         backdrop-filter: blur(24px);
         border: 1px solid rgba(255, 255, 255, 0.04);
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: card-neon-pulse 8s ease-in-out infinite alternate;
+      }
+
+      @keyframes card-neon-pulse {
+        0% { 
+          border-color: rgba(37, 99, 235, 0.1); 
+          box-shadow: 0 0 15px rgba(37, 99, 235, 0.05), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        100% { 
+          border-color: rgba(249, 115, 22, 0.2); 
+          box-shadow: 0 0 25px rgba(249, 115, 22, 0.1), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
       }
 
       .sovereign-gradient-text {
-        background: linear-gradient(135deg, #fff 0%, #f97316 100%);
+        background: linear-gradient(135deg, #fff 0%, var(--sovereign-orange) 50%, var(--sovereign-blue) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
+        animation: text-hue-shift 10s linear infinite alternate;
+      }
+
+      @keyframes text-hue-shift {
+        0% { filter: hue-rotate(0deg); }
+        100% { filter: hue-rotate(20deg); }
       }
 
       .custom-scrollbar::-webkit-scrollbar {
@@ -67,9 +102,9 @@
         left: 0;
         width: 100%;
         height: 2px;
-        background: linear-gradient(90deg, transparent, var(--sovereign-orange), transparent);
-        opacity: 0.2;
-        animation: scan-line 4s linear infinite;
+        background: linear-gradient(90deg, transparent, var(--sovereign-blue), var(--sovereign-orange), transparent);
+        opacity: 0.3;
+        animation: scan-line 6s linear infinite;
         pointer-events: none;
       }
 

@@ -7,7 +7,6 @@ import { PrivacyDefinition } from "../types";
  * Uses Gemini to generate up-to-date privacy threats for 2026.
  */
 export const fetchLatestDefinitions = async (currentCount: number): Promise<PrivacyDefinition[]> => {
-  // Initialize AI client right before use to ensure the latest API key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -43,7 +42,6 @@ export const fetchLatestDefinitions = async (currentCount: number): Promise<Priv
  * Simulates a deep packet fetch from a 2026 provider.
  */
 export const simulateInboxFetch = async (providerName: string) => {
-  // Initialize AI client right before use to ensure the latest API key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -83,7 +81,6 @@ export const simulateInboxFetch = async (providerName: string) => {
  * Validates a batch of communications against the 2026 Sovereign Audit Database.
  */
 export const validateLiveEmailBatch = async (emailJson: string) => {
-  // Initialize AI client right before use to ensure the latest API key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -127,7 +124,6 @@ export const validateLiveEmailBatch = async (emailJson: string) => {
  * Gets architectural advice from the Agape Sovereign Architect.
  */
 export const getArchitectAdvice = async (query: string, context: string) => {
-  // Initialize AI client right before use to ensure the latest API key is used
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
@@ -135,9 +131,11 @@ export const getArchitectAdvice = async (query: string, context: string) => {
       contents: `Sovereign Query: ${query}\nSystem Status: ${context}`,
       config: {
         systemInstruction: `You are the Agape Sovereign Architect. 
+        Current Status: PRODUCTION ENCLAVE (Hardened).
         Focus on resolving complex 2026 privacy architectures, FIDO2/L3 hardware bindings, and zero-trust cloud run deployments. 
         Your tone is professional, technical, and protective. 
-        Provide advice that prioritizes user sovereignty above all else.`,
+        In production mode, prioritize advice regarding high-availability, scaling, and disaster recovery.
+        Never suggest disabling security features for convenience.`,
         thinkingConfig: { thinkingBudget: 2048 }
       }
     });
