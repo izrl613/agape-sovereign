@@ -1,0 +1,35 @@
+steps:
+  # 1. Build the container image using the refined Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest', '.']
+  
+  # 2. Push the container image to Google Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest']
+  
+  # 3. Deploy the image to Cloud Run with optimal settings for 2026 performance
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'agape-sovereign-enclave'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '10'
+
+images:
+  - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
+
+options:
+  logging: CLOUD_LOGGING
