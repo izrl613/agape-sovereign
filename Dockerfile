@@ -1,42 +1,36 @@
-# Build stage
-FROM node:22-alpine AS builder
+# Dockerfile
 
+# Use the official Golang image as a build stage
+FROM golang:1.18 AS builder
+
+# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy go.mod and go.sum files
+COPY go.mod go.sum ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
+RUN go mod download
 
-# Copy application source
+# Copy the source code into the container
 COPY . .
 
-# Build the React app
-RUN npm run build
+# Build the Go app
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main .
 
-# Production stage
-FROM node:22-alpine
+# Second stage for production
+FROM alpine:latest
 
-WORKDIR /app
+# Add Maintainer Info
+LABEL Name="Agape Sovereign" 
+LABEL Version="1.0" 
+LABEL Description="Production-ready Dockerfile for Google Cloud Run" 
 
-# Install a simple HTTP server to serve static files
-RUN npm install -g http-server
+# Set the Current Working Directory inside the container
+WORKDIR /root/
 
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
+# Copy the Pre-built binary file from the previous stage
+COPY --from=builder /app/main .
 
-# Expose the port that Cloud Run uses
-EXPOSE 8080
-
-# Set environment variables
-ENV PORT=8080 \
-    NODE_ENV=production
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8080/ || exit 1
-
-# Start the application
-CMD ["http-server", "dist", "-p", "8080", "--cors"]
+# Command to run the executable
+CMD ["./main"]
