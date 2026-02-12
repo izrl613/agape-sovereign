@@ -1,3 +1,6 @@
+onPush:
+  branch: ^main$
+
 steps:
   # 1. Build the container image using the refined Dockerfile
   - name: 'gcr.io/cloud-builders/docker'
@@ -17,7 +20,7 @@ steps:
       - '--image'
       - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
       - '--region'
-      - 'us-central1'
+      - 'us-west1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
