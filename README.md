@@ -1,20 +1,40 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Agape Sovereign Enclave 2026
 
-# Run and deploy your AI Studio app
+The ultimate digital overseer for private, hardware-bound identity and automated data reclamation.
 
-This contains everything you need to run your app locally.
+## Architecture
+- **Frontend**: React 19 (ESM No-Build Mode)
+- **Backend**: Node.js Express (SPA Routing)
+- **Security**: Hardware L3 WebAuthn Handshakes, PQC Encryption
+- **Deployment**: Google Cloud Run (Serverless)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1kO_TCzoEnHOEraCzdIA8HBJdpweolYRF
+## 💎 5 Diamond Deployment (Cloud Run)
 
-## Run Locally
+This application is ready for secure deployment on Google Cloud Run. It provides a hardened `.run.app` endpoint without the need for a custom domain.
 
-**Prerequisites:**  Node.js
+### Prerequisites
+1. [Google Cloud Account](https://console.cloud.google.com/)
+2. [Google Cloud SDK (gcloud)](https://cloud.google.com/sdk/docs/install) installed and authenticated.
 
+### Automatic Deployment
+Run the included deployment script:
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### Manual Cloud Run Deploy
+You can also deploy directly from the source:
+```bash
+gcloud run deploy agape-enclave \
+  --source . \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars API_KEY=YOUR_GEMINI_API_KEY
+```
+
+## Local Hardened Execution
+1. `npm install`
+2. `export API_KEY=your_key`
+3. `npm start`

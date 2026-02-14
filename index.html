@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agape Sovereign | Enclave 2026</title>
+    <title>Agape Sovereign | Overseer Core 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,6 +16,7 @@
         --sovereign-blue: #2563eb;
         --sovereign-emerald: #10b981;
         --sovereign-rose: #f43f5e;
+        --diamond-border: rgba(255, 255, 255, 0.08);
       }
 
       body {
@@ -23,77 +25,79 @@
         color: #f8fafc;
         margin: 0;
         overflow: hidden;
+        letter-spacing: -0.01em;
       }
 
       .font-mono {
         font-family: 'JetBrains Mono', monospace;
       }
 
-      /* Global Atmospheric Pulse */
       .neon-atmosphere {
         position: fixed;
         inset: 0;
         z-index: -1;
         pointer-events: none;
         background: 
-          radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 40%),
-          radial-gradient(circle at 80% 80%, rgba(249, 115, 22, 0.08) 0%, transparent 40%);
-        animation: atmosphere-drift 15s ease-in-out infinite alternate;
+          radial-gradient(circle at 5% 5%, rgba(37, 99, 235, 0.12) 0%, transparent 40%),
+          radial-gradient(circle at 95% 95%, rgba(249, 115, 22, 0.12) 0%, transparent 40%),
+          radial-gradient(circle at 50% 50%, rgba(2, 6, 23, 1) 0%, transparent 100%);
+        animation: atmosphere-drift 40s ease-in-out infinite alternate;
       }
 
       @keyframes atmosphere-drift {
-        0% { opacity: 0.5; transform: scale(1) translate(0, 0); }
-        100% { opacity: 1; transform: scale(1.1) translate(2%, 2%); }
+        0% { transform: scale(1) translate(0, 0); }
+        100% { transform: scale(1.05) translate(1%, 1%); }
       }
 
       .glass-card {
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        animation: card-neon-pulse 8s ease-in-out infinite alternate;
+        background: rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(50px);
+        border: 1px solid var(--diamond-border);
+        box-shadow: 0 50px 100px -30px rgba(0, 0, 0, 0.9);
+        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      @keyframes card-neon-pulse {
-        0% { 
-          border-color: rgba(37, 99, 235, 0.1); 
-          box-shadow: 0 0 15px rgba(37, 99, 235, 0.05), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-        100% { 
-          border-color: rgba(249, 115, 22, 0.2); 
-          box-shadow: 0 0 25px rgba(249, 115, 22, 0.1), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-      }
-
-      .sovereign-gradient-text {
-        background: linear-gradient(135deg, #fff 0%, var(--sovereign-orange) 50%, var(--sovereign-blue) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: text-hue-shift 10s linear infinite alternate;
-      }
-
-      @keyframes text-hue-shift {
-        0% { filter: hue-rotate(0deg); }
-        100% { filter: hue-rotate(20deg); }
+      .glass-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-8px);
+        box-shadow: 0 60px 120px -40px rgba(0, 0, 0, 0.95), 0 0 40px rgba(37, 99, 235, 0.05);
       }
 
       .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
       }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
-      }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(249, 115, 22, 0.1);
-        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
       }
-      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: rgba(249, 115, 22, 0.3);
+
+      .scan-line-progress {
+        height: 100%;
+        background: linear-gradient(90deg, transparent, var(--sovereign-blue), transparent);
+        background-size: 200% 100%;
+        animation: loading-shimmer 2s infinite linear;
+      }
+
+      @keyframes loading-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      .sovereign-gradient-text {
+        background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .diamond-glow {
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
       }
 
       @keyframes scan-line {
-        0% { transform: translateY(-100%); }
-        100% { transform: translateY(1000%); }
+        0% { transform: translateY(-100%); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(400%); opacity: 0; }
       }
 
       .scan-overlay {
@@ -101,24 +105,20 @@
         top: 0;
         left: 0;
         width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, transparent, var(--sovereign-blue), var(--sovereign-orange), transparent);
-        opacity: 0.3;
-        animation: scan-line 6s linear infinite;
+        height: 100%;
+        background: linear-gradient(transparent, rgba(37, 99, 235, 0.08), transparent);
+        animation: scan-line 8s ease-in-out infinite;
         pointer-events: none;
+        z-index: 10;
       }
 
-      .node-unstable {
-        animation: glitch 0.3s cubic-bezier(.25,.46,.45,.94) both infinite;
+      .animate-spin-slow {
+        animation: spin 90s linear infinite;
       }
 
-      @keyframes glitch {
-        0% { transform: translate(0); }
-        20% { transform: translate(-1px, 1px); }
-        40% { transform: translate(-1px, -1px); }
-        60% { transform: translate(1px, 1px); }
-        80% { transform: translate(1px, -1px); }
-        100% { transform: translate(0); }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
     </style>
 <script type="importmap">
@@ -131,8 +131,10 @@
   }
 }
 </script>
+<link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
 </body>
 </html>

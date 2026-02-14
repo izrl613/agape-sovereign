@@ -1,5 +1,9 @@
 {
-  "name": "Cloud MCP Automation Dashboard",
+  "name": "Agape Sovereign Enclave 2026",
   "description": "A streamlined automation tool for deploying secure MCP servers on Google Cloud Run integrated with Cloudflare Zero Trust, designed for users without a custom domain.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
 }

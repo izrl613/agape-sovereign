@@ -1,9 +1,10 @@
 
 export enum AppView {
+  DASHBOARD = 'dashboard',
   SOURCES = 'sources',
   SCANNER = 'scanner',
-  MY_STUFF = 'my_stuff', // The "Vault"
-  ENCLAVE = 'enclave',   // The "Architect / Admin"
+  ENCLAVE = 'enclave',   
+  ARCHITECT = 'architect',
 }
 
 export enum RiskLevel {
@@ -15,88 +16,29 @@ export enum RiskLevel {
 
 export type DiscoveryType = 'PII' | 'SECRET' | 'IDENTITY_BROKER' | 'BIOMETRIC' | 'GENERAL';
 
-export interface EmailProvider {
+export interface EmailArtifact {
   id: string;
-  name: string;
-  icon: string;
-  status: 'connected' | 'disconnected' | 'authorizing';
-  lastScan: string | null;
-}
-
-export interface PrivacyThreat {
-  id: string;
-  source: string;
+  sender: string;
   subject: string;
-  emailProviderId: string;
-  riskLevel: RiskLevel;
-  detectedVia: string;
-  timestamp: string;
-  suggestedAction?: 'NUKE' | 'FT_KNOX' | 'IGNORE';
-  discoveryType?: DiscoveryType;
+  snippet: string;
+  risk: RiskLevel;
+  type: DiscoveryType;
 }
 
-export interface VaultItem {
+export interface LinkedAccount {
   id: string;
-  title: string;
-  origin: string;
-  timestamp: string;
-  type: 'document' | 'image' | 'thread';
-  encryption: 'AES-256-GCM';
+  platform: 'Google' | 'X' | 'Meta' | 'GitHub' | 'LinkedIn';
+  handle: string;
+  status: 'synced' | 'pending' | 'revoked';
+  lastSync: string;
 }
 
-export interface ChatMessage {
+export interface HardwareNode {
   id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-  isPinned?: boolean;
-}
-
-export interface ApiKeyEvent {
-  id: string;
-  type: 'provision' | 'revocation' | 'visibility_toggle';
-  timestamp: string;
-  details: string;
-}
-
-export interface ApiKey {
-  id: string;
-  name: string;
-  key: string;
-  createdAt: string;
-  expiresAt: string;
-  isVisible: boolean;
-  status: 'active' | 'expiring_soon' | 'expired' | 'revoked';
-  auditTrail: ApiKeyEvent[];
-}
-
-export interface PasskeyRecord {
-  id: string;
-  rawId: string;
-  label: string;
-  type: string;
-  algorithm: string;
-  addedAt: string;
-  lastUsedAt: string | null;
-  status: 'active' | 'verified' | 'revoked';
-}
-
-export interface EnclaveProfile {
-  minInstances: number;
-  maxInstances: number;
-  concurrency: number;
-  cpuMode: 'always_on' | 'on_demand';
-  postQuantumEnabled: boolean;
-  retentionPolicy: 'ephemeral' | '24h' | '7d' | '30d' | 'infinite';
-  residencyRegion: 'us-sovereign' | 'eu-sovereign' | 'asia-hardened';
-}
-
-export interface SystemVitals {
-  cpuUsage: number;
-  memoryUsage: number;
-  activeRequests: number;
-  uptime: string;
-  teeStatus: 'ENCRYPTED' | 'ATTESTED' | 'UNSECURED';
+  model: string;
+  os: string;
+  status: 'authenticated' | 'standby' | 'attested';
+  lastHandshake: string;
 }
 
 export interface ComplianceItem {

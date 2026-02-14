@@ -1,4 +1,3 @@
-
 export const DEFAULT_CONFIG = {
   projectId: 'agape-sovereign',
   region: 'us-central1',
@@ -18,17 +17,18 @@ export const PRIVACY_DEFINITIONS_DB = [
 
 export const SCRIPTS = {
   SOVEREIGN_HEALER: (projectId: string, serviceName: string) => `
-# SOVEREIGN ENCLAVE RESTORATION WITH HEALTH CHECKS
-gcloud services enable run.googleapis.com iap.googleapis.com
+# SOVEREIGN ENCLAVE CLOUD RUN DEPLOYMENT PROTOCOL
+# 1. Ensure project is active
+gcloud config set project ${projectId}
 
-# Deploying with HTTP Health Probes enabled
+# 2. Deploy from local source
 gcloud run deploy ${serviceName} \\
-  --no-allow-unauthenticated \\
-  --liveness-probe-path=/healthz \\
-  --startup-probe-path=/healthz \\
-  --timeout=300 \\
-  --cpu=1 \\
-  --memory=512Mi
+  --source . \\
+  --region us-central1 \\
+  --allow-unauthenticated \\
+  --memory 512Mi \\
+  --cpu 1 \\
+  --timeout 300
 `,
   ACM_LEVEL_CREATE: `gcloud access-context-manager levels create PASSKEY_ENFORCED`
 };
