@@ -43,10 +43,9 @@ const fido2 = new Fido2Lib({
   rpId: process.env.NODE_ENV === 'production' ? 'sovereign.nyc' : 'localhost',
   rpName: 'Agape Sovereign Enclave',
   challengeSize: 128,
-  attestation: 'direct',
+  attestation: 'none',
   cryptoParams: [-7, -257],
-  authenticatorAttachment: 'platform',
-  authenticatorRequireResidentKey: false,
+  authenticatorRequireResidentKey: true,
   authenticatorUserVerification: 'required',
 });
 
