@@ -2,11 +2,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppView, RiskLevel, ComplianceItem, EmailArtifact, LinkedAccount, HardwareNode } from './types';
 import { simulateInboxFetch } from './services/geminiService';
+import { startRegistration, startLogin } from './services/webauthnService';
 
 const App: React.FC = () => {
   // --- Core State ---
   const [view, setView] = useState<AppView>(AppView.DASHBOARD);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // --- Enclave Security State ---
   const [isSecurityScanning, setIsSecurityScanning] = useState(false);
@@ -72,6 +74,36 @@ const App: React.FC = () => {
     }
     return { name: errorName, message, advice };
   }, []);
+
+  const handleRegister = async () => {
+    try {
+      const result = await startRegistration('demo-user');
+      if (result.status === 'ok') {
+        showToast('Registration successful!', 'success');
+        setIsAuthenticated(true);
+      } else {
+        showToast('Registration failed.', 'error');
+      }
+    } catch (error) {
+      setWebAuthnDebugOutput(resolveWebAuthnError(error));
+      showToast('Registration failed.', 'error');
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      const result = await startLogin();
+      if (result.status === 'ok') {
+        showToast('Login successful!', 'success');
+        setIsAuthenticated(true);
+      } else {
+        showToast('Login failed.', 'error');
+      }
+    } catch (error) {
+      setWebAuthnDebugOutput(resolveWebAuthnError(error));
+      showToast('Login failed.', 'error');
+    }
+  };
 
   const triggerSecurityScan = async () => {
     setIsSecurityScanning(true);
@@ -167,7 +199,7 @@ const App: React.FC = () => {
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-black text-white uppercase tracking-widest">Agape Love Active</p>
-                <p className="text-[9px] text-emerald-500 font-black uppercase mt-1 tracking-widest animate-pulse">Status: ONLINE</p>
+                <p className="text-[9px] text-emerald-500 font-black uppercase mt-1 tracking-widest animate-pulse">Status: {isAuthenticated ? 'AUTHENTICATED' : 'UNAUTHENTICATED'}</p>
               </div>
            </div>
         </header>
@@ -250,11 +282,11 @@ const App: React.FC = () => {
                       <div className="p-16 bg-blue-600/5 border border-blue-500/20 rounded-[4rem] relative overflow-hidden flex flex-col items-center justify-center text-center">
                          <div className="scan-overlay rounded-[4rem]"></div>
                          <i className="fas fa-link text-6xl text-blue-500 mb-8"></i>
-                         <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Add New Identity Layer</h3>
-                         <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-10">All metadata is encrypted via CRYSTALS-Kyber 1024</p>
+                         <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4">WebAuthn Authentication</h3>
+                         <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mb-10">Secure your session with hardware-based keys</p>
                          <div className="flex gap-4">
-                            <button className="px-8 py-4 bg-white text-black text-[10px] font-black uppercase rounded-2xl">Connect Social</button>
-                            <button className="px-8 py-4 border border-white/10 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-white/5">Connect Email</button>
+                            <button onClick={handleRegister} className="px-8 py-4 bg-white text-black text-[10px] font-black uppercase rounded-2xl">Register</button>
+                            <button onClick={handleLogin} className="px-8 py-4 border border-white/10 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-white/5">Login</button>
                          </div>
                       </div>
                    </section>
