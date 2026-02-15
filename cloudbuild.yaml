@@ -31,7 +31,7 @@ steps:
 images:
   - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
 
-serviceAccount: 'agape-sovereign@agape-sovereign.iam.gserviceaccount.com'
+serviceAccount: 'projects/agape-sovereign/serviceAccounts/agape-sovereign@agape-sovereign.iam.gserviceaccount.com'
 
 options:
   logging: CLOUD_LOGGING_ONLY
