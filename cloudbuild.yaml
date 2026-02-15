@@ -30,3 +30,5 @@ steps:
 
 images:
   - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
+
+serviceAccount: '328429098184@cloudbuild.gserviceaccount.com'
