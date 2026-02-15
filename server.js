@@ -1,1 +1,206 @@
-const express = require(\'express\');\nconst path = require(\'path\');\nconst compression = require(\'compression\');\nconst morgan = require(\'morgan\');\nconst { SecretManagerServiceClient } = require(\'@google-cloud/secret-manager\');\nconst { Fido2Lib } = require(\'fido2-lib\');\nconst { v4: uuidv4 } = require(\'uuid\');\nconst session = require(\'express-session\');\n\nconst app = express();\n\n// Use express.json() to parse JSON bodies\napp.use(express.json());\n\n// Session middleware\napp.use(\n  session({\n    secret: process.env.SESSION_SECRET || \'super-secret-dev-key\', \n    resave: false,\n    saveUninitialized: true,\n    cookie: { secure: process.env.NODE_ENV === \'production\' },\n  })\n);\n\n// Cloud Run provides the port via the PORT environment variable.\nconst PORT = process.env.PORT || 8080;\n\n// Instantiates a client\nconst secretManagerClient = new SecretManagerServiceClient();\n\nasync function accessSecretVersion() {\n  const [version] = await secretManagerClient.accessSecretVersion({\n    name: \'projects/agape-sovereign-enclave/secrets/GEMINI_API_KEY/versions/latest\',\n  });\n\n  // Extract the payload as a string.\n  const payload = version.payload.data.toString();\n\n  return payload;\n}\n\n// FIDO2 (WebAuthn) Configuration\nconst fido2 = new Fido2Lib({\n  timeout: 60000,\n  rpId: process.env.RP_ID || \'localhost\',\n  rpName: \'Agape Sovereign Enclave\',\n  challengeSize: 128,\n  attestation: \'direct\',\n  cryptoParams: [-7, -257],\n  authenticatorAttachment: \'platform\',\n  authenticatorRequireResidentKey: false,\n  authenticatorUserVerification: \'required\',\n});\n\n// In-memory user store (for demonstration purposes)\nconst userStore = {};\n\napp.get(\'/\', (req, res) => {\n  res.send(\'Welcome to the Agape Sovereign Enclave!\');\n});\n\n// Registration - Start\napp.post(\'/register/start\', async (req, res) => {\n  const id = uuidv4();\n  const name = `user-${id}`;\n  const displayName = `User ${id}`;\n\n  const user = {\n    id,\n    name,\n    displayName,\n    authenticators: [],\n  };\n\n  userStore[id] = user;\n\n  const registrationOptions = await fido2.attestationOptions();\n  registrationOptions.user = user;\n\n  req.session.challenge = registrationOptions.challenge;\n  req.session.userId = id;\n\n  res.json(registrationOptions);\n});\n\n// Registration - Finish\napp.post(\'/register/finish\', async (req, res) => {\n  const { id, rawId, response, type } = req.body;\n\n  const challenge = req.session.challenge;\n  const userId = req.session.userId;\n\n  const attestationExpectations = {\n    challenge,\n    origin: req.get(\'origin\'),\n    factor: \'either\',\n  };\n\n  const regResult = await fido2.attestationResult(\n    req.body,\n    attestationExpectations\n  );\n\n  const newAuthenticator = {\n    ...regResult.authnr,\n    id: Buffer.from(rawId, \'base64\').toString(\'hex\'),\n  };\n\n  userStore[userId].authenticators.push(newAuthenticator);\n\n  res.json({ status: \'ok\' });\n});\n\n// Login - Start\napp.post(\'/login/start\', async (req, res) => {\n  const assertionOptions = await fido2.assertionOptions();\n  req.session.challenge = assertionOptions.challenge;\n  res.json(assertionOptions);\n});\n\n// Login - Finish\napp.post(\'/login/finish\', async (req, res) => {\n  const { id, rawId, response, type } = req.body;\n  const challenge = req.session.challenge;\n  const user = Object.values(userStore).find(u => u.authenticators.some(a => a.id === id));\n\n  if (!user) {\n    return res.status(404).json({ error: \'User not found\' });\n  }\n\n  const authnr = user.authenticators.find(a => a.id === id);\n\n  const assertionExpectations = {\n    challenge,\n    origin: req.get(\'origin\'),\n    factor: \'either\',\n    publicKey: authnr.publicKey,\n    prevCounter: authnr.counter,\n    userHandle: user.id,\n  };\n\n  const assertionResult = await fido2.assertionResult(\n    req.body,\n    assertionExpectations\n  );\n\n  authnr.counter = assertionResult.authnr.counter;\n\n  req.session.userId = user.id;\n\n  res.json({ status: \'ok\' });\n});\n\n// Enable gzip compression for faster ESM module delivery\napp.use(compression());\n\n// Standard logging for Cloud Logging integration\napp.use(morgan(\'combined\'));\n\n// Health check endpoint for Cloud Run/GCLB\napp.get(\'/healthz\', (req, res) => {\n  res.status(200).send(\'OK\');\n});\n\napp.post(\'/api/gemini\', async (req, res) => {\n  try {\n    const apiKey = await accessSecretVersion();\n    // TODO: Add call to Gemini API using the apiKey\n    res.status(200).send({ message: \'Successfully retrieved API key.\' });\n  } catch (error) {\n    console.error(\'Error accessing secret:\', error);\n    res.status(500).send({ message: \'Error accessing secret.\' });\n  }\n});\n\n// Serve static files from the root directory\n// This allows the browser to find index.tsx and other assets\napp.use(express.static(path.join(__dirname)));\n\n// SPA Routing: All requests that don\'t match a static file \n// are sent to index.html so React can handle the routing.\napp.get(\'*\', (req, res) => {\n  res.sendFile(path.resolve(__dirname, \'index.html\'));\n});\n\n// Start the server\nconst server = app.listen(PORT, () => {\n  console.log(`\n  \ud83d\udc8e AGAPE SOVEREIGN ENCLAVE \ud83d\udc8e\n  --------------------------------------------------\n  STATUS: ALPHA BUILD ONLINE\n  VERSION: 2026.5.0\n  PORT: ${PORT}\n  PLATFORM: Google Cloud Run\n  --------------------------------------------------\n  One Love. Agape Love. Sovereign #2026\n  `);\n});\n\n// Graceful shutdown for Cloud Run\nprocess.on(\'SIGTERM\', () => {\n  console.log(\'SIGTERM signal received: closing HTTP server\');\n  server.close(() => {\n    console.log(\'HTTP server closed\');\n  });\n});\n
+const express = require('express');
+const path = require('path');
+const compression = require('compression');
+const morgan = require('morgan');
+const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
+const { Fido2Lib } = require('fido2-lib');
+const { v4: uuidv4 } = require('uuid');
+const session = require('express-session');
+
+const app = express();
+
+// Use express.json() to parse JSON bodies
+app.use(express.json());
+
+// Session middleware
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'super-secret-dev-key', 
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === 'production' },
+  })
+);
+
+// Cloud Run provides the port via the PORT environment variable.
+const PORT = process.env.PORT || 8080;
+
+// Instantiates a client
+const secretManagerClient = new SecretManagerServiceClient();
+
+async function accessSecretVersion() {
+  const [version] = await secretManagerClient.accessSecretVersion({
+    name: 'projects/agape-sovereign-enclave/secrets/GEMINI_API_KEY/versions/latest',
+  });
+
+  // Extract the payload as a string.
+  const payload = version.payload.data.toString();
+
+  return payload;
+}
+
+// FIDO2 (WebAuthn) Configuration
+const fido2 = new Fido2Lib({
+  timeout: 60000,
+  rpId: process.env.RP_ID || 'localhost',
+  rpName: 'Agape Sovereign Enclave',
+  challengeSize: 128,
+  attestation: 'direct',
+  cryptoParams: [-7, -257],
+  authenticatorAttachment: 'platform',
+  authenticatorRequireResidentKey: false,
+  authenticatorUserVerification: 'required',
+});
+
+// In-memory user store (for demonstration purposes)
+const userStore = {};
+
+app.get('/', (req, res) => {
+  res.send('Welcome to the Agape Sovereign Enclave!');
+});
+
+// Registration - Start
+app.post('/register/start', async (req, res) => {
+  const id = uuidv4();
+  const name = `user-${id}`;
+  const displayName = `User ${id}`;
+
+  const user = {
+    id,
+    name,
+    displayName,
+    authenticators: [],
+  };
+
+  userStore[id] = user;
+
+  const registrationOptions = await fido2.attestationOptions();
+  registrationOptions.user = user;
+
+  req.session.challenge = registrationOptions.challenge;
+  req.session.userId = id;
+
+  res.json(registrationOptions);
+});
+
+// Registration - Finish
+app.post('/register/finish', async (req, res) => {
+  const { id, rawId, response, type } = req.body;
+
+  const challenge = req.session.challenge;
+  const userId = req.session.userId;
+
+  const attestationExpectations = {
+    challenge,
+    origin: req.get('origin'),
+    factor: 'either',
+  };
+
+  const regResult = await fido2.attestationResult(
+    req.body,
+    attestationExpectations
+  );
+
+  const newAuthenticator = {
+    ...regResult.authnr,
+    id: Buffer.from(rawId, 'base64').toString('hex'),
+  };
+
+  userStore[userId].authenticators.push(newAuthenticator);
+
+  res.json({ status: 'ok' });
+});
+
+// Login - Start
+app.post('/login/start', async (req, res) => {
+  const assertionOptions = await fido2.assertionOptions();
+  req.session.challenge = assertionOptions.challenge;
+  res.json(assertionOptions);
+});
+
+// Login - Finish
+app.post('/login/finish', async (req, res) => {
+  const { id, rawId, response, type } = req.body;
+  const challenge = req.session.challenge;
+  const user = Object.values(userStore).find(u => u.authenticators.some(a => a.id === id));
+
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const authnr = user.authenticators.find(a => a.id === id);
+
+  const assertionExpectations = {
+    challenge,
+    origin: req.get('origin'),
+    factor: 'either',
+    publicKey: authnr.publicKey,
+    prevCounter: authnr.counter,
+    userHandle: user.id,
+  };
+
+  const assertionResult = await fido2.assertionResult(
+    req.body,
+    assertionExpectations
+  );
+
+  authnr.counter = assertionResult.authnr.counter;
+
+  req.session.userId = user.id;
+
+  res.json({ status: 'ok' });
+});
+
+// Enable gzip compression for faster ESM module delivery
+app.use(compression());
+
+// Standard logging for Cloud Logging integration
+app.use(morgan('combined'));
+
+// Health check endpoint for Cloud Run/GCLB
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
+});
+
+app.post('/api/gemini', async (req, res) => {
+  try {
+    const apiKey = await accessSecretVersion();
+    // TODO: Add call to Gemini API using the apiKey
+    res.status(200).send({ message: 'Successfully retrieved API key.' });
+  } catch (error) {
+    console.error('Error accessing secret:', error);
+    res.status(500).send({ message: 'Error accessing secret.' });
+  }
+});
+
+// Serve static files from the root directory
+// This allows the browser to find index.tsx and other assets
+app.use(express.static(path.join(__dirname)));
+
+// SPA Routing: All requests that don't match a static file 
+// are sent to index.html so React can handle the routing.
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'index.html'));
+});
+
+// Start the server
+const server = app.listen(PORT, () => {
+  console.log(`
+  💎 AGAPE SOVEREIGN ENCLAVE 💎
+  --------------------------------------------------
+  STATUS: ALPHA BUILD ONLINE
+  VERSION: 2026.5.0
+  PORT: ${PORT}
+  PLATFORM: Google Cloud Run
+  --------------------------------------------------
+  One Love. Agape Love. Sovereign #2026
+  `);
+});
+
+// Graceful shutdown for Cloud Run
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+  });
+});
