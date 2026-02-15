@@ -181,6 +181,7 @@ app.get('*', (req, res) => {
 });
 
 // Start the server
+portfinder.basePort = process.env.PORT || 8080;
 portfinder.getPort((err, port) => {
   if (err) {
     throw err;
