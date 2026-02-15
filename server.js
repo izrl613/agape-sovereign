@@ -40,7 +40,7 @@ async function accessSecretVersion() {
 // FIDO2 (WebAuthn) Configuration
 const fido2 = new Fido2Lib({
   timeout: 60000,
-  rpId: process.env.RP_ID || 'localhost',
+  rpId: process.env.NODE_ENV === 'production' ? 'sovereign.nyc' : 'localhost',
   rpName: 'Agape Sovereign Enclave',
   challengeSize: 128,
   attestation: 'direct',
