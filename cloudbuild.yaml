@@ -30,6 +30,3 @@ steps:
 
 images:
   - 'gcr.io/$PROJECT_ID/agape-sovereign-enclave:latest'
-
-options:
-  logging: CLOUD_LOGGING
