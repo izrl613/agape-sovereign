@@ -1,11 +1,21 @@
-import { Buffer } from 'buffer';
-
 const bufferDecode = (value: string): ArrayBuffer => {
-  return Buffer.from(value, 'base64').buffer;
+  const binaryString = atob(value);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
 };
 
 const bufferEncode = (value: ArrayBuffer): string => {
-  return Buffer.from(value).toString('base64');
+  let binary = '';
+  const bytes = new Uint8Array(value);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 };
 
 export const startRegistration = async (username: string) => {

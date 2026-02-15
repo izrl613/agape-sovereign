@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agape Sovereign | Overseer Core 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+      
+      :root {
+        --enclave-bg: #020617;
+        --sovereign-orange: #f97316;
+        --sovereign-blue: #2563eb;
+        --sovereign-emerald: #10b981;
+        --sovereign-rose: #f43f5e;
+        --diamond-border: rgba(255, 255, 255, 0.08);
+      }
+      
+      body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: var(--enclave-bg);
+        color: #f8fafc;
+        margin: 0;
+        overflow: hidden;
+        letter-spacing: -0.01em;
+      }
+      
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      
+      .neon-atmosphere {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background: 
+          radial-gradient(circle at 5% 5%, rgba(37, 99, 235, 0.12) 0%, transparent 40%),
+          radial-gradient(circle at 95% 95%, rgba(249, 115, 22, 0.12) 0%, transparent 40%),
+          radial-gradient(circle at 50% 50%, rgba(2, 6, 23, 1) 0%, transparent 100%);
+        animation: atmosphere-drift 40s ease-in-out infinite alternate;
+      }
+      
+      @keyframes atmosphere-drift {
+        0% { transform: scale(1) translate(0, 0); }
+        100% { transform: scale(1.05) translate(1%, 1%); }
+      }
+      
+      .glass-card {
+        background: rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(50px);
+        border: 1px solid var(--diamond-border);
+        box-shadow: 0 50px 100px -30px rgba(0, 0, 0, 0.9);
+        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      .glass-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-8px);
+        box-shadow: 0 60px 120px -40px rgba(0, 0, 0, 0.95), 0 0 40px rgba(37, 99, 235, 0.05);
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+      }
+      
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+      }
+      
+      .scan-line-progress {
+        height: 100%;
+        background: linear-gradient(90deg, transparent, var(--sovereign-blue), transparent);
+        background-size: 200% 100%;
+        animation: loading-shimmer 2s infinite linear;
+      }
+      
+      @keyframes loading-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      
+      .sovereign-gradient-text {
+        background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      
+      .diamond-glow {
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.1));
+      }
+      
+      @keyframes scan-line {
+        0% { transform: translateY(-100%); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(400%); opacity: 0; }
+      }
+      
+      .scan-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(transparent, rgba(37, 99, 235, 0.08), transparent);
+        animation: scan-line 8s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 10;
+      }
+      
+      .animate-spin-slow {
+        animation: spin 90s linear infinite;
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-7d0a231a.js"></script>
+  <link rel="stylesheet" href="/assets/index-d05008b8.css">
+</head>
+<body>
+    <div id="root"></div>
+
+</body>
+</html>
