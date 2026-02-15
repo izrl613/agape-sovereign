@@ -1,7 +1,7 @@
-import { buffer } from '@types/node/buffer';
+import { Buffer } from 'buffer';
 
 const bufferDecode = (value: string): ArrayBuffer => {
-  return Buffer.from(value, 'base64');
+  return Buffer.from(value, 'base64').buffer;
 };
 
 const bufferEncode = (value: ArrayBuffer): string => {
