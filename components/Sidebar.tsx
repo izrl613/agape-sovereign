@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-export type AppView = 'DASHBOARD' | 'KNOXED' | 'NUKED' | 'ACCOUNTS' | 'HISTORY' | 'ADMIN';
+export type AppView = 'DASHBOARD' | 'KNOXED' | 'NUKED' | 'ACCOUNTS' | 'HISTORY' | 'ADMIN' | 'MCP';
 
 interface SidebarProps {
   currentView: AppView;
@@ -17,6 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, isAuthentica
     { id: 'ACCOUNTS', icon: 'fa-users', label: 'Account Sync' },
     { id: 'HISTORY', icon: 'fa-clock-rotate-left', label: 'Scan History' },
     { id: 'ADMIN', icon: 'fa-user-shield', label: 'Admin' },
+    { id: 'MCP', icon: 'fa-server', label: 'MCP' },
   ];
 
   return (

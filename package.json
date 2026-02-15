@@ -21,6 +21,7 @@
     "express-session": "^1.17.3",
     "fido2-lib": "^3.3.3",
     "morgan": "^1.10.0",
+    "portfinder": "^1.0.38",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5.9.3",

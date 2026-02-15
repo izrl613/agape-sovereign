@@ -7,6 +7,7 @@ import Nuked from './components/Nuked';
 import Accounts from './components/Accounts';
 import History from './components/History';
 import Admin from './components/Admin';
+import MCP from './components/MCP';
 import Login from './components/Login';
 
 const App: React.FC = () => {
@@ -58,6 +59,8 @@ const App: React.FC = () => {
         return <History />;
       case 'ADMIN':
         return <Admin />;
+      case 'MCP':
+        return <MCP />;
       default:
         return <Dashboard onNavigate={handleNavigation} />;
     }

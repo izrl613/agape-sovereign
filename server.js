@@ -6,6 +6,7 @@ const { SecretManagerServiceClient } = require('@google-cloud/secret-manager');
 const { Fido2Lib } = require('fido2-lib');
 const { v4: uuidv4 } = require('uuid');
 const session = require('express-session');
+const portfinder = require('portfinder');
 
 const app = express();
 
@@ -21,9 +22,6 @@ app.use(
     cookie: { secure: process.env.NODE_ENV === 'production' },
   })
 );
-
-// Cloud Run provides the port via the PORT environment variable.
-const PORT = process.env.PORT || 8080;
 
 // Instantiates a client
 const secretManagerClient = new SecretManagerServiceClient();
@@ -184,23 +182,29 @@ app.get('*', (req, res) => {
 });
 
 // Start the server
-const server = app.listen(PORT, () => {
-  console.log(`
-  💎 AGAPE SOVEREIGN ENCLAVE 💎
-  --------------------------------------------------
-  STATUS: ALPHA BUILD ONLINE
-  VERSION: 2026.5.0
-  PORT: ${PORT}
-  PLATFORM: Google Cloud Run
-  --------------------------------------------------
-  One Love. Agape Love. Sovereign #2026
-  `);
-});
+portfinder.getPort((err, port) => {
+  if (err) {
+    throw err;
+  }
 
-// Graceful shutdown for Cloud Run
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
+  const server = app.listen(port, () => {
+    console.log(`
+    💎 AGAPE SOVEREIGN ENCLAVE 💎
+    --------------------------------------------------
+    STATUS: ALPHA BUILD ONLINE
+    VERSION: 2026.5.0
+    PORT: ${port}
+    PLATFORM: Google Cloud Run
+    --------------------------------------------------
+    One Love. Agape Love. Sovereign #2026
+    `);
+  });
+
+  // Graceful shutdown for Cloud Run
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
   });
 });
