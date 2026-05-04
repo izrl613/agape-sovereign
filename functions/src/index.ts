@@ -1,16 +1,17 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
+import * as v2 from "firebase-functions/v2";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
 // Basic health check function
-export const healthCheck = functions.https.onRequest((request, response) => {
+export const healthCheck = v2.https.onRequest((request, response) => {
   functions.logger.info("Health check triggered", {structuredData: true});
   response.send("Agape Sovereign Architect AI - Functions are LIVE.");
 });
 
 // Example trigger for user creation
-export const onUserCreated = functions.auth.user().onCreate(async (user) => {
+export const onUserCreated = functions.auth.user().onCreate(async (user: admin.auth.UserRecord) => {
   const {uid, email, displayName} = user;
   
   try {
