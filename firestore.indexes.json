@@ -1,0 +1,150 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "diff_scans",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "diff_reports",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "vectorResults",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "severity",
+          "order": "Descending"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sessions",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "Ascending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "diff_scans",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "status",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "Descending"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "diff_reports",
+      "queryScope": "Collection",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "Ascending"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "Ascending"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "diff_scans",
+      "fieldPath": "timestamp",
+      "indexes": [
+        {
+          "order": "Ascending",
+          "queryScope": "Collection"
+        },
+        {
+          "order": "Descending",
+          "queryScope": "Collection"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "fieldPath": "timestamp",
+      "indexes": [
+        {
+          "order": "Ascending",
+          "queryScope": "Collection"
+        },
+        {
+          "order": "Descending",
+          "queryScope": "Collection"
+        }
+      ]
+    }
+  ]
+}
