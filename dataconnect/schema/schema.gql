@@ -1,0 +1,59 @@
+type User @table {
+  sovereignID: String!
+  createdAt: Timestamp!
+  publicKey: String
+  profileData: String
+}
+
+type AIModel @table {
+  name: String!
+  providerName: String!
+  description: String!
+  privacyPolicyURL: String!
+  createdAt: Timestamp!
+  apiEndpoint: String
+  dataRequirements: String
+}
+
+type Conversation @table {
+  user: User!
+  aiModel: AIModel!
+  conversationID: UUID!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  topic: String
+  summary: String
+}
+
+type Message @table {
+  conversation: Conversation!
+  senderUser: User
+  senderAIModel: AIModel
+  messageID: UUID!
+  senderType: String!
+  content: String!
+  timestamp: Timestamp!
+  sentiment: String
+}
+
+type Consent @table {
+  user: User!
+  aiModel: AIModel!
+  consentID: UUID!
+  dataType: String!
+  grantedAt: Timestamp!
+  expiresAt: Timestamp
+  dataUsagePurpose: String!
+  revokedAt: Timestamp
+}
+
+type AuditLog @table {
+  user: User!
+  aiModel: AIModel!
+  consent: Consent
+  logID: UUID!
+  actionType: String!
+  timestamp: Timestamp!
+  dataIdentifier: String!
+  details: String
+}

@@ -1,34 +1,32 @@
-import * as functions from "firebase-functions/v1";
-import * as v2 from "firebase-functions/v2";
-import * as admin from "firebase-admin";
+/**
+ * Import function triggers from their respective submodules:
+ *
+ * import {onCall} from "firebase-functions/v2/https";
+ * import {onDocumentWritten} from "firebase-functions/v2/firestore";
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ */
 
-admin.initializeApp();
+import {setGlobalOptions} from "firebase-functions";
+import {onRequest} from "firebase-functions/https";
+import * as logger from "firebase-functions/logger";
 
-const SERVICE_ACCOUNT = "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com";
+// Start writing functions
+// https://firebase.google.com/docs/functions/typescript
 
-// Basic health check function
-export const healthCheck = v2.https.onRequest({ serviceAccount: SERVICE_ACCOUNT }, (request, response) => {
-  functions.logger.info("Health check triggered", {structuredData: true});
-  response.send("Agape Sovereign Architect AI - Functions are LIVE.");
-});
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+setGlobalOptions({ maxInstances: 10 });
 
-// Example trigger for user creation
-export const onUserCreated = functions.runWith({ serviceAccount: SERVICE_ACCOUNT }).auth.user().onCreate(async (user: admin.auth.UserRecord) => {
-  const {uid, email, displayName} = user;
-  
-  try {
-    await admin.firestore().collection("users").doc(uid).set({
-      uid,
-      email: email || "unknown@example.com",
-      displayName: displayName || "",
-      role: "user",
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      sovereignScore: 100,
-      setupComplete: false
-    }, {merge: true});
-    
-    functions.logger.info(`User profile initialized for ${uid}`);
-  } catch (error) {
-    functions.logger.error("Error initializing user profile:", error);
-  }
-});
+// export const helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });

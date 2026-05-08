@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "functions",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",
@@ -8,46 +7,30 @@
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
-=======
-  "name": "architect-ai-functions",
-  "version": "1.0.0",
-  "description": "Architect AI - Cloud Functions for Agape Sovereign Enclave",
-  "main": "index.js",
-  "dependencies": {
-    "firebase-admin": "^12.0.0",
-    "firebase-functions": "^5.0.1",
-    "pdfkit": "^0.13.0",
-    "crypto": "^1.0.1"
-  },
-  "devDependencies": {
-    "firebase-functions-test": "^3.1.0"
-  },
-  "scripts": {
-    "test": "firebase emulate:functions",
->>>>>>> 3c37162 (feat: Implement Architect AI Cloud Functions for DIFF scanning and reporting)
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "20"
-<<<<<<< HEAD
+    "node": "24"
   },
   "main": "lib/index.js",
   "dependencies": {
-    "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.1.0"
+    "@genkit-ai/firebase": "^1.33.0",
+    "@genkit-ai/google-genai": "^1.33.0",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "genkit": "^1.33.0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.12.0",
+    "@typescript-eslint/parser": "^5.12.0",
     "eslint": "^8.9.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
-    "firebase-functions-test": "^3.1.0",
-    "typescript": "^5.2.2"
+    "firebase-functions-test": "^3.4.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
   },
   "private": true
-=======
-  }
->>>>>>> 3c37162 (feat: Implement Architect AI Cloud Functions for DIFF scanning and reporting)
 }
