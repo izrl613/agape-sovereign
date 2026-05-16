@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -202,7 +202,10 @@ export const UserProfileSettings = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
+              <div 
+                onClick={bindPasskey}
+                className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group"
+              >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-[#FF7A18]/10 rounded-lg group-hover:bg-[#FF7A18]/20 transition-colors">
                     <Key className="w-4 h-4 text-[#FF7A18]" />

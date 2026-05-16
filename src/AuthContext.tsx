@@ -6,8 +6,9 @@ import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandl
 import { logEvent, AuditLogType } from './services/auditService';
 import { initializeRemoteConfig } from './services/remoteConfigService';
 import { updateProfile as firebaseUpdateProfile } from 'firebase/auth';
-import { startRegistration } from '@simplewebauthn/browser';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
+import { signInWithCustomToken } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,7 @@ interface AuthContextType {
   setupComplete: boolean;
   loading: boolean;
   login: () => Promise<void>;
+  loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   emergencyBypass: () => Promise<void>;
   bindPasskey: () => Promise<void>;
@@ -165,7 +167,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleBindPasskey = async () => {
     const currentUser = user;
-    if (!currentUser) return;
+    if (!currentUser) {
+      toast.error('You must be logged in to bind a passkey.');
+      return;
+    }
     
     try {
       // 1. Get registration options from server
@@ -185,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const verifyRes = await fetch('/api/auth/verify-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(attestationResponse),
+        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid }),
       });
       const { verified } = await verifyRes.json();
 
@@ -201,6 +206,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.error('Passkey registration cancelled by user.');
       } else {
         toast.error(`WebAuthn Error: ${error.message || 'Unknown error'}`);
+      }
+    }
+  };
+
+  const handleLoginWithPasskey = async (email: string) => {
+    if (!email) {
+      toast.error('Please enter your email to login with passkey.');
+      return;
+    }
+
+    try {
+      // 1. Get login options
+      const optionsRes = await fetch('/api/auth/login-options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!optionsRes.ok) {
+        const errData = await optionsRes.json();
+        throw new Error(errData.error || 'Failed to fetch login options');
+      }
+      const options = await optionsRes.json();
+
+      // 2. Start authentication
+      const assertionResponse = await startAuthentication(options);
+
+      // 3. Verify with server
+      const verifyRes = await fetch('/api/auth/verify-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assertionResponse),
+      });
+
+      const { verified, token, error } = await verifyRes.json();
+
+      if (verified && token) {
+        await signInWithCustomToken(auth, token);
+        toast.success('Authenticated successfully with Passkey.');
+      } else {
+        throw new Error(error || 'Verification failed');
+      }
+    } catch (error: any) {
+      console.error('WebAuthn Login Error:', error);
+      if (error.name === 'NotAllowedError') {
+        toast.error('Passkey login cancelled.');
+      } else {
+        toast.error(`Passkey Error: ${error.message || 'Unknown error'}`);
       }
     }
   };
@@ -250,6 +303,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupComplete,
       loading, 
       login: handleLogin, 
+      loginWithPasskey: handleLoginWithPasskey,
       logout: handleLogout, 
       emergencyBypass: handleEmergencyBypass,
       bindPasskey: handleBindPasskey,
