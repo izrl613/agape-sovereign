@@ -1,33 +1,34 @@
 "use strict";
+/**
+ * Import function triggers from their respective submodules:
+ *
+ * import {onCall} from "firebase-functions/v2/https";
+ * import {onDocumentWritten} from "firebase-functions/v2/firestore";
+ *
+ * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onUserCreated = exports.healthCheck = void 0;
-const functions = require("firebase-functions/v1");
-const v2 = require("firebase-functions/v2");
-const admin = require("firebase-admin");
-admin.initializeApp();
-const SERVICE_ACCOUNT = "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com";
-// Basic health check function
-exports.healthCheck = v2.https.onRequest({ serviceAccount: SERVICE_ACCOUNT }, (request, response) => {
-    functions.logger.info("Health check triggered", { structuredData: true });
-    response.send("Agape Sovereign Architect AI - Functions are LIVE.");
-});
-// Example trigger for user creation
-exports.onUserCreated = functions.runWith({ serviceAccount: SERVICE_ACCOUNT }).auth.user().onCreate(async (user) => {
-    const { uid, email, displayName } = user;
-    try {
-        await admin.firestore().collection("users").doc(uid).set({
-            uid,
-            email: email || "unknown@example.com",
-            displayName: displayName || "",
-            role: "user",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            sovereignScore: 100,
-            setupComplete: false
-        }, { merge: true });
-        functions.logger.info(`User profile initialized for ${uid}`);
-    }
-    catch (error) {
-        functions.logger.error("Error initializing user profile:", error);
-    }
-});
+exports.menuSuggestion = void 0;
+const firebase_functions_1 = require("firebase-functions");
+// import {onRequest} from "firebase-functions/https";
+// import * as logger from "firebase-functions/logger";
+var genkit_sample_js_1 = require("./genkit-sample.js");
+Object.defineProperty(exports, "menuSuggestion", { enumerable: true, get: function () { return genkit_sample_js_1.menuSuggestion; } });
+// Start writing functions
+// https://firebase.google.com/docs/functions/typescript
+// For cost control, you can set the maximum number of containers that can be
+// running at the same time. This helps mitigate the impact of unexpected
+// traffic spikes by instead downgrading performance. This limit is a
+// per-function limit. You can override the limit for each function using the
+// `maxInstances` option in the function's options, e.g.
+// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
+// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
+// functions should each use functions.runWith({ maxInstances: 10 }) instead.
+// In the v1 API, each function can only serve one request per container, so
+// this will be the maximum concurrent request count.
+(0, firebase_functions_1.setGlobalOptions)({ maxInstances: 10 });
+// export const helloWorld = onRequest((request, response) => {
+//   logger.info("Hello logs!", {structuredData: true});
+//   response.send("Hello from Firebase!");
+// });
 //# sourceMappingURL=index.js.map

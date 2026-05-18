@@ -1,4 +1,4 @@
-import { ConnectorConfig, DataConnect, OperationOptions, ExecuteOperationResponse } from 'firebase-admin/data-connect';
+import {ConnectorConfig, DataConnect, OperationOptions, ExecuteOperationResponse} from "firebase-admin/data-connect";
 
 export const connectorConfig: ConnectorConfig;
 
@@ -31,7 +31,7 @@ export interface AddMonitoredEmailVariables {
 
 export interface Finding_Key {
   id: UUIDString;
-  __typename?: 'Finding_Key';
+  __typename?: "Finding_Key";
 }
 
 export interface GetFindingsData {
@@ -90,12 +90,12 @@ export interface GetUserVectorStatusesData {
 
 export interface IdentityVector_Key {
   id: string;
-  __typename?: 'IdentityVector_Key';
+  __typename?: "IdentityVector_Key";
 }
 
 export interface MonitoredEmail_Key {
   id: UUIDString;
-  __typename?: 'MonitoredEmail_Key';
+  __typename?: "MonitoredEmail_Key";
 }
 
 export interface RemoveMonitoredEmailData {
@@ -140,12 +140,12 @@ export interface UpsertUserVectorStatusVariables {
 export interface UserVectorStatus_Key {
   userUid: string;
   identityVectorId: string;
-  __typename?: 'UserVectorStatus_Key';
+  __typename?: "UserVectorStatus_Key";
 }
 
 export interface User_Key {
   uid: string;
-  __typename?: 'User_Key';
+  __typename?: "User_Key";
 }
 
 /** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to execute without passing in DataConnect. */
