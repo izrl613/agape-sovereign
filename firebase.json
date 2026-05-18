@@ -1,19 +1,12 @@
 {
   "hosting": {
-    "public": "dist",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/api/**",
-        "run": {
-          "serviceId": "agape-sovereign",
-          "region": "us-central1"
-        }
-      },
       {
         "source": "**",
         "destination": "/index.html"
@@ -49,20 +42,49 @@
       "buildServiceAccount": "projects/agape-sovereign/serviceAccounts/firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
       "disallowLegacyRuntimeConfig": true,
       "source": "functions"
+    },
+    {
+      "source": "agape-sovereign",
+      "codebase": "agape-sovereign",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
-  "apphosting": {
-    "backendId": "firebase",
-    "rootDir": "/",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
-    ],
-    "alwaysDeployFromSource": true
-  },
+  "apphosting": [
+    {
+      "backendId": "firebase",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ],
+      "alwaysDeployFromSource": true
+    },
+    {
+      "backendId": "firebase",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    }
+  ],
   "dataconnect": {
     "source": "dataconnect"
   },
@@ -71,7 +93,14 @@
   },
   "extensions": {},
   "auth": {
-    "providers": {}
+    "providers": {
+      "anonymous": true,
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Agape Sovereign | Architect AI",
+        "supportEmail": "agape@sovereign.nyc"
+      }
+    }
   },
   "emulators": {
     "auth": {
@@ -107,7 +136,7 @@
     },
     "apphosting": {
       "port": 5002,
-      "rootDirectory": "./"
+      "rootDirectory": "y"
     },
     "ui": {
       "enabled": true

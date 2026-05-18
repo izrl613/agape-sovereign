@@ -1,23 +1,24 @@
-# Firebase App Hosting Configuration
-# Documentation: https://firebase.google.com/docs/app-hosting/configure
-
-# The runtime configuration for the App Hosting service
+# Settings for Backend (on Cloud Run).
+# See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
-  # The amount of CPU to allocate to each instance (in fractional CPUs)
-  cpu: 1
-  # The amount of memory to allocate to each instance (in MiB)
-  memoryMiB: 512
-  # Minimum number of instances to keep warm (set to 0 for cost optimization)
   minInstances: 0
-  # Maximum number of instances to scale to
-  maxInstances: 10
-  # The region where the service should be deployed
-  # Note: us-central1 is generally the most cost-effective
-  location: us-central1
+  # maxInstances: 100
+  # concurrency: 80
+  # cpu: 1
+  # memoryMiB: 512
 
-# Environment variables for the application
-env:
-  - name: NODE_ENV
-    value: production
-  # Add other non-secret environment variables here
-  # Secrets should be managed in the Firebase Console or using Cloud Secret Manager
+# Environment variables and secrets.
+# env:
+  # Configure environment variables.
+  # See https://firebase.google.com/docs/app-hosting/configure#user-defined-environment
+  # - variable: MESSAGE
+  #   value: Hello world!
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+
+  # Grant access to secrets in Cloud Secret Manager.
+  # You can create secrets with the CLI command `firebase apphosting:secrets:set <secretName>`.
+  # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
+  # - variable: MY_SECRET
+  #   secret: mySecretRef

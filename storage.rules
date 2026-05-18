@@ -60,8 +60,8 @@ service firebase.storage {
       allow read: if isAuthenticated();
       
       allow create, update: if isAuthenticated() && 
-                                isUserOwner(userId) &&
-                                request.resource.size < 5 * 1024 * 1024; // 5MB
+                               isUserOwner(userId) &&
+                               request.resource.size < 5 * 1024 * 1024; // 5MB
       
       allow delete: if isAuthenticated() && isUserOwner(userId);
     }
