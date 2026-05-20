@@ -1,48 +1,49 @@
-# Refined SQL Connect Schema for Agape Sovereign Enclave 2026
-
-type User @table(key: "uid") {
-  uid: String! @default(expr: "auth.uid")
-  name: String!
-  email: String! @unique
-  createdAt: Timestamp! @default(expr: "request.time")
-  provider: String
-  sovereignScore: Int @default(value: 100)
-  lastLoginAt: Timestamp @default(expr: "request.time")
+type User @table {
+  did: String!
+  publicKey: String!
+  createdAt: Timestamp!
+  preferredName: String
+  email: String
+  profilePictureURL: String
 }
 
-type IdentityVector @table(key: "id") {
-  id: String!
+type Credential @table {
+  user: User!
+  issuerDID: String!
+  credentialType: String!
+  issuanceDate: Timestamp!
+  expirationDate: Timestamp
+  credentialData: String!
+  status: String!
+  schemaURL: String
+  policyURL: String
+}
+
+type ServiceProvider @table {
   name: String!
-  icon: String!
+  serviceDID: String!
+  publicKey: String!
+  createdAt: Timestamp!
+  websiteURL: String
   description: String
 }
 
-type UserVectorStatus @table(key: ["user", "identityVector"]) {
+type ShareEvent @table {
   user: User!
-  identityVector: IdentityVector!
-  sovereigntyScore: Int! @default(value: 100)
-  nukedCount: Int! @default(value: 0)
-  knoxedCount: Int! @default(value: 0)
-  monitoredCount: Int! @default(value: 0)
-  lastScanAt: Timestamp! @default(expr: "request.time")
-  statusNotes: String
+  credential: Credential!
+  serviceProvider: ServiceProvider!
+  shareDate: Timestamp!
+  accessGrantedDuration: Int! # Duration in seconds or a custom unit
+  accessStatus: String!
+  purposeOfSharing: String
+  notes: String
 }
 
-type Finding @table {
+type AIInsight @table {
   user: User!
-  identityVector: IdentityVector!
-  type: String! # e.g. "NUKED", "KNOXED", "MONITORED"
-  label: String!
-  detail: String!
-  createdAt: Timestamp! @default(expr: "request.time")
-  action: String
-  status: String
-}
-
-type MonitoredEmail @table {
-  user: User!
-  emailAddress: String!
-  status: String! @default(value: "MONITORED")
-  createdAt: Timestamp! @default(expr: "request.time")
-  lastCheckedAt: Timestamp
+  insightType: String!
+  generatedAt: Timestamp!
+  summary: String!
+  detailedAnalysis: String
+  associatedCredentialID: UUID
 }

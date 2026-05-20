@@ -44,7 +44,6 @@
       "source": "functions"
     },
     {
-      "source": "agape-sovereign",
       "codebase": "agape-sovereign",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
@@ -57,22 +56,11 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      ],
+      "source": "agape-sovereign"
     }
   ],
   "apphosting": [
-    {
-      "backendId": "firebase",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    },
     {
       "backendId": "firebase",
       "rootDir": "/",
@@ -137,7 +125,8 @@
     },
     "apphosting": {
       "port": 5002,
-      "rootDirectory": "y"
+      "rootDirectory": "./",
+      "startCommand": "npm run dev"
     },
     "ui": {
       "enabled": true
