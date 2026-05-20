@@ -4,5 +4,10 @@
   "python.analysis.extraPaths": [
     "${workspaceFolder}/.venv/lib/python3.9/site-packages"
   ],
-  "files.autoSave": "onFocusChange"
+  "files.autoSave": "onFocusChange",
+  "git.statusLimit": 0,
+  "git.suggestSmartCommit": false,
+  "go.toolsManagement.autoUpdate": true,
+  "npm.packageManager": "npm",
+  "npm.scriptRunner": "npm"
 }
