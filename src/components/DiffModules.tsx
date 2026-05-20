@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock } from 'lucide-react';
 import { NEON, NeonText, NeonButton, GlassCard, StatusBadge } from './UI';
 import { useScan } from '../ScanContext';
+import { useAuth } from '../AuthContext';
 import { generateSuspiciousReport, ScanFinding } from '../services/scanService';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -326,8 +327,118 @@ export const PasswordModule = () => <DiffModule title="Password Vault Audit" des
 export const NetworkModule = () => <DiffModule title="Network & DNS Security Posture" description="Analyzes DNS leaks and insecure network protocols." icon="◎" vector="V-09" moduleId="network" />;
 export const CloudModule = () => <DiffModule title="Cloud Storage & Sync Security" description="Scans for misconfigured S3 buckets or Drive permissions." icon="⊞" vector="V-10" moduleId="cloud" />;
 export const CommunicationModule = () => <DiffModule title="Communication Privacy Audit" description="Analyzes E2EE status and metadata in messages." icon="💬" vector="V-11" moduleId="communication" />;
-export const FinancialModule = () => <DiffModule title="Financial Identity Surface" description="Scans for exposed bank details or crypto addresses." icon="⬡" vector="V-12" moduleId="financial" />;
-export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents." icon="📄" vector="V-13" moduleId="documents" />;
-export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens." icon="🔑" vector="V-14" moduleId="oauth" />;
-export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records." icon="⚖" vector="V-15" moduleId="legal" />;
-export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data." icon="⊛" vector="V-16" moduleId="ai" />;
+export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents." icon="📄" vector="V-12" moduleId="documents" />;
+export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens." icon="🔑" vector="V-13" moduleId="oauth" />;
+export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records." icon="⚖" vector="V-14" moduleId="legal" />;
+export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data." icon="⊛" vector="V-15" moduleId="ai" />;
+export const ErasureModule = () => {
+  const { user, userData } = useAuth();
+  const [selectedBroker, setSelectedBroker] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedRequest, setGeneratedRequest] = useState<{subject: string, body: string} | null>(null);
+
+  const brokers = [
+    { name: "Acxiom", email: "privacy@acxiom.com", risk: "CRITICAL" },
+    { name: "Spokeo", email: "privacy@spokeo.com", risk: "CRITICAL" },
+    { name: "Whitepages", email: "privacy-manager@whitepages.com", risk: "HIGH" },
+    { name: "Intelius", email: "privacy@intelius.com", risk: "HIGH" },
+    { name: "Experian", email: "optout@experian.com", risk: "CRITICAL" }
+  ];
+
+  const handleInitiate = async (broker: any) => {
+    setSelectedBroker(broker);
+    setIsGenerating(true);
+    setGeneratedRequest(null);
+    try {
+      const response = await fetch('/api/erasure/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brokerName: broker.name,
+          userEmail: user?.email,
+          userName: userData?.displayName || user?.email?.split('@')[0] || "User",
+          userState: "California"
+        })
+      });
+      const data = await response.json();
+      if (data.subject && data.body) {
+        setGeneratedRequest(data);
+      } else {
+        throw new Error("Invalid format from AI");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate legal request");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div style={{ animation: "fade-in 0.3s ease" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+        <span style={{ color: NEON.magenta, fontSize: "2rem", filter: `drop-shadow(0 0 8px ${NEON.magenta})` }}>⌫</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.15em" }}>V-16 · AUTOMATED TAKEDOWN</div>
+          <NeonText color={NEON.magenta} size="1.2rem" weight={700}>Sovereign Erasure Engine</NeonText>
+          <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>Automated CCPA/GDPR data broker opt-out requests powered by Gemini AI.</p>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gap: 16 }}>
+        {brokers.map((b, i) => (
+          <GlassCard key={i} style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontFamily: "'Rajdhani'", fontWeight: 700, fontSize: "1rem", color: NEON.text }}>{b.name}</div>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.textMuted }}>{b.email}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ fontFamily: "'Orbitron'", fontSize: "0.7rem", color: b.risk === "CRITICAL" ? NEON.magenta : NEON.orange }}>
+                {b.risk} EXPOSURE
+              </div>
+              <NeonButton size="sm" color={NEON.magenta} onClick={() => handleInitiate(b)} disabled={isGenerating}>
+                {isGenerating && selectedBroker?.name === b.name ? "GENERATING..." : "INITIATE TAKEDOWN"}
+              </NeonButton>
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+
+      {generatedRequest && selectedBroker && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <GlassCard style={{ width: '100%', maxWidth: 800, border: `1px solid ${NEON.magenta}`, padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <NeonText color={NEON.magenta} size="1.2rem">LEGAL DELETION REQUEST: {selectedBroker.name}</NeonText>
+              <button onClick={() => setGeneratedRequest(null)} style={{ background: 'none', border: 'none', color: NEON.text, cursor: 'pointer' }}><X /></button>
+            </div>
+            
+            <div style={{ background: 'rgba(0,0,0,0.5)', padding: 16, borderRadius: 8, marginBottom: 16, border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.8rem", color: NEON.textMuted, marginBottom: 8 }}>TO: {selectedBroker.email}</div>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.8rem", color: NEON.textMuted, marginBottom: 16 }}>SUBJECT: {generatedRequest.subject}</div>
+              <div style={{ fontFamily: "'Rajdhani'", fontSize: "0.9rem", color: NEON.text, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                {generatedRequest.body}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: "0.7rem", color: NEON.orange, fontFamily: "'Share Tech Mono'" }}>
+                ⚠️ Review the document carefully before sending.
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <NeonButton onClick={() => setGeneratedRequest(null)} color={NEON.textMuted}>CANCEL</NeonButton>
+                <a 
+                  href={`mailto:${selectedBroker.email}?subject=${encodeURIComponent(generatedRequest.subject)}&body=${encodeURIComponent(generatedRequest.body)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <NeonButton color={NEON.magenta}>SEND SECURE THREAT</NeonButton>
+                </a>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
+    </div>
+  );
+};

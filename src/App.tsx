@@ -22,11 +22,11 @@ import {
   NetworkModule,
   CloudModule,
   CommunicationModule,
-  FinancialModule,
   DocumentModule,
   OauthModule,
   LegalModule,
-  BiometricModule
+  BiometricModule,
+  ErasureModule
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -91,11 +91,11 @@ const AppRoutes = () => {
         <Route path="network" element={<NetworkModule />} />
         <Route path="cloud" element={<CloudModule />} />
         <Route path="communication" element={<CommunicationModule />} />
-        <Route path="financial" element={<FinancialModule />} />
         <Route path="documents" element={<DocumentModule />} />
         <Route path="oauth" element={<OauthModule />} />
         <Route path="legal" element={<LegalModule />} />
         <Route path="ai" element={<BiometricModule />} />
+        <Route path="erasure" element={<ErasureModule />} />
         <Route path="architect" element={<ArchitectAI />} />
         <Route path="security-tips" element={<SecurityTips />} />
         <Route path="settings" element={<UserProfileSettings />} />

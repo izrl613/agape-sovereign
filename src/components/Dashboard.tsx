@@ -30,13 +30,13 @@ const MODULE_CONFIG = [
   { id: "password", icon: "⬟", label: "Password Vault Analysis", vector: "V-07", to: "/password" },
   { id: "location", icon: "◎", label: "Location Data Footprint", vector: "V-08", to: "/location" },
   { id: "browser", icon: "◯", label: "Browser & Cookie Tracker", vector: "V-09", to: "/browser" },
-  { id: "financial", icon: "⬡", label: "Financial Identity Exposure", vector: "V-10", to: "/financial" },
-  { id: "medical", icon: "⊕", label: "Medical Data Footprint", vector: "V-11", to: "/medical" },
-  { id: "biometric", icon: "⊛", label: "Voice & Biometric Data", vector: "V-12", to: "/biometric" },
-  { id: "iot", icon: "⊡", label: "IoT & Smart Device Scan", vector: "V-13", to: "/iot" },
-  { id: "cloud", icon: "⊞", label: "Cloud Storage Exposure", vector: "V-14", to: "/cloud" },
-  { id: "darkweb", icon: "◈", label: "Dark Web Monitoring", vector: "V-15", to: "/darkweb" },
-  { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis", vector: "V-16", to: "/behavioral" },
+  { id: "medical", icon: "⊕", label: "Medical Data Footprint", vector: "V-10", to: "/medical" },
+  { id: "biometric", icon: "⊛", label: "Voice & Biometric Data", vector: "V-11", to: "/biometric" },
+  { id: "iot", icon: "⊡", label: "IoT & Smart Device Scan", vector: "V-12", to: "/iot" },
+  { id: "cloud", icon: "⊞", label: "Cloud Storage Exposure", vector: "V-13", to: "/cloud" },
+  { id: "darkweb", icon: "◈", label: "Dark Web Monitoring", vector: "V-14", to: "/darkweb" },
+  { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis", vector: "V-15", to: "/behavioral" },
+  { id: "erasure", icon: "⌫", label: "Sovereign Erasure Engine", vector: "V-16", to: "/erasure" },
 ];
 
 const SovereignScore = ({ score }: { score: number }) => {

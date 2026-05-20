@@ -67,6 +67,51 @@ async function startServer() {
     }
   });
 
+  // Sovereign Erasure Engine Endpoint
+  app.post("/api/erasure/initiate", async (req, res) => {
+    try {
+      const { brokerName, userEmail, userName, userState } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const prompt = `You are an automated privacy agent representing ${userName}. Generate a legally binding data deletion request under CCPA, GDPR, and FCRA regulations addressed to the data broker "${brokerName}".
+      
+      Return ONLY a JSON object with this exact format, nothing else:
+      {
+        "subject": "URGENT LEGAL: CCPA/GDPR Data Deletion Request - ${userName}",
+        "body": "The full formal email body..."
+      }
+      
+      Do not include markdown formatting or backticks around the JSON.`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [prompt],
+        config: {
+          temperature: 0.2,
+        }
+      });
+
+      try {
+        const text = response.text || "{}";
+        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const result = JSON.parse(cleaned);
+        res.json(result);
+      } catch (parseError) {
+        console.error("Failed to parse Gemini response:", response.text);
+        res.status(500).json({ error: "Failed to generate properly formatted legal request." });
+      }
+    } catch (error) {
+      console.error("Erasure Engine Error:", error);
+      res.status(500).json({ error: "Failed to generate erasure request" });
+    }
+  });
+
   // WebAuthn Registration Options
   app.post("/api/auth/register-options", async (req, res) => {
     try {
