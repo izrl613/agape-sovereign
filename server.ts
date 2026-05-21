@@ -310,7 +310,7 @@ async function startServer() {
     app.use(express.static(distPath));
     
     // Fallback to index.html for SPA routing
-    app.get("/*", (req, res) => {
+    app.get("/:splat*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
