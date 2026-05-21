@@ -1,6 +1,9 @@
 {
   "name": "architect-ai-agape-sovereign-enclave",
-  "workspaces": ["frontend", "backend"], 
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
     "dev-frontend": "npm run dev --prefix frontend",
     "dev-backend": "npm run dev --prefix backend",
@@ -8,21 +11,35 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@google/genai": "latest",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "cookie-parser": "^1.4.7",
+    "express-rate-limit": "^8.5.2",
+    "firebase": "latest",
+    "firebase-admin": "^13.10.0",
+    "framer-motion": "latest",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "latest",
+    "next": "^16.2.6",
     "react": "latest",
     "react-dom": "latest",
-    "@google/genai": "latest",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "latest",
-    "framer-motion": "latest",
-    "lucide-react": "latest",
-    "sonner": "latest",
+    "react-syntax-highlighter": "^16.1.1",
     "recharts": "latest",
-    "tailwindcss": "latest",
-    "firebase": "latest"
+    "remark-gfm": "^4.0.1",
+    "sonner": "latest",
+    "tailwindcss": "latest"
   },
   "devDependencies": {
-    "concurrently": "latest",
-    "typescript": "latest",
+    "@types/node": "latest",
     "@types/react": "latest",
-    "@types/node": "latest"
+    "concurrently": "latest",
+    "typescript": "latest"
   }
 }

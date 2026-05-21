@@ -22,6 +22,7 @@ import {
   NetworkModule,
   CloudModule,
   CommunicationModule,
+  FinancialModule,
   DocumentModule,
   OauthModule,
   LegalModule,
@@ -91,6 +92,7 @@ const AppRoutes = () => {
         <Route path="network" element={<NetworkModule />} />
         <Route path="cloud" element={<CloudModule />} />
         <Route path="communication" element={<CommunicationModule />} />
+        <Route path="financial" element={<FinancialModule />} />
         <Route path="documents" element={<DocumentModule />} />
         <Route path="oauth" element={<OauthModule />} />
         <Route path="legal" element={<LegalModule />} />
