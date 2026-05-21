@@ -42,8 +42,10 @@
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
+    "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "esbuild": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vite": "latest"
   }
 }
