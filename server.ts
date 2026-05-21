@@ -12,11 +12,16 @@ import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt";
 
+console.log("BOOT: Starting Agape Sovereign Enclave server...");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
+  console.log("BOOT: Initializing Firebase Admin...");
   admin.initializeApp();
+  console.log("BOOT: Firebase Admin initialized.");
 }
+console.log("BOOT: Obtaining Firestore reference...");
 const db = admin.firestore();
+console.log("BOOT: Firestore reference obtained.");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,8 +29,10 @@ const __dirname = path.dirname(__filename);
 const RP_NAME = "Agape Sovereign";
 
 async function startServer() {
+  console.log("BOOT: Entering startServer()");
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
+  console.log(`BOOT: Configured port is ${PORT}`);
 
   app.use(express.json());
   app.use(cookieParser("sovereign-secret-key")); // Use a better secret in production
@@ -315,9 +322,11 @@ async function startServer() {
     });
   }
 
+  console.log("BOOT: Calling app.listen...");
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  console.log("BOOT: app.listen called successfully.");
 }
 
 startServer().catch((err) => {
