@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, GlassCard, NeonButton, NeonText } from './UI';
 import { motion } from 'framer-motion';
-import { User, Shield, History, Save, AlertTriangle, Key, Lock, Fingerprint, Camera, Loader2 } from 'lucide-react';
+import { User, Shield, History, Save, AlertTriangle, Key, Lock, Fingerprint, Camera, Loader2, FileText, Download } from 'lucide-react';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { uploadProfilePicture } from '../services/storageService';
@@ -18,6 +18,67 @@ export const UserProfileSettings = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [scoreHistory, setScoreHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [reports, setReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+
+  const fetchReports = async () => {
+    if (!user) return;
+    setLoadingReports(true);
+    try {
+      if (user.uid === 'emergency-bypass-admin-999') {
+        const localKey = `reports_history_${user.uid}`;
+        const existing = localStorage.getItem(localKey);
+        const list = existing ? JSON.parse(existing) : [];
+        const formatted = list.map((item: any) => ({
+          ...item,
+          id: item.reportId,
+          generatedAtDate: item.generatedAt ? new Date(item.generatedAt) : null
+        }));
+        formatted.sort((a: any, b: any) => {
+          const timeA = a.generatedAtDate?.getTime() || 0;
+          const timeB = b.generatedAtDate?.getTime() || 0;
+          return timeB - timeA;
+        });
+        setReports(formatted);
+      } else {
+        const reportsRef = collection(db, 'users', user.uid, 'reports');
+        const q = query(reportsRef, orderBy('generatedAt', 'desc'));
+        const querySnapshot = await getDocs(q);
+        const list = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            generatedAtDate: data.generatedAt ? data.generatedAt.toDate() : null
+          };
+        });
+        setReports(list);
+      }
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const downloadReport = (pdfDataUrl: string, filename: string) => {
+    if (!pdfDataUrl) {
+      toast.error("Report PDF data is missing.");
+      return;
+    }
+    try {
+      const link = document.createElement('a');
+      link.href = pdfDataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Sovereign PDF recovered locally");
+    } catch (e) {
+      console.error("Download failed:", e);
+      toast.error("Download failed");
+    }
+  };
 
   useEffect(() => {
     const fetchScoreHistory = async () => {
@@ -43,6 +104,7 @@ export const UserProfileSettings = () => {
     };
 
     fetchScoreHistory();
+    fetchReports();
   }, [user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -282,6 +344,72 @@ export const UserProfileSettings = () => {
                >
                  {userData?.notificationsEnabled ? 'ENABLED' : 'ACTIVATE'}
                </button>
+            </div>
+          </GlassCard>
+
+          {/* 2-Year Sovereign Audit Trail */}
+          <GlassCard className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5 text-[#FF2E9F]" />
+                <h3 className="text-lg font-bold text-white tracking-tight">2-Year Sovereign Audit Trail</h3>
+              </div>
+              <span className="px-2.5 py-0.5 bg-[#FF2E9F]/10 border border-[#FF2E9F]/20 rounded text-[10px] font-mono text-[#FF2E9F] uppercase tracking-widest">
+                ECRA 2026 LTS Secure
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-400 font-mono leading-relaxed mb-6">
+              Under the <span className="text-[#00D4FF]">ECRA 2026 §4.2 Privacy Standard</span>, your generated identity audit reports are cryptographically sealed with SHA-256 integrity keys and retained securely for exactly <span className="text-[#FF7A18] font-bold">2 years</span>. Only you can retrieve or download these zero-knowledge records.
+            </p>
+
+            <div className="space-y-4">
+              {loadingReports ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-[#FF2E9F]/20 border-t-[#FF2E9F] rounded-full animate-spin" />
+                </div>
+              ) : reports.length > 0 ? (
+                reports.map((report) => (
+                  <div 
+                    key={report.id} 
+                    className="p-4 bg-black/40 border border-white/5 rounded-xl hover:border-[#FF2E9F]/30 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white font-mono">{report.id}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold
+                          ${report.sovereignScore >= 85 
+                            ? 'bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/20' 
+                            : report.sovereignScore >= 65 
+                            ? 'bg-[#FF7A18]/10 text-[#FF7A18] border border-[#FF7A18]/20' 
+                            : 'bg-[#FF2E9F]/10 text-[#FF2E9F] border border-[#FF2E9F]/20'}`}
+                        >
+                          SCORE: {report.sovereignScore}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono flex flex-wrap gap-x-4 gap-y-1">
+                        <span>Compiled: {report.generatedAtDate?.toLocaleString() || 'Unknown'}</span>
+                        <span className="text-[#00D4FF]/80">Seal: {report.cumulativeSeal?.substring(0, 16)}...</span>
+                      </div>
+                      <div className="text-[9px] text-slate-600 font-mono">
+                        Vectors: {report.nukedCount} NUKED | {report.knoxedCount} KNOXED | {report.monitoredCount} MONITORED
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => downloadReport(report.pdfDataUrl, `Agape_Sovereign_DIFF_Audit_${report.id}.pdf`)}
+                      className="px-4 py-2 bg-[#FF2E9F]/10 text-[#FF2E9F] hover:bg-[#FF2E9F]/20 border border-[#FF2E9F]/30 hover:border-[#FF2E9F]/50 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all self-end md:self-auto"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      RECOVER PDF
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 border border-dashed border-white/5 rounded-xl bg-white/5">
+                  <p className="text-xs text-slate-500 font-mono mb-2">No historical audit reports compiled yet.</p>
+                  <p className="text-[10px] text-slate-600 italic">Select "IDENTITY AUDIT REPORT" in the navigation bar to generate your first audit.</p>
+                </div>
+              )}
             </div>
           </GlassCard>
         </div>

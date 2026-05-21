@@ -334,7 +334,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
       {/* Score bar */}
       <GlassCard style={{ padding: "16px", marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyBetween: "space-between", marginBottom: 8 }} className="flex justify-between">
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }} className="flex justify-between">
           <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.65rem", color: NEON.textMuted }}>SECURITY POSTURE</span>
           <span style={{ fontFamily: "'Orbitron'", fontSize: "0.65rem", color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
         </div>

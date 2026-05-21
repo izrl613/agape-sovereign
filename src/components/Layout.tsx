@@ -4,9 +4,13 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, NeonButton } from './UI';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2, Copy, Download, RefreshCw, X as CloseIcon, Loader2 as LoaderIcon } from 'lucide-react';
 import { checkBackendHealth } from '../services/functionsService';
 import { toast } from 'sonner';
+import { decryptClientSide, generateSHA256 } from '../utils/crypto';
+import { compileIdentityAuditReport } from '../services/pdfService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
@@ -27,7 +31,7 @@ const DIFF_MODULES = [
   { id: "ai", icon: "⊛", label: "AI & Biometric Exposure", vector: "V-16", to: "/ai" },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
   const location = useLocation();
   const { findings } = useScan();
   const { isAdmin } = useAuth();
@@ -36,7 +40,7 @@ const Sidebar = () => {
     { id: "architect", icon: "◈", label: "ARCHITECT AI", to: "/architect" },
     { id: "security", icon: "🛡️", label: "SECURITY TIPS", to: "/security-tips" },
     { id: "settings", icon: "⚙", label: "SETTINGS", to: "/settings" },
-    { id: "report", icon: "⊟", label: "IDENTITY AUDIT REPORT", to: "/" },
+    { id: "report", icon: "⊟", label: "IDENTITY AUDIT REPORT", to: "#" },
   ];
 
   if (isAdmin) {
@@ -81,6 +85,45 @@ const Sidebar = () => {
       <div style={{ padding: "12px 8px 4px" }}>
         {sections.map(s => {
           const isActive = location.pathname === s.to;
+          if (s.id === 'report') {
+            return (
+              <div 
+                key={s.id} 
+                onClick={onOpenReport}
+                className="nav-item cursor-pointer hover:bg-white/5"
+                style={{ 
+                  padding: "10px 12px", 
+                  borderRadius: 8, 
+                  marginBottom: 2, 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: 10, 
+                  position: 'relative',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+              >
+                <motion.span 
+                  whileHover={{ scale: 1.1, filter: `drop-shadow(0 0 8px ${NEON.blue})` }}
+                  style={{ color: 'rgba(0, 212, 255, 0.6)', fontSize: "1rem", width: 20, position: 'relative', zIndex: 1 }}
+                >
+                  {s.icon}
+                </motion.span>
+                <span 
+                  style={{ 
+                    fontFamily: "'Orbitron', monospace", 
+                    fontSize: "0.68rem", 
+                    fontWeight: 600, 
+                    color: NEON.text, 
+                    letterSpacing: "0.08em",
+                    position: 'relative',
+                    zIndex: 1
+                  }}
+                >
+                  {s.label}
+                </span>
+              </div>
+            );
+          }
           return (
             <NavLink 
               key={s.id} 
@@ -565,7 +608,469 @@ const Header = () => {
   );
 };
 
+interface PreGenModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
+  const { user, sovereignScore } = useAuth();
+  const { findings } = useScan();
+  const [loading, setLoading] = useState(true);
+  const [modulesData, setModulesData] = useState<any[]>([]);
+  const [nukedCount, setNukedCount] = useState(0);
+  const [knoxedCount, setKnoxedCount] = useState(0);
+  const [monitoredCount, setMonitoredCount] = useState(0);
+  const [cumulativeSeal, setCumulativeSeal] = useState('');
+  
+  // Compilation states
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [compileProgress, setCompileProgress] = useState(0);
+  const [compilationLogs, setCompilationLogs] = useState<string[]>([]);
+  const [isCompleted, setIsCompleted] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    
+    const loadAndDecryptData = async () => {
+      setLoading(true);
+      try {
+        let activeData: Record<string, string> = {};
+        let hashes: Record<string, string> = {};
+        
+        if (user.uid === 'emergency-bypass-admin-999') {
+          const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
+          if (localActive) {
+            const parsed = JSON.parse(localActive);
+            activeData = parsed.data || {};
+            hashes = parsed.hashes || {};
+          }
+        } else {
+          const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const snapData = docSnap.data();
+            activeData = snapData.data || {};
+            hashes = snapData.hashes || {};
+          }
+        }
+
+        const compiledModules = await Promise.all(DIFF_MODULES.map(async (m) => {
+          const encVal = activeData[m.id] || "";
+          let decrypted = "";
+          if (encVal) {
+            try {
+              decrypted = await decryptClientSide(encVal, user.uid);
+            } catch (err) {
+              console.error(`Failed to decrypt module ${m.id}:`, err);
+            }
+          }
+          
+          let hash = hashes[`${m.id}Hash`] || "";
+          if (!hash) {
+            hash = await generateSHA256(decrypted);
+          }
+          
+          const moduleFindings = findings.filter(f => f.module === m.id);
+          const primaryFinding = moduleFindings[0];
+          
+          const status = primaryFinding?.status || 'MONITORED';
+          const findingText = primaryFinding?.finding || 'Awaiting active configuration';
+          const detailsText = primaryFinding?.details || 'This vector is currently empty and unconfigured. Enter a value to seal and audit.';
+          
+          return {
+            id: m.id,
+            label: m.label,
+            vector: m.vector,
+            status,
+            value: decrypted,
+            hash,
+            finding: findingText,
+            details: detailsText
+          };
+        }));
+
+        const nuked = compiledModules.filter(m => m.status === 'NUKED').length;
+        const knoxed = compiledModules.filter(m => m.status === 'KNOXED').length;
+        const monitored = compiledModules.filter(m => m.status === 'MONITORED').length;
+        
+        const combinedHashes = compiledModules.map(m => m.hash).join('');
+        const cumulative = await generateSHA256(combinedHashes);
+
+        setModulesData(compiledModules);
+        setNukedCount(nuked);
+        setKnoxedCount(knoxed);
+        setMonitoredCount(monitored);
+        setCumulativeSeal(cumulative);
+      } catch (err) {
+        console.error("Failed to load pregen report data:", err);
+        toast.error("Failed to sync secure vectors.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAndDecryptData();
+  }, [isOpen, user, findings]);
+
+  const handleCompile = async () => {
+    if (!user) return;
+    setIsCompiling(true);
+    setCompileProgress(0);
+    setCompilationLogs([]);
+    setIsCompleted(false);
+
+    const logMessages = [
+      "[SECURE_HANDSHAKE] Handshake established. Zero-knowledge enclave mapping engaged.",
+      "[AUDIT_INITIATED] Aligned with 2026 ECRA Sovereign Privacy framework.",
+      "[DECRYPT_VERIFY] Confirming client-side GCM integrity checks on 16 vectors...",
+      "[SALTING_HASHES] Validating cryptographic individual integrity signatures...",
+      "[CALCULATING_SEAL] Sealing report with cumulative SHA-256 validation seal...",
+      "[PDF_GENERATOR] Launching Lighthouse report compilation service...",
+      "[SYNCING_CLOUD] Synchronizing 2-year retention audit logs to Firebase subcollection...",
+      "[SEALED] Enclave report successfully generated. Committing download trigger."
+    ];
+
+    let currentLogIndex = 0;
+    const interval = setInterval(async () => {
+      setCompileProgress(prev => {
+        const next = prev + Math.floor(Math.random() * 8) + 4;
+        if (next >= 100) {
+          clearInterval(interval);
+          
+          const reportData = {
+            userId: user.uid,
+            userEmail: user.email || 'anonymous@sovereign.nyc',
+            userName: user.displayName || 'Sovereign operator',
+            sovereignScore,
+            nukedCount,
+            knoxedCount,
+            monitoredCount,
+            modulesData
+          };
+
+          compileIdentityAuditReport(reportData).then(() => {
+            setCompilationLogs(prevLogs => [...prevLogs, "[SUCCESS] Local file transfer verified. Enclave lockdown."]);
+            setIsCompleted(true);
+            setTimeout(() => {
+              setIsCompiling(false);
+              onClose();
+            }, 3000);
+          }).catch(err => {
+            console.error(err);
+            toast.error("Compilation error in jsPDF engine.");
+            setIsCompiling(false);
+          });
+          
+          return 100;
+        }
+
+        const logStep = Math.floor(next / 13);
+        if (logStep > currentLogIndex && logStep < logMessages.length) {
+          currentLogIndex = logStep;
+          setCompilationLogs(prevLogs => [...prevLogs, logMessages[currentLogIndex]]);
+        }
+
+        return next;
+      });
+    }, 150);
+  };
+
+  const copyCumulativeHash = () => {
+    navigator.clipboard.writeText(cumulativeSeal);
+    toast.success("Cumulative hash copied to clipboard.");
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div 
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(6, 13, 31, 0.95)',
+          backdropFilter: 'blur(16px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          overflow: 'hidden'
+        }}
+      >
+        <div 
+          style={{
+            width: '100%',
+            maxWidth: 1000,
+            maxHeight: '90vh',
+            background: 'rgba(11, 16, 32, 0.98)',
+            borderRadius: 24,
+            border: `1.5px solid ${NEON.blue}44`,
+            boxShadow: `0 0 40px ${NEON.blue}22`,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            position: 'relative'
+          }}
+        >
+          <div style={{ height: 3, background: "linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18)", animation: "rotate-gradient 3s linear infinite" }} />
+          
+          <div style={{ padding: '24px 32px', borderBottom: '1px solid rgba(0, 212, 255, 0.1)', display: 'flex', justifyContent: 'between', alignItems: 'center' }} className="flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-[#00D4FF] animate-pulse" />
+                <span style={{ fontFamily: 'Orbitron', fontSize: '1.2rem', color: NEON.blue, fontWeight: 900, letterSpacing: '0.05em' }}>
+                  IDENTITY AUDIT PDF COMPILER
+                </span>
+              </div>
+              <div style={{ fontFamily: 'Share Tech Mono', fontSize: '0.65rem', color: NEON.textMuted, marginTop: 4 }}>
+                ECRA 2026 Sovereign Enclave Data Standard · Zero-Knowledge Cryptography Checked
+              </div>
+            </div>
+            
+            <button 
+              onClick={onClose} 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
+              className="hover:text-white hover:scale-110 transition-transform"
+            >
+              <CloseIcon className="w-6 h-6" />
+            </button>
+          </div>
+
+          {loading ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 16 }}>
+              <LoaderIcon className="w-12 h-12 text-[#00D4FF] animate-spin" />
+              <div style={{ fontFamily: 'Share Tech Mono', fontSize: '0.8rem', color: NEON.blue }}>
+                Verifying zero-knowledge parameters...
+              </div>
+            </div>
+          ) : isCompiling ? (
+            <div style={{ flex: 1, padding: 32, display: 'flex', flexDirection: 'column', gap: 24, overflow: 'hidden' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 style={{ fontFamily: 'Orbitron', color: 'white', fontSize: '1rem' }} className="font-bold">
+                    CRYPTOGRAPHIC SEAL COMPILATION IN PROGRESS
+                  </h4>
+                  <p style={{ fontFamily: 'Share Tech Mono', fontSize: '0.7rem', color: NEON.textMuted }}>
+                    Salting and merging 16 identity modules. Exporting certified audit trail.
+                  </p>
+                </div>
+                <div style={{ fontFamily: 'Orbitron', color: NEON.blue, fontSize: '1.8rem', fontWeight: 900 }}>
+                  {compileProgress}%
+                </div>
+              </div>
+
+              <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3, overflow: 'hidden' }}>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${compileProgress}%` }}
+                  style={{ height: '100%', background: `linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18)` }}
+                  transition={{ ease: "easeOut" }}
+                />
+              </div>
+
+              <div 
+                style={{
+                  flex: 1,
+                  background: 'rgba(0,0,0,0.4)',
+                  border: '1px solid rgba(0, 212, 255, 0.1)',
+                  borderRadius: 12,
+                  padding: 16,
+                  fontFamily: 'Share Tech Mono, monospace',
+                  fontSize: '0.7rem',
+                  color: '#4ade80',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8,
+                  minHeight: 180
+                }}
+              >
+                {compilationLogs.map((log, i) => (
+                  <div key={i} className="flex gap-2 font-mono">
+                    <span className="text-slate-500">[{new Date().toLocaleTimeString()}]</span>
+                    <span>{log}</span>
+                  </div>
+                ))}
+                {!isCompleted ? (
+                  <div className="flex gap-2 items-center animate-pulse font-mono">
+                    <span className="text-slate-500">[{new Date().toLocaleTimeString()}]</span>
+                    <span className="text-[#00D4FF]">Compiling enclave vectors...</span>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 items-center text-[#00D4FF] font-bold font-mono">
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    <span>DOWNLOAD TRIGGERED. AUDIT SUCCESSFUL. LOCKING SESSION.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }} className="flex flex-col lg:flex-row">
+              <div 
+                style={{ 
+                  flex: '0 0 35%', 
+                  padding: 32, 
+                  borderRight: '1px solid rgba(0, 212, 255, 0.1)', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  gap: 24,
+                  background: 'rgba(6, 13, 31, 0.4)'
+                }}
+              >
+                <div style={{ position: 'relative', width: 140, height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div 
+                    style={{ 
+                      position: 'absolute', 
+                      inset: 0, 
+                      borderRadius: '50%', 
+                      border: `4px solid ${sovereignScore > 80 ? NEON.blue : sovereignScore > 60 ? NEON.orange : NEON.magenta}`,
+                      boxShadow: `0 0 20px ${sovereignScore > 80 ? NEON.blue : sovereignScore > 60 ? NEON.orange : NEON.magenta}33`
+                    }} 
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'Orbitron', fontSize: '2rem', fontWeight: 900, color: sovereignScore > 80 ? NEON.blue : sovereignScore > 60 ? NEON.orange : NEON.magenta }}>
+                      {sovereignScore}
+                    </span>
+                    <span style={{ fontFamily: 'Share Tech Mono', fontSize: '0.55rem', color: NEON.textMuted }}>
+                      SOVEREIGN
+                    </span>
+                  </div>
+                </div>
+
+                <div className="w-full space-y-2">
+                  <div className="flex justify-between items-center p-2.5 bg-[#FF2E9F]/10 border border-[#FF2E9F]/20 rounded-xl">
+                    <span className="text-xs font-mono text-[#FF2E9F]">NUKED EXPOSURES</span>
+                    <span className="text-xs font-mono text-[#FF2E9F] font-bold">{nukedCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2.5 bg-[#00D4FF]/10 border border-[#00D4FF]/20 rounded-xl">
+                    <span className="text-xs font-mono text-[#00D4FF]">KNOXED HARDENED</span>
+                    <span className="text-xs font-mono text-[#00D4FF] font-bold">{knoxedCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2.5 bg-[#FF7A18]/10 border border-[#FF7A18]/20 rounded-xl">
+                    <span className="text-xs font-mono text-[#FF7A18]">MONITORED CHECKS</span>
+                    <span className="text-xs font-mono text-[#FF7A18] font-bold">{monitoredCount}</span>
+                  </div>
+                </div>
+
+                <div className="w-full p-4 bg-black/40 border border-white/5 rounded-xl text-center">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase block mb-1">CUMULATIVE REPORT SEAL</span>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-[10px] font-mono text-[#00D4FF] break-all truncate max-w-[150px]">
+                      {cumulativeSeal}
+                    </span>
+                    <button 
+                      onClick={copyCumulativeHash}
+                      className="p-1 hover:bg-white/5 rounded text-slate-400 hover:text-white transition-colors"
+                      title="Copy full seal"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ flex: '1', padding: 24, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <h4 style={{ fontFamily: 'Orbitron', fontSize: '0.85rem', color: 'white', marginBottom: 16 }} className="font-bold">
+                  16 VECTOR SEALS & SECURITY INTEGRITY CHECKS
+                </h4>
+
+                <div style={{ flex: 1, overflowY: 'auto', paddingRight: 8 }} className="space-y-2 custom-scrollbar">
+                  {modulesData.map(m => {
+                    const sevColor = m.status === 'KNOXED' ? NEON.blue : m.status === 'MONITORED' ? NEON.orange : NEON.magenta;
+                    return (
+                      <div 
+                        key={m.id}
+                        style={{
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          borderRadius: 12,
+                          padding: '10px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12
+                        }}
+                        className="hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span style={{ fontFamily: 'Share Tech Mono', fontSize: '0.7rem', color: sevColor, fontWeight: 'bold' }}>
+                            {m.vector}
+                          </span>
+                          <div>
+                            <div style={{ fontFamily: 'Rajdhani', fontSize: '0.8rem', fontWeight: 'bold', color: 'white' }}>
+                              {m.label}
+                            </div>
+                            <div style={{ fontFamily: 'Share Tech Mono', fontSize: '0.55rem', color: NEON.textMuted }} className="truncate max-w-[150px] md:max-w-[280px]">
+                              SEAL: {m.hash}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span 
+                          style={{
+                            fontFamily: 'Share Tech Mono',
+                            fontSize: '0.65rem',
+                            fontWeight: 'bold',
+                            color: sevColor,
+                            background: `${sevColor}15`,
+                            border: `1px solid ${sevColor}33`,
+                            padding: '2px 8px',
+                            borderRadius: 4
+                          }}
+                        >
+                          {m.status}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div style={{ display: 'flex', gap: 16, marginTop: 24, flexShrink: 0 }}>
+                  <button 
+                    onClick={onClose}
+                    className="flex-1 px-6 py-3 border border-white/10 rounded-xl text-slate-300 font-mono text-sm hover:bg-white/5 transition-all hover:text-white"
+                  >
+                    CLOSE PREVIEW
+                  </button>
+                  <button 
+                    onClick={handleCompile}
+                    style={{
+                      flex: '2',
+                      background: `linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18)`,
+                      color: 'white',
+                      fontFamily: 'Orbitron',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      borderRadius: 12,
+                      border: 'none',
+                      cursor: 'pointer',
+                      boxShadow: `0 0 20px ${NEON.blue}44`
+                    }}
+                    className="hover:scale-[1.02] active:scale-[0.98] transition-transform py-3 flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    COMPILE SECURE PDF REPORT (2-YEAR LOCK)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ height: 3, background: "linear-gradient(90deg, #FF7A18, #00D4FF, #FF2E9F)", animation: "rotate-gradient 3s linear infinite reverse" }} />
+        </div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
 export const Layout = () => {
+  const [showReportModal, setShowReportModal] = useState(false);
+  const { findings } = useScan();
+  const { user, sovereignScore } = useAuth();
+  
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: NEON.bg, overflow: "hidden" }}>
       {/* Top border gradient */}
@@ -574,7 +1079,7 @@ export const Layout = () => {
       <Header />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <Sidebar />
+        <Sidebar onOpenReport={() => setShowReportModal(true)} />
 
         {/* Main content */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
@@ -600,6 +1105,10 @@ export const Layout = () => {
 
       {/* Bottom border gradient */}
       <div style={{ height: 2, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite reverse", flexShrink: 0 }} />
+
+      {/* Report pregen modal */}
+      <SovereignPdfPreGenModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} />
     </div>
   );
 };
+

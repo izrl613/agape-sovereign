@@ -66,11 +66,18 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
         // 2. Generate custom initial findings in diff_scans for each module
         const scanRef = doc(collection(db, "diff_scans"));
         
-        let initialFinding = {
+        let initialFinding: {
+          userId: string;
+          module: string;
+          finding: string;
+          status: "NUKED" | "KNOXED" | "MONITORED";
+          timestamp: Date;
+          details: string;
+        } = {
           userId: user.uid,
           module: stepConfig.id,
           finding: `Secure configuration initialized`,
-          status: "KNOXED" as const,
+          status: "KNOXED",
           timestamp: new Date(),
           details: `Zero-knowledge profile encryption activated. Integrity seal: ${hash}`
         };

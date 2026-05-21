@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { db } from '../firebase';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc as firestoreDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { generateSHA256 } from '../utils/crypto';
 import { toast } from 'sonner';
 
@@ -192,8 +192,8 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
       lineWidth: 0.1
     },
     columnStyles: {
-      0: { fontStyle: 'bold', width: 70 },
-      1: { halign: 'center', width: 40 },
+      0: { fontStyle: 'bold', cellWidth: 70 },
+      1: { halign: 'center', cellWidth: 40 },
       2: { halign: 'center', fontStyle: 'bold', textColor: [255, 122, 24] }
     },
     margin: { left: 20, right: 20 }
@@ -258,14 +258,14 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
       fillColor: [15, 23, 42]
     },
     columnStyles: {
-      0: { fontStyle: 'bold', width: 18, halign: 'center' },
-      1: { fontStyle: 'bold', width: 62 },
+      0: { fontStyle: 'bold', cellWidth: 18, halign: 'center' },
+      1: { fontStyle: 'bold', cellWidth: 62 },
       2: { 
         halign: 'center', 
         fontStyle: 'bold', 
-        width: 30
+        cellWidth: 30
       },
-      3: { fontStyle: 'normal', fontName: 'Courier', width: 60, textColor: [0, 212, 255] }
+      3: { fontStyle: 'normal', font: 'Courier', cellWidth: 60, textColor: [0, 212, 255] }
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 2) {
@@ -333,10 +333,10 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
       lineWidth: 0.1
     },
     columnStyles: {
-      0: { fontStyle: 'bold', width: 18, halign: 'center' },
-      1: { fontStyle: 'bold', width: 45 },
-      2: { halign: 'center', fontStyle: 'bold', width: 25 },
-      3: { width: 82 }
+      0: { fontStyle: 'bold', cellWidth: 18, halign: 'center' },
+      1: { fontStyle: 'bold', cellWidth: 45 },
+      2: { halign: 'center', fontStyle: 'bold', cellWidth: 25 },
+      3: { cellWidth: 82 }
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 2) {
@@ -385,7 +385,7 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
   // We utilize the base64 Data URL to allow the user to retrieve their PDF for 2 years!
   if (reportData.userId !== 'emergency-bypass-admin-999') {
     try {
-      const reportRef = doc(collection(db, 'users', reportData.userId, 'reports'), docId);
+      const reportRef = firestoreDoc(collection(db, 'users', reportData.userId, 'reports'), docId);
       await setDoc(reportRef, {
         reportId: docId,
         generatedAt: serverTimestamp(),
