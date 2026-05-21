@@ -393,6 +393,61 @@ async function generatePDFBuffer(scanData, reportId) {
     doc.end();
   });
 }
+// ─── ADDITIONAL HELPERS & SCAFFOLDED FUNCTIONS ─────────────
+
+// Passkey challenge generator (Cloud Function callable)
+exports.passkeyChallenge = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required');
+  const userId = context.auth.uid;
+  // Minimal scaffold: generate challenge and store transient session
+  const challenge = crypto.randomBytes(32).toString('base64url');
+  const challengeDoc = db.collection('sessions').doc(userId);
+  await challengeDoc.set({ challenge, createdAt: admin.firestore.FieldValue.serverTimestamp(), expiresAt: Date.now() + 2 * 60 * 1000 });
+  await logAudit('PASSKEY_CHALLENGE_ISSUED', userId, { challengeId: challengeDoc.id });
+  return { challenge }; 
+});
+
+// ECRA opt-out generator (scaffolding)
+exports.ecraOptOutGenerator = functions.https.onCall(async (data, context) => {
+  if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Auth required');
+  const userId = context.auth.uid;
+  const { brokerId, encryptedProfile } = data;
+  if (!brokerId) throw new functions.https.HttpsError('invalid-argument', 'brokerId required');
+  // Generate a template (server-side template uses encrypted profile; do not decrypt)
+  const template = `ECRA OPT-OUT REQUEST\nBroker: ${brokerId}\nRequest: Remove my personal data as permitted under ECRA §4.2.`;
+  await logAudit('ECRA_OPTOUT_GENERATED', userId, { brokerId });
+  return { template };
+});
+
+// Sovereign score recalculation trigger (on diff_scans update)
+exports.sovereignScoreRecalculate = functions.firestore
+  .document('diff_scans/{scanId}')
+  .onWrite(async (change, ctx) => {
+    const after = change.after.exists ? change.after.data() : null;
+    if (!after) return null;
+    const userId = after.userId;
+    // Recompute a simple average-based sovereign score (placeholder)
+    const vectors = Object.values(after.vectorResults || {});
+    const score = vectors.length ? Math.round(vectors.reduce((s, v) => s + (v.severity || 50), 0) / vectors.length) : 0;
+    await db.collection('users').doc(userId).update({ sovereignScore: score });
+    await logAudit('SOVEREIGN_SCORE_RECALC', userId, { scanId: ctx.params.scanId, score });
+    return null;
+  });
+
+// Dark web monitor (scheduled scaffold) — lightweight, rate-limited
+exports.darkWebMonitor = functions.pubsub
+  .schedule('every 6 hours')
+  .onRun(async (context) => {
+    // NOTE: Implement external dark-web lookups with strict rate limits and only for active users.
+    console.log('Dark web monitor run:', new Date().toISOString());
+    // Example: query list of active users (limited to first 100)
+    const usersSnap = await db.collection('users').limit(100).get();
+    for (const u of usersSnap.docs) {
+      // Add a lightweight audit entry (no PII)
+      await logAudit('DARKWEB_MONITOR_CHECK', u.id, { note: 'scaffolded check' });
+    }
+    return null;
+  });
 
 // ─── CLEANUP OLD REPORTS (SCHEDULED) ───────────────────────
 exports.cleanupOldReports = functions.pubsub

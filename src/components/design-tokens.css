@@ -1,0 +1,55 @@
+:root {
+  --bg: #060D1F; /* dark navy */
+  --neon-magenta: #FF2E9F;
+  --neon-cyan: #00D4FF;
+  --neon-orange: #FF7A18;
+  --gradient-border: linear-gradient(135deg, var(--neon-magenta), var(--neon-cyan), var(--neon-orange));
+  --glass-bg: rgba(8,18,40,0.85);
+  --text: #E8F4FF;
+  --muted: #7B9BB5;
+}
+
+/* Pulsing thin border utility */
+.neon-border {
+  position: relative;
+}
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--gradient-border);
+  background-size: 200% 200%;
+  animation: rotate-gradient 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.btn-neon {
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 700;
+  font-family: 'Rajdhani', sans-serif;
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border-radius: 12px;
+  border: 1px solid rgba(0,212,255,0.08);
+  color: var(--text);
+}
+
+.kpi-value { color: var(--neon-cyan); font-family: 'Orbitron', monospace; }
