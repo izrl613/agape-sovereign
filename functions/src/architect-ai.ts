@@ -19,7 +19,6 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const storage = admin.storage().bucket();
 
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
@@ -219,7 +218,7 @@ export const generateECRAOptOut = onCall(
       throw new HttpsError('unauthenticated', 'Must be authenticated');
     }
 
-    const { dataBrokerId, userName, userEmail } = request.data;
+    const { userName, userEmail } = request.data;
 
     const template = `ECRA 2026 DATA SUBJECT REMOVAL REQUEST
 
