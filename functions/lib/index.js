@@ -8,12 +8,7 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.menuSuggestion = void 0;
 const firebase_functions_1 = require("firebase-functions");
-// import {onRequest} from "firebase-functions/https";
-// import * as logger from "firebase-functions/logger";
-var genkit_sample_js_1 = require("./genkit-sample.js");
-Object.defineProperty(exports, "menuSuggestion", { enumerable: true, get: function () { return genkit_sample_js_1.menuSuggestion; } });
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 // For cost control, you can set the maximum number of containers that can be
