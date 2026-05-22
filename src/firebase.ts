@@ -1,10 +1,15 @@
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
-  GoogleAuthProvider, 
+  GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup, 
   signInAnonymously,
-  signOut
+  signOut,
+  setPersistence,
+  browserLocalPersistence,
+  onAuthStateChanged,
+  User
 } from 'firebase/auth';
 import { getFirestore, getDocFromServer, doc } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
@@ -61,6 +66,12 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
+export const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScopes('email', 'name');
+appleProvider.setCustomParameters({
+  usePopup: true
+});
+
 export const loginWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
@@ -80,6 +91,16 @@ export const loginWithGoogle = async () => {
       }
     }
     
+    throw error;
+  }
+};
+
+export const loginWithApple = async () => {
+  try {
+    const result = await signInWithPopup(auth, appleProvider);
+    return result.user;
+  } catch (error: unknown) {
+    console.error("Error signing in with Apple:", error);
     throw error;
   }
 };
