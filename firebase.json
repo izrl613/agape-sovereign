@@ -43,7 +43,6 @@
       "source": "functions"
     },
     {
-      "source": "agape-sovereign",
       "codebase": "agape-sovereign",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
@@ -56,7 +55,8 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      ],
+      "source": "agape-sovereign"
     }
   ],
   "apphosting": [
@@ -81,7 +81,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     },
     {
       "backendId": "agape-sovereign",
@@ -92,7 +93,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": false
     }
   ],
   "dataconnect": {
