@@ -1,0 +1,11 @@
+{
+  "name": "firebase",
+  "version": "0.0.1",
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools", "mcp", "--dir", "/Users/aarondavid/Documents/agape-sovereign/agape-sovereign"]
+    }
+  },
+  "contextFileName": "FIREBASE.md"
+}
