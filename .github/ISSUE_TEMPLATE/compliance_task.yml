@@ -1,0 +1,25 @@
+name: Compliance task
+description: Track a compliance/security governance task from the roadmap
+labels: ["compliance"]
+body:
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Requirement
+      description: State the requirement and reference the doc section.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: What evidence proves this is complete (tests, screenshots, logs, config)?
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk if not done
+    validations:
+      required: true
+

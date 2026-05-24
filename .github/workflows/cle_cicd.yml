@@ -1,0 +1,41 @@
+name: Compliance Gate (CLE CI/CD)
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+jobs:
+  compliance_gate:
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce Issue Linkage Check
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: ./.github/scripts/enforce-issue-linkage.sh
+
+      - name: Secret Hygiene Check
+        run: |
+          set -euo pipefail
+          if git ls-files | rg -n '(^|/)\.env(\..+)?$' >/dev/null 2>&1; then
+            echo "::error file=secrets::Committed .env file detected. Remove it from git history and use runtime configuration instead."
+            exit 1
+          fi
+          if git ls-files | rg -n '(serviceAccount.*\.json|firebase-adminsdk.*\.json)' >/dev/null 2>&1; then
+            echo "::error file=secrets::Committed Firebase service account key detected. Remove it from git history immediately."
+            exit 1
+          fi
+
+      - name: Run Resource Impact Validator
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: ./.github/scripts/resource-impact-validator.sh
+

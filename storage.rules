@@ -26,6 +26,11 @@ service firebase.storage {
              request.resource.size < 10 * 1024 * 1024; // 10MB max
     }
 
+    function isValidImage() {
+      return request.resource.contentType.matches('image/.*') &&
+             request.resource.size < 5 * 1024 * 1024; // 5MB max
+    }
+
     // ─── PDF REPORTS (diff_reports/pdfs) ───────────────────
     // Users can only download their own PDFs
     match /diff_reports/pdfs/{userId}/{reportFile} {
@@ -57,11 +62,11 @@ service firebase.storage {
     // ─── PROFILE IMAGES (profiles/avatars) ─────────────────
     // Users can upload profile pictures
     match /profiles/avatars/{userId}/avatar {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isUserOwner(userId);
       
       allow create, update: if isAuthenticated() && 
                                isUserOwner(userId) &&
-                               request.resource.size < 5 * 1024 * 1024; // 5MB
+                               isValidImage();
       
       allow delete: if isAuthenticated() && isUserOwner(userId);
     }
@@ -76,7 +81,10 @@ service firebase.storage {
     // ─── TEMPORARY UPLOADS (temp) ─────────────────────────
     // Temporary storage for processing (auto-deleted after 24h)
     match /temp/{userId}/{file} {
-      allow read, write, delete: if isAuthenticated() && isUserOwner(userId);
+      allow read, delete: if isAuthenticated() && isUserOwner(userId);
+      allow write: if isAuthenticated()
+                     && isUserOwner(userId)
+                     && request.resource.size < 25 * 1024 * 1024; // 25MB max
     }
 
     // ─── DENY ALL BY DEFAULT ──────────────────────────────

@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a feature aligned with the roadmap
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What problem are we solving for the user?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What’s in/out of scope?
+    validations:
+      required: true
+  - type: textarea
+    id: compliance
+    attributes:
+      label: Compliance / security considerations
+      description: Data collected, retention, encryption, admin access, third parties.
+    validations:
+      required: true
+

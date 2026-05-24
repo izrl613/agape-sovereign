@@ -26,11 +26,8 @@ service cloud.firestore {
 
     // ─── RATE LIMITING HELPER ──────────────────────────
     function withinRateLimit(field, limit, windowSeconds) {
-      let now = request.time;
       let lastAction = resource.data[field];
-      return lastAction == null || 
-             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDay()) >
-             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDay());
+      return lastAction == null || request.time > lastAction + duration.value(windowSeconds, 's');
     }
 
     // ─── USERS COLLECTION ──────────────────────────────
@@ -87,11 +84,9 @@ service cloud.firestore {
       allow update: if false;
       
       // Users can delete their own scans after 90 days
-      allow delete: if isAuthenticated() && 
-                       resource.data.userId == request.auth.uid &&
-                       request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
-                       (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
-                        request.time.getMonth() > resource.data.timestamp.getMonth() + 2);
+      allow delete: if isAuthenticated()
+                       && resource.data.userId == request.auth.uid
+                       && request.time > resource.data.timestamp + duration.value(90, 'd');
 
       // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
       match /vectorResults/{vectorId} {
