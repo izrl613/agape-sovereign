@@ -13,5 +13,6 @@
   "editor.fontSize": 14,
   "workbench.editor.enablePreview": true,
   "livePreview.start.preview.at.file.open": true,
-  "livePreview.autoRefreshPreview": "On Changes"
+  "livePreview.autoRefreshPreview": "On Changes",
+  "workbench.colorTheme": "Amoled"
 }
