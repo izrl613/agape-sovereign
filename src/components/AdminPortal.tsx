@@ -180,7 +180,7 @@ export const AdminPortal = () => {
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
         <div className="relative mb-8">
           <Shield className="w-20 h-20 text-[#FF2E9F] animate-pulse" />
-          <Lock className="w-8 h-8 text-white absolute bottom-0 right-0 bg-[#FF2E9F] rounded-full p-1 border-4 border-[#0B1020]" />
+          <Lock className="w-8 h-8 text-white absolute bottom-0 right-0 bg-[#FF2E9F] rounded-full p-1 border-4 border-[#060D1F]" />
         </div>
         <NeonText color={NEON.magenta} size="2.2rem" weight={900} className="tracking-tighter">ENCLAVE_LOCKED</NeonText>
         <div className="max-w-md mt-6 p-6 bg-[#FF2E9F]/5 border border-[#FF2E9F]/20 rounded-2xl backdrop-blur-xl">
@@ -206,14 +206,14 @@ export const AdminPortal = () => {
   if (!isPasskeyVerified) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center p-8 relative">
-        <div className="max-w-2xl w-full bg-[#0B1020]/90 border border-white/10 rounded-2xl p-8 backdrop-blur-xl relative overflow-hidden shadow-2xl">
-          <div className="absolute inset-0 p-[1.5px] rounded-2xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] -z-10 animate-pulse" />
-          <div className="absolute inset-0 bg-[#0B1020] rounded-2xl -z-10" />
+        <div className="max-w-2xl w-full bg-[#060D1F]/90 border border-white/10 rounded-2xl p-8 backdrop-blur-xl relative overflow-hidden shadow-2xl">
+
+          <div className="absolute inset-0 bg-[#060D1F] rounded-2xl -z-10" />
 
           <div className="relative mb-6 flex justify-center">
             <div className="relative">
               <Shield className="w-20 h-20 text-[#00D4FF]" />
-              <Lock className="w-8 h-8 text-black absolute bottom-0 right-0 bg-[#00D4FF] rounded-full p-1.5 border-4 border-[#0B1020]" />
+              <Lock className="w-8 h-8 text-black absolute bottom-0 right-0 bg-[#00D4FF] rounded-full p-1.5 border-4 border-[#060D1F]" />
             </div>
           </div>
 

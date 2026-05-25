@@ -166,7 +166,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[#0B1020] flex items-center justify-center p-6 overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-[#060D1F] flex items-center justify-center p-6 overflow-hidden">
       {/* Futuristic Background */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,_rgba(0,212,255,0.1),_transparent_70%)]" />

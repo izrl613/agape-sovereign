@@ -115,3 +115,24 @@ export const Skeleton: React.FC<{ width?: string | number, height?: string | num
     }} 
   />
 );
+
+export const SovereignScore: React.FC<{ score: number }> = ({ score }) => {
+  const r = 52, cx = 64, cy = 64;
+  const circ = 2 * Math.PI * r;
+  const pct = score / 100;
+  const color = score > 75 ? NEON.blue : score > 50 ? NEON.orange : NEON.magenta;
+  
+  return (
+    <div style={{ textAlign: "center", position: "relative" }}>
+      <svg width="128" height="128" className="score-ring" style={{ filter: `drop-shadow(0 0 12px ${color})` }}>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="8"
+          strokeDasharray={`${pct * circ} ${circ}`} strokeDashoffset={circ * 0.25}
+          strokeLinecap="round" style={{ transition: "all 1s ease-out" }} />
+        <text x={cx} y={cy - 6} textAnchor="middle" fill={color} fontFamily="Orbitron" fontSize="24" fontWeight="900">{score}</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill={NEON.textMuted} fontFamily="Rajdhani" fontSize="9" letterSpacing="0.2em">SOVEREIGN</text>
+        <text x={cx} y={cy + 25} textAnchor="middle" fill={NEON.textMuted} fontFamily="Rajdhani" fontSize="9" letterSpacing="0.2em">SCORE</text>
+      </svg>
+    </div>
+  );
+};

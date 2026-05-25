@@ -54,6 +54,20 @@ export const GlobalStyles: React.FC = () => {
       @keyframes spinner {
         to { transform: rotate(360deg); }
       }
+      @keyframes text-glow {
+        0%,100% { text-shadow: 0 0 10px ${NEON.magenta}, 0 0 20px rgba(255,46,159,0.5); }
+        50% { text-shadow: 0 0 10px ${NEON.blue}, 0 0 20px rgba(0,212,255,0.5); }
+      }
+      @keyframes data-stream {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(-40px); opacity: 0; }
+      }
+      @keyframes matrix-rain {
+        0% { transform: translateY(-100%); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(100vh); opacity: 0; }
+      }
 
       .neon-border {
         position: relative;

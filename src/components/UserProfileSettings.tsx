@@ -166,7 +166,7 @@ export const UserProfileSettings = () => {
           <p className="text-slate-400 font-mono text-sm">Manage your digital identity parameters and security enclaves.</p>
         </div>
         
-        <div className="flex items-center gap-4 bg-[#0B1020]/50 border border-white/5 rounded-2xl p-4 backdrop-blur-md">
+        <div className="flex items-center gap-4 bg-[#060D1F]/50 border border-white/5 rounded-2xl p-4 backdrop-blur-md">
           <div className="text-right">
             <div className="text-[10px] font-bold text-slate-500 tracking-widest uppercase mb-1">Current Score</div>
             <div className="text-2xl font-black text-[#00D4FF] font-mono leading-none">{sovereignScore}</div>
@@ -190,7 +190,7 @@ export const UserProfileSettings = () => {
             <div className="flex flex-col md:flex-row items-center gap-8 mb-8 pb-8 border-b border-white/5">
               <div className="relative group">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#FF2E9F] to-[#00D4FF] p-[2px]">
-                  <div className="w-full h-full rounded-full bg-[#0B1020] flex items-center justify-center overflow-hidden relative">
+                  <div className="w-full h-full rounded-full bg-[#060D1F] flex items-center justify-center overflow-hidden relative">
                     {user?.photoURL ? (
                       <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
                     ) : (

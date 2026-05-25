@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, db, loginWithGoogle, loginAnonymously, logout } from './firebase';
+import { auth, db, functions, loginWithGoogle, loginAnonymously, logout } from './firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 import { logEvent, AuditLogType } from './services/auditService';
 import { initializeRemoteConfig } from './services/remoteConfigService';
 import { updateProfile as firebaseUpdateProfile } from 'firebase/auth';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import type { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
 import { signInWithCustomToken } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 
 interface AuthContextType {
   user: User | null;
@@ -171,28 +173,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error('You must be logged in to bind a passkey.');
       return;
     }
-    
+
     try {
-      // 1. Get registration options from server
-      const optionsRes = await fetch('/api/auth/register-options', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.uid, userEmail: currentUser.email }),
-      });
-      
-      if (!optionsRes.ok) throw new Error('Failed to fetch registration options');
-      const options = await optionsRes.json();
+      const getOptions = httpsCallable(functions, 'registerPasskeyOptions');
+      const verifyRegistration = httpsCallable(functions, 'verifyPasskeyRegistration');
 
-      // 2. Start registration with the browser
-      const attestationResponse = await startRegistration(options);
+      const optionsResult = await getOptions({ userId: currentUser.uid, userEmail: currentUser.email });
+      const options = optionsResult.data as PublicKeyCredentialCreationOptionsJSON;
 
-      // 3. Verify with server
-      const verifyRes = await fetch('/api/auth/verify-registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid }),
-      });
-      const { verified } = await verifyRes.json();
+      const attestationResponse = await startRegistration({ optionsJSON: options });
+
+      const verifyResult = await verifyRegistration({ response: attestationResponse });
+      const { verified } = verifyResult.data as { verified: boolean };
 
       if (verified) {
         toast.success('Universal Passkey bound to this device successfully.');
@@ -210,6 +202,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  function getFunctionUrl(name: string): string {
+    const PROJECT_ID = 'agape-sovereign';
+    const REGION = 'us-east1';
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}/${name}`;
+    }
+    return `https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${name}`;
+  }
+
   const handleLoginWithPasskey = async (email: string) => {
     if (!email) {
       toast.error('Please enter your email to login with passkey.');
@@ -217,8 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      // 1. Get login options
-      const optionsRes = await fetch('/api/auth/login-options', {
+      const optionsRes = await fetch(getFunctionUrl('loginPasskeyOptions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -228,16 +228,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const errData = await optionsRes.json();
         throw new Error(errData.error || 'Failed to fetch login options');
       }
-      const options = await optionsRes.json();
+      const { tempUserId, ...authOptions } = await optionsRes.json();
+      const assertionResponse = await startAuthentication({ optionsJSON: authOptions as unknown as PublicKeyCredentialRequestOptionsJSON });
 
-      // 2. Start authentication
-      const assertionResponse = await startAuthentication(options);
-
-      // 3. Verify with server
-      const verifyRes = await fetch('/api/auth/verify-login', {
+      const verifyRes = await fetch(getFunctionUrl('verifyPasskeyLogin'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assertionResponse),
+        body: JSON.stringify({ ...assertionResponse, tempUserId }),
       });
 
       const { verified, token, error } = await verifyRes.json();

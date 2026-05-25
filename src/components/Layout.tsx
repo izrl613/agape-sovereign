@@ -526,7 +526,7 @@ const Header = () => {
             <span className="text-xs text-slate-400 font-mono">{sovereignScore} SCORE</span>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FF2E9F] to-[#00D4FF] p-[2px]">
-            <div className="w-full h-full rounded-full bg-[#0B1020] flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full rounded-full bg-[#060D1F] flex items-center justify-center overflow-hidden">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -538,7 +538,7 @@ const Header = () => {
         </div>
 
         {isProfileOpen && (
-          <div className="absolute top-full right-0 mt-2 w-56 bg-[#0B1020] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
+          <div className="absolute top-full right-0 mt-2 w-56 bg-[#060D1F] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
             <div className="p-4 border-b border-white/5">
               <div className="text-xs font-mono text-[#00D4FF] mb-1">
                 {isAnonymous ? 'TEMPORARY SESSION' : 'SOVEREIGN IDENTITY'}
