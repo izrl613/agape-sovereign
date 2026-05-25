@@ -29,7 +29,6 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "latest",
-    "next": "^15.5.18",
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "^10.1.0",
