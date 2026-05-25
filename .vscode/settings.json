@@ -6,9 +6,12 @@
   ],
   "files.autoSave": "onFocusChange",
   "git.statusLimit": 0,
-  "git.suggestSmartCommit": false,
+  "git.suggestSmartCommit": true,
   "go.toolsManagement.autoUpdate": true,
   "npm.packageManager": "npm",
   "npm.scriptRunner": "npm",
-  "editor.fontSize": 14
+  "editor.fontSize": 14,
+  "workbench.editor.enablePreview": true,
+  "livePreview.start.preview.at.file.open": true,
+  "livePreview.autoRefreshPreview": "On Changes"
 }
