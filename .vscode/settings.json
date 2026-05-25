@@ -9,5 +9,6 @@
   "git.suggestSmartCommit": false,
   "go.toolsManagement.autoUpdate": true,
   "npm.packageManager": "npm",
-  "npm.scriptRunner": "npm"
+  "npm.scriptRunner": "npm",
+  "editor.fontSize": 14
 }
