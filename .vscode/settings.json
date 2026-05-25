@@ -14,5 +14,11 @@
   "workbench.editor.enablePreview": true,
   "livePreview.start.preview.at.file.open": true,
   "livePreview.autoRefreshPreview": "On Changes",
-  "workbench.colorTheme": "Amoled"
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorCustomizations": {
+    "statusBar.background": "#007acc",
+    "statusBar.noFolderBackground": "#007acc",
+    "statusBar.debuggingBackground": "#007acc",
+    "statusBar.foreground": "#ffffff"
+  }
 }
