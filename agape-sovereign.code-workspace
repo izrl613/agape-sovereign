@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"gcpBilling.projectId": "agape-sovereign",
+		"terminal.integrated.defaultProfile.linux": ""
+	}
+}
