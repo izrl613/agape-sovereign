@@ -1,0 +1,21 @@
+{
+  "ai.providers": {
+    "gemma4e2b-local": {
+      "type": "openai-compatible",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama",
+      "models": [
+        {
+          "id": "gemma4e2b:latest",
+          "displayName": "Gemma 4 E2B Local (Ollama)"
+        }
+      ]
+    }
+  },
+  "ai.defaultProvider": "gemma4e2b-local",
+  "ai.defaultModel": "gemma4e2b:latest",
+  "antigravity.ai.defaultProvider": "gemma4e2b-local",
+  "antigravity.ai.defaultModel": "gemma4e2b:latest",
+  "antigravity.agent.defaultProvider": "gemma4e2b-local",
+  "antigravity.agent.defaultModel": "gemma4e2b:latest"
+}
