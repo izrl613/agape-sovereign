@@ -6,7 +6,7 @@
   ],
   "files.autoSave": "onFocusChange",
   "git.statusLimit": 0,
-  "git.suggestSmartCommit": true,
+  "git.suggestSmartCommit": false,
   "go.toolsManagement.autoUpdate": true,
   "npm.packageManager": "npm",
   "npm.scriptRunner": "npm",
