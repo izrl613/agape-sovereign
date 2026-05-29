@@ -1,0 +1,32 @@
+[debug] [2026-05-29T03:49:23.342Z] ----------------------------------------------------------------------
+[debug] [2026-05-29T03:49:23.343Z] Command:       /opt/homebrew/Cellar/node/26.0.0/bin/node /opt/homebrew/bin/firebase init
+[debug] [2026-05-29T03:49:23.343Z] CLI Version:   15.19.0
+[debug] [2026-05-29T03:49:23.343Z] Platform:      darwin
+[debug] [2026-05-29T03:49:23.343Z] Node Version:  v26.0.0
+[debug] [2026-05-29T03:49:23.343Z] Time:          Thu May 28 2026 23:49:23 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-05-29T03:49:23.343Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/aarondavid/Documents/agape-sovereign
+
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-05-29T03:49:40.587Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-29T03:49:40.588Z] > authorizing via signed-in user (idin@agape.nyc)
+[debug] [2026-05-29T03:49:40.589Z] Checked if tokens are valid: true, expires at: 1780030044019
+[debug] [2026-05-29T03:49:40.589Z] Checked if tokens are valid: true, expires at: 1780030044019
+[debug] [2026-05-29T03:49:40.591Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=100
+[debug] [2026-05-29T03:49:41.095Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-05-29T03:49:41.095Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
