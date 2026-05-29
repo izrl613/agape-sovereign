@@ -1,10 +1,9 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { chatComplete } from "./localAIService";
 import { db } from "../firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
 import { logScanStarted, logUserEvent, logExposureNuked } from "./analyticsService";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export interface ScanFinding {
   id?: string;
@@ -315,45 +314,17 @@ const generateFinding = async (module: string, email: string) => {
       `;
     }
 
-    let retryCount = 0;
-    const maxRetries = 2;
-    let response;
+    const prompt = `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".
+    ${moduleSpecificInstructions}
+    Return the result in JSON format with the following fields:
+    - title: A short description of the finding.
+    - status: One of "NUKED", "KNOXED", "MONITORED".
+    - details: A more detailed explanation of the finding and recommended action.
+    
+    Make it sound technical and professional, fitting for the "Architect AI" persona.`;
 
-    while (retryCount <= maxRetries) {
-      try {
-        response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".
-          ${moduleSpecificInstructions}
-          Return the result in JSON format with the following fields:
-          - title: A short description of the finding.
-          - status: One of "NUKED", "KNOXED", "MONITORED".
-          - details: A more detailed explanation of the finding and recommended action.
-          
-          Make it sound technical and professional, fitting for the "Architect AI" persona.`,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                status: { type: Type.STRING },
-                details: { type: Type.STRING }
-              },
-              required: ["title", "status", "details"]
-            }
-          }
-        });
-        break; // Success, break out of retry loop
-      } catch (err) {
-        retryCount++;
-        if (retryCount > maxRetries) throw err;
-        console.warn(`Gemini API 500 error, retrying... (${retryCount}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
-    }
-
-    const result = JSON.parse(response?.text || "{}");
+    const response = await chatComplete(prompt, undefined, true);
+    const result = JSON.parse(response.text || "{}");
     return result;
   } catch (error) {
     console.error("Error generating finding:", error);
@@ -461,24 +432,22 @@ export const recalculateSovereignScore = async (userId: string) => {
 
 export const generateSuspiciousReport = async (finding: ScanFinding) => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
-      contents: `Generate a detailed security report for a suspicious finding in the "${finding.module}" module.
-      
-      Finding: ${finding.finding}
-      Status: ${finding.status}
-      Details: ${finding.details}
-      
-      The report should include:
-      1. Executive Summary
-      2. Technical Analysis (including metadata patterns if applicable)
-      3. Risk Assessment
-      4. Remediation Steps
-      5. Sovereign Protocol Recommendations
-      
-      Format the report in Markdown. Use a professional, authoritative "Architect AI" tone.`,
-    });
+    const prompt = `Generate a detailed security report for a suspicious finding in the "${finding.module}" module.
+    
+    Finding: ${finding.finding}
+    Status: ${finding.status}
+    Details: ${finding.details}
+    
+    The report should include:
+    1. Executive Summary
+    2. Technical Analysis (including metadata patterns if applicable)
+    3. Risk Assessment
+    4. Remediation Steps
+    5. Sovereign Protocol Recommendations
+    
+    Format the report in Markdown. Use a professional, authoritative "Architect AI" tone.`;
 
+    const response = await chatComplete(prompt);
     return response.text;
   } catch (error) {
     console.error("Error generating report:", error);

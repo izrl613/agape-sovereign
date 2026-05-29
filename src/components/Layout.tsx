@@ -11,6 +11,7 @@ import { decryptClientSide, generateSHA256 } from '../utils/crypto';
 import { compileIdentityAuditReport } from '../services/pdfService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getLocalAIStatus, LocalStatus } from '../services/localAIService';
 
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
@@ -337,6 +338,24 @@ const Header = () => {
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const navigate = useNavigate();
 
+  const [localAI, setLocalAI] = useState<LocalStatus>({
+    online: false,
+    port: 3000,
+    modelName: "Gemma-4-E4B-MLX",
+    usage: "Checking...",
+    costModel: "Standard Billing"
+  });
+
+  useEffect(() => {
+    const checkLocalHealth = async () => {
+      const status = await getLocalAIStatus();
+      setLocalAI(status);
+    };
+    checkLocalHealth();
+    const interval = setInterval(checkLocalHealth, 10000); // Check local AI every 10s
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const checkHealth = async () => {
       setBackendStatus('checking');
@@ -503,6 +522,58 @@ const Header = () => {
           <NeonButton color={NEON.orange} size="sm">⬡ ADMIN</NeonButton>
         </NavLink>
       )}
+
+      {/* Model Selector Widget */}
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          background: localAI.online ? 'rgba(26, 115, 232, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+          border: `1px solid ${localAI.online ? '#1a73e8' : 'rgba(245, 158, 11, 0.25)'}`,
+          padding: '4px 10px',
+          borderRadius: 8,
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          boxShadow: localAI.online ? '0 0 10px rgba(26, 115, 232, 0.2)' : 'none'
+        }}
+        className="hover:scale-[1.02] active:scale-[0.98] mr-2"
+        title={localAI.usage}
+      >
+        <span 
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: localAI.online ? '#1a73e8' : '#f59e0b',
+            boxShadow: `0 0 8px ${localAI.online ? '#1a73e8' : '#f59e0b'}`,
+          }}
+          className={localAI.online ? 'animate-pulse' : ''}
+        />
+        <span 
+          style={{
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '0.68rem',
+            fontWeight: 'bold',
+            color: localAI.online ? '#8ab4f8' : '#fbbf24',
+            letterSpacing: '0.05em'
+          }}
+        >
+          {localAI.online ? 'Gemma-4-E4B-MLX' : 'Gemini Cloud'}
+        </span>
+        <span 
+          style={{
+            fontFamily: "'Share Tech Mono'",
+            fontSize: '0.52rem',
+            color: localAI.online ? 'rgba(138, 180, 248, 0.7)' : 'rgba(251, 191, 36, 0.7)',
+            background: 'rgba(255,255,255,0.05)',
+            padding: '1px 4px',
+            borderRadius: 3
+          }}
+        >
+          {localAI.online ? '∞ TOKENS' : 'CLOUD'}
+        </span>
+      </div>
 
       {/* Profile button */}
       <div className="flex items-center gap-3 pl-6 border-l border-white/10 relative">

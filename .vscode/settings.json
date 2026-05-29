@@ -14,7 +14,7 @@
   "workbench.editor.enablePreview": true,
   "livePreview.start.preview.at.file.open": true,
   "livePreview.autoRefreshPreview": "On Changes",
-  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorTheme": "Tomorrow Night Blue",
   "workbench.colorCustomizations": {
     "statusBar.background": "#007acc",
     "statusBar.noFolderBackground": "#007acc",
@@ -22,5 +22,6 @@
     "statusBar.foreground": "#ffffff",
     "statusBarItem.remoteBackground": "#007acc",
     "statusBarItem.remoteForeground": "#ffffff"
-  }
+  },
+  "terminal.explorerKind": "both"
 }

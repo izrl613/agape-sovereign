@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from '@google/genai';
+import { chatComplete, chatStream } from '../services/localAIService';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, NeonButton, GlassCard } from './UI';
@@ -273,16 +273,8 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     const fetchThreatFeed = async () => {
       setIsFeedLoading(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: "Search for the latest, high-impact cybersecurity threats and data breaches reported in the last 24-48 hours, specifically focusing on data brokers, identity theft, and personal data exposures. Return a curated list of 4-5 items as a JSON array of objects with: title, severity (Critical/High/Medium/Low), source (the news outlet or security firm), time (e.g. '2h ago'), vector (one of: email, social, device, mobile, deepweb, broker, password, location, browser, financial, medical, biometric, iot, cloud, darkweb, behavioral), and description (a short summary). Ensure the threats are real and current.",
-          config: {
-            tools: [{ googleSearch: {} }],
-            responseMimeType: "application/json",
-          }
-        });
-        
+        const prompt = "Search for the latest, high-impact cybersecurity threats and data breaches reported in the last 24-48 hours, specifically focusing on data brokers, identity theft, and personal data exposures. Return a curated list of 4-5 items as a JSON array of objects with: title, severity (Critical/High/Medium/Low), source (the news outlet or security firm), time (e.g. '2h ago'), vector (one of: email, social, device, mobile, deepweb, broker, password, location, browser, financial, medical, biometric, iot, cloud, darkweb, behavioral), and description (a short summary). Ensure the threats are real and current.";
+        const response = await chatComplete(prompt, undefined, true);
         const data = JSON.parse(response.text || "[]");
         setThreatFeed(data);
       } catch (error) {
@@ -638,8 +630,6 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     logAIChatMessage(messageText.length);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      
       const detailedBreakdown = {
         nuked: findings.filter(f => f.status === 'NUKED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),
         knoxed: findings.filter(f => f.status === 'KNOXED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),
@@ -683,21 +673,9 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
         promptText += `\n\n[ATTACHED FILE ANALYSIS: ${userMessage.attachment.name}]\n\`\`\`\n${contentWithLineNumbers}\n\`\`\`\n\nPlease perform a deep security analysis of this file. For each identified vulnerability (e.g., SQL injection, XSS, insecure authentication, hardcoded secrets, PII leaks), you MUST provide:\n1. **Exact Line Number(s)**: Where the vulnerability is located.\n2. **Severity Level**: (Low, Medium, High, Critical).\n3. **Potential Impact**: A detailed explanation of what an attacker could achieve.\n4. **Remediation**: Specific code fixes or hardening recommendations.\n\nCRITICAL: For each vulnerability found, you MUST include 'Remediate' and 'Apply Fix' buttons immediately following its description using this markdown syntax: [REMEDIATE](remediate:VulnerabilityName) [APPLY FIX](apply-fix:VulnerabilityName). Replace "VulnerabilityName" with a short, descriptive name of the vulnerability.`;
       }
 
-      const top3Threats = threatFeed.slice(0, 3).map(t => `- [${t.severity}] ${t.title}`).join('\n');
-
-      const responseStream = await ai.models.generateContentStream({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: promptText }]
-          }
-        ],
-        config: {
-          tools: [{ googleSearch: {} }],
-          systemInstruction: `# ARCHITECT AI — GENAI AGENT SYSTEM PROMPT
+      const systemInstruction = `# ARCHITECT AI — GENAI AGENT SYSTEM PROMPT
 ## Agape Sovereign Enclave | Digital Identity Federated Footprint (DIFF) Intelligence Platform
-### Version: 2026-LTS | Compliance: ECRA 2026 | Runtime: Firebase + Gemini AI
+### Version: Gemma-4-E4B-MLX | Local Resilient Compute | Compliance: ECRA 2026
 
 ---
 
@@ -723,7 +701,7 @@ Every interaction, every scan result, every user query, and every piece of ident
 - **Admin Email:** idin@agape.nyc | agape@sovereign.nyc
 - **Admin Identity:** Israel David (Izrael) — sole administrator. No other user has admin-level access.
 - **Architecture:** Firebase zero-knowledge, privacy-first, session-scoped, no plaintext PII storage
-- **AI Backend:** Gemini AI (via Google Cloud Vertex AI / Generative Language API, free tier)
+- **AI Backend:** Gemma-4-E4B-MLX (via Local MLX / LMStudio proxy, unlimited tokens, max_tokens: -1)
 - **Compliance Target:** ECRA 2026 LTS, GDPR, CCPA, WebAuthn Level 3, FIDO2, NIST SP 800-63B
 
 ---
@@ -803,9 +781,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
 [REAL-TIME UPDATES]
 1. Respond using strictly structured **Markdown**.
 2. Contextualize with active scans — reference specific items from the user's NUKED/KNOXED status.
-3. Prioritize the 'NUKED' state — address critical exposures first.`
-        }
-      });
+3. Prioritize the 'NUKED' state — address critical exposures first.`;
 
       // Log response generation
       logUserEvent('ai_response_generated', { 
@@ -822,11 +798,16 @@ Recalculate and surface the Sovereign Score after every module action or user-su
         remediationFor: remediationId
       }]);
 
-      let fullText = '';
-      for await (const chunk of responseStream) {
-        fullText += chunk.text;
+      const historyFormatted = messages.map(m => ({
+        role: m.role,
+        text: m.text
+      }));
+
+      const streamGenerator = chatStream(promptText, systemInstruction, historyFormatted);
+      
+      for await (const chunk of streamGenerator) {
         setMessages(prev => prev.map(msg => 
-          msg.id === modelMessageId ? { ...msg, text: fullText } : msg
+          msg.id === modelMessageId ? { ...msg, text: chunk.text } : msg
         ));
       }
     } catch (error) {
