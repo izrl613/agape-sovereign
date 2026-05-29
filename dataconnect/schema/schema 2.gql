@@ -1,0 +1,49 @@
+type User @table {
+  did: String!
+  publicKey: String!
+  createdAt: Timestamp!
+  preferredName: String
+  email: String
+  profilePictureURL: String
+}
+
+type Credential @table {
+  user: User!
+  issuerDID: String!
+  credentialType: String!
+  issuanceDate: Timestamp!
+  expirationDate: Timestamp
+  credentialData: String!
+  status: String!
+  schemaURL: String
+  policyURL: String
+}
+
+type ServiceProvider @table {
+  name: String!
+  serviceDID: String!
+  publicKey: String!
+  createdAt: Timestamp!
+  websiteURL: String
+  description: String
+}
+
+type ShareEvent @table {
+  user: User!
+  credential: Credential!
+  serviceProvider: ServiceProvider!
+  shareDate: Timestamp!
+  accessGrantedDuration: Int! # Duration in seconds or a custom unit
+  accessStatus: String!
+  purposeOfSharing: String
+  notes: String
+}
+
+type AIInsight @table {
+  user: User!
+  insightType: String!
+  generatedAt: Timestamp!
+  summary: String!
+  detailedAnalysis: String
+  associatedCredentialID: UUID
+}
