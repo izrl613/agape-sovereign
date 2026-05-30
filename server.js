@@ -31,45 +31,45 @@ async function startServer() {
     app.get("/api/health", (req, res) => {
         res.json({ status: "ok", timestamp: new Date().toISOString() });
     });
-    // Local AI Status probe (proxy for LM Studio)
+    // Local AI Status probe (proxy for Ollama)
     app.get("/api/status", async (req, res) => {
         try {
-            const response = await fetch("http://localhost:1234/v1/models", {
+            const response = await fetch("http://localhost:11434/v1/models", {
                 method: "GET",
                 signal: AbortSignal.timeout(1000)
             });
             if (response.ok) {
                 return res.json({
                     online: true,
-                    port: 1234,
-                    modelName: "Gemma-4-E4B-MLX",
+                    port: 11434,
+                    modelName: "gemma4:e4b",
                     usage: "Unlimited Tokens",
                     costModel: "Zero External Billing"
                 });
             }
         }
         catch (e) {
-            // LM Studio is offline
+            // Ollama is offline
         }
         res.json({
             online: false,
-            port: 1234,
-            modelName: "Gemma-4-E4B-MLX",
+            port: 11434,
+            modelName: "gemma4:e4b",
             usage: "Offline",
             costModel: "Standard Billing"
         });
     });
-    // Local AI Chat Proxy (proxy to LM Studio, fallback to Gemini Cloud)
+    // Local AI Chat Proxy (proxy to Ollama, fallback to Gemini Cloud)
     app.post("/api/chat", async (req, res) => {
         try {
             const { messages, max_tokens } = req.body;
-            // 1. Try local LM Studio first
+            // 1. Try local Ollama first
             try {
-                const lmRes = await fetch("http://localhost:1234/v1/chat/completions", {
+                const lmRes = await fetch("http://localhost:11434/v1/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "google/gemma-4-e4b",
+                        model: "gemma4:e4b",
                         messages,
                         max_tokens: max_tokens || -1,
                         stream: false
@@ -82,7 +82,7 @@ async function startServer() {
                 }
             }
             catch (e) {
-                console.log("[PROXY] LM Studio offline or timed out, falling back to Cloud Gemini...");
+                console.log("[PROXY] Ollama offline or timed out, falling back to Cloud Gemini...");
             }
             // 2. Fallback to Cloud Gemini
             const apiKey = process.env.GEMINI_API_KEY;

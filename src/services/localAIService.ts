@@ -46,8 +46,8 @@ export interface LocalStatus {
 
 // 1. Live status probe
 export async function getLocalAIStatus(): Promise<LocalStatus> {
-  const selectedModel = typeof window !== 'undefined' ? localStorage.getItem('selected_llm_model') : null;
-  
+  const selectedModel = typeof window !== 'undefined' ? (localStorage.getItem('selected_llm_model') || 'gemma') : 'gemma';
+
   // If user explicitly selected Gemini, bypass local search entirely
   if (selectedModel === 'gemini') {
     return {
@@ -55,7 +55,7 @@ export async function getLocalAIStatus(): Promise<LocalStatus> {
       port: 3000,
       modelName: "Gemini Cloud",
       usage: "CLOUD",
-      costModel: "Standard Billing"
+      costModel: "Zero External Billing"
     };
   }
 

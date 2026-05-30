@@ -354,6 +354,9 @@ const Header = () => {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && !localStorage.getItem('selected_llm_model')) {
+      localStorage.setItem('selected_llm_model', 'gemma');
+    }
     checkLocalHealth();
     const interval = setInterval(checkLocalHealth, 10000); // Check local AI every 10s
     return () => clearInterval(interval);
