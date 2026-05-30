@@ -6,16 +6,27 @@
       "apiKey": "mlx",
       "models": [
         {
-          "id": "mlx-community/gemma-4-e2b-it-4bit",
+          "id": "",
           "displayName": "Gemma 4 E2B MLX (local)"
+        }
+      ]
+    },
+    "local-ollama": {
+      "type": "openai-compatible",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama",
+      "models": [
+        {
+          "id": "gemma4",
+          "displayName": "Gemma 4 Local (Ollama)"
         }
       ]
     }
   },
-  "ai.defaultProvider": "gemma4e2bmlx-local",
-  "ai.defaultModel": "mlx-community/gemma-4-e2b-it-4bit",
-  "antigravity.ai.defaultProvider": "gemma4e2bmlx-local",
-  "antigravity.ai.defaultModel": "mlx-community/gemma-4-e2b-it-4bit",
-  "antigravity.agent.defaultProvider": "gemma4e2bmlx-local",
-  "antigravity.agent.defaultModel": "mlx-community/gemma-4-e2b-it-4bit"
+  "ai.defaultProvider": "local-ollama",
+  "ai.defaultModel": "gemma4",
+  "antigravity.ai.defaultProvider": "local-ollama",
+  "antigravity.ai.defaultModel": "gemma4",
+  "antigravity.agent.defaultProvider": "local-ollama",
+  "antigravity.agent.defaultModel": "gemma4"
 }
