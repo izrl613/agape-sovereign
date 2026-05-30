@@ -11,6 +11,21 @@
 				"kind": "build",
 				"isDefault": true
 			}
+		},
+		{
+			"label": "Firebase Deploy: Hosting, Storage, Auth",
+			"type": "shell",
+			"command": "firebase deploy --only apphosting,hosting,storage,auth",
+			"problemMatcher": [],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "new",
+				"clear": true
+			}
 		}
 	]
 }
