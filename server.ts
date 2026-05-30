@@ -11,6 +11,8 @@ import admin from "firebase-admin";
 import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt";
+import fs from "fs";
+import os from "os";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
 // Initialize Firebase Admin
@@ -55,6 +57,28 @@ const __dirname = path.dirname(__filename);
 
 const RP_NAME = "Agape Sovereign";
 
+interface IDEConfig {
+  ai?: {
+    provider?: string;
+    baseUrl?: string;
+    model?: string;
+    contextlength?: number;
+  };
+}
+
+function loadIDEConfig(): IDEConfig {
+  try {
+    const configPath = path.join(os.homedir(), ".antigravity", "config.json");
+    if (fs.existsSync(configPath)) {
+      const content = fs.readFileSync(configPath, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("Failed to load IDE config from ~/.antigravity/config.json:", err);
+  }
+  return {};
+}
+
 async function startServer() {
   console.log("BOOT: Entering startServer()");
   const app = express();
@@ -71,16 +95,25 @@ async function startServer() {
 
   // Local AI Status probe (proxy for Ollama)
   app.get("/api/status", async (req, res) => {
+    const ideConfig = loadIDEConfig();
+    const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+    const model = ideConfig.ai?.model || "gemma4:e4b";
+
     try {
-      const response = await fetch("http://localhost:11434/v1/models", {
+      const response = await fetch(`${baseUrl}/v1/models`, {
         method: "GET",
         signal: AbortSignal.timeout(1000)
       });
       if (response.ok) {
+        let portNum = 11434;
+        try {
+          portNum = Number(new URL(baseUrl).port) || 80;
+        } catch (_) {}
+
         return res.json({
           online: true,
-          port: 11434,
-          modelName: "gemma4:e4b",
+          port: portNum,
+          modelName: model,
           usage: "Unlimited Tokens",
           costModel: "Zero External Billing"
         });
@@ -91,7 +124,7 @@ async function startServer() {
     res.json({
       online: false,
       port: 11434,
-      modelName: "gemma4:e4b",
+      modelName: model,
       usage: "Offline",
       costModel: "Standard Billing"
     });
@@ -101,26 +134,32 @@ async function startServer() {
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages, max_tokens } = req.body;
+      const ideConfig = loadIDEConfig();
+      const provider = ideConfig.ai?.provider || "ollama";
+      const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+      const model = ideConfig.ai?.model || "gemma4:e4b";
       
       // 1. Try local Ollama first
-      try {
-        const lmRes = await fetch("http://localhost:11434/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemma4:e4b",
-            messages,
-            max_tokens: max_tokens || -1,
-            stream: false
-          }),
-          signal: AbortSignal.timeout(5000)
-        });
-        if (lmRes.ok) {
-          const data = await lmRes.json();
-          return res.json(data);
+      if (provider === "ollama") {
+        try {
+          const lmRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: model,
+              messages,
+              max_tokens: max_tokens || -1,
+              stream: false
+            }),
+            signal: AbortSignal.timeout(5000)
+          });
+          if (lmRes.ok) {
+            const data = await lmRes.json();
+            return res.json(data);
+          }
+        } catch (e) {
+          console.log("[PROXY] Ollama offline or timed out, falling back to Cloud Gemini...");
         }
-      } catch (e) {
-        console.log("[PROXY] Ollama offline or timed out, falling back to Cloud Gemini...");
       }
 
       // 2. Fallback to Cloud Gemini
