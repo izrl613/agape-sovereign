@@ -31,6 +31,25 @@ function getGoogleGenAI(apiKey: string): GoogleGenAI {
   return aiInstance;
 }
 
+const GEMINI_SAFETY_SETTINGS = [
+  {
+    category: "HARM_CATEGORY_HATE_SPEECH" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_HARASSMENT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_DANGEROUS_CONTENT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+];
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -81,7 +100,7 @@ async function startServer() {
   // Local AI Chat Proxy (proxy to LM Studio, fallback to Gemini Cloud)
   app.post("/api/chat", async (req, res) => {
     try {
-      const { messages } = req.body;
+      const { messages, max_tokens } = req.body;
       
       // 1. Try local LM Studio first
       try {
@@ -91,6 +110,7 @@ async function startServer() {
           body: JSON.stringify({
             model: "google/gemma-4-e4b",
             messages,
+            max_tokens: max_tokens || -1,
             stream: false
           }),
           signal: AbortSignal.timeout(5000)
@@ -130,6 +150,7 @@ async function startServer() {
         contents,
         config: {
           systemInstruction: systemInstruction || undefined,
+          safetySettings: GEMINI_SAFETY_SETTINGS,
         }
       });
 
@@ -171,6 +192,7 @@ async function startServer() {
         ],
         config: {
           systemInstruction: ARCHITECT_SYSTEM_PROMPT,
+          safetySettings: GEMINI_SAFETY_SETTINGS,
         }
       });
 
@@ -208,6 +230,7 @@ async function startServer() {
         contents: [prompt],
         config: {
           temperature: 0.2,
+          safetySettings: GEMINI_SAFETY_SETTINGS,
         }
       });
 
@@ -262,7 +285,8 @@ async function startServer() {
       // Store challenge in signed cookie
       res.cookie('registration-challenge', options.challenge, { 
         httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production', 
+        secure: true, 
+        sameSite: 'lax',
         signed: true,
         maxAge: 60000 
       });
@@ -295,14 +319,17 @@ async function startServer() {
       });
 
       if (verification.verified && verification.registrationInfo) {
-        const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+        const { credential } = verification.registrationInfo;
+        const credentialID = credential.id;
+        const credentialPublicKey = Buffer.from(credential.publicKey).toString('base64url');
+        const counter = credential.counter;
         
         const userUid = userId || body.user?.id;
         if (!userUid) throw new Error("No user ID found");
 
-        await db.collection('users').doc(userUid).collection('passkeyCredentials').doc(Buffer.from(credentialID).toString('base64url')).set({
-          publicKey: Buffer.from(credentialPublicKey).toString('base64url'),
-          credentialID: Buffer.from(credentialID).toString('base64url'),
+        await db.collection('users').doc(userUid).collection('passkeyCredentials').doc(credentialID).set({
+          publicKey: credentialPublicKey,
+          credentialID: credentialID,
           counter,
           transports: body.response.transports || [],
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -350,12 +377,18 @@ async function startServer() {
 
       res.cookie('authentication-challenge', options.challenge, { 
         httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production', 
+        secure: true, 
+        sameSite: 'lax',
         signed: true,
         maxAge: 60000 
       });
       
-      res.cookie('auth-user-id', userId, { httpOnly: true, signed: true });
+      res.cookie('auth-user-id', userId, { 
+        httpOnly: true, 
+        secure: true, 
+        sameSite: 'lax',
+        signed: true 
+      });
 
       res.json(options);
     } catch (error) {
@@ -388,10 +421,11 @@ async function startServer() {
         expectedChallenge,
         expectedOrigin: origin,
         expectedRPID: rpId,
-        authenticator: {
-          credentialID: Buffer.from(credData.credentialID, 'base64url'),
-          credentialPublicKey: Buffer.from(credData.publicKey, 'base64url'),
+        credential: {
+          id: credData.credentialID,
+          publicKey: Buffer.from(credData.publicKey, 'base64url'),
           counter: credData.counter,
+          transports: credData.transports,
         },
       });
 

@@ -13,6 +13,25 @@ function getCloudClient() {
   return aiClient;
 }
 
+const GEMINI_SAFETY_SETTINGS = [
+  {
+    category: "HARM_CATEGORY_HATE_SPEECH" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_HARASSMENT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_DANGEROUS_CONTENT" as const,
+    threshold: "BLOCK_LOW_AND_ABOVE" as const,
+  },
+];
+
 export interface AIResponse {
   text: string;
 }
@@ -100,6 +119,7 @@ export async function chatComplete(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages,
+          max_tokens: -1,
           stream: false
         })
       });
@@ -123,6 +143,7 @@ export async function chatComplete(
   if (systemInstruction) {
     config.systemInstruction = systemInstruction;
   }
+  config.safetySettings = GEMINI_SAFETY_SETTINGS;
 
   const response = await cloudClient.models.generateContent({
     model: jsonMode ? CLOUD_MODEL_FLASH : CLOUD_MODEL_PRO,
@@ -160,7 +181,7 @@ export async function* chatStream(
       const response = await fetch(`${PROXY_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({ messages, max_tokens: -1 })
       });
 
       if (response.ok) {

@@ -62,7 +62,7 @@ async function startServer() {
     // Local AI Chat Proxy (proxy to LM Studio, fallback to Gemini Cloud)
     app.post("/api/chat", async (req, res) => {
         try {
-            const { messages } = req.body;
+            const { messages, max_tokens } = req.body;
             // 1. Try local LM Studio first
             try {
                 const lmRes = await fetch("http://localhost:1234/v1/chat/completions", {
@@ -71,6 +71,7 @@ async function startServer() {
                     body: JSON.stringify({
                         model: "google/gemma-4-e4b",
                         messages,
+                        max_tokens: max_tokens || -1,
                         stream: false
                     }),
                     signal: AbortSignal.timeout(5000)
