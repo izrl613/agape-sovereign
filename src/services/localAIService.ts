@@ -136,19 +136,15 @@ export async function chatComplete(
 
   // Cloud Fallback
   const cloudClient = getCloudClient();
-  const config: any = {};
-  if (jsonMode) {
-    config.responseMimeType = "application/json";
-  }
-  if (systemInstruction) {
-    config.systemInstruction = systemInstruction;
-  }
-  config.safetySettings = GEMINI_SAFETY_SETTINGS;
 
   const response = await cloudClient.models.generateContent({
     model: jsonMode ? CLOUD_MODEL_FLASH : CLOUD_MODEL_PRO,
     contents: prompt,
-    config
+    config: {
+      responseMimeType: jsonMode ? "application/json" : undefined,
+      systemInstruction: systemInstruction || undefined,
+      safetySettings: GEMINI_SAFETY_SETTINGS,
+    }
   });
 
   return { text: response.text || "" };
@@ -189,7 +185,7 @@ export async function* chatStream(
         const content = data.choices?.[0]?.message?.content || "";
         // Simulate premium speed typing streaming with O(1) additional memory
         for (let i = 0; i < content.length; i++) {
-          if (content[i] === " " || i === content.length - 1) {
+          if (content.charAt(i) === " " || i === content.length - 1) {
             yield { text: content.slice(0, i + 1) };
             await new Promise((r) => setTimeout(r, 12)); // smooth fast flow
           }

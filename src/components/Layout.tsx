@@ -874,7 +874,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         }
 
         const compiledModules = await Promise.all(DIFF_MODULES.map(async (m) => {
-          const encVal = activeData[m.id] || "";
+          const encVal = (m.id && typeof m.id === 'string' && !['__proto__', 'constructor', 'prototype'].includes(m.id) && Object.prototype.hasOwnProperty.call(activeData, m.id)) ? activeData[m.id] : "";
           let decrypted = "";
           if (encVal) {
             try {
@@ -884,7 +884,8 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
             }
           }
           
-          let hash = hashes[`${m.id}Hash`] || "";
+          const hashKey = `${m.id}Hash`;
+          let hash = (m.id && typeof m.id === 'string' && !['__proto__', 'constructor', 'prototype'].includes(hashKey) && Object.prototype.hasOwnProperty.call(hashes, hashKey)) ? hashes[hashKey] : "";
           if (!hash) {
             hash = await generateSHA256(decrypted);
           }
