@@ -20,7 +20,8 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
-    "rules": "storage.rules"
+    "rules": "storage.rules",
+    "bucket": "agape-sovereign.firebasestorage.app"
   },
   "database": {
     "rules": "database.rules.json"
@@ -105,7 +106,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     }
   ],
   "dataconnect": {

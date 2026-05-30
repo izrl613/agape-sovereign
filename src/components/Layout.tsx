@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, NeonButton } from './UI';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2, Copy, Download, RefreshCw, X as CloseIcon, Loader2 as LoaderIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2, Copy, Download, RefreshCw, X as CloseIcon, Loader2 as LoaderIcon, Sparkles } from 'lucide-react';
 import { checkBackendHealth } from '../services/functionsService';
 import { toast } from 'sonner';
 import { decryptClientSide, generateSHA256 } from '../utils/crypto';
@@ -346,15 +346,34 @@ const Header = () => {
     costModel: "Standard Billing"
   });
 
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+
+  const checkLocalHealth = async () => {
+    const status = await getLocalAIStatus();
+    setLocalAI(status);
+  };
+
   useEffect(() => {
-    const checkLocalHealth = async () => {
-      const status = await getLocalAIStatus();
-      setLocalAI(status);
-    };
     checkLocalHealth();
     const interval = setInterval(checkLocalHealth, 10000); // Check local AI every 10s
     return () => clearInterval(interval);
   }, []);
+
+  const handleModelSelect = (model: 'gemma' | 'gemini') => {
+    localStorage.setItem('selected_llm_model', model);
+    setIsModelDropdownOpen(false);
+    checkLocalHealth();
+
+    toast.success(`SWITCHED TO ${model === 'gemma' ? 'GEMMA 4 E4B' : 'GEMINI CLOUD'}`, {
+      description: model === 'gemma' 
+        ? "Running under private local resilient compute with unlimited token parameters (∞ Tokens)." 
+        : "Running under standard cloud hybrid intelligence.",
+      duration: 5000,
+      icon: model === 'gemma' 
+        ? <Shield className="w-4 h-4 text-[#00D4FF]" />
+        : <Sparkles className="w-4 h-4 text-[#f59e0b]" />
+    });
+  };
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -524,55 +543,180 @@ const Header = () => {
       )}
 
       {/* Model Selector Widget */}
-      <div 
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          background: localAI.online ? 'rgba(26, 115, 232, 0.12)' : 'rgba(245, 158, 11, 0.08)',
-          border: `1px solid ${localAI.online ? '#1a73e8' : 'rgba(245, 158, 11, 0.25)'}`,
-          padding: '4px 10px',
-          borderRadius: 8,
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          boxShadow: localAI.online ? '0 0 10px rgba(26, 115, 232, 0.2)' : 'none'
-        }}
-        className="hover:scale-[1.02] active:scale-[0.98] mr-2"
-        title={localAI.usage}
-      >
-        <span 
+      <div style={{ position: 'relative' }}>
+        <div 
+          onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
           style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: localAI.online ? '#1a73e8' : '#f59e0b',
-            boxShadow: `0 0 8px ${localAI.online ? '#1a73e8' : '#f59e0b'}`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            background: localAI.online ? 'rgba(26, 115, 232, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+            border: `1px solid ${localAI.online ? '#1a73e8' : 'rgba(245, 158, 11, 0.25)'}`,
+            padding: '4px 10px',
+            borderRadius: 8,
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: localAI.online ? '0 0 10px rgba(26, 115, 232, 0.2)' : 'none'
           }}
-          className={localAI.online ? 'animate-pulse' : ''}
-        />
-        <span 
-          style={{
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: '0.68rem',
-            fontWeight: 'bold',
-            color: localAI.online ? '#8ab4f8' : '#fbbf24',
-            letterSpacing: '0.05em'
-          }}
+          className="hover:scale-[1.02] active:scale-[0.98] mr-2"
+          title={localAI.usage}
         >
-          {localAI.online ? 'Gemma-4-E4B-MLX' : 'Gemini Cloud'}
-        </span>
-        <span 
-          style={{
-            fontFamily: "'Share Tech Mono'",
-            fontSize: '0.52rem',
-            color: localAI.online ? 'rgba(138, 180, 248, 0.7)' : 'rgba(251, 191, 36, 0.7)',
-            background: 'rgba(255,255,255,0.05)',
-            padding: '1px 4px',
-            borderRadius: 3
-          }}
-        >
-          {localAI.online ? '∞ TOKENS' : 'CLOUD'}
-        </span>
+          <span 
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: localAI.online ? '#1a73e8' : '#f59e0b',
+              boxShadow: `0 0 8px ${localAI.online ? '#1a73e8' : '#f59e0b'}`,
+            }}
+            className={localAI.online ? 'animate-pulse' : ''}
+          />
+          <span 
+            style={{
+              fontFamily: "'Share Tech Mono', monospace",
+              fontSize: '0.68rem',
+              fontWeight: 'bold',
+              color: localAI.online ? '#8ab4f8' : '#fbbf24',
+              letterSpacing: '0.05em'
+            }}
+          >
+            {localAI.online ? (localStorage.getItem('selected_llm_model') === 'gemma' ? 'Gemma 4 E4B' : 'Gemma-4-E4B-MLX') : 'Gemini Cloud'}
+          </span>
+          <span 
+            style={{
+              fontFamily: "'Share Tech Mono'",
+              fontSize: '0.52rem',
+              color: localAI.online ? 'rgba(138, 180, 248, 0.7)' : 'rgba(251, 191, 36, 0.7)',
+              background: 'rgba(255,255,255,0.05)',
+              padding: '1px 4px',
+              borderRadius: 3
+            }}
+          >
+            {localAI.online ? '∞ TOKENS' : 'CLOUD'}
+          </span>
+          <ChevronDown className="w-3 h-3 text-slate-400 opacity-60 ml-0.5" />
+        </div>
+
+        {/* Dropdown menu */}
+        <AnimatePresence>
+          {isModelDropdownOpen && (
+            <>
+              {/* Invisible backdrop to capture outside clicks */}
+              <div 
+                onClick={() => setIsModelDropdownOpen(false)}
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 40,
+                  background: 'transparent'
+                }}
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 8,
+                  marginTop: 8,
+                  width: 280,
+                  background: 'rgba(6, 13, 31, 0.96)',
+                  border: '1px solid rgba(0, 212, 255, 0.15)',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 212, 255, 0.08)',
+                  backdropFilter: 'blur(16px)',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                  padding: '8px'
+                }}
+              >
+                <div style={{ padding: '6px 8px 8px', borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: '#00D4FF', letterSpacing: '0.1em', fontWeight: 'bold' }}>
+                    SELECT ACTIVE INTEL ENGINE
+                  </span>
+                </div>
+                
+                {/* Option 1: Gemma 4 E4B */}
+                <div 
+                  onClick={() => handleModelSelect('gemma')}
+                  style={{
+                    padding: '10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    background: localStorage.getItem('selected_llm_model') !== 'gemini' ? 'rgba(26, 115, 232, 0.12)' : 'transparent',
+                    border: `1px solid ${localStorage.getItem('selected_llm_model') !== 'gemini' ? 'rgba(26, 115, 232, 0.3)' : 'transparent'}`,
+                    transition: 'all 0.2s ease',
+                    marginBottom: 4
+                  }}
+                  className="hover:bg-white/5"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1a73e8', boxShadow: '0 0 6px #1a73e8' }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#8ab4f8' }}>Gemma 4 E4B</span>
+                    </div>
+                    <span style={{ 
+                      fontFamily: "'Share Tech Mono'", 
+                      fontSize: '0.45rem', 
+                      background: 'rgba(26, 115, 232, 0.2)', 
+                      color: '#8ab4f8', 
+                      padding: '1px 4px', 
+                      borderRadius: 3,
+                      border: '1px solid rgba(26, 115, 232, 0.3)',
+                      fontWeight: 'bold'
+                    }}>
+                      ∞ TOKENS
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.62rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                    Zero external billing, fully private offline-resilient local enclave compute.
+                  </p>
+                </div>
+
+                {/* Option 2: Gemini Cloud */}
+                <div 
+                  onClick={() => handleModelSelect('gemini')}
+                  style={{
+                    padding: '10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    background: localStorage.getItem('selected_llm_model') === 'gemini' ? 'rgba(245, 158, 11, 0.08)' : 'transparent',
+                    border: `1px solid ${localStorage.getItem('selected_llm_model') === 'gemini' ? 'rgba(245, 158, 11, 0.25)' : 'transparent'}`,
+                    transition: 'all 0.2s ease'
+                  }}
+                  className="hover:bg-white/5"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#fbbf24' }}>Gemini Cloud</span>
+                    </div>
+                    <span style={{ 
+                      fontFamily: "'Share Tech Mono'", 
+                      fontSize: '0.45rem', 
+                      background: 'rgba(245, 158, 11, 0.15)', 
+                      color: '#fbbf24', 
+                      padding: '1px 4px', 
+                      borderRadius: 3,
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      fontWeight: 'bold'
+                    }}>
+                      CLOUD
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.62rem', color: '#94a3b8', lineHeight: 1.3 }}>
+                    Standard high-availability hybrid cloud intelligence.
+                  </p>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Profile button */}

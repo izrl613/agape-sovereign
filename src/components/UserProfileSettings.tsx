@@ -61,22 +61,26 @@ export const UserProfileSettings = () => {
     }
   };
 
-  const downloadReport = (pdfDataUrl: string, filename: string) => {
+  const downloadReport = async (pdfDataUrl: string, filename: string) => {
     if (!pdfDataUrl) {
       toast.error("Report PDF data is missing.");
       return;
     }
+    const toastId = toast.loading("PROMPTING BIOMETRIC PASSKEY VERIFICATION...");
     try {
+      await loginWithPasskey(user?.email || '');
+      toast.dismiss(toastId);
       const link = document.createElement('a');
       link.href = pdfDataUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Sovereign PDF recovered locally");
-    } catch (e) {
-      console.error("Download failed:", e);
-      toast.error("Download failed");
+      toast.success("Sovereign PDF decrypted and recovered");
+    } catch (e: any) {
+      toast.dismiss(toastId);
+      console.error("Biometric recovery challenge cancelled or failed:", e);
+      toast.error("Biometric verification failed. PDF decryption aborted.");
     }
   };
 

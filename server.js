@@ -14,6 +14,13 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let aiInstance = null;
+function getGoogleGenAI(apiKey) {
+    if (!aiInstance) {
+        aiInstance = new GoogleGenAI({ apiKey });
+    }
+    return aiInstance;
+}
 const RP_NAME = "Agape Sovereign";
 async function startServer() {
     const app = express();
@@ -24,6 +31,102 @@ async function startServer() {
     app.get("/api/health", (req, res) => {
         res.json({ status: "ok", timestamp: new Date().toISOString() });
     });
+    // Local AI Status probe (proxy for LM Studio)
+    app.get("/api/status", async (req, res) => {
+        try {
+            const response = await fetch("http://localhost:1234/v1/models", {
+                method: "GET",
+                signal: AbortSignal.timeout(1000)
+            });
+            if (response.ok) {
+                return res.json({
+                    online: true,
+                    port: 1234,
+                    modelName: "Gemma-4-E4B-MLX",
+                    usage: "Unlimited Tokens",
+                    costModel: "Zero External Billing"
+                });
+            }
+        }
+        catch (e) {
+            // LM Studio is offline
+        }
+        res.json({
+            online: false,
+            port: 1234,
+            modelName: "Gemma-4-E4B-MLX",
+            usage: "Offline",
+            costModel: "Standard Billing"
+        });
+    });
+    // Local AI Chat Proxy (proxy to LM Studio, fallback to Gemini Cloud)
+    app.post("/api/chat", async (req, res) => {
+        try {
+            const { messages } = req.body;
+            // 1. Try local LM Studio first
+            try {
+                const lmRes = await fetch("http://localhost:1234/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "google/gemma-4-e4b",
+                        messages,
+                        stream: false
+                    }),
+                    signal: AbortSignal.timeout(5000)
+                });
+                if (lmRes.ok) {
+                    const data = await lmRes.json();
+                    return res.json(data);
+                }
+            }
+            catch (e) {
+                console.log("[PROXY] LM Studio offline or timed out, falling back to Cloud Gemini...");
+            }
+            // 2. Fallback to Cloud Gemini
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (!apiKey) {
+                return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
+            }
+            const ai = getGoogleGenAI(apiKey);
+            // Extract system instructions and messages in Gemini format
+            let systemInstruction = "";
+            const contents = [];
+            for (const m of messages) {
+                if (m.role === "system") {
+                    systemInstruction = m.content;
+                }
+                else {
+                    contents.push({
+                        role: m.role === "assistant" ? "model" : "user",
+                        parts: [{ text: m.content || "" }]
+                    });
+                }
+            }
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents,
+                config: {
+                    systemInstruction: systemInstruction || undefined,
+                }
+            });
+            const replyText = response.text || "";
+            res.json({
+                choices: [
+                    {
+                        message: {
+                            role: "assistant",
+                            content: replyText
+                        }
+                    }
+                ]
+            });
+        }
+        catch (error) {
+            console.error("Local chat proxy error:", error);
+            res.status(500).json({ error: "Failed to generate local AI response" });
+        }
+    });
     // Architect AI Chat Endpoint
     app.post("/api/architect", async (req, res) => {
         try {
@@ -33,7 +136,7 @@ async function startServer() {
                 return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
             }
             // Using gemini-2.5-flash for maximum cost efficiency and speed.
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = getGoogleGenAI(apiKey);
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: [
@@ -59,7 +162,7 @@ async function startServer() {
             if (!apiKey) {
                 return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
             }
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = getGoogleGenAI(apiKey);
             const prompt = `You are an automated privacy agent representing ${userName}. Generate a legally binding data deletion request under CCPA, GDPR, and FCRA regulations addressed to the data broker "${brokerName}".
       
       Return ONLY a JSON object with this exact format, nothing else:

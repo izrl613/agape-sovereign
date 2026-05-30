@@ -239,8 +239,62 @@ export const startModuleScan = async (userId: string, email: string, module: str
   }
 };
 
+const collectLiveSystemTelemetry = async () => {
+  if (typeof window === 'undefined') return {};
+  
+  const hardware = {
+    cores: navigator.hardwareConcurrency || 'unknown',
+    memory: (navigator as any).deviceMemory || 'unknown',
+    platform: navigator.platform || 'unknown',
+    userAgent: navigator.userAgent || 'unknown',
+    language: navigator.language || 'unknown',
+  };
+
+  const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection || {};
+  const network = {
+    type: conn.type || 'unknown',
+    downlink: conn.downlink || 'unknown',
+    effectiveType: conn.effectiveType || 'unknown',
+    rtt: conn.rtt || 'unknown',
+  };
+
+  const screenMetrics = {
+    width: window.screen?.width || 0,
+    height: window.screen?.height || 0,
+    colorDepth: window.screen?.colorDepth || 0,
+    orientation: window.screen?.orientation?.type || 'unknown',
+  };
+
+  let battery = { level: 'unknown', charging: 'unknown' };
+  try {
+    if ('getBattery' in navigator) {
+      const bat = await (navigator as any).getBattery();
+      battery = {
+        level: `${Math.round(bat.level * 100)}%`,
+        charging: bat.charging ? 'yes' : 'no'
+      };
+    }
+  } catch (e) {}
+
+  let storageStats = { usedKeys: 0 };
+  try {
+    storageStats.usedKeys = localStorage.length;
+  } catch (e) {}
+
+  return {
+    hardware,
+    network,
+    screenMetrics,
+    battery,
+    storageStats,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timestamp: new Date().toISOString()
+  };
+};
+
 const generateFinding = async (module: string, email: string) => {
   try {
+    const telemetry = await collectLiveSystemTelemetry();
     let moduleSpecificInstructions = "";
     if (module === "mobile") {
       moduleSpecificInstructions = `
@@ -316,12 +370,16 @@ const generateFinding = async (module: string, email: string) => {
 
     const prompt = `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".
     ${moduleSpecificInstructions}
+    
+    CRITICAL: Analyze and base the finding on the user's actual real-time device telemetry:
+    ${JSON.stringify(telemetry, null, 2)}
+    
     Return the result in JSON format with the following fields:
     - title: A short description of the finding.
     - status: One of "NUKED", "KNOXED", "MONITORED".
     - details: A more detailed explanation of the finding and recommended action.
     
-    Make it sound technical and professional, fitting for the "Architect AI" persona.`;
+    Make it sound highly technical and professional, fitting for the "Architect AI" persona.`;
 
     const response = await chatComplete(prompt, undefined, true);
     const result = JSON.parse(response.text || "{}");

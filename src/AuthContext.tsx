@@ -173,27 +173,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error('You must be logged in to bind a passkey.');
       return;
     }
-
     try {
-      const getOptions = httpsCallable(functions, 'registerPasskeyOptions');
-      const verifyRegistration = httpsCallable(functions, 'verifyPasskeyRegistration');
+      // 1. Get registration options from backend
+      const optionsRes = await fetch('/passkey/register/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentUser.email })
+      });
+      if (!optionsRes.ok) {
+        const err = await optionsRes.json();
+        throw new Error(err.error || 'Failed to obtain registration options');
+      }
+      const options = await optionsRes.json();
 
-      const optionsResult = await getOptions({ userId: currentUser.uid, userEmail: currentUser.email });
-      const options = optionsResult.data as PublicKeyCredentialCreationOptionsJSON;
+      // 2. Create credential on client
+      const attestationResponse = await startRegistration({ optionsJSON: options as any });
 
-      const attestationResponse = await startRegistration({ optionsJSON: options });
-
-      const verifyResult = await verifyRegistration({ response: attestationResponse });
-      const { verified } = verifyResult.data as { verified: boolean };
-
-      if (verified) {
+      // 3. Send attestation to backend for verification
+      const verifyRes = await fetch('/passkey/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...attestationResponse, email: currentUser.email })
+      });
+      const verifyResult = await verifyRes.json();
+      if (verifyResult.success) {
         toast.success('Universal Passkey bound to this device successfully.');
         logEvent(AuditLogType.SECURITY_EVENT, 'Passkey bound to device', currentUser.uid, currentUser.email || undefined);
       } else {
-        throw new Error('Verification failed');
+        throw new Error(verifyResult.error || 'Verification failed');
       }
     } catch (error: any) {
-      console.error('WebAuthn Error:', error);
+      console.error('WebAuthn registration error:', error);
       if (error.name === 'NotAllowedError') {
         toast.error('Passkey registration cancelled by user.');
       } else {
@@ -202,51 +212,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  function getFunctionUrl(name: string): string {
-    const PROJECT_ID = 'agape-sovereign';
-    const REGION = 'us-east1';
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      return `http://127.0.0.1:5001/${PROJECT_ID}/${REGION}/${name}`;
-    }
-    return `https://${REGION}-${PROJECT_ID}.cloudfunctions.net/${name}`;
-  }
-
   const handleLoginWithPasskey = async (email: string) => {
-    if (!email) {
-      toast.error('Please enter your email to login with passkey.');
-      return;
-    }
-
+    // Email is optional; we rely on Cloudflare Access JWT for UID.
     try {
-      const optionsRes = await fetch(getFunctionUrl('loginPasskeyOptions'), {
+      // 1. Get authentication options from backend
+      const optionsRes = await fetch('/passkey/authenticate/options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email })
       });
-
       if (!optionsRes.ok) {
-        const errData = await optionsRes.json();
-        throw new Error(errData.error || 'Failed to fetch login options');
+        const err = await optionsRes.json();
+        throw new Error(err.error || 'Failed to obtain authentication options');
       }
-      const { tempUserId, ...authOptions } = await optionsRes.json();
-      const assertionResponse = await startAuthentication({ optionsJSON: authOptions as unknown as PublicKeyCredentialRequestOptionsJSON });
+      const authOptions = await optionsRes.json();
 
-      const verifyRes = await fetch(getFunctionUrl('verifyPasskeyLogin'), {
+      // 2. Perform authentication on client
+      const assertionResponse = await startAuthentication({ optionsJSON: authOptions as any });
+
+      // 3. Verify with backend and obtain custom token
+      const verifyRes = await fetch('/passkey/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...assertionResponse, tempUserId }),
+        body: JSON.stringify({ ...assertionResponse, email })
       });
+      const verifyResult = await verifyRes.json();
+      const { verified, customToken, error } = verifyResult;
 
-      const { verified, token, error } = await verifyRes.json();
-
-      if (verified && token) {
-        await signInWithCustomToken(auth, token);
+      if (verified && customToken) {
+        await signInWithCustomToken(auth, customToken);
         toast.success('Authenticated successfully with Passkey.');
       } else {
         throw new Error(error || 'Verification failed');
       }
     } catch (error: any) {
-      console.error('WebAuthn Login Error:', error);
+      console.error('WebAuthn login error:', error);
       if (error.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
       } else {
