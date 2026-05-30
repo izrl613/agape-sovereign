@@ -7,10 +7,7 @@
 			"problemMatcher": [],
 			"label": "npm: start",
 			"detail": "NODE_ENV=production node dist/server.js",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			}
+			"group": "build"
 		},
 		{
 			"label": "Firebase Deploy: Hosting, Storage, Auth",
@@ -19,7 +16,7 @@
 			"problemMatcher": [],
 			"group": {
 				"kind": "build",
-				"isDefault": false
+				"isDefault": true
 			},
 			"presentation": {
 				"reveal": "always",
