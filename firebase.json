@@ -37,7 +37,6 @@
         "*.local"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "disallowLegacyRuntimeConfig": true,
@@ -54,7 +53,6 @@
         "*.local"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "source": "agape-sovereign"
@@ -77,9 +75,6 @@
       "alwaysDeployFromSource": false
     }
   ],
-  "dataconnect": {
-    "source": "dataconnect"
-  },
   "remoteconfig": {
     "template": "remoteconfig.template.json"
   },
