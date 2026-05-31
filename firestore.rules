@@ -63,7 +63,7 @@ service cloud.firestore {
       }
 
       // ─── PASSKEY DATA SUBCOLLECTION ────────────────
-      match /passkeys/{credentialId} {
+      match /passkeyCredentials/{credentialId} {
         allow read: if isUserOwner(userId);
         allow create: if isUserOwner(userId) &&
                          request.resource.data.publicKey != null &&

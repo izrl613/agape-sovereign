@@ -71,51 +71,10 @@
         ".venv/**",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        ".venv",
-        ".venv/**",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        ".venv",
-        ".venv/**",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
+        "functions",
+        "dist"
       ],
       "alwaysDeployFromSource": false
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        ".venv",
-        ".venv/**",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
     }
   ],
   "dataconnect": {
