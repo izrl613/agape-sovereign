@@ -184,3 +184,85 @@ body::before {
   background-color: var(--neon-blue);
   border-radius: 10px;
 }
+
+/* =====================================================
+   GEMMA-4-E4B-MLX — CLASSIC BLUE MODEL SELECTOR THEME
+   ===================================================== */
+
+:root {
+  --classic-blue: #007bff;
+  --classic-blue-glow: rgba(0, 123, 255, 0.35);
+  --classic-blue-dim: rgba(0, 123, 255, 0.12);
+}
+
+@keyframes pulse-classic-blue {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--classic-blue-glow), 0 0 16px var(--classic-blue-dim);
+    border-color: var(--classic-blue);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 123, 255, 0.55), 0 0 32px rgba(0, 123, 255, 0.2);
+    border-color: #3395ff;
+  }
+}
+
+/* Active state applied when Gemma-4-E4B-MLX is selected */
+.gemma-chip-active {
+  animation: pulse-classic-blue 2.4s ease-in-out infinite;
+}
+
+/* Unlimited tokens badge */
+.unlimited-tokens-badge {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: bold;
+  color: var(--classic-blue);
+  background: rgba(0, 123, 255, 0.15);
+  border: 1px solid rgba(0, 123, 255, 0.35);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.08em;
+}
+
+/* Model selector card (dropdown row) */
+.classic-blue-card {
+  background: rgba(0, 123, 255, 0.08);
+  border: 1px solid rgba(0, 123, 255, 0.3);
+  border-radius: 8px;
+  color: var(--classic-blue);
+}
+
+.classic-blue-card:hover {
+  background: rgba(0, 123, 255, 0.14);
+}
+
+/* =====================================================
+   DARK MODE — remark-github-blockquote-alert overrides
+   ===================================================== */
+@media (prefers-color-scheme: dark) {
+  .markdown-alert {
+    border-left: 4px solid var(--classic-blue);
+    background: rgba(0, 123, 255, 0.06);
+    color: #cfe0ff;
+  }
+  .markdown-alert.markdown-alert-note {
+    border-left-color: var(--classic-blue);
+  }
+  .markdown-alert.markdown-alert-tip {
+    border-left-color: #00D4FF;
+  }
+  .markdown-alert.markdown-alert-important {
+    border-left-color: #a855f7;
+  }
+  .markdown-alert.markdown-alert-warning {
+    border-left-color: #FF7A18;
+  }
+  .markdown-alert.markdown-alert-caution {
+    border-left-color: #FF2E9F;
+  }
+  /* Ensure Classic Blue text is readable in dark mode */
+  .text-classic-blue {
+    color: #8ab4f8;
+    text-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+  }
+}

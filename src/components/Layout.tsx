@@ -367,13 +367,13 @@ const Header = () => {
     setIsModelDropdownOpen(false);
     checkLocalHealth();
 
-    toast.success(`SWITCHED TO ${model === 'gemma' ? 'GEMMA 4 E4B' : 'GEMINI CLOUD'}`, {
+    toast.success(`SWITCHED TO ${model === 'gemma' ? 'GEMMA-4-E4B-MLX' : 'GEMINI CLOUD'}`, {
       description: model === 'gemma' 
-        ? "Running under private local resilient compute with unlimited token parameters (∞ Tokens)." 
+        ? "Gemma-4-E4B-MLX active — local resilient compute, ∞ unlimited tokens, zero external billing." 
         : "Running under standard cloud hybrid intelligence.",
       duration: 5000,
       icon: model === 'gemma' 
-        ? <Shield className="w-4 h-4 text-[#00D4FF]" />
+        ? <Shield className="w-4 h-4" style={{ color: '#007bff' }} />
         : <Sparkles className="w-4 h-4 text-[#f59e0b]" />
     });
   };
@@ -553,24 +553,24 @@ const Header = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: localAI.online ? 'rgba(26, 115, 232, 0.12)' : 'rgba(245, 158, 11, 0.08)',
-            border: `1px solid ${localAI.online ? '#1a73e8' : 'rgba(245, 158, 11, 0.25)'}`,
+            background: localAI.online ? 'rgba(0, 123, 255, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+            border: `1px solid ${localAI.online ? '#007bff' : 'rgba(245, 158, 11, 0.25)'}`,
             padding: '4px 10px',
             borderRadius: 8,
             cursor: 'pointer',
             transition: 'all 0.3s ease',
-            boxShadow: localAI.online ? '0 0 10px rgba(26, 115, 232, 0.2)' : 'none'
+            boxShadow: localAI.online ? '0 0 12px rgba(0, 123, 255, 0.3), 0 0 20px rgba(0, 123, 255, 0.1)' : 'none'
           }}
-          className="hover:scale-[1.02] active:scale-[0.98] mr-2"
+          className={`hover:scale-[1.02] active:scale-[0.98] mr-2 ${localAI.online ? 'gemma-chip-active' : ''}`}
           title={localAI.usage}
         >
           <span 
             style={{
-              width: 6,
-              height: 6,
+              width: 7,
+              height: 7,
               borderRadius: '50%',
-              background: localAI.online ? '#1a73e8' : '#f59e0b',
-              boxShadow: `0 0 8px ${localAI.online ? '#1a73e8' : '#f59e0b'}`,
+              background: localAI.online ? '#007bff' : '#f59e0b',
+              boxShadow: `0 0 10px ${localAI.online ? '#007bff' : '#f59e0b'}`,
             }}
             className={localAI.online ? 'animate-pulse' : ''}
           />
@@ -579,25 +579,28 @@ const Header = () => {
               fontFamily: "'Share Tech Mono', monospace",
               fontSize: '0.68rem',
               fontWeight: 'bold',
-              color: localAI.online ? '#8ab4f8' : '#fbbf24',
-              letterSpacing: '0.05em'
+              color: localAI.online ? '#007bff' : '#fbbf24',
+              letterSpacing: '0.05em',
+              textShadow: localAI.online ? '0 0 8px rgba(0, 123, 255, 0.6)' : 'none'
             }}
           >
-            {localAI.online ? (localStorage.getItem('selected_llm_model') === 'gemma' ? 'Gemma 4 E4B' : 'Gemma-4-E4B-MLX') : 'Gemini Cloud'}
+            {localStorage.getItem('selected_llm_model') !== 'gemini' ? 'Gemma-4-E4B-MLX' : 'Gemini Cloud'}
           </span>
           <span 
             style={{
               fontFamily: "'Share Tech Mono'",
               fontSize: '0.52rem',
-              color: localAI.online ? 'rgba(138, 180, 248, 0.7)' : 'rgba(251, 191, 36, 0.7)',
-              background: 'rgba(255,255,255,0.05)',
-              padding: '1px 4px',
-              borderRadius: 3
+              color: localAI.online ? '#007bff' : 'rgba(251, 191, 36, 0.7)',
+              background: localAI.online ? 'rgba(0, 123, 255, 0.15)' : 'rgba(255,255,255,0.05)',
+              padding: '1px 5px',
+              borderRadius: 3,
+              border: localAI.online ? '1px solid rgba(0,123,255,0.3)' : 'none',
+              fontWeight: 'bold'
             }}
           >
             {localAI.online ? '∞ TOKENS' : 'CLOUD'}
           </span>
-          <ChevronDown className="w-3 h-3 text-slate-400 opacity-60 ml-0.5" />
+          <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" style={{ color: localAI.online ? '#007bff' : '#94a3b8' }} />
         </div>
 
         {/* Dropdown menu */}
@@ -660,24 +663,24 @@ const Header = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1a73e8', boxShadow: '0 0 6px #1a73e8' }} />
-                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#8ab4f8' }}>Gemma 4 E4B</span>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#007bff', boxShadow: '0 0 8px #007bff' }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#007bff', textShadow: '0 0 6px rgba(0,123,255,0.5)' }}>Gemma-4-E4B-MLX</span>
                     </div>
                     <span style={{ 
                       fontFamily: "'Share Tech Mono'", 
                       fontSize: '0.45rem', 
-                      background: 'rgba(26, 115, 232, 0.2)', 
-                      color: '#8ab4f8', 
-                      padding: '1px 4px', 
+                      background: 'rgba(0, 123, 255, 0.2)', 
+                      color: '#007bff', 
+                      padding: '1px 5px', 
                       borderRadius: 3,
-                      border: '1px solid rgba(26, 115, 232, 0.3)',
+                      border: '1px solid rgba(0, 123, 255, 0.4)',
                       fontWeight: 'bold'
                     }}>
                       ∞ TOKENS
                     </span>
                   </div>
                   <p style={{ margin: 0, fontSize: '0.62rem', color: '#94a3b8', lineHeight: 1.3 }}>
-                    Zero external billing, fully private offline-resilient local enclave compute.
+                    Local LMStudio · Gemma-4-E4B-MLX · Unlimited tokens, zero external billing, fully private.
                   </p>
                 </div>
 
