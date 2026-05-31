@@ -67,6 +67,8 @@
       "ignore": [
         "node_modules",
         ".git",
+        ".venv",
+        ".venv/**",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
@@ -79,6 +81,8 @@
       "ignore": [
         "node_modules",
         ".git",
+        ".venv",
+        ".venv/**",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
@@ -91,6 +95,8 @@
       "ignore": [
         "node_modules",
         ".git",
+        ".venv",
+        ".venv/**",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
@@ -103,6 +109,8 @@
       "ignore": [
         "node_modules",
         ".git",
+        ".venv",
+        ".venv/**",
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"

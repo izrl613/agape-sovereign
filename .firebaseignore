@@ -1,0 +1,29 @@
+# Firebase ignore file — prevents CLI from reading these paths during any deploy
+# Fixes: ENOENT error on .venv/bin/python broken symlink
+
+# Python virtual environment (contains broken symlinks on non-Python hosts)
+.venv/
+**/.venv/**
+
+# Git internals
+.git/
+**/.git/**
+
+# Local dev artifacts
+node_modules/
+**/node_modules/**
+*.local
+
+# Firebase debug logs
+firebase-debug.log
+firebase-debug.*.log
+
+# IDE / OS artifacts
+.DS_Store
+.vscode/
+*.swp
+*.swo
+
+# Build output (not deployed via apphosting source)
+dist/
+.firebase/
