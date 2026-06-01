@@ -1,0 +1,6 @@
+providers:
+  local:
+    engine: "ollama"
+    baseUrl: "http://localhost:11434"
+    models:
+      - "gemma4"
