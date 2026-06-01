@@ -1,0 +1,54 @@
+# Queries for Agape Sovereign Enclave 2026
+
+query GetUser @auth(level: USER) {
+  user(key: { uid_expr: "auth.uid" }) {
+    uid
+    name
+    email
+    provider
+    sovereignScore
+    lastLoginAt
+  }
+}
+
+query GetUserVectorStatuses @auth(level: USER) {
+  userVectorStatuses(where: { user: { uid: { eq_expr: "auth.uid" } } }) {
+    identityVector {
+      id
+      name
+      icon
+      description
+    }
+    sovereigntyScore
+    nukedCount
+    knoxedCount
+    monitoredCount
+    lastScanAt
+    statusNotes
+  }
+}
+
+query GetFindings($vectorId: String!) @auth(level: USER) {
+  findings(where: {
+    user: { uid: { eq_expr: "auth.uid" } }
+    identityVector: { id: { eq: $vectorId } }
+  }) {
+    id
+    type
+    label
+    detail
+    createdAt
+    action
+    status
+  }
+}
+
+query GetMonitoredEmails @auth(level: USER) {
+  monitoredEmails(where: { user: { uid: { eq_expr: "auth.uid" } } }) {
+    id
+    emailAddress
+    status
+    createdAt
+    lastCheckedAt
+  }
+}

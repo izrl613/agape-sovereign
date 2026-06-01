@@ -1,0 +1,8 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/studio-7064631841-986f8/app', '.']
+images:
+  - 'gcr.io/studio-7064631841-986f8/app'
+options:
+  logging: CLOUD_LOGGING_ONLY
+serviceAccount: 'projects/studio-7064631841-986f8/serviceAccounts/firebase-adminsdk-fbsvc@studio-7064631841-986f8.iam.gserviceaccount.com'

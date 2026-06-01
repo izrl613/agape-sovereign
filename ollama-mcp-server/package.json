@@ -1,0 +1,13 @@
+{
+  "name": "ollama-mcp-server",
+  "version": "1.0.0",
+  "description": "An MCP server for the local MLX LLM (GRMMA4:E4B)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1"
+  }
+}

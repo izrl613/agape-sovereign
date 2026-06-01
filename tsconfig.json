@@ -1,0 +1,58 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/main.tsx",
+    "src/App.tsx",
+    "src/components/Layout.tsx",
+    "src/components/Login.tsx",
+    "src/components/Dashboard.tsx",
+    "src/components/DiffModules.tsx",
+    "src/components/ArchitectAI.tsx",
+    "src/components/AdminPortal.tsx",
+    "src/components/UserProfileSettings.tsx",
+    "src/components/SecurityTips.tsx",
+    "src/components/SplashEntry.tsx",
+    "src/components/UI.tsx",
+    "src/components/ErrorBoundary.tsx",
+    "src/AuthContext.tsx",
+    "src/ScanContext.tsx",
+    "src/firebase.ts",
+    "src/architectPrompt.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "firebase-1",
+    "agape-sovereign",
+    "functions",
+    "backend",
+    "frontend",
+    "src/app",
+    "src/lib",
+    "src/components/architect-ai-app.tsx",
+    "server.ts"
+  ]
+}

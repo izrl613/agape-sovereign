@@ -1,0 +1,87 @@
+// ============================================================
+// ARCHITECT AI — FIREBASE STORAGE RULES
+// Agape Sovereign Enclave 2026
+// Deploy with: firebase deploy --only storage
+// ============================================================
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ─── HELPER FUNCTIONS ──────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
+    }
+
+    function isUserOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isValidPDF() {
+      return request.resource.contentType == 'application/pdf' &&
+             request.resource.size < 10 * 1024 * 1024; // 10MB max
+    }
+
+    // ─── PDF REPORTS (diff_reports/pdfs) ───────────────────
+    // Users can only download their own PDFs
+    match /diff_reports/pdfs/{userId}/{reportFile} {
+      // Read: User can download their own PDFs
+      allow read: if isAuthenticated() && isUserOwner(userId);
+      
+      // Write: Only Cloud Functions can create PDFs
+      allow write: if false; // Use Cloud Functions for generation
+      
+      // Delete: User can delete their own PDFs
+      allow delete: if isAuthenticated() && isUserOwner(userId);
+    }
+
+    // ─── USER BACKUPS (user_backups) ───────────────────────
+    // Users can backup encrypted data
+    match /user_backups/{userId}/{backup} {
+      // Read: User can access their backups
+      allow read: if isAuthenticated() && isUserOwner(userId);
+      
+      // Create: User can create backups
+      allow create: if isAuthenticated() && 
+                       isUserOwner(userId) &&
+                       request.resource.size < 100 * 1024 * 1024; // 100MB max
+      
+      // Delete: User can delete their backups
+      allow delete: if isAuthenticated() && isUserOwner(userId);
+    }
+
+    // ─── PROFILE IMAGES (profiles/avatars) ─────────────────
+    // Users can upload profile pictures
+    match /profiles/avatars/{userId}/avatar {
+      allow read: if isAuthenticated();
+      
+      allow create, update: if isAuthenticated() && 
+                               isUserOwner(userId) &&
+                               request.resource.size < 5 * 1024 * 1024; // 5MB
+      
+      allow delete: if isAuthenticated() && isUserOwner(userId);
+    }
+
+    // ─── AUDIT LOGS (admin_only) ──────────────────────────
+    // Only admins can access audit logs
+    match /audit_logs/{document=**} {
+      allow read: if isAdmin();
+      allow write: if false; // Cloud Functions only
+    }
+
+    // ─── TEMPORARY UPLOADS (temp) ─────────────────────────
+    // Temporary storage for processing (auto-deleted after 24h)
+    match /temp/{userId}/{file} {
+      allow read, write, delete: if isAuthenticated() && isUserOwner(userId);
+    }
+
+    // ─── DENY ALL BY DEFAULT ──────────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

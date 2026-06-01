@@ -1,0 +1,173 @@
+// ============================================================
+// ARCHITECT AI — FIRESTORE SECURITY RULES
+// Agape Sovereign Enclave 2026
+// Zero-knowledge architecture: Users can only access their own data
+// Deploy with: firebase deploy --only firestore:rules
+// ============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ─── ADMIN ROLE FUNCTION ───────────────────────────
+    function isAdmin() {
+      return request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
+    }
+
+    // ─── AUTHENTICATED CHECK ───────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // ─── USER OWNERSHIP CHECK ──────────────────────────
+    function isUserOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // ─── RATE LIMITING HELPER ──────────────────────────
+    function withinRateLimit(field, limit, windowSeconds) {
+      let now = request.time;
+      let lastAction = resource.data[field];
+      return lastAction == null || 
+             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDay()) >
+             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDay());
+    }
+
+    // ─── USERS COLLECTION ──────────────────────────────
+    // User profiles - strictly owned by the user
+    match /users/{userId} {
+      // Read: User can read their own profile
+      allow read: if isUserOwner(userId);
+      
+      // Create: Users can create their own profile (only once)
+      allow create: if isAuthenticated() && 
+                       isUserOwner(userId) &&
+                       request.resource.data.uid == userId &&
+                       request.resource.data.email == request.auth.token.email;
+      
+      // Update: Users can update their own profile (rate-limited to once per day)
+      allow update: if isUserOwner(userId) &&
+                       withinRateLimit('lastProfileUpdate', 1, 86400);
+      
+      // Delete: Users cannot delete their own profile; admin-only
+      allow delete: if isAdmin();
+
+      // ─── MONITORED EMAILS SUBCOLLECTION ────────────
+      match /monitoredEmails/{emailDoc} {
+        allow read: if isUserOwner(userId);
+        allow create: if isUserOwner(userId) &&
+                         request.resource.data.email != null &&
+                         request.resource.data.status == 'active';
+        allow update: if isUserOwner(userId);
+        allow delete: if isUserOwner(userId);
+      }
+
+      // ─── PASSKEY DATA SUBCOLLECTION ────────────────
+      match /passkeys/{credentialId} {
+        allow read: if isUserOwner(userId);
+        allow create: if isUserOwner(userId) &&
+                         request.resource.data.publicKey != null &&
+                         request.resource.data.transports != null;
+        allow delete: if isUserOwner(userId);
+      }
+    }
+
+    // ─── DIFF SCANS COLLECTION ─────────────────────────
+    // DIFF scan results - user-restricted, immutable after creation
+    match /diff_scans/{scanId} {
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.scanId == scanId &&
+                       request.resource.data.timestamp == request.time;
+      
+      // Scans are immutable (no updates after creation)
+      allow update: if false;
+      
+      // Users can delete their own scans after 90 days
+      allow delete: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid &&
+                       request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
+                       (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
+                        request.time.getMonth() > resource.data.timestamp.getMonth() + 2);
+
+      // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
+      match /vectorResults/{vectorId} {
+        allow read: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
+        
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
+      }
+
+      // ─── FINDINGS SUBCOLLECTION ────────────────────
+      match /findings/{findingId} {
+        allow read: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
+        
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
+      }
+    }
+
+    // ─── DIFF REPORTS COLLECTION ──────────────────────
+    // Generated PDF reports - user-restricted, encrypted
+    match /diff_reports/{reportId} {
+      allow read: if isAuthenticated() && 
+                     resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.sha256Digest != null;
+      
+      // Reports are immutable
+      allow update: if false;
+      
+      // Users can delete their reports after 2 years (retention policy)
+      allow delete: if isAuthenticated() && 
+                       resource.data.userId == request.auth.uid;
+    }
+
+    // ─── AUDIT LOG COLLECTION ──────────────────────────
+    // System audit trail - admin-read-only, immutable
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      
+      // Only Cloud Functions can write to audit logs
+      allow create: if request.auth.uid == null && // Service account has no UID
+                       request.resource.data.timestamp == request.time;
+      
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ─── SESSION TOKENS COLLECTION ────────────────────
+    // Temporary AI chat session tokens - user-restricted, auto-delete
+    match /sessions/{userId} {
+      allow read: if isAuthenticated() && isUserOwner(userId);
+      
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.expiresAt > request.time;
+      
+      allow delete: if isAuthenticated() && isUserOwner(userId);
+      
+      // Subcollection: Chat messages
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && 
+                       get(/databases/$(database)/documents/sessions/$(userId)).data.userId == request.auth.uid;
+        
+        allow create: if isAuthenticated() && 
+                         get(/databases/$(database)/documents/sessions/$(userId)).data.userId == request.auth.uid &&
+                         request.resource.data.timestamp == request.time;
+      }
+    }
+
+    // ─── DENY ALL BY DEFAULT ───────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

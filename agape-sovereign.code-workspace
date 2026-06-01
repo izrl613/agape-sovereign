@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"gcpBilling.projectId": "agape-sovereign",
+		"terminal.integrated.defaultProfile.linux": "",
+		"npm.enableTouchbar": false,
+		"workbench.editor.enablePreview": true,
+		"livePreview.start.preview.at.file.open": true,
+		"livePreview.autoRefreshPreview": "On Changes"
+	}
+}

@@ -1,5 +1,51 @@
 {
+  "name": "architect-ai-agape-sovereign-enclave",
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev-frontend": "npm run dev --prefix frontend",
+    "dev-backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --packages=external",
+    "start": "node dist/server.js"
+  },
   "dependencies": {
-    "npm": "^11.16.0"
+    "@google/genai": "latest",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.1",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "firebase": "latest",
+    "firebase-admin": "^13.10.0",
+    "framer-motion": "latest",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "latest",
+    "react-syntax-highlighter": "^16.1.1",
+    "recharts": "latest",
+    "remark-gfm": "^4.0.1",
+    "sonner": "latest",
+    "tailwindcss": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@vitejs/plugin-react": "latest",
+    "concurrently": "latest",
+    "esbuild": "latest",
+    "typescript": "latest",
+    "vite": "latest"
   }
 }

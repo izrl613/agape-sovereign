@@ -1,0 +1,160 @@
+{
+  "mcpServers": {
+    "cloudrun": {
+      "args": [
+        "-y",
+        "@google-cloud/cloud-run-mcp"
+      ],
+      "command": "/Users/aarondavid/.gemini/antigravity/mcp-npx-wrapper.sh",
+      "env": {
+        "GCLOUD_PROJECT": "agape-sovereign",
+        "GOOGLE_CLOUD_PROJECT": "agape-sovereign"
+      }
+    },
+    "datacloud_bigquery_toolbox": {
+      "args": [
+        "-y",
+        "@toolbox-sdk/server@>=1.1.0",
+        "--prebuilt",
+        "bigquery",
+        "--stdio",
+        "--user-agent-metadata",
+        "datacloud.antigravity ide"
+      ],
+      "command": "npx",
+      "env": {
+        "BIGQUERY_LOCATION": "us",
+        "BIGQUERY_PROJECT": "agape-sovereign"
+      }
+    },
+    "datacloud_knowledge_catalog_toolbox": {
+      "args": [
+        "-y",
+        "@toolbox-sdk/server@>=1.1.0",
+        "--prebuilt",
+        "dataplex",
+        "--stdio",
+        "--user-agent-metadata",
+        "google-cloud-data-agent-kit-antigravity ide"
+      ],
+      "command": "npx",
+      "env": {
+        "DATAPLEX_PROJECT": "agape-sovereign"
+      }
+    },
+    "firebase-mcp-server": {
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "mcp"
+      ],
+      "command": "npx"
+    },
+    "gcloud-mcp": {
+      "args": [
+        "-y",
+        "@google-cloud/gcloud-mcp"
+      ],
+      "command": "/Users/aarondavid/.gemini/antigravity/mcp-npx-wrapper.sh",
+      "env": {
+        "GCLOUD_PROJECT": "agape-sovereign",
+        "GOOGLE_CLOUD_PROJECT": "agape-sovereign"
+      }
+    },
+    "genkit-mcp-server": {
+      "args": [
+        "-y",
+        "genkit-cli@^1.28.0",
+        "mcp",
+        "--explicitProjectRoot",
+        "--no-update-notification",
+        "--non-interactive"
+      ],
+      "command": "npx"
+    },
+    "notebooks": {
+      "command": "node",
+      "args": [
+        "/Users/aarondavid/.antigravity-ide/extensions/googlecloudtools.datacloud-0.2.0-universal/mcp_servers/cli/mcp_proxy_bundle.js",
+        "notebooks-antigravityide"
+      ]
+    },
+    "visualization": {
+      "command": "node",
+      "args": [
+        "/Users/aarondavid/.antigravity-ide/extensions/googlecloudtools.datacloud-0.2.0-universal/mcp_servers/cli/mcp_proxy_bundle.js",
+        "visualization-antigravityide"
+      ]
+    },
+    "bigquery": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@toolbox-sdk/server@>=0.26.0",
+        "--prebuilt",
+        "bigquery",
+        "--stdio",
+        "--user-agent-metadata",
+        "antigravity"
+      ],
+      "env": {
+        "BIGQUERY_LOCATION": "us",
+        "BIGQUERY_PROJECT": "agape-sovereign"
+      }
+    },
+    "dataplex": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@toolbox-sdk/server@>=0.26.0",
+        "--prebuilt",
+        "dataplex",
+        "--stdio",
+        "--user-agent-metadata",
+        "antigravity"
+      ],
+      "env": {
+        "DATAPLEX_PROJECT": "agape-sovereign"
+      }
+    },
+    "google-developer-knowledge": {
+      "serverUrl": "https://developerknowledge.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-cloud-resource-manager": {
+      "serverUrl": "https://cloudresourcemanager.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-cloud-firestore": {
+      "serverUrl": "https://firestore.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-cloud-logging": {
+      "serverUrl": "https://logging.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-cloud-monitoring": {
+      "serverUrl": "https://monitoring.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-cloud-pubsub": {
+      "serverUrl": "https://pubsub.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "android-management-api": {
+      "serverUrl": "https://androidmanagement.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "google-compute-engine": {
+      "serverUrl": "https://compute.googleapis.com/mcp",
+      "authProviderType": "google_credentials"
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}
