@@ -1,6 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
-const PROXY_URL = "http://localhost:3000";
+// Cloud Run MCP Server (primary) — falls back to local proxy for dev
+const CLOUD_MCP_URL = "https://gemma4-mcp-server-956088455461.us-central1.run.app";
+const LOCAL_PROXY_URL = "http://localhost:3000";
+let ACTIVE_PROXY_URL = CLOUD_MCP_URL;
 const CLOUD_MODEL_FLASH = "gemini-3-flash-preview";
 const CLOUD_MODEL_PRO = "gemini-3.1-pro-preview";
 
@@ -59,26 +62,30 @@ export async function getLocalAIStatus(): Promise<LocalStatus> {
     };
   }
 
-  try {
-    const res = await fetch(`${PROXY_URL}/api/status`, {
-      method: "GET",
-      signal: AbortSignal.timeout(1000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        online: selectedModel === 'gemma' ? true : data.online,
-        port: data.port,
-        modelName: selectedModel === 'gemma' ? "Gemma 4 E4B" : (data.modelName || "Gemma-4-E4B-MLX"),
-        usage: "Unlimited Tokens",
-        costModel: "Zero External Billing"
-      };
+  // Try Cloud Run first, then fallback to local proxy
+  for (const url of [CLOUD_MCP_URL, LOCAL_PROXY_URL]) {
+    try {
+      const res = await fetch(`${url}/api/status`, {
+        method: "GET",
+        signal: AbortSignal.timeout(2500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        ACTIVE_PROXY_URL = url; // Lock onto whichever responds
+        return {
+          online: selectedModel === 'gemma' ? true : data.online,
+          port: data.port,
+          modelName: selectedModel === 'gemma' ? "Gemma 4 E4B" : (data.modelName || "Gemma-4-E4B-MLX"),
+          usage: "Unlimited Tokens",
+          costModel: url === CLOUD_MCP_URL ? "Cloud Run — Zero External Billing" : "Local — Zero External Billing"
+        };
+      }
+    } catch (e) {
+      // Try next URL
     }
-  } catch (e) {
-    // Ignore error
   }
 
-  // If local server check failed, but the user explicitly selected Gemma, return simulated online
+  // If all server checks failed, but the user explicitly selected Gemma, return simulated online
   if (selectedModel === 'gemma') {
     return {
       online: true,
@@ -114,7 +121,7 @@ export async function chatComplete(
       }
       messages.push({ role: "user", content: prompt });
 
-      const response = await fetch(`${PROXY_URL}/api/chat`, {
+      const response = await fetch(`${ACTIVE_PROXY_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -174,7 +181,7 @@ export async function* chatStream(
 
       // Note: Since standard server.js does not stream via SSE but returns a single object
       // under Resilient Mode / offline, we simulate the stream chunks locally to look premium.
-      const response = await fetch(`${PROXY_URL}/api/chat`, {
+      const response = await fetch(`${ACTIVE_PROXY_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages, max_tokens: -1 })

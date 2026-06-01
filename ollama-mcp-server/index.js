@@ -1,13 +1,15 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import express from "express";
+import cors from "cors";
 
 const server = new Server(
   {
-    name: "ollama-mcp-server",
+    name: "ollama-mcp-server-online",
     version: "1.0.0",
   },
   {
@@ -51,8 +53,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   try {
-    // Assuming MLX server is running on localhost:8080 with OpenAI-compatible API
-    const response = await fetch("http://localhost:8080/v1/chat/completions", {
+    // URL can be configured via environment variable if running online
+    const mlxUrl = process.env.MLX_SERVER_URL || "http://localhost:8080/v1/chat/completions";
+    const response = await fetch(mlxUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -92,14 +95,74 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the server with standard IO transport
-async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error("Ollama MCP Server running on stdio");
-}
+const app = express();
+app.use(cors());
 
-main().catch((error) => {
-  console.error("Failed to start server:", error);
-  process.exit(1);
+let transport;
+
+// ── REST API endpoints for Architect AI frontend ──────────────────────────
+
+// Health / status probe — matches the interface localAIService expects
+app.get("/api/status", (_req, res) => {
+  res.json({
+    online: true,
+    port: PORT,
+    modelName: "Gemma-4-E4B-MLX (Cloud Run)",
+    usage: "Unlimited Tokens",
+    costModel: "Zero External Billing"
+  });
+});
+
+// Direct chat completion — OpenAI-compatible passthrough
+// Architect AI's localAIService POSTs here with { messages, max_tokens, stream }
+app.post("/api/chat", express.json(), async (req, res) => {
+  try {
+    const mlxUrl = process.env.MLX_SERVER_URL || "http://localhost:8080/v1/chat/completions";
+    const { messages, max_tokens, stream } = req.body;
+
+    const response = await fetch(mlxUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: process.env.MLX_MODEL_NAME || "GRMMA4:E4B",
+        messages: messages || [],
+        max_tokens: max_tokens ?? -1,
+        stream: stream ?? false,
+      }),
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: `MLX API error: ${response.status}` });
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(502).json({
+      error: `MLX backend unreachable: ${error.message}`,
+      choices: [{ message: { content: "⚠️ Gemma model backend is currently unreachable. Please verify MLX_SERVER_URL is configured correctly on Cloud Run." } }]
+    });
+  }
+});
+
+// ── MCP SSE Protocol endpoints ────────────────────────────────────────────
+
+app.get("/sse", async (req, res) => {
+  transport = new SSEServerTransport("/message", res);
+  await server.connect(transport);
+});
+
+app.post("/message", express.json(), async (req, res) => {
+  if (transport) {
+    await transport.handlePostMessage(req, res);
+  } else {
+    res.status(500).send("Transport not initialized");
+  }
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Gemma4 MCP Server running at http://localhost:${PORT}`);
+  console.log(`  REST API:  /api/status, /api/chat`);
+  console.log(`  MCP SSE:   /sse, /message`);
 });
