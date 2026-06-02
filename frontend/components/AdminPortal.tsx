@@ -8,7 +8,7 @@ interface AdminPortalProps {
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({ onClose }) => {
   const stats = {
-    webauthLogs: 1247, cloudRunStatus: "HEALTHY", firestoreOps: 38291, nodeHealth: "99.7%", activeUsers: 1, sessionsToday: 3,
+    webauthLogs: 1247, zeroCostPolicy: "ENFORCED", firestoreOps: 38291, nodeHealth: "99.7%", activeUsers: 1, sessionsToday: 3,
   };
 
   return (
@@ -40,7 +40,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onClose }) => {
           <div className="grid grid-cols-3 gap-2.5 mb-6">
             {[
               { label: "WebAuthn Logs", value: stats.webauthLogs.toLocaleString(), unit: "events", color: NEON.blue },
-              { label: "Cloud Run Status", value: stats.cloudRunStatus, unit: "containerized", color: "#0f0" },
+              { label: "Zero-Cost Policy", value: stats.zeroCostPolicy, unit: "Firebase-only automation", color: "#0f0" },
               { label: "Firestore Ops", value: stats.firestoreOps.toLocaleString(), unit: "reads/writes", color: NEON.blue },
               { label: "Node Health", value: stats.nodeHealth, unit: "uptime", color: "#0f0" },
               { label: "Active Users", value: stats.activeUsers, unit: "live sessions", color: NEON.orange },
@@ -89,7 +89,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onClose }) => {
               "[2026-03-05T14:31:45Z] FIRESTORE_WRITE encrypted_profile · bytes: 4.2KB",
               "[2026-03-05T14:30:22Z] GEMINI_API session_start · tokens: 0 · context_bound: true",
               "[2026-03-05T14:28:11Z] APP_CHECK attestation verified · platform: web",
-              "[2026-03-05T14:25:04Z] CLOUD_FUNCTION pdf_generate · status: idle",
+              "[2026-03-05T14:25:04Z] POLICY_GUARD non_firebase_gcp_automation · status: blocked",
             ].map((log, i) => <div key={i} style={{ color: i === 0 ? NEON.blue : NEON.textMuted }}>{log}</div>)}
           </div>
         </div>

@@ -1,0 +1,38 @@
+name: GCP change request
+description: Document any non-Firebase GCP work that requires maintainer approval.
+title: "agape-sovereign: GCP change request (approval required)"
+labels:
+  - compliance
+  - gcp-approval
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No changes will be applied in GCP automatically.
+  - type: textarea
+    id: request
+    attributes:
+      label: Requested change
+      description: Describe the Cloud Run, Cloud Build, Artifact Registry, or other GCP change needed.
+    validations:
+      required: true
+  - type: textarea
+    id: cost_risk
+    attributes:
+      label: Cost-risk notes and free-tier constraints
+      description: Explain billing implications, zero-cost constraints, and why Firebase-only alternatives are insufficient.
+      placeholder: Free tier only. Do not enable always-on compute, paid build minutes, or managed registries without explicit approval.
+    validations:
+      required: true
+  - type: textarea
+    id: manual_steps
+    attributes:
+      label: Manual maintainer steps
+      description: Provide exact step-by-step instructions for the maintainer.
+      placeholder: |
+        1. Review cost-risk notes.
+        2. Confirm approval in writing.
+        3. Apply the change manually in GCP.
+        4. Record resulting resource IDs and rollback steps.
+    validations:
+      required: true
