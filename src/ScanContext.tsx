@@ -18,7 +18,7 @@ interface ScanContextType {
   lastScanDate: Date | null;
   error: string | null;
   triggerFullScan: () => Promise<void>;
-  triggerModuleScan: (module: string) => Promise<void>;
+  triggerModuleScan: (module: string, userData?: string) => Promise<void>;
 }
 
 const ScanContext = createContext<ScanContextType | undefined>(undefined);
@@ -146,7 +146,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const triggerModuleScan = React.useCallback(async (module: string) => {
+  const triggerModuleScan = React.useCallback(async (module: string, userData: string = "") => {
     if (!user) return;
     setIsScanning(true);
     setScanProgress(0);
@@ -157,7 +157,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     logEvent(AuditLogType.SCAN_INITIATED, `${module.toUpperCase()} scan initiated by ${user.email}`, user.uid, user.email || undefined);
     try {
-      await startModuleScan(user.uid, user.email!, module, (current, total, moduleName, subTask) => {
+      await startModuleScan(user.uid, user.email!, module, userData, (current, total, moduleName, subTask) => {
         setScanProgress(Math.round((current / total) * 100));
         setCurrentStep(current);
         setTotalSteps(total);

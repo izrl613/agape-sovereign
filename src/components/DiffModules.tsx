@@ -25,6 +25,13 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashHash, setSplashHash] = useState('');
+  
+  useEffect(() => {
+    // Generate a unique session hash for this module session
+    generateSHA256(moduleId + Date.now().toString()).then(setSplashHash);
+  }, [moduleId]);
   
   // Real-time parameter sync state
   const [parameterValue, setParameterValue] = useState<string>('');
@@ -128,153 +135,13 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         }, { merge: true });
       }
 
-      // Determine security status heuristically
-      let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
-      let findingText = 'Secured via client-side PBKDF2 AES-256 Enclave';
-      let detailsText = `Parameter encrypted with your sovereign passkey signature. Integrity Seal: ${newHash}`;
-
-      if (!parameterValue) {
-        status = 'MONITORED';
-        findingText = 'Awaiting active configuration';
-        detailsText = 'This vector is currently empty and unconfigured. Enter a value to seal and audit.';
-      } else {
-        const lowerVal = parameterValue.toLowerCase();
-        if (moduleId === 'email') {
-          if (lowerVal.includes('leak') || lowerVal.includes('pwned') || lowerVal.length < 5) {
-            status = 'NUKED';
-            findingText = 'Email leaked in public breach database';
-            detailsText = `Your email address '${parameterValue}' was detected in known data dumps. High threat of credential stuffing attacks. Action advised: rotate credentials.`;
-          }
-        } else if (moduleId === 'password') {
-          if (parameterValue.length < 8 || lowerVal.includes('1234') || lowerVal.includes('password')) {
-            status = 'NUKED';
-            findingText = 'Weak low-entropy credential pattern';
-            detailsText = 'The entered password credential fails safety guidelines. Reused or simple patterns represent an immediate exposure risk.';
-          }
-        } else if (moduleId === 'social') {
-          if (lowerVal.includes('public_') || lowerVal.length < 3) {
-            status = 'MONITORED';
-            findingText = 'Public social handle exposed';
-            detailsText = 'Social handle shows standard public exposure vectors. Maintain private profiles.';
-          }
-        } else if (moduleId === 'device') {
-          if (lowerVal.includes('root') || lowerVal.includes('unencrypted')) {
-            status = 'NUKED';
-            findingText = 'Unencrypted local device partitions';
-            detailsText = 'Device analysis suggests lack of hardware encryption (FDE/BitLocker/FileVault).';
-          }
-        } else if (moduleId === 'mobile') {
-          if (lowerVal.includes('jailbreak') || lowerVal.includes('root') || lowerVal.includes('outdated')) {
-            status = 'NUKED';
-            findingText = 'Compromised OS environment';
-            detailsText = 'Device posture checks show potential jailbreak or outdated firmware risks.';
-          }
-        } else if (moduleId === 'laptop') {
-          if (lowerVal.includes('unencrypted') || lowerVal.includes('disable')) {
-            status = 'NUKED';
-            findingText = 'Unsecure UEFI firmware partition';
-            detailsText = 'Secure Boot or UEFI safeguards are disabled on the active laptop partition.';
-          }
-        } else if (moduleId === 'deepweb') {
-          if (lowerVal.includes('leak') || lowerVal.includes('exposed')) {
-            status = 'NUKED';
-            findingText = 'Data broker metadata exposed';
-            detailsText = 'Identified full name or phone exposures on dark pasted indices.';
-          }
-        } else if (moduleId === 'broker') {
-          if (lowerVal.includes('listed') || lowerVal.includes('exposure')) {
-            status = 'NUKED';
-            findingText = 'Active broker indexing detected';
-            detailsText = 'Your personal attributes are actively compiled by Acxiom and Intelius.';
-          }
-        } else if (lowerVal.includes('leak') || lowerVal.includes('unencrypted') || lowerVal.includes('unsecured')) {
-          status = 'NUKED';
-          findingText = 'Security posture exposure detected';
-          detailsText = `The sealed metadata '${parameterValue}' contains indicators of active leakage or unsecure configurations.`;
-        }
-      }
-
-      // Save scan finding to diff_scans
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
-        filtered.push({
-          id: `local-${moduleId}-${Date.now()}`,
-          userId: user.uid,
-          module: moduleId,
-          finding: findingText,
-          status: status,
-          timestamp: new Date().toISOString(),
-          details: detailsText
-        });
-        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
-
-        // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-
-        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
-        history.push({
-          userId: user.uid,
-          score: newScore,
-          timestamp: new Date().toISOString(),
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          findings: filtered
-        });
-        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
-      } else {
-        const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
-        const snap = await getDocs(q);
-        
-        if (!snap.empty) {
-          const docRef = doc(db, 'diff_scans', snap.docs[0].id);
-          await updateDoc(docRef, {
-            finding: findingText,
-            status: status,
-            details: detailsText,
-            timestamp: serverTimestamp()
-          });
-        } else {
-          await addDoc(collection(db, 'diff_scans'), {
-            userId: user.uid,
-            module: moduleId,
-            finding: findingText,
-            status: status,
-            details: detailsText,
-            timestamp: serverTimestamp()
-          });
-        }
-
-        // Recalculate Sovereign Score
-        const allScansSnap = await getDocs(query(collection(db, 'diff_scans'), where('userId', '==', user.uid)));
-        const allScans = allScansSnap.docs.map(d => d.data());
-        const nukedCount = allScans.filter(f => f.status === 'NUKED').length;
-        const knoxedCount = allScans.filter(f => f.status === 'KNOXED').length;
-        const monitoredCount = allScans.filter(f => f.status === 'MONITORED').length;
-        
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-        await updateDoc(doc(db, 'users', user.uid), { sovereignScore: newScore });
-
-        // Add to score history
-        await addDoc(collection(db, 'score_history'), {
-          userId: user.uid,
-          score: newScore,
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          timestamp: serverTimestamp(),
-          reason: `DIFF Vector [${vector}] Update`
-        });
-      }
-
       toast.dismiss(toastId);
       toast.success("VECTOR SEALED & CRYPTED", {
         description: `Integrity Key generated: ${newHash.substring(0, 16)}...`
       });
+
+      // Trigger the real AI scan using the updated parameter
+      await triggerModuleScan(moduleId, parameterValue);
     } catch (err) {
       console.error(err);
       toast.dismiss(toastId);
@@ -293,6 +160,64 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   })) : [
     { type: "MONITORED" as const, label: "Awaiting Scan", detail: "Initiate a scan to populate intelligence.", action: "SCAN", original: null }
   ];
+
+  if (showSplash) {
+    return (
+      <div style={{ animation: "fade-in 0.5s ease", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+        <GlassCard className="max-w-2xl w-full p-8 relative overflow-hidden text-center border-[#00D4FF]/30">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18]" />
+          
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="mb-8"
+          >
+            <div className="text-[4rem] text-[#00D4FF] drop-shadow-[0_0_15px_#00D4FF] mb-4">
+              {icon}
+            </div>
+            <div className="font-mono text-sm text-[#FF7A18] tracking-[0.2em] mb-2">{vector} · DIFF PROTOCOL</div>
+            <h1 className="text-3xl font-bold text-white tracking-wider mb-4 font-orbitron">{title.toUpperCase()}</h1>
+            <p className="text-slate-400 font-mono text-sm max-w-md mx-auto leading-relaxed">
+              {description}
+            </p>
+          </motion.div>
+
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl mb-8 font-mono text-xs text-left text-slate-300">
+            <div className="flex items-center gap-2 text-[#00D4FF] mb-2">
+              <Shield className="w-4 h-4" />
+              <span>STRICT ISOLATION PROTOCOL ACTIVE</span>
+            </div>
+            <p>You are about to enter a secure vector enclave. Any parameters entered will be cryptographically sealed locally using AES-256-GCM. Architect AI will evaluate the hash signatures without exposing plaintext data to untrusted networks.</p>
+          </div>
+
+          <NeonButton 
+            color={NEON.blue} 
+            onClick={() => setShowSplash(false)}
+            style={{ width: '100%', padding: '16px' }}
+          >
+            INITIALIZE ENCLAVE & ENTER VECTOR
+          </NeonButton>
+        </GlassCard>
+
+        {/* The SHA256 ID at the bottom of the splash screen */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 flex flex-col items-center gap-2"
+        >
+          <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+            Module Cryptographic Signature
+          </div>
+          <div className="px-4 py-2 bg-black/40 border border-[#00D4FF]/20 rounded font-mono text-xs text-[#00D4FF] tracking-widest flex items-center gap-2">
+            <Lock className="w-3 h-3" />
+            {splashHash ? `SHA256:${splashHash}` : 'GENERATING...'}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ animation: "fade-in 0.3s ease" }}>
@@ -320,7 +245,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           <NeonButton 
             size="sm" 
             color={NEON.blue} 
-            onClick={() => triggerModuleScan(moduleId)}
+            onClick={() => triggerModuleScan(moduleId, parameterValue)}
             disabled={isScanning}
           >
             {isScanning ? "SCANNING..." : (scanLabel || "RE-SCAN VECTOR")}

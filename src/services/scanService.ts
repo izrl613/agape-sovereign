@@ -147,7 +147,7 @@ export const startFullScan = async (userId: string, email: string, onProgress?: 
   return { findings, score };
 };
 
-export const startModuleScan = async (userId: string, email: string, module: string, onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
+export const startModuleScan = async (userId: string, email: string, module: string, userData: string = "", onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
   // Log module scan start
   logScanStarted(`MODULE_${module.toUpperCase()}`);
   
@@ -159,7 +159,7 @@ export const startModuleScan = async (userId: string, email: string, module: str
     const filtered = localFindings.filter((f: any) => f.module !== module);
     if (onProgress) onProgress(0, 1, module, `Deep-diving into ${module} architecture...`);
     await new Promise(resolve => setTimeout(resolve, 300));
-    const finding = await generateFinding(module, email);
+    const finding = await generateFinding(module, email, userData);
     const scanData: ScanFinding = {
       id: `local-${module}-${Date.now()}`,
       userId,
@@ -203,7 +203,7 @@ export const startModuleScan = async (userId: string, email: string, module: str
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   if (onProgress) onProgress(0, 1, module, "Consulting Architect intelligence...");
-  const finding = await generateFinding(module, email);
+  const finding = await generateFinding(module, email, userData);
   
   if (onProgress) onProgress(0.8, 1, module, "Finalizing report...");
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -292,7 +292,7 @@ const collectLiveSystemTelemetry = async () => {
   };
 };
 
-const generateFinding = async (module: string, email: string) => {
+const generateFinding = async (module: string, email: string, userData: string = "") => {
   try {
     const telemetry = await collectLiveSystemTelemetry();
     let moduleSpecificInstructions = "";
@@ -371,7 +371,10 @@ const generateFinding = async (module: string, email: string) => {
     const prompt = `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".
     ${moduleSpecificInstructions}
     
-    CRITICAL: Analyze and base the finding on the user's actual real-time device telemetry:
+    CRITICAL: Analyze and base the finding heavily on this specific user-provided data vector:
+    [USER DATA VECTOR]: "${userData || 'No active data provided'}"
+
+    Also consider the following real-time device telemetry for context:
     ${JSON.stringify(telemetry, null, 2)}
     
     Return the result in JSON format with the following fields:

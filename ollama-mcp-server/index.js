@@ -102,6 +102,26 @@ let transport;
 
 // ── REST API endpoints for Architect AI frontend ──────────────────────────
 
+// Root endpoint for browser verification
+app.get("/", (_req, res) => {
+  res.send(`
+    <html>
+      <body style="background: #060D1F; color: #00D4FF; font-family: monospace; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+        <div style="text-align: center;">
+          <h2>🚀 Gemma 4 E4B MCP Server is ONLINE</h2>
+          <p>Endpoints available:</p>
+          <ul style="list-style-type: none; padding: 0; color: #94a3b8;">
+            <li>GET /api/status</li>
+            <li>POST /api/chat</li>
+            <li>GET /sse</li>
+            <li>POST /message</li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `);
+});
+
 // Health / status probe — matches the interface localAIService expects
 app.get("/api/status", (_req, res) => {
   res.json({
