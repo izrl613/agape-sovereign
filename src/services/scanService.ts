@@ -15,11 +15,18 @@ export interface ScanFinding {
   details: string;
 }
 
+const NON_MOBILE_OS_MODULES = new Set(["non-mobile-os", "laptop", "laptop-desktop"]);
+
+const normalizeScanModule = (module: string) => {
+  if (NON_MOBILE_OS_MODULES.has(module)) return "non-mobile-os";
+  return module;
+};
+
 export const startFullScan = async (userId: string, email: string, onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
   const modules = [
     "email", "social", "device", "mobile", "deepweb", "broker", 
     "password", "location", "browser", "financial", "medical", 
-    "biometric", "iot", "cloud", "darkweb", "behavioral"
+    "biometric", "iot", "cloud", "darkweb", "behavioral", "non-mobile-os"
   ];
   const total = modules.length;
   const findings: ScanFinding[] = [];
@@ -148,6 +155,8 @@ export const startFullScan = async (userId: string, email: string, onProgress?: 
 };
 
 export const startModuleScan = async (userId: string, email: string, module: string, userData: string = "", onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
+  module = normalizeScanModule(module);
+
   // Log module scan start
   logScanStarted(`MODULE_${module.toUpperCase()}`);
   
@@ -292,9 +301,28 @@ const collectLiveSystemTelemetry = async () => {
   };
 };
 
+const collectNonMobileOsPrivacyAudit = async () => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const response = await fetch('/api/privacy-audit/non-mobile-os', {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (error) {
+    console.warn("Non-mobile OS privacy audit endpoint unavailable:", error);
+    return null;
+  }
+};
+
 const generateFinding = async (module: string, email: string, userData: string = "") => {
   try {
+    module = normalizeScanModule(module);
     const telemetry = await collectLiveSystemTelemetry();
+    const nonMobileOsAudit = module === "non-mobile-os" ? await collectNonMobileOsPrivacyAudit() : null;
     let moduleSpecificInstructions = "";
     if (module === "mobile") {
       moduleSpecificInstructions = `
@@ -341,6 +369,26 @@ const generateFinding = async (module: string, email: string, userData: string =
       - Detected hardware-level side-channel vulnerabilities.
       - Unsecured peripheral configurations (e.g., USB auto-run enabled).
       `;
+    } else if (module === "non-mobile-os") {
+      moduleSpecificInstructions = `
+      For the "non-mobile-os" module, focus only on laptop/desktop operating systems such as macOS, Windows, and Linux.
+      Treat mobile OS posture as out of scope.
+
+      This module is backed by the local privacy-audit MCP and the Agape Sovereign read-only backend endpoint.
+      It must never claim to delete files, install LaunchAgents, persist background jobs, bypass permissions, or access arbitrary user data.
+
+      Evaluate:
+      - OS/platform support and local system posture.
+      - Cache, log, download, and browser-cache footprint.
+      - Memory pressure and disk hygiene signals.
+      - Browser cache exposure and local telemetry minimization.
+      - Whether cleanup candidates require explicit human review before moving to Trash.
+
+      MCP bridge:
+      - In Antigravity/Continue, use the "privacy-audit" MCP tools for read-only planning first:
+        system_profile, known_cleanup_locations, estimate_cleanup_locations, scan_home_usage, cleanup_plan.
+      - Use move_to_trash only after explicit review and confirmation.
+      `;
     } else if (module === "password") {
       moduleSpecificInstructions = `
       For the "password" module, focus on:
@@ -376,6 +424,9 @@ const generateFinding = async (module: string, email: string, userData: string =
 
     Also consider the following real-time device telemetry for context:
     ${JSON.stringify(telemetry, null, 2)}
+
+    ${nonMobileOsAudit ? `Local non-mobile OS privacy audit summary:
+    ${JSON.stringify(nonMobileOsAudit, null, 2)}` : ""}
     
     Return the result in JSON format with the following fields:
     - title: A short description of the finding.

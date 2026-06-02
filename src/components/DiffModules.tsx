@@ -574,7 +574,16 @@ export const EmailModule = () => <DiffModule title="Email Breach & Metadata Scan
 export const SocialModule = () => <DiffModule title="Social Media Footprint Scanner" description="Public post scraping and username reuse detection." icon="◈" vector="V-02" moduleId="social" />;
 export const DeviceModule = () => <DiffModule title="Device File Scan" description="File pattern analysis and metadata exposure detection." icon="⬡" vector="V-03" moduleId="device" />;
 export const SystemModule = () => <DiffModule title="Mobile System Security" description="Passkey enforcement status and mobile OS security posture." icon="◻" vector="V-04" moduleId="mobile" />;
-export const LaptopModule = () => <DiffModule title="Laptop System Security" description="Firmware integrity and disk encryption audit." icon="💻" vector="V-05" moduleId="laptop" />;
+export const LaptopModule = () => (
+  <DiffModule
+    title="Non-Mobile OS Privacy Audit"
+    description="Read-only laptop/desktop OS posture, cache, log, browser-cache, and local disk hygiene assessment via the privacy-audit MCP bridge."
+    icon="💻"
+    vector="V-05"
+    moduleId="non-mobile-os"
+    scanLabel="Scan Non-Mobile OS"
+  />
+);
 export const DeepWebModule = () => <DiffModule title="Deep Web Exposure Monitoring" description="Pattern-based lookup and public data indexing scan." icon="◉" vector="V-06" moduleId="deepweb" />;
 export const DataBrokerModule = () => <DiffModule title="Data Broker Removal Engine" description="Automated request templates for removal." icon="⧫" vector="V-07" moduleId="broker" />;
 export const PasswordModule = () => <DiffModule title="Password Vault Audit" description="Checks for weak, reused, or compromised credentials." icon="⬟" vector="V-08" moduleId="password" />;

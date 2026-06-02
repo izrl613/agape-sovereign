@@ -18,7 +18,7 @@ const DIFF_MODULES = [
   { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/social" },
   { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/device" },
   { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/system" },
-  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/system" },
+  { id: "non-mobile-os", icon: "💻", label: "Non-Mobile OS Privacy Audit", vector: "V-05", to: "/laptop" },
   { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/deepweb" },
   { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/databroker" },
   { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/password" },
@@ -1330,4 +1330,3 @@ export const Layout = () => {
     </div>
   );
 };
-
