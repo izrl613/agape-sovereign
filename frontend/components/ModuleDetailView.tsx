@@ -102,6 +102,14 @@ export const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ moduleId }) 
       <div className="mb-4">
         <NeonText color={NEON.orange} size="0.72rem">INTELLIGENCE FINDINGS</NeonText>
       </div>
+      <GlassCard className="p-3.5 mb-4 border" style={{ borderColor: `${NEON.blue}22`, background: "rgba(0,212,255,0.04)" }}>
+        <div className="font-['Share_Tech_Mono'] text-[0.58rem] tracking-[0.1em]" style={{ color: NEON.blue }}>
+          STAGE 1 DATA MINIMIZATION
+        </div>
+        <div className="text-[0.74rem] leading-relaxed mt-1" style={{ color: NEON.textMuted }}>
+          Scan results are ephemeral by default. Sensitive findings stay in-session unless the user explicitly chooses to save them to their profile.
+        </div>
+      </GlassCard>
       <div className="flex flex-col gap-2.5 mb-5">
         {findings.map((f, i) => (
           <div key={i} className={`rounded-lg py-3.5 px-4 border flex items-center gap-3.5 ${f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""}`} style={{ borderColor: `${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33` }}>
@@ -168,6 +176,7 @@ export const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ moduleId }) 
       {/* Action buttons */}
       <div className="flex gap-3 pb-6">
         <NeonButton onClick={handleScan} disabled={isScanning} color={NEON.orange} className="flex-1">⟳ INITIATE VECTOR SWEEP</NeonButton>
+        <NeonButton disabled color={NEON.orange} className="flex-1">SAVE REQUIRES CONSENT</NeonButton>
         <NeonButton disabled={isScanning} color={NEON.magenta} className="flex-1">🔥 NUKE ALL EXPOSURES</NeonButton>
         <NeonButton disabled={isScanning} color={NEON.blue} className="flex-1">🛡️ KNOX ALL SECURED</NeonButton>
       </div>
