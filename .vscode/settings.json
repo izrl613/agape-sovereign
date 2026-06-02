@@ -1,4 +1,25 @@
 {
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/.firebase/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/.next/**": true,
+    "**/.cache/**": true,
+    "**/coverage/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/.firebase": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.next": true,
+    "**/.cache": true,
+    "**/coverage": true
+  },
+  "typescript.tsserver.maxTsServerMemory": 1024,
   "workbench.colorCustomizations": {
     "statusBar.background": "#0F4C81",
     "statusBar.foreground": "#FFFFFF",

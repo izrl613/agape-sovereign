@@ -5,11 +5,14 @@
 		}
 	],
 	"settings": {
-		"gcpBilling.projectId": "agape-sovereign",
-		"terminal.integrated.defaultProfile.linux": "",
-		"npm.enableTouchbar": false,
-		"workbench.editor.enablePreview": true,
-		"livePreview.start.preview.at.file.open": true,
-		"livePreview.autoRefreshPreview": "On Changes"
+		"typescript.tsserver.maxTsServerMemory": 1024,
+		"workbench.colorCustomizations": {
+			"statusBar.background": "#0F4C81",
+			"statusBar.foreground": "#FFFFFF",
+			"statusBar.border": "#0F4C81",
+			"statusBarItem.hoverBackground": "#165d9c",
+			"statusBarItem.remoteBackground": "#0F4C81",
+			"statusBarItem.remoteForeground": "#FFFFFF"
+		}
 	}
 }

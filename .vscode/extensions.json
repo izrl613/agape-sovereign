@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "Continue.continue"
+  ],
+  "unwantedRecommendations": [
+    "google.securecoder"
+  ]
+}
