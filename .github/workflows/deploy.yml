@@ -1,0 +1,30 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main # Change 'main' to your primary branch name if different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Install Firebase CLI
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # 2. Authenticate using the Service Account Key
+      # This step uses the secret you set up in GitHub Secrets
+      - name: Authenticate Firebase
+        run: firebase use --token ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        # Note: The 'firebase use' command often handles the project context
+        # when using a service account token.
+
+      # 3. Initialize and Deploy (This assumes firebase.json is configured)
+      - name: Deploy to Firebase
+        run: firebase deploy --only hosting,functions,firestore
+        # Adjust the services listed above (--only) based on what you need to deploy.
+        # Example: --only hosting,functions
