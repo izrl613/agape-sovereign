@@ -38,58 +38,7 @@ const RP_NAME = 'Agape Sovereign';
 // Called when an authenticated user wants to bind a passkey to their account.
 // Generates WebAuthn registration options and stores the challenge in Firestore.
 
-export const registerPasskeyOptions = onCall(
-  { region: 'us-east1', maxInstances: 10 },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated to register a passkey');
-    }
 
-    const userId = request.auth.uid;
-    const userEmail = request.auth.token.email || 'anon@sovereign.nyc';
-    const origin = request.rawRequest.get('origin') || 'http://localhost:5173';
-    const rpId = new URL(origin).hostname;
-
-    try {
-      // Get existing credentials to exclude re-registering the same device
-      const userRef = db.collection('users').doc(userId);
-      const credsSnap = await userRef.collection('passkeyCredentials').get();
-      const excludeCredentials = credsSnap.docs.map((doc) => ({
-        id: doc.id,
-        type: 'public-key' as const,
-        transports: doc.data().transports as AuthenticatorTransportFuture[] | undefined,
-      }));
-
-      const options = await generateRegistrationOptions({
-        rpName: RP_NAME,
-        rpID: rpId,
-        userID: new TextEncoder().encode(userId),
-        userName: userEmail,
-        userDisplayName: userEmail,
-        attestationType: 'none',
-        excludeCredentials,
-        authenticatorSelection: {
-          residentKey: 'preferred',
-          userVerification: 'preferred',
-          authenticatorAttachment: 'platform',
-        },
-      });
-
-      // Store challenge in Firestore (instead of cookies, since callable functions
-      // don't have cookie access). The challenge expires in 60 seconds.
-      await db.collection('users').doc(userId).collection('passkeyChallenge').doc('current').set({
-        challenge: options.challenge,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      logger.info('Passkey registration options generated', { userId });
-      return options;
-    } catch (error) {
-      logger.error('Register options failed', { error });
-      throw new HttpsError('internal', 'Failed to generate registration options');
-    }
-  }
-);
 
 // ─── STAGE 1A1: VERIFY PASSKEY REGISTRATION ───────────────
 // Verifies the browser's attestation response against the stored challenge.
