@@ -1,0 +1,48 @@
+name: Compliance Gate
+
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify governance artifacts
+        run: |
+          test -f .github/PULL_REQUEST_TEMPLATE.md
+          test -f .github/ISSUE_TEMPLATE/config.yml
+          test -f .github/ISSUE_TEMPLATE/roadmap-stage.yml
+          test -f .github/ISSUE_TEMPLATE/gcp-change-request.yml
+          test -f docs/compliance/ROADMAP.md
+          test -f docs/compliance/GOVERNANCE.md
+
+      - name: Verify Firebase deny-by-default rules
+        run: |
+          grep -q "allow read, write: if false;" firestore.rules
+          grep -q "allow read, write: if false;" storage.rules
+
+      - name: Block common secret material
+        run: |
+          if find . -path './node_modules' -prune -o \
+            \( -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.p12' -o -name '*serviceAccount*.json' \) \
+            -print | grep -q .; then
+            echo "Committed secret-like files detected."
+            exit 1
+          fi
+
+      - name: Block automatic non-Firebase GCP automation changes
+        run: |
+          if git grep -nE '(^|[^A-Za-z])(gcloud|cloud build|artifact registry|cloud run deploy)([^A-Za-z]|$)' -- \
+            .github/workflows \
+            apphosting.yaml \
+            cloudbuild.yaml \
+            firebase.json; then
+            echo "Non-Firebase GCP automation references detected in tracked automation surfaces."
+            exit 1
+          fi

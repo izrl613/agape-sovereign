@@ -1,0 +1,43 @@
+name: Roadmap stage task
+description: Track a concrete Foundation or stage task from the compliance roadmap.
+title: "agape-sovereign: "
+labels:
+  - compliance
+body:
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Roadmap stage
+      options:
+        - Foundation
+        - Stage 1
+        - Stage 2
+        - Stage 3
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Expected outcome
+      description: Describe the concrete repo or GitHub artifact this task should produce.
+      placeholder: Add PR templates, issue templates, and CI compliance gates.
+    validations:
+      required: true
+  - type: textarea
+    id: compliance_notes
+    attributes:
+      label: Compliance notes
+      description: Note data minimization, least privilege, and zero-cost constraints.
+    validations:
+      required: true
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Checklist
+      value: |
+        - [ ] Roadmap source section linked
+        - [ ] Governance requirements reviewed
+        - [ ] Zero-cost GCP policy preserved
+        - [ ] Validation plan captured
+    validations:
+      required: true

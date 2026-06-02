@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Compliance governance
+    url: https://github.com/izrl613/agape-sovereign/blob/main/docs/compliance/GOVERNANCE.md
+    about: Review repo governance and compliance gates before opening work.
+  - name: Compliance roadmap
+    url: https://github.com/izrl613/agape-sovereign/blob/main/docs/compliance/ROADMAP.md
+    about: Review the roadmap and open work in Foundation -> Stage 3 order.
