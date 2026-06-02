@@ -1,0 +1,29 @@
+[debug] [2026-06-02T07:53:51.089Z] ----------------------------------------------------------------------
+[debug] [2026-06-02T07:53:51.090Z] Command:       /opt/homebrew/Cellar/node/26.0.0/bin/node /opt/homebrew/bin/firebase init
+[debug] [2026-06-02T07:53:51.090Z] CLI Version:   15.19.0
+[debug] [2026-06-02T07:53:51.090Z] Platform:      darwin
+[debug] [2026-06-02T07:53:51.090Z] Node Version:  v26.0.0
+[debug] [2026-06-02T07:53:51.090Z] Time:          Tue Jun 02 2026 03:53:51 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-06-02T07:53:51.090Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-06-02T07:53:51.340Z] Object "/storage" in "firebase.json" has unknown property: {"additionalProperty":"bucket"}
+[debug] [2026-06-02T07:53:51.341Z] Field "/storage" in "firebase.json" is possibly invalid: must be array
+[debug] [2026-06-02T07:53:51.341Z] Field "/storage" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2026-06-02T07:53:51.342Z] Object "/storage" in "firebase.json" has unknown property: {"additionalProperty":"bucket"}
+[debug] [2026-06-02T07:53:51.342Z] Field "/storage" in "firebase.json" is possibly invalid: must be array
+[debug] [2026-06-02T07:53:51.342Z] Field "/storage" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /Users/aarondavid/Documents/agape-sovereign
+
+Before we get started, keep in mind:
+
+  * You are initializing within an existing Firebase project directory
+

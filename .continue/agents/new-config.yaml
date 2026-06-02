@@ -50,3 +50,4 @@ rules:
   - Keep a rolling Context Ledger for long tasks with canonical sources, current facts, decisions, risks, and next actions.
   - Treat docs/compliance/ROADMAP.md and docs/compliance/DAILY_LOG.md as canonical compliance sources when present.
   - For cleanup or privacy-audit tasks, move reviewed files to Trash instead of deleting them directly.
+  - For the Agape Sovereign non-mobile-os module, use the privacy-audit MCP read-only tools before proposing any cleanup. Treat mobile OS scanning as out of scope.

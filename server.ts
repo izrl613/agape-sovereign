@@ -13,6 +13,8 @@ import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt";
 import fs from "fs";
 import os from "os";
+import { execFile } from "child_process";
+import { promisify } from "util";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
 // Initialize Firebase Admin
@@ -56,6 +58,111 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const RP_NAME = "Agape Sovereign";
+const execFileAsync = promisify(execFile);
+
+const NON_MOBILE_OS_AUDIT_PATHS = [
+  "~/Library/Caches",
+  "~/Library/Logs",
+  "~/Library/Application Support/Google/Chrome/Default/Cache",
+  "~/Library/Application Support/Google/Chrome/Default/Code Cache",
+  "~/Library/Application Support/Firefox/Profiles",
+  "~/Downloads",
+];
+
+function expandHome(inputPath: string): string {
+  if (inputPath === "~") return os.homedir();
+  if (inputPath.startsWith("~/")) return path.join(os.homedir(), inputPath.slice(2));
+  return inputPath;
+}
+
+function parseDuOutput(stdout: string) {
+  return stdout
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      const [sizeKb, ...rest] = line.trim().split(/\s+/);
+      const filePath = rest.join(" ");
+      return {
+        path: filePath.replace(os.homedir(), "~"),
+        sizeKb: Number(sizeKb),
+        sizeMb: Math.round((Number(sizeKb) / 1024) * 10) / 10,
+      };
+    })
+    .sort((a, b) => b.sizeKb - a.sizeKb);
+}
+
+async function collectNonMobileOsAudit() {
+  const platform = os.platform();
+  const supported = ["darwin", "linux", "win32"].includes(platform);
+  const existingPaths = NON_MOBILE_OS_AUDIT_PATHS
+    .map(expandHome)
+    .filter((targetPath) => fs.existsSync(targetPath));
+
+  let diskUsage: Array<{ path: string; sizeKb: number; sizeMb: number }> = [];
+  if (existingPaths.length > 0 && platform !== "win32") {
+    const { stdout } = await execFileAsync("/usr/bin/du", ["-k", ...existingPaths], {
+      maxBuffer: 1024 * 1024 * 10,
+    });
+    diskUsage = parseDuOutput(stdout);
+  }
+
+  const freeMemoryMb = Math.round(os.freemem() / 1024 / 1024);
+  const totalMemoryMb = Math.round(os.totalmem() / 1024 / 1024);
+  const largestCache = diskUsage[0];
+  const totalCandidateMb = Math.round(
+    diskUsage.reduce((sum, item) => sum + item.sizeMb, 0) * 10
+  ) / 10;
+
+  const findings = [
+    {
+      category: "platform",
+      status: supported ? "KNOXED" : "MONITORED",
+      summary: supported
+        ? `Detected supported non-mobile OS platform: ${platform}/${os.arch()}.`
+        : `Platform ${platform}/${os.arch()} is not fully supported by the local privacy audit module.`,
+    },
+    {
+      category: "memory",
+      status: freeMemoryMb < Math.max(1024, totalMemoryMb * 0.08) ? "MONITORED" : "KNOXED",
+      summary: `${freeMemoryMb}MB free of ${totalMemoryMb}MB total memory.`,
+    },
+    {
+      category: "cache-footprint",
+      status: totalCandidateMb > 8192 ? "MONITORED" : "KNOXED",
+      summary: `${totalCandidateMb}MB across reviewed cache/log/download paths.`,
+    },
+  ];
+
+  if (largestCache) {
+    findings.push({
+      category: "largest-candidate",
+      status: largestCache.sizeMb > 4096 ? "MONITORED" : "KNOXED",
+      summary: `Largest reviewed path is ${largestCache.path} at ${largestCache.sizeMb}MB.`,
+    });
+  }
+
+  return {
+    mode: "read-only",
+    source: "agape-sovereign privacy-audit non-mobile-os endpoint",
+    mcpServer: "privacy-audit",
+    platform,
+    arch: os.arch(),
+    hostname: os.hostname(),
+    release: os.release(),
+    uptimeSeconds: Math.round(os.uptime()),
+    memory: { freeMemoryMb, totalMemoryMb },
+    totalCandidateMb,
+    reviewedPaths: diskUsage,
+    findings,
+    warnings: [
+      "This endpoint does not delete files.",
+      "Cleanup actions must be reviewed and performed through the privacy-audit MCP move_to_trash tool or a user-confirmed OS action.",
+      "Mobile OS security posture is intentionally out of scope for this module.",
+    ],
+    timestamp: new Date().toISOString(),
+  };
+}
 
 interface IDEConfig {
   ai?: {
@@ -128,6 +235,20 @@ async function startServer() {
       usage: "Offline",
       costModel: "Standard Billing"
     });
+  });
+
+  app.get("/api/privacy-audit/non-mobile-os", async (req, res) => {
+    try {
+      const audit = await collectNonMobileOsAudit();
+      res.json(audit);
+    } catch (error) {
+      console.error("Non-mobile OS privacy audit failed:", error);
+      res.status(500).json({
+        error: "Failed to collect non-mobile OS audit",
+        mode: "read-only",
+        timestamp: new Date().toISOString(),
+      });
+    }
   });
 
   // Local AI Chat Proxy (proxy to Ollama, fallback to Gemini Cloud)
