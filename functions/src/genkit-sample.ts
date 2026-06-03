@@ -5,7 +5,7 @@ import {vertexAI} from "@genkit-ai/google-genai";
 // function from a Genkit action. It automatically implements streaming if your flow does.
 // The https library also has other utility methods such as hasClaim, which verifies that
 // a caller's token has a specific claim (optionally matching a specific value)
-import { onCallGenkit } from "firebase-functions/https";
+import {onCallGenkit} from "firebase-functions/https";
 
 // Gemini Developer API models and Vertex Express Mode models depend on an API key.
 // API keys should be stored in Cloud Secret Manager so that access to these
@@ -13,7 +13,7 @@ import { onCallGenkit } from "firebase-functions/https";
 // If you are using Google Developer API (googleAI) you can get an API key at https://aistudio.google.com/app/apikey
 // If you are using Vertex Express Mode (vertexAI with apiKey) you can get an API key
 // from the Vertex AI Studio Express Mode setup.
-import { defineSecret } from "firebase-functions/params";
+import {defineSecret} from "firebase-functions/params";
 const apiKey = defineSecret("GOOGLE_GENAI_API_KEY");
 
 // The Firebase telemetry plugin exports a combination of metrics, traces, and logs to Google Cloud
@@ -27,38 +27,38 @@ const ai = genkit({
     // and projectID by passing in a config object; if you don't, the provider
     // uses the value from environment variables like GCLOUD_PROJECT and GCLOUD_LOCATION.
     // If you want to use Vertex Express Mode, you can specify apiKey instead.
-    vertexAI({location: "global"})
+    vertexAI({location: "global"}),
   ],
 });
 
 // Define a simple flow that prompts an LLM to generate menu suggestions.
 const menuSuggestionFlow = ai.defineFlow({
-    name: "menuSuggestionFlow",
-    inputSchema: z.string().describe("A restaurant theme").default("seafood"),
-    outputSchema: z.string(),
-    streamSchema: z.string(),
-  }, async (subject, { sendChunk }) => {
-    // Construct a request and send it to the model API.
-    const prompt =
+  name: "menuSuggestionFlow",
+  inputSchema: z.string().describe("A restaurant theme").default("seafood"),
+  outputSchema: z.string(),
+  streamSchema: z.string(),
+}, async (subject, {sendChunk}) => {
+  // Construct a request and send it to the model API.
+  const prompt =
       `Suggest an item for the menu of a ${subject} themed restaurant`;
-    const { response, stream } = ai.generateStream({
-      model: vertexAI.model("gemini-2.5-flash"),
-      prompt: prompt,
-      config: {
-        temperature: 1,
-      },
-    });
+  const {response, stream} = ai.generateStream({
+    model: vertexAI.model("gemini-2.5-flash"),
+    prompt: prompt,
+    config: {
+      temperature: 1,
+    },
+  });
 
-    for await (const chunk of stream) {
-      sendChunk(chunk.text);
-    }
-
-    // Handle the response from the model API. In this sample, we just
-    // convert it to a string, but more complicated flows might coerce the
-    // response into structured output or chain the response into another
-    // LLM call, etc.
-    return (await response).text;
+  for await (const chunk of stream) {
+    sendChunk(chunk.text);
   }
+
+  // Handle the response from the model API. In this sample, we just
+  // convert it to a string, but more complicated flows might coerce the
+  // response into structured output or chain the response into another
+  // LLM call, etc.
+  return (await response).text;
+}
 );
 
 export const menuSuggestion = onCallGenkit({
