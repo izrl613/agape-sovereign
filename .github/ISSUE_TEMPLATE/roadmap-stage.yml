@@ -1,0 +1,43 @@
+name: Roadmap stage task
+description: Track a compliance roadmap task in Foundation or Stages 1-3.
+title: "[Roadmap] "
+labels:
+  - codex
+body:
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Roadmap stage
+      options:
+        - Foundation
+        - Stage 1
+        - Stage 2
+        - Stage 3
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Task summary
+      description: Describe the repo-only compliance outcome to land.
+      placeholder: Add the concrete task and affected files.
+    validations:
+      required: true
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Acceptance checklist
+      description: Use concrete, reviewable steps.
+      value: |
+        - [ ] Linked to the canonical roadmap section
+        - [ ] Repo-only scope is clear
+        - [ ] Validation plan is recorded
+        - [ ] Secrets, least privilege, and deny-by-default impacts reviewed
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation notes
+      description: Record the checks, or explain why they were skipped.
+      placeholder: npm test, rules lint, manual review, etc.

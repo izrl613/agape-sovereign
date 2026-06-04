@@ -1,0 +1,59 @@
+name: Compliance Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require linked issue in PR body
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if ! printf '%s' "$PR_BODY" | grep -Eiq '(fixe[sd]?|close[sd]?|resolve[sd]?) #[0-9]+'; then
+            echo "PRs must link an issue using Fixes/Closes/Resolves #<number>."
+            exit 1
+          fi
+
+      - name: Validate governance templates exist
+        run: |
+          test -f .github/PULL_REQUEST_TEMPLATE.md
+          test -f .github/ISSUE_TEMPLATE/roadmap-stage.yml
+          test -f .github/ISSUE_TEMPLATE/daily-compliance-monitor.yml
+          test -f .github/ISSUE_TEMPLATE/gcp-change-request.yml
+
+  firebase-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce deny-by-default Firebase rules
+        run: |
+          grep -Fq 'allow read, write: if false;' firestore.rules
+          grep -Fq 'allow read, write: if false;' storage.rules
+          grep -Fq '"$other": {' database.rules.json
+          grep -Fq '".read": false' database.rules.json
+          grep -Fq '".write": false' database.rules.json
+
+      - name: Block token-based Firebase auth in workflows
+        run: |
+          if rg -n 'firebase use --token|FIREBASE_SERVICE_ACCOUNT' .github/workflows --glob '!compliance.yml'; then
+            echo "Token-based Firebase auth in GitHub Actions is not allowed."
+            exit 1
+          fi
+
+      - name: Block direct paid GCP automation
+        run: |
+          if rg -n '\bgcloud\b|Cloud Run|cloudbuild|Artifact Registry|artifactregistry|gcr\.io|pkg\.dev' .github/workflows --glob '!compliance.yml'; then
+            echo "Detected direct GCP automation or docs that need a manual approval issue."
+            exit 1
+          fi

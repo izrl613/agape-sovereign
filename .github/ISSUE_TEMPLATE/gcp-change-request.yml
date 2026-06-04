@@ -1,0 +1,39 @@
+name: GCP change request
+description: Track manual GCP work that is out of bounds for automatic execution.
+title: "agape-sovereign: GCP change request (approval required)"
+labels:
+  - codex
+  - compliance
+  - needs-approval
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No changes will be applied in GCP automatically.
+  - type: textarea
+    id: request
+    attributes:
+      label: Requested GCP change
+      description: Describe the manual GCP work being proposed.
+      placeholder: Cloud Run, Cloud Build, Artifact Registry, Storage, or other non-Firebase GCP step.
+    validations:
+      required: true
+  - type: textarea
+    id: cost-risk
+    attributes:
+      label: Cost-risk notes and free-tier constraints
+      description: Document why this work is out of bounds for automatic execution.
+      value: |
+        - Confirm whether the service has a free tier and its hard limits.
+        - Record billing, retention, networking, and egress risk.
+        - Explain why Firebase-native alternatives are insufficient.
+    validations:
+      required: true
+  - type: textarea
+    id: instructions
+    attributes:
+      label: Maintainer manual instructions
+      description: Provide step-by-step instructions for a human maintainer.
+      placeholder: List each manual step, prerequisite, and rollback note.
+    validations:
+      required: true

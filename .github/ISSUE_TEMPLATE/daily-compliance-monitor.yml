@@ -1,0 +1,19 @@
+name: Daily compliance monitor
+description: Append a compliance-oriented operational status update.
+title: "Daily Compliance Monitor"
+labels:
+  - codex
+  - compliance
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this as the single long-lived tracker for daily compliance updates.
+  - type: textarea
+    id: update
+    attributes:
+      label: Daily update
+      description: Paste the latest summary, risks, next actions, and GitHub learning.
+      placeholder: Add the current compliance-oriented daily note.
+    validations:
+      required: true
