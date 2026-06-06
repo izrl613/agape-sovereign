@@ -4,12 +4,13 @@ import { GlassCard, NeonText, SovereignScore } from './ui/NeonElements';
 
 interface DashboardViewProps {
   onModuleClick: (id: string) => void;
+  user: { name: string; email: string; provider: string; nukedCount?: number; knoxedCount?: number };
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ onModuleClick }) => {
-  const sovereignScore = 71;
-  const totalExposures = DIFF_MODULES.reduce((s, m) => s + m.nuked + m.monitored, 0);
-  const totalSecured = DIFF_MODULES.reduce((s, m) => s + m.knoxed, 0);
+export const DashboardView: React.FC<DashboardViewProps> = ({ onModuleClick, user }) => {
+  const totalExposures = user.nukedCount !== undefined ? user.nukedCount : DIFF_MODULES.reduce((s, m) => s + m.nuked + m.monitored, 0);
+  const totalSecured = user.knoxedCount !== undefined ? user.knoxedCount : DIFF_MODULES.reduce((s, m) => s + m.knoxed, 0);
+  const sovereignScore = user.nukedCount !== undefined ? Math.max(10, 100 - (user.nukedCount * 6)) : 71;
   const criticalModules = DIFF_MODULES.filter(m => m.severity < 60);
 
   return (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NEON, GRADIENT_BORDER } from './constants';
 import { GlobalStyles } from './components/GlobalStyles';
 import { AuthScreen } from './components/AuthScreen';
+import { OnboardingSplash } from './components/OnboardingSplash';
 import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
 import { DashboardView } from './components/DashboardView';
@@ -11,8 +12,17 @@ import { ReportView } from './components/ReportView';
 import { AdminPortal } from './components/AdminPortal';
 import { ProfilePanel } from './components/ProfilePanel';
 
+interface UserType {
+  name: string;
+  email: string;
+  provider: string;
+  nukedCount?: number;
+  knoxedCount?: number;
+}
+
 export default function App() {
-  const [user, setUser] = useState<{ name: string, email: string, provider: string } | null>(null);
+  const [user, setUser] = useState<UserType | null>(null);
+  const [isOnboarded, setIsOnboarded] = useState(false);
   const [activeSection, setActiveSection] = useState("dashboard");
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -22,7 +32,19 @@ export default function App() {
     return (
       <>
         <GlobalStyles />
-        <AuthScreen onAuth={setUser} />
+        <AuthScreen onAuth={(u) => setUser(u)} />
+      </>
+    );
+  }
+
+  if (!isOnboarded) {
+    return (
+      <>
+        <GlobalStyles />
+        <OnboardingSplash onComplete={(completedUser) => {
+          setUser(completedUser);
+          setIsOnboarded(true);
+        }} />
       </>
     );
   }
@@ -36,7 +58,7 @@ export default function App() {
     if (activeSection === "architect") return <ArchitectAIView />;
     if (activeSection === "report") return <ReportView />;
     if (activeSection === "modules" && activeModule) return <ModuleDetailView moduleId={activeModule} />;
-    return <DashboardView onModuleClick={handleModuleClick} />;
+    return <DashboardView onModuleClick={handleModuleClick} user={user} />;
   };
 
   return (
