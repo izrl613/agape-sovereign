@@ -42,7 +42,7 @@ const db = admin.firestore();
 // On success, stores the credential in Firestore for future authentication.
 
 export const verifyPasskeyRegistration = onCall(
-  {region: "us-central1", maxInstances: 10},
+  {region: "us-central1", maxInstances: 10, serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -130,7 +130,7 @@ export const verifyPasskeyRegistration = onCall(
 // Generates authentication options and stores challenge in Firestore.
 
 export const loginPasskeyOptions = onRequest(
-  {region: "us-central1", maxInstances: 10, cors: true},
+  {region: "us-central1", maxInstances: 10, cors: true, serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (req, res) => {
     try {
       const {email} = req.body;
@@ -191,7 +191,7 @@ export const loginPasskeyOptions = onRequest(
 // a Firebase Custom Token to sign in with.
 
 export const verifyPasskeyLogin = onRequest(
-  {region: "us-central1", maxInstances: 10, cors: true},
+  {region: "us-central1", maxInstances: 10, cors: true, serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (req, res) => {
     try {
       const {body} = req;
@@ -282,7 +282,7 @@ export const verifyPasskeyLogin = onRequest(
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
 export const generateDiffReport = onCall(
-  {region: "us-central1", maxInstances: 5},
+  {region: "us-central1", maxInstances: 5, serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -357,6 +357,7 @@ export const recalculateSovereignScore = onDocumentWritten(
   {
     document: "diff_scans/{scanId}/vectorResults/{vectorId}",
     region: "us-central1",
+    serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
   },
   async (event) => {
     const after = event.data?.after.data() as any;
@@ -414,7 +415,7 @@ export const recalculateSovereignScore = onDocumentWritten(
 // ─── PASSKEY CHALLENGE ──────────────────────────────────────
 
 export const generatePasskeyChallenge = onCall(
-  {region: "us-central1"},
+  {region: "us-central1", serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -441,7 +442,7 @@ export const generatePasskeyChallenge = onCall(
 // ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
 
 export const cleanupAuditLogs = onSchedule(
-  {region: "us-central1", schedule: "every 30 days"},
+  {region: "us-central1", schedule: "every 30 days", serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async () => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -469,7 +470,7 @@ export const cleanupAuditLogs = onSchedule(
 // ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
 
 export const generateECRAOptOut = onCall(
-  {region: "us-central1"},
+  {region: "us-central1", serviceAccount: "firebase-build-sa@agape-sovereign.iam.gserviceaccount.com"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
