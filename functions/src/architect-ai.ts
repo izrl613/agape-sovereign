@@ -11,14 +11,14 @@
  * Deploy with: firebase deploy --only functions
  */
 
-import { onCall, HttpsError, onRequest } from "firebase-functions/https";
-import { onDocumentWritten } from "firebase-functions/firestore";
-import { onSchedule } from "firebase-functions/scheduler";
+import {onCall, HttpsError, onRequest} from "firebase-functions/https";
+import {onDocumentWritten} from "firebase-functions/firestore";
+import {onSchedule} from "firebase-functions/scheduler";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
+import * as crypto from "crypto";
 
 import {
-  generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
@@ -31,7 +31,6 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const RP_NAME = "Agape Sovereign";
 
 // ─── STAGE 1A1: PASSKEY REGISTRATION OPTIONS ──────────────
 // Called when an authenticated user wants to bind a passkey to their account.
@@ -43,14 +42,14 @@ const RP_NAME = "Agape Sovereign";
 // On success, stores the credential in Firestore for future authentication.
 
 export const verifyPasskeyRegistration = onCall(
-  { region: "us-east1", maxInstances: 10 },
+  {region: "us-central1", maxInstances: 10},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
     const userId = request.auth.uid;
-    const { response } = request.data;
+    const {response} = request.data;
 
     if (!response) {
       throw new HttpsError("invalid-argument", "Missing attestation response");
@@ -89,7 +88,7 @@ export const verifyPasskeyRegistration = onCall(
         throw new HttpsError("unauthenticated", "Passkey verification failed");
       }
 
-      const { credential } = verification.registrationInfo;
+      const {credential} = verification.registrationInfo;
 
       await db
         .collection("users").doc(userId)
@@ -115,11 +114,11 @@ export const verifyPasskeyRegistration = onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      logger.info("Passkey registered successfully", { userId });
-      return { verified: true };
+      logger.info("Passkey registered successfully", {userId});
+      return {verified: true};
     } catch (error) {
       if (error instanceof HttpsError) throw error;
-      logger.error("Verify registration failed", { error });
+      logger.error("Verify registration failed", {error});
       throw new HttpsError("internal", "Failed to verify passkey registration");
     }
   }
@@ -131,19 +130,19 @@ export const verifyPasskeyRegistration = onCall(
 // Generates authentication options and stores challenge in Firestore.
 
 export const loginPasskeyOptions = onRequest(
-  { region: "us-east1", maxInstances: 10, cors: true },
+  {region: "us-central1", maxInstances: 10, cors: true},
   async (req, res) => {
     try {
-      const { email } = req.body;
+      const {email} = req.body;
       if (!email) {
-        res.status(400).json({ error: "Missing email" });
+        res.status(400).json({error: "Missing email"});
         return;
       }
 
       // Find user by email in Firestore
       const userSnap = await db.collection("users").where("email", "==", email).limit(1).get();
       if (userSnap.empty) {
-        res.status(404).json({ error: "User not found. Sign in with Google first." });
+        res.status(404).json({error: "User not found. Sign in with Google first."});
         return;
       }
 
@@ -153,7 +152,7 @@ export const loginPasskeyOptions = onRequest(
       // Get stored passkey credentials for this user
       const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
       if (credsSnap.empty) {
-        res.status(404).json({ error: "No passkey found for this account. Bind a passkey first." });
+        res.status(404).json({error: "No passkey found for this account. Bind a passkey first."});
         return;
       }
 
@@ -179,10 +178,10 @@ export const loginPasskeyOptions = onRequest(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      res.json({ ...options, tempUserId: userId });
+      res.json({...options, tempUserId: userId});
     } catch (error) {
-      logger.error("Login options failed", { error });
-      res.status(500).json({ error: "Internal server error" });
+      logger.error("Login options failed", {error});
+      res.status(500).json({error: "Internal server error"});
     }
   }
 );
@@ -192,14 +191,14 @@ export const loginPasskeyOptions = onRequest(
 // a Firebase Custom Token to sign in with.
 
 export const verifyPasskeyLogin = onRequest(
-  { region: "us-east1", maxInstances: 10, cors: true },
+  {region: "us-central1", maxInstances: 10, cors: true},
   async (req, res) => {
     try {
-      const { body } = req;
-      const { tempUserId } = req.body;
+      const {body} = req;
+      const {tempUserId} = req.body;
 
       if (!tempUserId) {
-        res.status(400).json({ error: "Missing userId" });
+        res.status(400).json({error: "Missing userId"});
         return;
       }
 
@@ -209,13 +208,13 @@ export const verifyPasskeyLogin = onRequest(
         .collection("loginChallenge").doc("current").get();
 
       if (!challengeDoc.exists) {
-        res.status(400).json({ error: "Challenge expired or missing. Start login again." });
+        res.status(400).json({error: "Challenge expired or missing. Start login again."});
         return;
       }
 
       const expectedChallenge = challengeDoc.data()?.challenge;
       if (!expectedChallenge) {
-        res.status(400).json({ error: "Challenge not found" });
+        res.status(400).json({error: "Challenge not found"});
         return;
       }
 
@@ -229,7 +228,7 @@ export const verifyPasskeyLogin = onRequest(
         .collection("passkeyCredentials").doc(credentialId).get();
 
       if (!credDoc.exists) {
-        res.status(400).json({ error: "Credential not found" });
+        res.status(400).json({error: "Credential not found"});
         return;
       }
 
@@ -268,14 +267,14 @@ export const verifyPasskeyLogin = onRequest(
           timestamp: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        logger.info("Passkey login verified", { userId: tempUserId });
-        res.json({ verified: true, token: customToken });
+        logger.info("Passkey login verified", {userId: tempUserId});
+        res.json({verified: true, token: customToken});
       } else {
-        res.status(400).json({ verified: false, error: "Authentication failed" });
+        res.status(400).json({verified: false, error: "Authentication failed"});
       }
     } catch (error) {
-      logger.error("Verify login failed", { error });
-      res.status(500).json({ error: "Internal server error" });
+      logger.error("Verify login failed", {error});
+      res.status(500).json({error: "Internal server error"});
     }
   }
 );
@@ -283,7 +282,7 @@ export const verifyPasskeyLogin = onRequest(
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
 export const generateDiffReport = onCall(
-  { region: "us-east1", maxInstances: 5 },
+  {region: "us-central1", maxInstances: 5},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -293,7 +292,7 @@ export const generateDiffReport = onCall(
     const userEmail = request.auth.token.email || "user@agape.nyc";
 
     try {
-      logger.info("PDF generation started", { userId });
+      logger.info("PDF generation started", {userId});
 
       // Fetch user profile
       const userDoc = await db.collection("users").doc(userId).get();
@@ -315,7 +314,6 @@ export const generateDiffReport = onCall(
       };
 
       // Generate SHA-256 seal
-      const crypto = import("crypto");
       const seal = crypto
         .createHash("sha256")
         .update(JSON.stringify(reportData))
@@ -338,7 +336,7 @@ export const generateDiffReport = onCall(
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      logger.info("PDF metadata stored", { reportId });
+      logger.info("PDF metadata stored", {reportId});
 
       return {
         success: true,
@@ -347,7 +345,7 @@ export const generateDiffReport = onCall(
         sha256Seal: seal,
       };
     } catch (error) {
-      logger.error("PDF generation failed", { error });
+      logger.error("PDF generation failed", {error});
       throw new HttpsError("internal", "Failed to generate report");
     }
   }
@@ -358,7 +356,7 @@ export const generateDiffReport = onCall(
 export const recalculateSovereignScore = onDocumentWritten(
   {
     document: "diff_scans/{scanId}/vectorResults/{vectorId}",
-    region: "us-east1",
+    region: "us-central1",
   },
   async (event) => {
     const after = event.data?.after.data() as any;
@@ -406,9 +404,9 @@ export const recalculateSovereignScore = onDocumentWritten(
         lastScoreUpdate: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      logger.info("Score updated", { userId, score: sovereignScore });
+      logger.info("Score updated", {userId, score: sovereignScore});
     } catch (error) {
-      logger.error("Recalculation failed", { error });
+      logger.error("Recalculation failed", {error});
     }
   }
 );
@@ -416,13 +414,12 @@ export const recalculateSovereignScore = onDocumentWritten(
 // ─── PASSKEY CHALLENGE ──────────────────────────────────────
 
 export const generatePasskeyChallenge = onCall(
-  { region: "us-east1" },
+  {region: "us-central1"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
-    const crypto = require("crypto");
     const challenge = crypto.randomBytes(32).toString("base64");
 
     try {
@@ -431,10 +428,10 @@ export const generatePasskeyChallenge = onCall(
           passkeyChallenge: challenge,
           challengeExpiresAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        {merge: true}
       );
 
-      return { challenge };
+      return {challenge};
     } catch (error) {
       throw new HttpsError("internal", "Challenge generation failed");
     }
@@ -444,7 +441,7 @@ export const generatePasskeyChallenge = onCall(
 // ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
 
 export const cleanupAuditLogs = onSchedule(
-  { region: "us-east1", schedule: "every 30 days" },
+  {region: "us-central1", schedule: "every 30 days"},
   async () => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -462,9 +459,9 @@ export const cleanupAuditLogs = onSchedule(
       });
 
       if (deleted > 0) await batch.commit();
-      logger.info("Audit cleanup", { deleted });
+      logger.info("Audit cleanup", {deleted});
     } catch (error) {
-      logger.error("Cleanup failed", { error });
+      logger.error("Cleanup failed", {error});
     }
   }
 );
@@ -472,13 +469,13 @@ export const cleanupAuditLogs = onSchedule(
 // ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
 
 export const generateECRAOptOut = onCall(
-  { region: "us-east1" },
+  {region: "us-central1"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
-    const { userName, userEmail } = request.data;
+    const {userName, userEmail} = request.data;
 
     const template = `ECRA 2026 DATA SUBJECT REMOVAL REQUEST
 
@@ -493,6 +490,6 @@ Pursuant to ECRA 2026 § 4.2, I request immediate deletion of all personal data 
 Respectfully,
 ${userName}`;
 
-    return { optOutTemplate: template };
+    return {optOutTemplate: template};
   }
 );

@@ -2,3 +2,5 @@ node_modules/
 lib/
 src/dataconnect-admin-generated/
 src/genkit-sample.ts
+index.js
+server.js
