@@ -1,0 +1,37 @@
+name: Roadmap stage tracker
+description: Track one Foundation or stage-level roadmap slice.
+title: "[Roadmap]: "
+labels:
+  - codex
+body:
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Roadmap stage
+      options:
+        - Foundation
+        - Stage 1
+        - Stage 2
+        - Stage 3
+    validations:
+      required: true
+  - type: textarea
+    id: requirement
+    attributes:
+      label: Requirement
+      description: Cite the roadmap or governance source of truth.
+      placeholder: docs/compliance/ROADMAP.md section...
+    validations:
+      required: true
+  - type: textarea
+    id: definition_of_done
+    attributes:
+      label: Definition of done
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk if not done
+    validations:
+      required: true

@@ -66,3 +66,34 @@
 ### GitHub Learning
 
 - If the GitHub connector is authenticated, use one long-lived issue for operational monitoring and keep the daily comments short; issue creation is a one-time step, while Actions failures are usually the highest-signal daily update.
+
+## 2026-06-08 17:33:20 EDT
+
+- Git HEAD: `roadmap-2026-06-08` @ `cacc00e89f9d4931814fa5c42b23a3546b1a7dd1` (`refactor: remove .lastUpdated metadata from S3 deployment tracker`)
+- Working tree: modified for Foundation compliance guardrails; branch name fell back from `main/roadmap-2026-06-08` because local Git cannot create nested refs under existing `main`
+- Commit anchor: prior daily log entry at `096c41ea94c06ee7b82f5c2f450d3303351d7651` on `2026-06-04 09:04:55 EDT`
+
+### Summary
+
+- Primary roadmap classification: `Foundation`
+- Restored missing governance artifacts in this worktree: `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/roadmap-stage.yml`, `.github/ISSUE_TEMPLATE/daily-compliance-monitor.yml`, `.github/ISSUE_TEMPLATE/gcp-change-request.yml`, and `.github/workflows/compliance.yml`
+- Tightened Firebase defaults by changing `database.rules.json` from authenticated-read/write to explicit deny-by-default
+- The compliance workflow now checks for required roadmap/governance artifacts, deny-by-default rules, and token-based Firebase deploy authentication in `.github/workflows/*`
+- GitHub read access worked, but GitHub write actions did not: issue creation attempts for the roadmap meta issue, stage trackers, daily monitor issue, and GCP approval issue all failed with `403 Resource not accessible by integration`
+- Existing remote roadmap coverage remains partial: Stage 3 issues `#24` and `#25`, Stage 1 module issue `#22`, and infrastructure/policy issues `#26`, `#27`, and `#28` exist, but the stage-level tracker set and meta issue are still missing remotely
+
+### Risks / Alerts
+
+- Least-privilege risk remains active: `.github/workflows/deploy.yml` still uses `firebase use --token ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}` and should fail the new compliance gate until it is replaced
+- Governance gap remains on GitHub because the connector cannot create or update issues in this repository from the current integration context
+- `firebase.json` still contains repeated `apphosting` entries and non-hosting infrastructure references; any cleanup that changes deployed non-Firebase-backed infrastructure needs maintainer review under the zero-cost policy
+
+### Next Recommended Actions
+
+- Push this branch and open a PR titled `agape-sovereign: restore foundation compliance gates`
+- On GitHub, create or authorize creation of these exact issues: `Agape Sovereign: Compliance Roadmap`, `Foundation: Governance + Guardrails`, `Stage 1: Data Collection Front-End`, `Stage 2: Analysis Core`, `Stage 3: Reporting + Infrastructure`, `Daily Compliance Monitor`, and `agape-sovereign: GCP change request (approval required)`
+- Replace token-based Firebase deploy authentication in `.github/workflows/deploy.yml` with the least-privileged credential flow the maintainer wants to support
+
+### GitHub Learning
+
+- A GitHub integration can have enough access for search and read operations but still fail all issue creation with `403 Resource not accessible by integration`; when that happens, the daily log should capture the exact missing remote artifacts so a maintainer can create them manually or upgrade permissions.

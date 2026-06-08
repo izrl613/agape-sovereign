@@ -1,0 +1,30 @@
+name: GCP change request (approval required)
+description: Document any non-Firebase GCP work without applying it automatically.
+title: "agape-sovereign: GCP change request (approval required)"
+labels:
+  - codex
+body:
+  - type: markdown
+    attributes:
+      value: No changes will be applied in GCP automatically.
+  - type: textarea
+    id: requested_change
+    attributes:
+      label: Requested change
+      description: Describe the GCP work that was proposed by the roadmap or follow-up.
+    validations:
+      required: true
+  - type: textarea
+    id: cost_risk
+    attributes:
+      label: Cost-risk notes and free-tier constraints
+      placeholder: Explain why this is outside the zero-cost Firebase-only boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: manual_steps
+    attributes:
+      label: Manual maintainer steps
+      description: Provide step-by-step instructions for the maintainer.
+    validations:
+      required: true

@@ -1,0 +1,19 @@
+name: Daily compliance monitor
+description: Track the single daily compliance monitoring issue.
+title: "Daily Compliance Monitor"
+labels:
+  - codex
+body:
+  - type: markdown
+    attributes:
+      value: Keep exactly one issue with this title. Use comments for each daily run rather than creating duplicates.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Monitoring scope
+      value: |
+        - Review docs/compliance/ROADMAP.md and docs/compliance/GOVERNANCE.md
+        - Append a dated note to docs/compliance/DAILY_LOG.md
+        - Track secrets discipline, least privilege, and deny-by-default regressions
+    validations:
+      required: true

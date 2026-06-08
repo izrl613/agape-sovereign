@@ -1,0 +1,37 @@
+name: Compliance Gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required compliance artifacts
+        run: |
+          test -f .github/PULL_REQUEST_TEMPLATE.md
+          test -f .github/ISSUE_TEMPLATE/roadmap-stage.yml
+          test -f .github/ISSUE_TEMPLATE/daily-compliance-monitor.yml
+          test -f .github/ISSUE_TEMPLATE/gcp-change-request.yml
+          test -f docs/compliance/ROADMAP.md
+          test -f docs/compliance/GOVERNANCE.md
+
+      - name: Enforce deny-by-default rules
+        run: |
+          grep -q '"\.read": false' database.rules.json
+          grep -q '"\.write": false' database.rules.json
+          grep -q 'allow read, write: if false;' firestore.rules
+          grep -q 'allow read, write: if false;' storage.rules
+
+      - name: Block token-based Firebase deploy auth
+        run: |
+          if grep -R -n --exclude=compliance.yml 'firebase use --token\|FIREBASE_SERVICE_ACCOUNT' .github/workflows; then
+            echo "Token-based Firebase deploy auth is not allowed by compliance governance."
+            exit 1
+          fi
