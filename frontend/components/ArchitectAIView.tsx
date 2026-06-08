@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { NEON, GRADIENT_BORDER, SYSTEM_PROMPT } from '../constants';
 import { NeonText, NeonButton } from './ui/NeonElements';
 
@@ -10,29 +9,10 @@ export const ArchitectAIView: React.FC = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
-  const chatRef = useRef<any>(null);
 
   useEffect(() => { 
     messagesEnd.current?.scrollIntoView({ behavior: "smooth" }); 
   }, [messages]);
-
-  useEffect(() => {
-    // Initialize Gemini Chat session
-    try {
-      // Note: In a real app, API_KEY should be securely managed. 
-      // For this demo, we assume it's available in the environment or we mock if missing.
-      const apiKey = process.env.API_KEY || "mock_key"; 
-      const ai = new GoogleGenAI({ apiKey: apiKey, vertexai: true });
-      chatRef.current = ai.chats.create({
-        model: 'gemini-2.5-flash',
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-        }
-      });
-    } catch (e) {
-      console.error("Failed to initialize Gemini", e);
-    }
-  }, []);
 
   const send = async () => {
     if (!input.trim() || loading) return;
@@ -42,19 +22,28 @@ export const ArchitectAIView: React.FC = () => {
     setLoading(true);
 
     try {
-      if (chatRef.current && process.env.API_KEY) {
-        const response = await chatRef.current.sendMessage({ message: userMsg });
-        setMessages(prev => [...prev, { role: "assistant", content: response.text }]);
-      } else {
-        // Mock response if no API key is present for demo purposes
-        setTimeout(() => {
-          setMessages(prev => [...prev, { role: "assistant", content: `[MOCK RESPONSE - API KEY MISSING]\n\nI have analyzed your request regarding: "${userMsg}".\n\nBased on ECRA 2026 guidelines, I recommend reviewing your **V-06 Data Broker Removal** module. Would you like me to initiate a NUKED protocol for identified exposures?` }]);
-          setLoading(false);
-        }, 1500);
-        return;
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: userMsg }
+          ],
+          max_tokens: -1,
+          stream: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Local AI returned HTTP ${response.status}`);
       }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || "No response received from local AI.";
+      setMessages(prev => [...prev, { role: "assistant", content: text }]);
     } catch (e) {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Secure channel temporarily interrupted. Reconnecting..." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Local AI is unavailable. Start Ollama and retry." }]);
     }
     setLoading(false);
   };
@@ -83,7 +72,7 @@ export const ArchitectAIView: React.FC = () => {
       <div className="mb-4">
         <div className="font-['Share_Tech_Mono'] text-[0.6rem] tracking-[0.2em] mb-1" style={{ color: NEON.orange }}>AI INTELLIGENCE ENGINE</div>
         <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
-        <div className="text-[0.75rem] mt-0.5" style={{ color: NEON.textMuted }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemini-powered</div>
+        <div className="text-[0.75rem] mt-0.5" style={{ color: NEON.textMuted }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemma 4 E4B local AI</div>
       </div>
       <div className="h-[1px] mb-4 opacity-50 shrink-0" style={{ background: GRADIENT_BORDER }} />
 

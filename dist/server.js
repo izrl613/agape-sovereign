@@ -528,7 +528,7 @@ async function startServer() {
   });
   app.get("/api/status", async (req, res) => {
     const ideConfig = loadIDEConfig();
-    const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+    const baseUrl = ideConfig.ai?.baseUrl || "http://127.0.0.1:11434";
     const model = ideConfig.ai?.model || "gemma4:e4b";
     try {
       const response = await fetch(`${baseUrl}/v1/models`, {
@@ -577,28 +577,47 @@ async function startServer() {
       const { messages, max_tokens } = req.body;
       const ideConfig = loadIDEConfig();
       const provider = ideConfig.ai?.provider || "ollama";
-      const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+      const baseUrl = ideConfig.ai?.baseUrl || "http://127.0.0.1:11434";
       const model = ideConfig.ai?.model || "gemma4:e4b";
       if (provider === "ollama") {
         try {
-          const lmRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+          const lmRes = await fetch(`${baseUrl}/api/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model,
               messages,
-              max_tokens: max_tokens || -1,
-              stream: false
+              stream: false,
+              options: {
+                num_predict: typeof max_tokens === "number" ? max_tokens : -1
+              }
             }),
-            signal: AbortSignal.timeout(5e3)
+            signal: AbortSignal.timeout(3e4)
           });
           if (lmRes.ok) {
             const data = await lmRes.json();
-            return res.json(data);
+            return res.json({
+              choices: [
+                {
+                  message: {
+                    role: "assistant",
+                    content: data.message?.content || ""
+                  }
+                }
+              ]
+            });
           }
         } catch (e) {
-          console.log("[PROXY] Ollama offline or timed out, falling back to Cloud Gemini...");
+          console.log("[PROXY] Ollama offline or timed out; cloud fallback is disabled for local-first mode.");
+          return res.status(503).json({
+            error: "Local Ollama is unavailable. Start Ollama and retry."
+          });
         }
+      }
+      if (provider === "ollama") {
+        return res.status(503).json({
+          error: "Local Ollama is unavailable. Start Ollama and retry."
+        });
       }
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {

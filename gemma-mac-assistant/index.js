@@ -5,7 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
+const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
 const DEFAULT_MODEL = process.env.OLLAMA_MODEL ?? "gemma4:latest";
 const DEFAULT_NUM_PREDICT = Number.parseInt(
   process.env.OLLAMA_NUM_PREDICT ?? "32768",

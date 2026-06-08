@@ -692,10 +692,10 @@ const ConfigTab = () => (
         <div className="p-4 bg-white/5 border border-white/10 rounded-xl flex justify-between items-center group">
           <div>
             <div className="font-bold text-white text-xs">ai_model_version</div>
-            <div className="text-[10px] text-slate-500 font-mono">STRING | Default: gemini-3.1-pro-preview</div>
+            <div className="text-[10px] text-slate-500 font-mono">STRING | Default: gemma4:e4b</div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-[#00D4FF]">gemini-3.1-pro-preview</span>
+            <span className="text-[10px] font-mono text-[#00D4FF]">gemma4:e4b</span>
           </div>
         </div>
 

@@ -185,8 +185,6 @@ export async function GET(req: NextRequest) {
 // pages/api/ai/chat.ts
 import { NextRequest, NextResponse } from "next/server";
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -196,44 +194,20 @@ export async function POST(req: NextRequest) {
 
     const { messages, context } = await req.json();
 
-    // Call Gemini API
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent", {
+    // Route through the local Ollama-backed proxy instead of cloud AI by default.
+    const response = await fetch("http://127.0.0.1:3000/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY!,
       },
       body: JSON.stringify({
-        contents: messages.map((msg: any) => ({
-          role: msg.role === "user" ? "user" : "model",
-          parts: [{ text: msg.content }],
-        })),
-        systemInstruction: {
-          parts: [
-            {
-              text: `You are Architect AI, the core intelligence engine of the Agape Sovereign Enclave 2026 — a cutting-edge Digital Identity Federated Footprint (DIFF) security and privacy platform.
-
-Your persona: Calm, precise, futuristic, deeply knowledgeable about security and privacy.
-
-Your purpose: Help users understand, reclaim, and fortify their digital identity across 16 identity vectors.
-
-Core concepts: NUKED (exposures identified for removal), KNOXED (assets secured), DIFF (Digital Identity Federated Footprint).
-
-Always be actionable and empowering. Reference ECRA 2026, GDPR, CCPA where relevant.`,
-            },
-          ],
-        },
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1000,
-        },
+        messages,
+        context,
       }),
     });
 
     const data = await response.json();
-    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to process request.";
+    const aiResponse = data.choices?.[0]?.message?.content || data.error || "Unable to process request.";
 
     return NextResponse.json({ success: true, response: aiResponse });
   } catch (error: any) {

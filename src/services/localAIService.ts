@@ -1,9 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Cloud Run MCP Server (primary) — falls back to local proxy for dev
+const LOCAL_PROXY_URL = "http://127.0.0.1:3000";
 const CLOUD_MCP_URL = "https://gemma4-mcp-server-956088455461.us-central1.run.app";
-const LOCAL_PROXY_URL = "http://localhost:3000";
-let ACTIVE_PROXY_URL = CLOUD_MCP_URL;
+let ACTIVE_PROXY_URL = LOCAL_PROXY_URL;
 const CLOUD_MODEL_FLASH = "gemini-3-flash-preview";
 const CLOUD_MODEL_PRO = "gemini-3.1-pro-preview";
 
@@ -47,9 +46,13 @@ export interface LocalStatus {
   costModel: string;
 }
 
+function getSelectedModel(): "gemma" | "gemini" {
+  return typeof window !== "undefined" ? (localStorage.getItem("selected_llm_model") as "gemma" | "gemini" | null) || "gemma" : "gemma";
+}
+
 // 1. Live status probe
 export async function getLocalAIStatus(): Promise<LocalStatus> {
-  const selectedModel = typeof window !== 'undefined' ? (localStorage.getItem('selected_llm_model') || 'gemma') : 'gemma';
+  const selectedModel = getSelectedModel();
 
   // If user explicitly selected Gemini, bypass local search entirely
   if (selectedModel === 'gemini') {
@@ -62,46 +65,32 @@ export async function getLocalAIStatus(): Promise<LocalStatus> {
     };
   }
 
-  // Try Cloud Run first, then fallback to local proxy
-  for (const url of [CLOUD_MCP_URL, LOCAL_PROXY_URL]) {
-    try {
-      const res = await fetch(`${url}/api/status`, {
-        method: "GET",
-        signal: AbortSignal.timeout(2500)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        ACTIVE_PROXY_URL = url; // Lock onto whichever responds
-        return {
-          online: selectedModel === 'gemma' ? true : data.online,
-          port: data.port,
-          modelName: selectedModel === 'gemma' ? "Gemma 4 E4B" : (data.modelName || "Gemma-4-E4B-MLX"),
-          usage: "Unlimited Tokens",
-          costModel: url === CLOUD_MCP_URL ? "Cloud Run — Zero External Billing" : "Local — Zero External Billing"
-        };
-      }
-    } catch (e) {
-      // Try next URL
+  try {
+    const res = await fetch(`${LOCAL_PROXY_URL}/api/status`, {
+      method: "GET",
+      signal: AbortSignal.timeout(2500)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      ACTIVE_PROXY_URL = LOCAL_PROXY_URL;
+      return {
+        online: true,
+        port: data.port || 3000,
+        modelName: data.modelName || "Gemma 4 E4B Local AI",
+        usage: "Unlimited Tokens",
+        costModel: "Local — Zero External Billing"
+      };
     }
-  }
-
-  // If all server checks failed, but the user explicitly selected Gemma, return simulated online
-  if (selectedModel === 'gemma') {
-    return {
-      online: true,
-      port: 3000,
-      modelName: "Gemma 4 E4B",
-      usage: "Unlimited Tokens",
-      costModel: "Zero External Billing (Simulated)"
-    };
+  } catch (e) {
+    // Local proxy unavailable, continue to offline status
   }
 
   return {
     online: false,
     port: 3000,
-    modelName: "Gemma-4-E4B-MLX",
+    modelName: "Gemma 4 E4B Local AI",
     usage: "Offline",
-    costModel: "Standard Billing"
+    costModel: "Local AI unavailable"
   };
 }
 
@@ -111,9 +100,10 @@ export async function chatComplete(
   systemInstruction?: string,
   jsonMode: boolean = false
 ): Promise<AIResponse> {
+  const selectedModel = getSelectedModel();
   const status = await getLocalAIStatus();
 
-  if (status.online) {
+  if (selectedModel === "gemma" && status.online) {
     try {
       const messages = [];
       if (systemInstruction) {
@@ -137,11 +127,16 @@ export async function chatComplete(
         return { text };
       }
     } catch (e) {
-      console.warn("Local chat complete failed, falling back to cloud:", e);
+      console.warn("Local chat complete failed:", e);
     }
   }
 
-  // Cloud Fallback
+  if (selectedModel !== "gemini") {
+    return {
+      text: "Gemma 4 E4B local AI is unavailable right now. Start Ollama on http://127.0.0.1:11434, then reload the app."
+    };
+  }
+
   const cloudClient = getCloudClient();
 
   const response = await cloudClient.models.generateContent({
@@ -163,9 +158,10 @@ export async function* chatStream(
   systemInstruction?: string,
   history: { role: "user" | "model"; text: string }[] = []
 ): AsyncGenerator<{ text: string }> {
+  const selectedModel = getSelectedModel();
   const status = await getLocalAIStatus();
 
-  if (status.online) {
+  if (selectedModel === "gemma" && status.online) {
     try {
       const messages = [];
       if (systemInstruction) {
@@ -200,11 +196,17 @@ export async function* chatStream(
         return;
       }
     } catch (e) {
-      console.warn("Local chat stream failed, falling back to cloud:", e);
+      console.warn("Local chat stream failed:", e);
     }
   }
 
-  // Cloud Fallback Streaming
+  if (selectedModel !== "gemini") {
+    yield {
+      text: "Gemma 4 E4B local AI is unavailable right now. Start Ollama on http://127.0.0.1:11434, then reload the app."
+    };
+    return;
+  }
+
   const cloudClient = getCloudClient();
   const contents = [];
   for (const h of history) {

@@ -341,7 +341,7 @@ const Header = () => {
   const [localAI, setLocalAI] = useState<LocalStatus>({
     online: false,
     port: 3000,
-    modelName: "Gemma-4-E4B-MLX",
+    modelName: "Gemma 4 E4B Local AI",
     usage: "Checking...",
     costModel: "Standard Billing"
   });
@@ -367,11 +367,11 @@ const Header = () => {
     setIsModelDropdownOpen(false);
     checkLocalHealth();
 
-    toast.success(`SWITCHED TO ${model === 'gemma' ? 'GEMMA 4 E4B' : 'GEMINI CLOUD'}`, {
-      description: model === 'gemma' 
-        ? "Running under private local resilient compute with unlimited token parameters (∞ Tokens)." 
+      toast.success(`SWITCHED TO ${model === 'gemma' ? 'GEMMA 4 E4B LOCAL AI' : 'GEMINI CLOUD'}`, {
+        description: model === 'gemma' 
+        ? "Running under private local Ollama compute with unlimited tokens (∞ Tokens)." 
         : "Running under standard cloud hybrid intelligence.",
-      duration: 5000,
+        duration: 5000,
       icon: model === 'gemma' 
         ? <Shield className="w-4 h-4 text-[#00D4FF]" />
         : <Sparkles className="w-4 h-4 text-[#f59e0b]" />
@@ -583,7 +583,7 @@ const Header = () => {
               letterSpacing: '0.05em'
             }}
           >
-            {localAI.online ? (localStorage.getItem('selected_llm_model') === 'gemma' ? 'Gemma 4 E4B' : 'Gemma-4-E4B-MLX') : 'Gemini Cloud'}
+            {localAI.online ? 'Gemma 4 E4B Local AI' : 'Gemini Cloud'}
           </span>
           <span 
             style={{
@@ -661,7 +661,7 @@ const Header = () => {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#1a73e8', boxShadow: '0 0 6px #1a73e8' }} />
-                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#8ab4f8' }}>Gemma 4 E4B</span>
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', fontWeight: 'bold', color: '#8ab4f8' }}>Gemma 4 E4B Local AI</span>
                     </div>
                     <span style={{ 
                       fontFamily: "'Share Tech Mono'", 
