@@ -112,14 +112,16 @@ import { Toaster } from 'sonner';
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ScanProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster position="top-right" theme="dark" richColors closeButton />
-          </BrowserRouter>
-        </ScanProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ScanProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <Toaster position="top-right" theme="dark" richColors closeButton />
+            </BrowserRouter>
+          </ScanProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
