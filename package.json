@@ -24,7 +24,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "firebase": "latest",
-    "firebase-admin": "^14.0.0",
+    "firebase-admin": "^10.3.0",
     "framer-motion": "latest",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -44,7 +44,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@vitejs/plugin-react": "latest",
-    "concurrently": "latest",
+    "concurrently": "^10.0.3",
     "esbuild": "latest",
     "typescript": "latest",
     "vite": "latest"
