@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { Shield, ArrowRight, Check, Lock, Cpu, Loader2 } from 'lucide-react';
 import { NeonButton, NEON } from './UI';
+import { EncryptedFooter } from './EncryptedFooter';
 import { doc, setDoc, writeBatch, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { encryptClientSide, generateSHA256 } from '../utils/crypto';
@@ -277,6 +278,11 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
             </div>
           </div>
         )}
+
+        {/* Encrypted Integrity Footer */}
+        <div className="px-2 pb-2">
+          <EncryptedFooter moduleId="splash-entry" uid={user?.uid} />
+        </div>
 
         {/* Decorative corner elements */}
         <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#FF2E9F]/30" />

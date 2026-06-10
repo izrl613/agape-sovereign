@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
+import { EncryptedFooter } from './EncryptedFooter';
 import { motion } from 'framer-motion';
 import { Fingerprint } from 'lucide-react';
 
@@ -162,6 +163,8 @@ export const Login = () => {
             <div style={{ color: NEON.textMuted, fontSize: "0.7rem", marginTop: 8 }}>Preparing your DIFF sovereignty console</div>
           </motion.div>
         )}
+        {/* Encrypted Integrity Footer */}
+        <EncryptedFooter moduleId="auth-gate" style={{ marginTop: 20 }} />
       </GlassCard>
     </div>
   );

@@ -14,7 +14,6 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@google/genai": "latest",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "@tailwindcss/vite": "^4.3.0",
@@ -24,7 +23,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "firebase": "latest",
-    "firebase-admin": "^10.3.0",
+    "firebase-admin": "^12.0.0",
     "framer-motion": "latest",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -43,6 +42,7 @@
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "latest",
     "concurrently": "^10.0.3",
     "esbuild": "latest",

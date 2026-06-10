@@ -308,12 +308,12 @@ export const Dashboard = () => {
           ))
         ) : (
           [
-            { label: "VECTORS ACTIVE", value: "16", sub: "All layers online", color: NEON.blue },
-            { label: "EXPOSURES FOUND", value: stats.nuked + stats.monitored, sub: "Across all surfaces", color: NEON.magenta },
-            { label: "SECURED", value: stats.knoxed, sub: "KNOXED & hardened", color: NEON.blue },
-            { label: "CRITICAL FLAGS", value: stats.nuked, sub: "Require attention", color: NEON.orange },
+            { label: "VECTORS ACTIVE", value: "16", sub: "All layers online", color: NEON.blue, mid: "kpi-vectors" },
+            { label: "EXPOSURES FOUND", value: stats.nuked + stats.monitored, sub: "Across all surfaces", color: NEON.magenta, mid: "kpi-exposure" },
+            { label: "SECURED", value: stats.knoxed, sub: "KNOXED & hardened", color: NEON.blue, mid: "kpi-secured" },
+            { label: "CRITICAL FLAGS", value: stats.nuked, sub: "Require attention", color: NEON.orange, mid: "kpi-critical" },
           ].map((kpi) => (
-            <GlassCard key={kpi.label} style={{ padding: "16px" }}>
+            <GlassCard key={kpi.label} style={{ padding: "16px" }} footerSeal moduleId={kpi.mid} uid={user?.uid}>
               <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, letterSpacing: "0.1em", marginBottom: 6 }}>{kpi.label}</div>
               <div style={{ fontFamily: "'Orbitron', monospace", fontSize: "1.8rem", fontWeight: 900, color: kpi.color, textShadow: `0 0 12px ${kpi.color}66` }}>{kpi.value}</div>
               <div style={{ fontSize: "0.7rem", color: NEON.textMuted, marginTop: 4 }}>{kpi.sub}</div>
@@ -514,7 +514,7 @@ export const Dashboard = () => {
             <div style={{ flex: 1, height: 1, background: `${NEON.blue}33` }} />
           </div>
 
-          <GlassCard style={{ padding: "16px", minHeight: 400 }}>
+          <GlassCard style={{ padding: "16px", minHeight: 400 }} footerSeal moduleId="intelligence-feed" uid={user?.uid}>
             {/* Filter and Sort Controls */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

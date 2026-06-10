@@ -1,4 +1,5 @@
 import React from 'react';
+import { EncryptedFooter } from './EncryptedFooter';
 
 export const NEON = {
   magenta: "#FF2E9F",
@@ -31,17 +32,33 @@ export const NeonText: React.FC<{
   </span>
 );
 
-export const GlassCard: React.FC<{ children: React.ReactNode, style?: React.CSSProperties, className?: string, onClick?: () => void }> = ({ 
+export const GlassCard: React.FC<{ 
+  children: React.ReactNode, 
+  style?: React.CSSProperties, 
+  className?: string, 
+  onClick?: () => void,
+  footerSeal?: boolean,
+  moduleId?: string,
+  uid?: string,
+}> = ({ 
   children, 
   style = {}, 
   className = "", 
-  onClick 
+  onClick,
+  footerSeal = false,
+  moduleId = "card",
+  uid
 }) => (
   <div className={`neon-border ${className}`} onClick={onClick} style={{
     background: NEON.bgCard, backdropFilter: "blur(20px)", borderRadius: 12,
     border: "1px solid rgba(0,212,255,0.15)", position: "relative", ...style
   }}>
     {children}
+    {footerSeal && (
+      <div style={{ padding: "0 14px 12px" }}>
+        <EncryptedFooter moduleId={moduleId} uid={uid} compact />
+      </div>
+    )}
   </div>
 );
 
