@@ -1,7 +1,7 @@
 {
   "projects": {
-    "agape-sovereign": "studio-7064631841-986f8",
-    "agape-sovdereign": "studio-7064631841-986f8"
+    "default": "agape-sovereign",
+    "agape-sovereign": "agape-sovereign"
   },
   "targets": {},
   "etags": {}
