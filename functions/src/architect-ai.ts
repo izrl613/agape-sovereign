@@ -11,14 +11,15 @@
  * Deploy with: firebase deploy --only functions
  */
 
-import { onCall, HttpsError, onRequest } from "firebase-functions/https";
+import { onCall, HttpsError, onRequest, CallableRequest, Request } from "firebase-functions/https";
 import { onDocumentWritten } from "firebase-functions/firestore";
 import { onSchedule } from "firebase-functions/scheduler";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
+import * as crypto from "crypto";
+import { Response } from "express";
 
 import {
-  generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
@@ -31,7 +32,6 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const RP_NAME = "Agape Sovereign";
 
 // ─── STAGE 1A1: PASSKEY REGISTRATION OPTIONS ──────────────
 // Called when an authenticated user wants to bind a passkey to their account.
@@ -44,7 +44,7 @@ const RP_NAME = "Agape Sovereign";
 
 export const verifyPasskeyRegistration = onCall(
   { region: "us-east1", maxInstances: 10 },
-  async (request) => {
+  async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
@@ -132,7 +132,7 @@ export const verifyPasskeyRegistration = onCall(
 
 export const loginPasskeyOptions = onRequest(
   { region: "us-east1", maxInstances: 10, cors: true },
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const { email } = req.body;
       if (!email) {
@@ -193,7 +193,7 @@ export const loginPasskeyOptions = onRequest(
 
 export const verifyPasskeyLogin = onRequest(
   { region: "us-east1", maxInstances: 10, cors: true },
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     try {
       const { body } = req;
       const { tempUserId } = req.body;
@@ -284,7 +284,7 @@ export const verifyPasskeyLogin = onRequest(
 
 export const generateDiffReport = onCall(
   { region: "us-east1", maxInstances: 5 },
-  async (request) => {
+  async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
@@ -315,7 +315,6 @@ export const generateDiffReport = onCall(
       };
 
       // Generate SHA-256 seal
-      const crypto = import("crypto");
       const seal = crypto
         .createHash("sha256")
         .update(JSON.stringify(reportData))
@@ -360,7 +359,7 @@ export const recalculateSovereignScore = onDocumentWritten(
     document: "diff_scans/{scanId}/vectorResults/{vectorId}",
     region: "us-east1",
   },
-  async (event) => {
+  async (event: any) => {
     const after = event.data?.after.data() as any;
     const userId = after?.userId;
 
@@ -417,12 +416,11 @@ export const recalculateSovereignScore = onDocumentWritten(
 
 export const generatePasskeyChallenge = onCall(
   { region: "us-east1" },
-  async (request) => {
+  async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
-    const crypto = require("crypto");
     const challenge = crypto.randomBytes(32).toString("base64");
 
     try {
@@ -473,7 +471,7 @@ export const cleanupAuditLogs = onSchedule(
 
 export const generateECRAOptOut = onCall(
   { region: "us-east1" },
-  async (request) => {
+  async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
     }
