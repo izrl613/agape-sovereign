@@ -12,6 +12,7 @@ import { compileIdentityAuditReport } from '../services/pdfService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getLocalAIStatus, LocalStatus } from '../services/localAIService';
+import { useUIDesign } from '../UIDesignContext';
 
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
@@ -330,6 +331,7 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
 
 const Header = () => {
   const { user, isAdmin, isAnonymous, logout, sovereignScore, bindPasskey } = useAuth();
+  const { toggleDesign } = useUIDesign();
   const { isScanning } = useScan();
   const [time, setTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -779,6 +781,15 @@ const Header = () => {
               >
                 <History className="w-4 h-4 text-[#FF2E9F]" />
                 Score History
+              </button>
+            </div>
+            <div className="p-2 border-b border-white/5">
+              <button 
+                onClick={() => { toggleDesign(); setIsProfileOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+              >
+                <RefreshCw className="w-4 h-4 text-[#00D4FF]" />
+                Switch to Architect UI
               </button>
             </div>
             <div className="p-2">

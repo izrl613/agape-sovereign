@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { auth, db, functions, loginWithGoogle, loginAnonymously } from "./src/firebase";
+import { auth, db, functions, loginWithGoogle, loginAnonymously } from "./firebase";
 import { onAuthStateChanged, signInWithCustomToken, linkWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { startRegistration } from "@simplewebauthn/browser";
 import { httpsCallable } from "firebase/functions";
+import { useUIDesign } from "./UIDesignContext";
 // ============================================================
 // ARCHITECT AI — AGAPE SOVEREIGN ENCLAVE 2026
 // Digital Identity Federated Footprint (DIFF) Intelligence
@@ -547,6 +548,7 @@ const LeftNav = ({ diffModules, activeModule, setActiveModule, activeSection, se
 // ─── TOP HEADER ───────────────────────────────────────────────
 const TopHeader = ({ user, onAdmin, onProfile }) => {
   const [time, setTime] = useState(new Date());
+  const { toggleDesign } = useUIDesign();
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
   const isAdmin = ADMIN_EMAILS.includes(user?.email);
 
@@ -587,6 +589,9 @@ const TopHeader = ({ user, onAdmin, onProfile }) => {
       {isAdmin && (
         <NeonButton onClick={onAdmin} color={NEON.orange} size="sm">⬡ ADMIN</NeonButton>
       )}
+
+      {/* Switch UI button */}
+      <NeonButton onClick={toggleDesign} color={NEON.blue} size="sm">⟲ AGAPE UI</NeonButton>
 
       {/* Profile button */}
       <button className="btn-neon neon-border" onClick={onProfile} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,46,159,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: NEON.magenta, fontSize: "1rem" }}>
