@@ -1,0 +1,73 @@
+# agent_proxy.py
+import ollama
+import json
+from typing import Dict, Any
+
+# --- Configuration ---
+# Replace with the actual endpoint/method the IDE uses to call the agent
+OLLAMA_MODEL = "gemma:latest"
+
+def call_local_ollama(prompt: str, history: list = None) -> str:
+    """
+    Function to call the local Ollama API directly.
+    This replaces the call to the external cloud API.
+    """
+    print(f"--- [AGENT]: Intercepted call. Routing to local Ollama ({OLLAMA_MODEL}). ---")
+    try:
+        # Using the standard ollama Python library for interaction
+        response = ollama.chat(
+            model=OLLAMA_MODEL,
+            messages=history if history else [{"role": "user", "content": prompt}]
+        )
+        return response['message']['content']
+    except Exception as e:
+        return f"ERROR: Failed to connect to Ollama or generate response: {e}"
+
+def agent_handler(user_input: str, chat_history: list = None) -> Dict[str, Any]:
+    """
+    The main handler function that intercepts the request.
+    This function should be the entry point the IDE calls.
+    """
+    print(f"--- [AGENT]: Received request. Attempting to resolve context error. ---")
+
+    # 1. Check for the specific error condition (Simulating the 'can_handle' logic)
+    # In a real scenario, you'd check the IDE's context object here.
+    # For this example, we assume the error is signaled by a specific keyword.
+    if "context error" in user_input.lower() or chat_history and "error" in str(chat_history):
+        print("--> Detected potential context error. Bypassing cloud API.")
+
+        # 2. Execute the local LLM call
+        llm_response = call_local_ollama(user_input, chat_history)
+
+        # 3. Return the result formatted for the IDE to consume
+        return {
+            "status": "SUCCESS",
+            "resolution": llm_response,
+            "message": "Context error resolved using local Ollama agent."
+        }
+    else:
+        # If no error is detected, pass through or use the default cloud API (if available)
+        print("--> No specific context error detected. Passing through or using default logic.")
+        # For demonstration, we'll just use the local model anyway:
+        return {
+            "status": "SUCCESS",
+            "resolution": call_local_ollama(user_input),
+            "message": "Processed successfully using local Ollama agent."
+        }
+
+# --- Example Usage (For testing outside the IDE) ---
+if __name__ == "__main__":
+    # Example 1: Simulating an error context
+    print("\n===================================================")
+    print("TESTING ERROR RESOLUTION PATH:")
+    error_prompt = "I encountered a context error while trying to summarize the last three turns."
+    result = agent_handler(error_prompt, chat_history=["Error context detected"])
+    print("\n[FINAL OUTPUT TO IDE]:", json.dumps(result, indent=2))
+
+    # Example 2: Simulating a normal flow
+    print("\n===================================================")
+    print("TESTING NORMAL FLOW PATH:")
+    normal_prompt = "What were the main takeaways from the last conversation?"
+    result = agent_handler(normal_prompt)
+    print("\n[FINAL OUTPUT TO IDE]:", json.dumps(result, indent=2))
+
