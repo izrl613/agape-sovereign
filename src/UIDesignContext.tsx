@@ -10,10 +10,17 @@ interface UIDesignContextType {
 const UIDesignContext = createContext<UIDesignContextType | undefined>(undefined);
 
 export const UIDesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentDesign, setCurrentDesign] = useState<DesignType>('agape');
+  const [currentDesign, setCurrentDesign] = useState<DesignType>(() => {
+    const saved = localStorage.getItem('ui_design_preference');
+    return (saved === 'agape' || saved === 'architect') ? saved : 'agape';
+  });
 
   const toggleDesign = () => {
-    setCurrentDesign(prev => prev === 'agape' ? 'architect' : 'agape');
+    setCurrentDesign(prev => {
+      const next = prev === 'agape' ? 'architect' : 'agape';
+      localStorage.setItem('ui_design_preference', next);
+      return next;
+    });
   };
 
   return (

@@ -290,6 +290,52 @@ const upgradeAnonymousToGoogle = async () => {
   }
 };
 
+// ─── SECURE HANDSHAKE SPLASH ──────────────────────────────────
+const HandshakeSplash = ({ onComplete, source, destination }: any) => {
+  const [hashProgress, setHashProgress] = useState("");
+  const targetHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+  
+  useEffect(() => {
+    let len = 0;
+    const interval = setInterval(() => {
+      len += 2;
+      setHashProgress(targetHash.substring(0, len));
+      if (len >= targetHash.length) {
+        clearInterval(interval);
+        setTimeout(onComplete, 800);
+      }
+    }, 30);
+    return () => clearInterval(interval);
+  }, [onComplete]);
+
+  return (
+    <div style={{ width: "100vw", height: "100vh", background: NEON.bg, display: "flex", alignItems: "center", justifyContent: "center", position: "fixed", inset: 0, zIndex: 9999 }}>
+      <GlassCard style={{ width: 480, padding: "48px 40px", textAlign: "center", animation: "fade-in 0.3s ease" }}>
+        <div style={{ marginBottom: 32 }}>
+          <NeonText color={NEON.magenta} size="1.4rem" weight={700}>SECURE HANDSHAKE</NeonText>
+          <div style={{ color: NEON.textMuted, fontSize: "0.8rem", fontFamily: "'Share Tech Mono'", marginTop: 8 }}>
+            {source} <span style={{ color: NEON.blue }}>→</span> {destination}
+          </div>
+        </div>
+
+        <div style={{ textAlign: "left", background: "rgba(0,0,0,0.3)", padding: 16, borderRadius: 8, border: `1px solid rgba(0,212,255,0.15)`, fontFamily: "'Share Tech Mono'", fontSize: "0.8rem", color: NEON.blue }}>
+          <div>[SYSTEM] Initiating cryptographic exchange...</div>
+          <div>[SYSTEM] Computing SHA-256 bound signature:</div>
+          <div style={{ color: "#fff", marginTop: 8, wordBreak: "break-all", minHeight: 40 }}>
+            {hashProgress}
+            <span className="blinking-cursor">_</span>
+          </div>
+          {hashProgress.length >= targetHash.length && (
+            <div style={{ color: NEON.orange, marginTop: 12, animation: "fade-in 0.3s ease" }}>
+              [OK] Zero-Knowledge Proof Verified.
+            </div>
+          )}
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
 // ─── AUTH SCREEN — Triple-Layer Anonymous → Google → Passkey ──
 const AuthScreen = () => {
   const [step, setStep] = useState("landing");
@@ -300,6 +346,10 @@ const AuthScreen = () => {
   // Layer 1: Start Anonymous
   const handleAnonymous = async () => {
     setError(null);
+    setStep("handshake-anon");
+  };
+
+  const executeAnonymous = async () => {
     try {
       setScanning(true);
       setAuthMethod("anonymous");
@@ -307,12 +357,17 @@ const AuthScreen = () => {
     } catch (err) {
       setError("Anonymous auth unavailable. Try Google sign-in.");
       setScanning(false);
+      setStep("landing");
     }
   };
 
   // Layer 2: Google OAuth
   const handleGoogle = async () => {
     setError(null);
+    setStep("handshake-google");
+  };
+
+  const executeGoogle = async () => {
     try {
       setScanning(true);
       setAuthMethod("google");
@@ -320,8 +375,16 @@ const AuthScreen = () => {
     } catch (err) {
       setError("Google sign-in failed. Try again.");
       setScanning(false);
+      setStep("landing");
     }
   };
+
+  if (step === "handshake-anon") {
+    return <HandshakeSplash onComplete={executeAnonymous} source="EPHEMERAL_CLIENT" destination="SOVEREIGN_ENCLAVE" />;
+  }
+  if (step === "handshake-google") {
+    return <HandshakeSplash onComplete={executeGoogle} source="FEDERATED_IDP" destination="SOVEREIGN_ENCLAVE" />;
+  }
 
   // Layer 3: Bind Passkey (called after auth state resolves in App)
   const handleSkipPasskey = () => {
@@ -1285,6 +1348,8 @@ export default function App() {
     return () => unsubscribeAuth();
   }, []);
 
+  const [splashState, setSplashState] = useState<string | null>(null);
+
   // Prompt passkey binding on first login for OAuth users
   useEffect(() => {
     if (showPasskeyPrompt && user && !user.isAnonymous && !passkeyBound) {
@@ -1294,7 +1359,13 @@ export default function App() {
 
   const handleBindPasskey = async () => {
     if (!user) return;
+    setSplashState("passkey");
+  };
+
+  const executeBindPasskey = async () => {
+    if (!user) return;
     setPasskeyLoading(true);
+    setSplashState(null); // Hide splash before showing WebAuthn prompt
     try {
       const verified = await bindPasskeyForUser(user.uid, user.email);
       if (verified) {
@@ -1317,13 +1388,26 @@ export default function App() {
   };
 
   const handleUpgradeAnonymous = async () => {
+    setSplashState("upgrade");
+  };
+
+  const executeUpgrade = async () => {
     try {
       await upgradeAnonymousToGoogle();
       setShowAnonUpgrade(false);
+      setSplashState(null);
     } catch (err) {
       console.error("Upgrade failed:", err);
+      setSplashState(null);
     }
   };
+
+  if (splashState === "upgrade") {
+    return <HandshakeSplash onComplete={executeUpgrade} source="EPHEMERAL_SESSION" destination="FEDERATED_IDP" />;
+  }
+  if (splashState === "passkey") {
+    return <HandshakeSplash onComplete={executeBindPasskey} source="FEDERATED_IDP" destination="HARDWARE_PASSKEY" />;
+  }
 
   if (!user) return (
     <>

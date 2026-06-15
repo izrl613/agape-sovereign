@@ -11,15 +11,17 @@
  * Deploy with: firebase deploy --only functions
  */
 
-import { onCall, HttpsError, onRequest, CallableRequest, Request } from "firebase-functions/https";
+import { onCall, HttpsError, CallableRequest } from "firebase-functions/https";
 import { onDocumentWritten } from "firebase-functions/firestore";
 import { onSchedule } from "firebase-functions/scheduler";
 import * as logger from "firebase-functions/logger";
-import * as admin from "firebase-admin";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import * as crypto from "crypto";
-import { Response } from "express";
 
 import {
+  generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
@@ -27,16 +29,70 @@ import {
 } from "@simplewebauthn/server";
 
 // Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 // ─── STAGE 1A1: PASSKEY REGISTRATION OPTIONS ──────────────
 // Called when an authenticated user wants to bind a passkey to their account.
 // Generates WebAuthn registration options and stores the challenge in Firestore.
 
+export const registerPasskeyOptions = onCall(
+  { region: "us-east1", maxInstances: 10 },
+  async (request: CallableRequest) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Must be authenticated");
+    }
+
+    const userId = request.auth.uid;
+    const userEmail = request.data?.userEmail || request.auth.token.email || "anon@sovereign.nyc";
+    const rpName = "Agape Sovereign Enclave";
+    
+    // Determine RP ID based on origin
+    const origin = request.rawRequest.get("origin") || "http://localhost:5173";
+    const rpId = new URL(origin).hostname;
+
+    try {
+      // Get existing credentials to exclude them from registration
+      const credsSnap = await db
+        .collection("users").doc(userId)
+        .collection("passkeyCredentials").get();
+        
+      const excludeCredentials = credsSnap.docs.map((doc: any) => ({
+        id: doc.id,
+        type: "public-key" as const,
+        transports: doc.data().transports as AuthenticatorTransportFuture[] | undefined,
+      }));
+
+      const options = await generateRegistrationOptions({
+        rpName,
+        rpID: rpId,
+        userID: new Uint8Array(Buffer.from(userId)),
+        userName: userEmail,
+        attestationType: "none",
+        excludeCredentials,
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+          authenticatorAttachment: "platform",
+        },
+      });
+
+      // Store challenge in Firestore for verification step
+      await db.collection("users").doc(userId).collection("passkeyChallenge").doc("current").set({
+        challenge: options.challenge,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+
+      return options;
+    } catch (error) {
+      logger.error("Failed to generate registration options", { error });
+      throw new HttpsError("internal", "Failed to generate passkey options");
+    }
+  }
+);
 
 // ─── STAGE 1A1: VERIFY PASSKEY REGISTRATION ───────────────
 // Verifies the browser's attestation response against the stored challenge.
@@ -99,20 +155,20 @@ export const verifyPasskeyRegistration = onCall(
           credentialID: credential.id,
           counter: credential.counter,
           transports: response.response?.transports || [],
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
 
       // Mark passkey bound on user profile
       await db.collection("users").doc(userId).update({
         passkeyBound: true,
-        passkeyBoundAt: admin.firestore.FieldValue.serverTimestamp(),
+        passkeyBoundAt: FieldValue.serverTimestamp(),
       });
 
       // Audit log
       await db.collection("audit_logs").add({
         event: "PASSKEY_BOUND",
         userId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
       });
 
       logger.info("Passkey registered successfully", { userId });
@@ -130,21 +186,19 @@ export const verifyPasskeyRegistration = onCall(
 // Uses onRequest (not onCall) so no Firebase Auth required.
 // Generates authentication options and stores challenge in Firestore.
 
-export const loginPasskeyOptions = onRequest(
-  { region: "us-east1", maxInstances: 10, cors: true },
-  async (req: Request, res: Response) => {
+export const loginPasskeyOptions = onCall(
+  { region: "us-east1", maxInstances: 10 },
+  async (request: CallableRequest) => {
     try {
-      const { email } = req.body;
+      const { email } = request.data;
       if (!email) {
-        res.status(400).json({ error: "Missing email" });
-        return;
+        throw new HttpsError("invalid-argument", "Missing email");
       }
 
       // Find user by email in Firestore
       const userSnap = await db.collection("users").where("email", "==", email).limit(1).get();
       if (userSnap.empty) {
-        res.status(404).json({ error: "User not found. Sign in with Google first." });
-        return;
+        throw new HttpsError("not-found", "User not found. Sign in with Google first.");
       }
 
       const userDoc = userSnap.docs[0];
@@ -153,18 +207,17 @@ export const loginPasskeyOptions = onRequest(
       // Get stored passkey credentials for this user
       const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
       if (credsSnap.empty) {
-        res.status(404).json({ error: "No passkey found for this account. Bind a passkey first." });
-        return;
+        throw new HttpsError("not-found", "No passkey found for this account. Bind a passkey first.");
       }
 
-      const allowCredentials = credsSnap.docs.map((doc) => ({
+      const allowCredentials = credsSnap.docs.map((doc: any) => ({
         id: doc.id,
         type: "public-key" as const,
         transports: doc.data().transports as AuthenticatorTransportFuture[] | undefined,
       }));
 
-      const host = req.get("host")?.split(":")[0] || "localhost";
-      const rpId = host === "127.0.0.1" ? "localhost" : host;
+      const origin = request.rawRequest.get("origin") || "http://localhost:5173";
+      const rpId = new URL(origin).hostname;
 
       const options = await generateAuthenticationOptions({
         rpID: rpId,
@@ -173,16 +226,16 @@ export const loginPasskeyOptions = onRequest(
       });
 
       // Store challenge in Firestore keyed by userId
-      // Also store the userId in the response so the client can pass it to verify
       await db.collection("sessions").doc(userId).collection("loginChallenge").doc("current").set({
         challenge: options.challenge,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
-      res.json({ ...options, tempUserId: userId });
+      return { ...options, tempUserId: userId };
     } catch (error) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Login options failed", { error });
-      res.status(500).json({ error: "Internal server error" });
+      throw new HttpsError("internal", "Internal server error");
     }
   }
 );
@@ -191,16 +244,14 @@ export const loginPasskeyOptions = onRequest(
 // Pre-authentication endpoint. Verifies the assertion and returns
 // a Firebase Custom Token to sign in with.
 
-export const verifyPasskeyLogin = onRequest(
-  { region: "us-east1", maxInstances: 10, cors: true },
-  async (req: Request, res: Response) => {
+export const verifyPasskeyLogin = onCall(
+  { region: "us-east1", maxInstances: 10 },
+  async (request: CallableRequest) => {
     try {
-      const { body } = req;
-      const { tempUserId } = req.body;
+      const { tempUserId, response: body } = request.data;
 
-      if (!tempUserId) {
-        res.status(400).json({ error: "Missing userId" });
-        return;
+      if (!tempUserId || !body) {
+        throw new HttpsError("invalid-argument", "Missing userId or response");
       }
 
       // Read stored challenge
@@ -209,14 +260,12 @@ export const verifyPasskeyLogin = onRequest(
         .collection("loginChallenge").doc("current").get();
 
       if (!challengeDoc.exists) {
-        res.status(400).json({ error: "Challenge expired or missing. Start login again." });
-        return;
+        throw new HttpsError("failed-precondition", "Challenge expired or missing. Start login again.");
       }
 
       const expectedChallenge = challengeDoc.data()?.challenge;
       if (!expectedChallenge) {
-        res.status(400).json({ error: "Challenge not found" });
-        return;
+        throw new HttpsError("failed-precondition", "Challenge not found");
       }
 
       // Clean up challenge
@@ -229,15 +278,13 @@ export const verifyPasskeyLogin = onRequest(
         .collection("passkeyCredentials").doc(credentialId).get();
 
       if (!credDoc.exists) {
-        res.status(400).json({ error: "Credential not found" });
-        return;
+        throw new HttpsError("not-found", "Credential not found");
       }
 
       const credData = credDoc.data()!;
 
-      const host = req.get("host")?.split(":")[0] || "localhost";
-      const rpId = host === "127.0.0.1" ? "localhost" : host;
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = request.rawRequest.get("origin") || "http://localhost:5173";
+      const rpId = new URL(origin).hostname;
 
       const verification = await verifyAuthenticationResponse({
         response: body,
@@ -255,27 +302,28 @@ export const verifyPasskeyLogin = onRequest(
         // Update credential counter
         await credDoc.ref.update({
           counter: verification.authenticationInfo.newCounter,
-          lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastUsedAt: FieldValue.serverTimestamp(),
         });
 
         // Generate Firebase Custom Token (free, no Identity Platform needed)
-        const customToken = await admin.auth().createCustomToken(tempUserId);
+        const customToken = await getAuth().createCustomToken(tempUserId);
 
         // Audit log
         await db.collection("audit_logs").add({
           event: "PASSKEY_LOGIN",
           userId: tempUserId,
-          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          timestamp: FieldValue.serverTimestamp(),
         });
 
         logger.info("Passkey login verified", { userId: tempUserId });
-        res.json({ verified: true, token: customToken });
+        return { verified: true, token: customToken };
       } else {
-        res.status(400).json({ verified: false, error: "Authentication failed" });
+        throw new HttpsError("unauthenticated", "Authentication failed");
       }
     } catch (error) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Verify login failed", { error });
-      res.status(500).json({ error: "Internal server error" });
+      throw new HttpsError("internal", "Internal server error");
     }
   }
 );
@@ -325,7 +373,7 @@ export const generateDiffReport = onCall(
         userId,
         userEmail,
         sovereignScore: reportData.sovereignScore,
-        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        generatedAt: FieldValue.serverTimestamp(),
         sha256Seal: seal,
       });
 
@@ -334,7 +382,7 @@ export const generateDiffReport = onCall(
         event: "PDF_GENERATED",
         userId,
         reportId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
       });
 
       logger.info("PDF metadata stored", { reportId });
@@ -377,7 +425,7 @@ export const recalculateSovereignScore = onDocumentWritten(
 
       for (const scan of scans.docs) {
         const vectors = await scan.ref.collection("vectorResults").get();
-        vectors.forEach((v) => {
+        vectors.forEach((v: any) => {
           const data = v.data();
           totalNuked += data.nukedCount || 0;
           totalKnoxed += data.knoxedCount || 0;
@@ -402,7 +450,7 @@ export const recalculateSovereignScore = onDocumentWritten(
       await db.collection("users").doc(userId).update({
         sovereignScore: Math.round(sovereignScore),
         sovereignTier: tier,
-        lastScoreUpdate: admin.firestore.FieldValue.serverTimestamp(),
+        lastScoreUpdate: FieldValue.serverTimestamp(),
       });
 
       logger.info("Score updated", { userId, score: sovereignScore });
@@ -427,7 +475,7 @@ export const generatePasskeyChallenge = onCall(
       await db.collection("sessions").doc(request.auth.uid).set(
         {
           passkeyChallenge: challenge,
-          challengeExpiresAt: admin.firestore.FieldValue.serverTimestamp(),
+          challengeExpiresAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
@@ -454,7 +502,7 @@ export const cleanupAuditLogs = onSchedule(
 
       let deleted = 0;
       const batch = db.batch();
-      logs.docs.forEach((doc) => {
+      logs.docs.forEach((doc: any) => {
         batch.delete(doc.ref);
         deleted++;
       });

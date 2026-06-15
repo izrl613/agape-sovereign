@@ -9,12 +9,13 @@ import {
   setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
-  User
+  User,
+  connectAuthEmulator
 } from 'firebase/auth';
-import { getFirestore, getDocFromServer, doc } from 'firebase/firestore';
+import { getFirestore, getDocFromServer, doc, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
 import { getRemoteConfig } from 'firebase/remote-config';
 import { getDatabase } from 'firebase/database';
@@ -27,9 +28,26 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)');
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
+export const functions = getFunctions(app, 'us-east1');
 export const remoteConfig = getRemoteConfig(app);
 export const database = getDatabase(app);
+
+// Connect to emulators if running locally
+if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  try {
+    const emulatorsKey = '_firebase_emulators_connected';
+    if (!(window as any)[emulatorsKey]) {
+      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      connectStorageEmulator(storage, 'localhost', 9199);
+      connectFunctionsEmulator(functions, 'localhost', 5001);
+      (window as any)[emulatorsKey] = true;
+      console.log("Connected to Firebase Emulators (Local Zero-Cost Mode)");
+    }
+  } catch (e) {
+    console.warn("Failed to connect to Firebase Emulators:", e);
+  }
+}
 
 // Test Firestore connection on boot
 async function testConnection() {

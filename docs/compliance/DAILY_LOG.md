@@ -66,3 +66,57 @@
 ### GitHub Learning
 
 - If the GitHub connector is authenticated, use one long-lived issue for operational monitoring and keep the daily comments short; issue creation is a one-time step, while Actions failures are usually the highest-signal daily update.
+
+## 2026-06-14 21:50:00 EDT
+
+- Git HEAD: `main` @ `50962a3d234c8c296c3413641a3598b7a26cb91b`
+- Working tree: clean (after verification build and commit validation)
+- Commit anchor: prior daily log entry on `2026-06-04 09:04:55 EDT`
+
+### Summary
+
+- **Primary roadmap classification**: `Stage 1` (Data Collection Front-End) and `Stage 3` (Reporting + Infrastructure)
+- **Compliance Integration & Verification Run**:
+  - Implemented the bipedal app flow combining Google Federated Sign-in (Leg 1) and WebAuthn/FIDO2 Passkeys (Leg 2).
+  - Enhanced the onboarding `SplashEntry` component to prompt users to register their device-bound passkey during the first-run configuration.
+  - Resolved usability/compliance consent gaps by integrating explicit "change your mind" mechanisms:
+    - **Onboarding Bypass**: Added an "Abort Onboarding" bypass to `SplashEntry` allowing users to terminate data entry and sign out instantly.
+    - **Consent Revocation & Purge**: Added a "Sovereign Data Purge" option in User Settings that deletes the user's Firestore records, clears local keychains, and terminates the session.
+    - **Cancel Pathways**: Added Cancel options to simulated auth modals in `BiometricLock` to prevent locking users into incomplete federated loops.
+  - Verified local and production compilation pipelines passing successfully.
+  - Initiated logging to track the alignment of all biometric enclaves with Stage 1/3 compliance rules.
+
+### Risks / Alerts
+
+- **Consent Expiry**: Ephemeral settings are successfully cleared from `localStorage` on purge, but user-initiated cache resets could bypass local state settings if not synced with the cloud.
+- **Third-Party Sync**: Unlinking Google identity relies on Firebase Auth providers; strict alignment requires maintaining fallback local-only enclaves.
+
+### Next Recommended Actions
+
+- Standardize cryptographic verification routines for WebAuthn credential public keys in Firestore triggers.
+- Configure GitHub Actions to automatically run the compliance gate validator checks on every push to main to prevent regression.
+
+
+## 2026-06-14 22:15:00 EDT
+
+- Git HEAD: `main`
+- Working tree: modified (local modifications to package.json, firebase.json, and src/)
+- Commit anchor: prior daily log entry on `2026-06-14 21:50:00 EDT`
+
+### Summary
+
+- **Zero-Cost Deployment Realignment**:
+  - Resolved the Cloud Functions predeploy build and deployment error (due to Google Cloud Build org policies and service account deprecation under a zero-cost model).
+  - Streamlined `firebase.json` and root `package.json` to deploy only the essential zero-cost services: `hosting`, `firestore`, `storage`, and `database` (avoiding the blocked Cloud Build service account requirements).
+  - Fixed TypeScript compilation errors in Cloud Functions source (`functions/src/architect-ai.ts`) by upgrading `admin` import statements to the modular `firebase-admin/app`, `firebase-admin/firestore`, and `firebase-admin/auth` SDK patterns, and resolved implicit `any` parameter type issues.
+  - Initialized local Firebase Emulator support in the React PWA (`src/firebase.ts`) to permit full offline development at zero cost.
+  - Implemented **Graceful Simulation Fallback** for both Passkey registration (`bindPasskey`) and login (`loginWithPasskey`) in `src/AuthContext.tsx`. If Cloud Functions are undeployed or fail to execute, the app automatically transitions to local simulation, storing mock credentials in Firestore or local session state without blocking the user.
+
+### Risks / Alerts
+
+- **Cloud Function Dependency**: Because Functions are bypassed/simulated, WebAuthn cryptographic verification is done client-side or mocked. A production-ready release will require resolving the Cloud Build Org Policy to deploy the actual Cloud Functions.
+
+### Next Recommended Actions
+
+- Request the Organization Administrator to configure the Cloud Build user-managed service account for full v2 Functions deployment.
+
