@@ -567,7 +567,7 @@ export const generateSuspiciousReport = async (finding: ScanFinding) => {
   }
 };
 
-export const getScanFindings = async (userId: string) => {
+export const getScanFindings = async (userId: string): Promise<ScanFinding[]> => {
   // Handle emergency bypass user with local storage
   if (userId === 'emergency-bypass-admin-999') {
     const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${userId}`) || "[]");

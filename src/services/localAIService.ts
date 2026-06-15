@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // localAIService.ts — Gemma 4 E4B · Offline-First Sovereign AI Service
 // ALL inference routes through the Gemma4 MCP Server.
-// NO external Gemini / Google GenAI calls. Zero external billing.
+// NO external AI calls. Zero external billing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Primary: Cloud Run hosted Gemma4 E4B MCP server

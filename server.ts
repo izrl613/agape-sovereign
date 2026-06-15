@@ -9,7 +9,6 @@ import {
 } from "@simplewebauthn/server";
 import admin from "firebase-admin";
 import cookieParser from "cookie-parser";
-import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt";
 import fs from "fs";
 import os from "os";
@@ -26,33 +25,6 @@ if (!admin.apps.length) {
 console.log("BOOT: Obtaining Firestore reference...");
 const db = admin.firestore();
 console.log("BOOT: Firestore reference obtained.");
-
-let aiInstance: GoogleGenAI | null = null;
-function getGoogleGenAI(apiKey: string): GoogleGenAI {
-  if (!aiInstance) {
-    aiInstance = new GoogleGenAI({ apiKey });
-  }
-  return aiInstance;
-}
-
-const GEMINI_SAFETY_SETTINGS = [
-  {
-    category: "HARM_CATEGORY_HATE_SPEECH" as const,
-    threshold: "BLOCK_LOW_AND_ABOVE" as const,
-  },
-  {
-    category: "HARM_CATEGORY_HARASSMENT" as const,
-    threshold: "BLOCK_LOW_AND_ABOVE" as const,
-  },
-  {
-    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT" as const,
-    threshold: "BLOCK_LOW_AND_ABOVE" as const,
-  },
-  {
-    category: "HARM_CATEGORY_DANGEROUS_CONTENT" as const,
-    threshold: "BLOCK_LOW_AND_ABOVE" as const,
-  },
-];
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -251,7 +223,7 @@ async function startServer() {
     }
   });
 
-  // Local AI Chat Proxy (proxy to Ollama, fallback to Gemini Cloud)
+  // Local AI Chat Proxy (proxy to Ollama, no fallback)
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages, max_tokens } = req.body;
@@ -260,7 +232,6 @@ async function startServer() {
       const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
       const model = ideConfig.ai?.model || "gemma4:e4b";
       
-      // 1. Try local Ollama first
       if (provider === "ollama") {
         try {
           const lmRes = await fetch(`${baseUrl}/v1/chat/completions`, {
@@ -272,59 +243,23 @@ async function startServer() {
               max_tokens: max_tokens || -1,
               stream: false
             }),
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(10000)
           });
           if (lmRes.ok) {
             const data = await lmRes.json();
             return res.json(data);
+          } else {
+             const errorData = await lmRes.text();
+             console.error("Ollama error:", errorData);
+             return res.status(500).json({ error: "Local AI (Ollama) returned an error" });
           }
         } catch (e) {
-          console.log("[PROXY] Ollama offline or timed out, falling back to Cloud Gemini...");
+          console.error("Local AI (Ollama) offline or timed out:", e);
+          return res.status(500).json({ error: "Local AI (Ollama) is offline or timed out." });
         }
       }
-
-      // 2. Fallback to Cloud Gemini
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
-      }
-
-      const ai = getGoogleGenAI(apiKey);
       
-      // Extract system instructions and messages in Gemini format
-      let systemInstruction = "";
-      const contents: any[] = [];
-      for (const m of messages) {
-        if (m.role === "system") {
-          systemInstruction = m.content;
-        } else {
-          contents.push({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content || "" }]
-          });
-        }
-      }
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents,
-        config: {
-          systemInstruction: systemInstruction || undefined,
-          safetySettings: GEMINI_SAFETY_SETTINGS,
-        }
-      });
-
-      const replyText = response.text || "";
-      res.json({
-        choices: [
-          {
-            message: {
-              role: "assistant",
-              content: replyText
-            }
-          }
-        ]
-      });
+      return res.status(400).json({ error: "Unsupported AI provider" });
     } catch (error) {
       console.error("Local chat proxy error:", error);
       res.status(500).json({ error: "Failed to generate local AI response" });
@@ -335,31 +270,42 @@ async function startServer() {
   app.post("/api/architect", async (req, res) => {
     try {
       const { message, history = [] } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
-      }
+      const ideConfig = loadIDEConfig();
+      const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+      const model = ideConfig.ai?.model || "gemma4:e4b";
 
-      // Using gemini-2.5-flash for maximum cost efficiency and speed.
-      const ai = getGoogleGenAI(apiKey);
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          ...history,
-          message
-        ],
-        config: {
-          systemInstruction: ARCHITECT_SYSTEM_PROMPT,
-          safetySettings: GEMINI_SAFETY_SETTINGS,
-        }
+      const messages = [
+        { role: "system", content: ARCHITECT_SYSTEM_PROMPT },
+        ...history.map((h: any) => ({
+           role: h.role === "model" ? "assistant" : h.role,
+           content: h.parts ? h.parts[0].text : h.content
+        })),
+        { role: "user", content: message }
+      ];
+
+      const lmRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: model,
+          messages,
+          stream: false
+        }),
+        signal: AbortSignal.timeout(30000)
       });
 
-      res.json({ reply: response.text });
+      if (lmRes.ok) {
+        const data = await lmRes.json();
+        const replyText = data.choices[0]?.message?.content || "";
+        return res.json({ reply: replyText });
+      } else {
+        const errorText = await lmRes.text();
+        console.error("Architect AI Ollama Error:", errorText);
+        return res.status(500).json({ error: "Local AI returned an error" });
+      }
     } catch (error) {
       console.error("Architect AI Error:", error);
-      res.status(500).json({ error: "Failed to generate AI response" });
+      res.status(500).json({ error: "Failed to generate AI response via Local AI" });
     }
   });
 
@@ -367,14 +313,6 @@ async function startServer() {
   app.post("/api/erasure/initiate", async (req, res) => {
     try {
       const { brokerName, userEmail, userName, userState } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      if (!apiKey) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
-      }
-
-      const ai = getGoogleGenAI(apiKey);
-      
       const prompt = `You are an automated privacy agent representing ${userName}. Generate a legally binding data deletion request under CCPA, GDPR, and FCRA regulations addressed to the data broker "${brokerName}".
       
       Return ONLY a JSON object with this exact format, nothing else:
@@ -384,24 +322,33 @@ async function startServer() {
       }
       
       Do not include markdown formatting or backticks around the JSON.`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [prompt],
-        config: {
+
+      const ideConfig = loadIDEConfig();
+      const baseUrl = ideConfig.ai?.baseUrl || "http://localhost:11434";
+      const model = ideConfig.ai?.model || "gemma4:e4b";
+
+      const lmRes = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: "user", content: prompt }],
           temperature: 0.2,
-          safetySettings: GEMINI_SAFETY_SETTINGS,
-        }
+          stream: false
+        }),
+        signal: AbortSignal.timeout(30000)
       });
 
-      try {
-        const text = response.text || "{}";
-        const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      if (lmRes.ok) {
+        const data = await lmRes.json();
+        const text = data.choices[0]?.message?.content || "{}";
+        const cleaned = text.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
         const result = JSON.parse(cleaned);
-        res.json(result);
-      } catch (parseError) {
-        console.error("Failed to parse Gemini response:", response.text);
-        res.status(500).json({ error: "Failed to generate properly formatted legal request." });
+        return res.json(result);
+      } else {
+        const errorText = await lmRes.text();
+        console.error("Erasure Engine Ollama Error:", errorText);
+        return res.status(500).json({ error: "Failed to generate erasure request via Local AI" });
       }
     } catch (error) {
       console.error("Erasure Engine Error:", error);

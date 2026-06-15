@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, loginWithPasskey } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);

@@ -646,7 +646,7 @@ export const ErasureModule = () => {
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.15em" }}>V-16 · AUTOMATED TAKEDOWN</div>
           <NeonText color={NEON.magenta} size="1.2rem" weight={700}>Sovereign Erasure Engine</NeonText>
-          <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>Automated CCPA/GDPR data broker opt-out requests powered by Gemini AI.</p>
+          <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>Automated CCPA/GDPR data broker opt-out requests powered by Gemma 4 E4B.</p>
         </div>
       </div>
 

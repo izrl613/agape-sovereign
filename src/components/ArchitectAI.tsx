@@ -1162,7 +1162,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
 
             <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 4 }}>AI INTELLIGENCE ENGINE</div>
             <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
-            <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemini-powered</div>
+            <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemma-powered</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <NeonButton 

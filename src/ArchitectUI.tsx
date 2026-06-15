@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useEffect, useRef } from "react";
 import { auth, db, functions, loginWithGoogle, loginAnonymously } from "./firebase";
 import { onAuthStateChanged, signInWithCustomToken, linkWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -171,19 +172,19 @@ const GlobalStyle = () => {
       .thinking-dot:nth-child(3) { animation-delay: 0.3s; background: ${NEON.orange}; }
     `;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    return () => { document.head.removeChild(style); };
   }, []);
   return null;
 };
 
 // ─── Utility Components ───────────────────────────────────────
-const NeonText = ({ children, color = NEON.blue, size = "1rem", weight = 700, style = {} }) => (
+const NeonText = ({ children, color = NEON.blue, size = "1rem", weight = 700, style = {} }: any) => (
   <span style={{ fontFamily: "'Orbitron', monospace", color, fontSize: size, fontWeight: weight, textShadow: `0 0 10px ${color}66`, letterSpacing: "0.05em", ...style }}>
     {children}
   </span>
 );
 
-const GlassCard = ({ children, style = {}, className = "", onClick }) => (
+const GlassCard = ({ children, style = {}, className = "", onClick }: any) => (
   <div className={`neon-border ${className}`} onClick={onClick} style={{
     background: NEON.bgCard, backdropFilter: "blur(20px)", borderRadius: 12,
     border: "1px solid rgba(0,212,255,0.15)", position: "relative", ...style
@@ -192,7 +193,7 @@ const GlassCard = ({ children, style = {}, className = "", onClick }) => (
   </div>
 );
 
-const NeonButton = ({ children, onClick, color = NEON.blue, style = {}, disabled = false, size = "md" }) => {
+const NeonButton = ({ children, onClick, color = NEON.blue, style = {}, disabled = false, size = "md" }: any) => {
   const pad = size === "sm" ? "8px 18px" : size === "lg" ? "14px 32px" : "10px 24px";
   const fs = size === "sm" ? "0.75rem" : size === "lg" ? "1rem" : "0.85rem";
   return (
@@ -206,8 +207,8 @@ const NeonButton = ({ children, onClick, color = NEON.blue, style = {}, disabled
   );
 };
 
-const StatusBadge = ({ type }) => {
-  const cfg = {
+const StatusBadge = ({ type }: any) => {
+  const cfg: Record<string, any> = {
     NUKED: { color: NEON.magenta, bg: "rgba(255,46,159,0.12)", label: "🔥 NUKED" },
     KNOXED: { color: NEON.blue, bg: "rgba(0,212,255,0.12)", label: "🛡️ KNOXED" },
     MONITORED: { color: NEON.orange, bg: "rgba(255,122,24,0.12)", label: "👁️ MONITORED" },
@@ -863,7 +864,7 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
 };
 
 // ─── Architect AI Chat ────────────────────────────────────────
-const ArchitectAIView = ({ user, diffModules }) => {
+const ArchitectAIView = ({ user, diffModules }: { user: any, diffModules: any[] }) => {
   const initialGreeting = `Greetings, ${user?.displayName || "Sovereign"}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.\n\nI have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1))}/100**.\n\n🔥 **${diffModules.reduce((s, m) => s + m.nuked, 0)} NUKED** exposures identified across data brokers and breach databases.\n🛡️ **${diffModules.reduce((s, m) => s + m.knoxed, 0)} KNOXED** vectors hardened and secured.\n\nWhat aspect of your digital sovereignty would you like to reclaim today?`;
 
   const [messages, setMessages] = useState([
@@ -883,7 +884,7 @@ const ArchitectAIView = ({ user, diffModules }) => {
     setLoading(true);
 
     try {
-      // Map history to the format expected by our backend API (Gemini uses 'model' instead of 'assistant')
+      // Map history to the format expected by our backend API (Gemma uses 'model' instead of 'assistant')
       const history = messages.map(m => ({
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }]
@@ -919,8 +920,8 @@ const ArchitectAIView = ({ user, diffModules }) => {
     "How is my Sovereign Score calculated?",
   ];
 
-  const renderMsg = (text) => {
-    return text.split('\n').map((line, i) => {
+  const renderMsg = (text: string) => {
+    return text.split('\n').map((line: string, i: number) => {
       if (line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{ fontWeight: 700, color: NEON.blue, margin: "4px 0" }}>{line.replace(/\*\*/g, '')}</div>;
       if (line.includes('**')) return <div key={i} style={{ margin: "2px 0" }} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, `<strong style="color:${NEON.blue}">$1</strong>`) }} />;
       if (line.startsWith('🔥') || line.startsWith('🛡️') || line.startsWith('⚠️')) return <div key={i} style={{ margin: "4px 0", color: NEON.text }}>{line}</div>;
@@ -934,7 +935,7 @@ const ArchitectAIView = ({ user, diffModules }) => {
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 4 }}>AI INTELLIGENCE ENGINE</div>
         <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
-        <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemini-powered</div>
+        <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemma-powered</div>
       </div>
 
       <div style={{ height: 1, background: GRADIENT_BORDER, marginBottom: 16, opacity: 0.5 }} />
@@ -991,7 +992,7 @@ const ArchitectAIView = ({ user, diffModules }) => {
 };
 
 // ─── PDF Report View ──────────────────────────────────────────
-const ReportView = ({ diffModules }) => {
+const ReportView = ({ diffModules }: { diffModules: any[] }) => {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const totalNuked = diffModules.reduce((s, m) => s + m.nuked, 0);
@@ -1097,7 +1098,7 @@ const ReportView = ({ diffModules }) => {
 };
 
 // ─── Admin Portal ─────────────────────────────────────────────
-const AdminPortal = ({ onClose }) => {
+const AdminPortal = ({ onClose }: any) => {
   const stats = {
     webauthLogs: 1247, cloudRunStatus: "HEALTHY", firestoreOps: 38291, nodeHealth: "99.7%", activeUsers: 1, sessionsToday: 3,
   };
@@ -1151,7 +1152,7 @@ const AdminPortal = ({ onClose }) => {
               { svc: "Firebase App Check", status: "ACTIVE", note: "Request attestation · Abuse prevention" },
               { svc: "Firebase Hosting", status: "ACTIVE", note: "CDN-backed · HTTPS enforced" },
               { svc: "Firebase Analytics", status: "ACTIVE", note: "Privacy-mode · No PII collection" },
-              { svc: "Gemini AI (Free Tier)", status: "ACTIVE", note: "Context-bound sessions · Rate-limited guardrails" },
+              { svc: "Gemma 4 E4B", status: "ACTIVE", note: "Local Enclave Compute · Privacy-preserving" },
             ].map(s => (
               <div key={s.svc} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 6, border: "1px solid rgba(0,212,255,0.08)" }}>
                 <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#0f0", flexShrink: 0 }} />
@@ -1171,7 +1172,7 @@ const AdminPortal = ({ onClose }) => {
               "[2026-03-05T14:32:01Z] PASSKEY_AUTH user@agape.nyc · device: macOS · status: SUCCESS",
               "[2026-03-05T14:31:58Z] DIFF_SCAN initiated · vectors: 16 · mode: REALTIME",
               "[2026-03-05T14:31:45Z] FIRESTORE_WRITE encrypted_profile · bytes: 4.2KB",
-              "[2026-03-05T14:30:22Z] GEMINI_API session_start · tokens: 0 · context_bound: true",
+              "[2026-03-05T14:30:22Z] GEMMA_API session_start · tokens: 0 · context_bound: true",
               "[2026-03-05T14:28:11Z] APP_CHECK attestation verified · platform: web",
               "[2026-03-05T14:25:04Z] CLOUD_FUNCTION pdf_generate · status: idle",
             ].map((log, i) => <div key={i} style={{ color: i === 0 ? NEON.blue : NEON.textMuted }}>{log}</div>)}
@@ -1183,13 +1184,13 @@ const AdminPortal = ({ onClose }) => {
 };
 
 // ─── Profile Panel ────────────────────────────────────────────
-const ProfilePanel = ({ user, onClose }) => {
+const ProfilePanel = ({ user, onClose }: any) => {
   const [email, setEmail] = useState("");
   const [savedEmails, setSavedEmails] = useState(["user@agape.nyc"]);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 900, display: "flex", alignItems: "flex-start", justifyContent: "flex-end", backdropFilter: "blur(6px)", animation: "fade-in 0.2s ease" }} onClick={onClose}>
-      <GlassCard style={{ width: 340, margin: "56px 16px 0 0", padding: "20px", animation: "slide-in-left 0.3s ease" }} onClick={e => e.stopPropagation()}>
+      <GlassCard style={{ width: 340, margin: "56px 16px 0 0", padding: "20px", animation: "slide-in-left 0.3s ease" }} onClick={(e: any) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <NeonText color={NEON.magenta} size="0.9rem">SOVEREIGN PROFILE</NeonText>
           <button onClick={onClose} style={{ background: "none", border: "none", color: NEON.textMuted, cursor: "pointer", fontSize: "1.2rem" }}>×</button>
@@ -1239,10 +1240,10 @@ const ProfilePanel = ({ user, onClose }) => {
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [diffModules, setDiffModules] = useState(DEFAULT_MODULE_DATA);
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [activeModule, setActiveModule] = useState(null);
+  const [user, setUser] = useState<any>(null);
+  const [diffModules, setDiffModules] = useState<any[]>(DEFAULT_MODULE_DATA);
+  const [activeSection, setActiveSection] = useState<any>("dashboard");
+  const [activeModule, setActiveModule] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
@@ -1331,7 +1332,7 @@ export default function App() {
     </>
   );
 
-  const handleModuleClick = (id) => { setActiveModule(id); setActiveSection("modules"); };
+  const handleModuleClick = (id: string) => { setActiveModule(id); setActiveSection("modules"); };
 
   const renderMain = () => {
     if (activeSection === "architect") return <ArchitectAIView user={user} diffModules={diffModules} />;

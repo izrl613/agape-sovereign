@@ -41,7 +41,9 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/reach__dialog": "^0.1.1",
     "@types/react": "latest",
+    "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "latest",
     "concurrently": "^10.0.3",
