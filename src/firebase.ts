@@ -1,9 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
+import {
+  getAuth,
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup, 
+  signInWithPopup,
   signInAnonymously,
   signOut,
   setPersistence,
@@ -28,7 +28,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)');
 export const storage = getStorage(app);
-export const functions = getFunctions(app, 'us-east1');
+export const functions = getFunctions(app, 'us-central1');
 export const remoteConfig = getRemoteConfig(app);
 export const database = getDatabase(app);
 
@@ -61,7 +61,7 @@ async function testConnection() {
     } catch (error) {
       // If it's a permission error, the config is actually fine, just the rules blocked it.
       // If it's "offline", it might be a real config issue OR just a transient network thing.
-      if(error instanceof Error && error.message.includes('the client is offline')) {
+      if (error instanceof Error && error.message.includes('the client is offline')) {
         // Only log if it's consistently failing or if we're sure it's a config issue.
         // For now, let's just log it as a warning instead of a scary error if it's likely transient.
         console.warn("Firestore connection test: client is offline. This is expected if you are using Emergency Bypass or have no internet connection.");
@@ -72,11 +72,11 @@ async function testConnection() {
 testConnection();
 
 // Initialize Analytics & Messaging conditionally
-export const analytics = typeof window !== 'undefined' && (firebaseConfig as { measurementId?: string }).measurementId 
-  ? isAnalyticsSupported().then(yes => yes ? getAnalytics(app) : null) 
+export const analytics = typeof window !== 'undefined' && (firebaseConfig as { measurementId?: string }).measurementId
+  ? isAnalyticsSupported().then(yes => yes ? getAnalytics(app) : null)
   : Promise.resolve(null);
-export const messaging = typeof window !== 'undefined' 
-  ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null) 
+export const messaging = typeof window !== 'undefined'
+  ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null)
   : Promise.resolve(null);
 
 export const googleProvider = new GoogleAuthProvider();
@@ -97,7 +97,7 @@ export const loginWithGoogle = async () => {
     return result.user;
   } catch (error: unknown) {
     console.error("Error signing in with Google:", error);
-    
+
     if (error instanceof Error && 'code' in error) {
       const firebaseError = error as { code: string };
       if (firebaseError.code === 'auth/unauthorized-domain') {
@@ -109,7 +109,7 @@ export const loginWithGoogle = async () => {
         console.error("This may be caused by third-party cookies being blocked in the iframe. Try opening the app in a new tab.");
       }
     }
-    
+
     throw error;
   }
 };

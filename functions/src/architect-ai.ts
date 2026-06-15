@@ -40,7 +40,7 @@ const db = getFirestore();
 // Generates WebAuthn registration options and stores the challenge in Firestore.
 
 export const registerPasskeyOptions = onCall(
-  { region: "us-east1", maxInstances: 10 },
+  { region: "us-central1", maxInstances: 10 },
   async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -99,7 +99,7 @@ export const registerPasskeyOptions = onCall(
 // On success, stores the credential in Firestore for future authentication.
 
 export const verifyPasskeyRegistration = onCall(
-  { region: "us-east1", maxInstances: 10 },
+  { region: "us-central1", maxInstances: 10 },
   async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -187,7 +187,7 @@ export const verifyPasskeyRegistration = onCall(
 // Generates authentication options and stores challenge in Firestore.
 
 export const loginPasskeyOptions = onCall(
-  { region: "us-east1", maxInstances: 10 },
+  { region: "us-central1", maxInstances: 10 },
   async (request: CallableRequest) => {
     try {
       const { email } = request.data;
@@ -245,7 +245,7 @@ export const loginPasskeyOptions = onCall(
 // a Firebase Custom Token to sign in with.
 
 export const verifyPasskeyLogin = onCall(
-  { region: "us-east1", maxInstances: 10 },
+  { region: "us-central1", maxInstances: 10 },
   async (request: CallableRequest) => {
     try {
       const { tempUserId, response: body } = request.data;
@@ -331,7 +331,7 @@ export const verifyPasskeyLogin = onCall(
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
 export const generateDiffReport = onCall(
-  { region: "us-east1", maxInstances: 5 },
+  { region: "us-central1", maxInstances: 5 },
   async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -405,7 +405,7 @@ export const generateDiffReport = onCall(
 export const recalculateSovereignScore = onDocumentWritten(
   {
     document: "diff_scans/{scanId}/vectorResults/{vectorId}",
-    region: "us-east1",
+    region: "us-central1",
   },
   async (event: any) => {
     const after = event.data?.after.data() as any;
@@ -463,7 +463,7 @@ export const recalculateSovereignScore = onDocumentWritten(
 // ─── PASSKEY CHALLENGE ──────────────────────────────────────
 
 export const generatePasskeyChallenge = onCall(
-  { region: "us-east1" },
+  { region: "us-central1" },
   async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -490,7 +490,7 @@ export const generatePasskeyChallenge = onCall(
 // ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
 
 export const cleanupAuditLogs = onSchedule(
-  { region: "us-east1", schedule: "every 30 days" },
+  { region: "us-central1", schedule: "0 0 1 * *" },
   async () => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -518,7 +518,7 @@ export const cleanupAuditLogs = onSchedule(
 // ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
 
 export const generateECRAOptOut = onCall(
-  { region: "us-east1" },
+  { region: "us-central1" },
   async (request: CallableRequest) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
