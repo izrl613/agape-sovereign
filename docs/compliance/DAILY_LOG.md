@@ -100,3 +100,36 @@
 ### GitHub Learning
 
 - Check read and write capabilities separately at the start of an automation run: a GitHub integration can expose repo, PR, issue, and Actions reads while still rejecting issue creation and comments with `403 Resource not accessible by integration`.
+
+## 2026-06-10 08:10:01 EDT
+
+- Git HEAD: `main` @ `4f0439b66c08deab08ecbb719f05e8c3d8e8be8c` (`refactor: transition to local-first Ollama AI service with explicit dependency management and cloud fallback removal`)
+- Working tree: not clean; modified passkey/runtime files and a large set of untracked image artifacts are present, plus an untracked `.firebaserc`
+- Commit anchor: prior daily log entry at `cacc00e89f9d4931814fa5c42b23a3546b1a7dd1` on `2026-06-08 17:34:01 EDT`
+
+### Summary
+
+- Primary roadmap classification: `Foundation`, with some `Stage 1` product motion but no fresh deny-by-default or least-privilege validation landed in the local checkout
+- Local `main` advanced by two commits since the anchor: `docs: add daily compliance log entry for 2026-06-08` and `refactor: transition to local-first Ollama AI service with explicit dependency management and cloud fallback removal`
+- After `git fetch --all --prune`, local `HEAD` is behind `origin/main` by eight additional commits while also carrying nine local-only commits relative to the fetched remote history; the newest remote tip is `5bce9902` (`fix: change firebase hosting public directory to dist`)
+- GitHub issue and PR activity has been quiet since the last run: no issues opened or closed, no PRs merged into `main`, and open PR `#30` (`Roadmap 2026 06 02`) remains the only active pull request
+- GitHub project and wiki surfaces are still largely unused: the repo has `0` projects and the wiki still has no pages
+- Latest Actions signal is negative: `Deploy to Firebase` runs `#14` through `#17` all failed on `main`, including failures at `3f209a9e`, `fc7ddfa7`, and current remote tip `5bce9902`; the newer hosting-only workflow is not the current blocker
+
+### Risks / Alerts
+
+- Compliance regression risk is elevated by the dirty working tree: modified auth/passkey files plus dozens of untracked screenshots make accidental noisy or sensitive commits more likely
+- Secrets-discipline and least-privilege risk remain open because `.github/workflows/deploy.yml` still uses `firebase use --token ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}` instead of a narrower, auditable credential path
+- Governance gap persists on GitHub organization surfaces: stage issues exist, but Projects and Wiki are still empty, so the roadmap is not yet reflected in a maintained external operating view
+- Deny-by-default review gap remains open for this reporting window; while `firestore.rules` ends in an explicit deny-all fallback, this run did not find fresh validation evidence for rules enforcement or regression tests on `main`
+
+### Next Recommended Actions
+
+- Clean the working tree before any further sync or deploy work by removing or ignoring the screenshot artifact set and deciding whether `.firebaserc` belongs in version control
+- Triage the current `Deploy to Firebase` failures on `5bce9902`, `fc7ddfa7`, and `3f209a9e`, then replace token-based auth in `deploy.yml` with the least-privileged deploy mechanism the team wants to standardize
+- Create and maintain exactly one GitHub issue titled `Daily Compliance Monitor` as the append-only external tracker for these notes
+- Stand up one GitHub Project for the compliance roadmap and seed the wiki with a short roadmap/operator index so Issues, Projects, and Docs reinforce the same implementation stages
+
+### GitHub Learning
+
+- GitHub’s repository tabs can reveal governance gaps quickly: if Issues exist but Projects shows `0` and Wiki has no pages, the roadmap may still live only in-repo and not yet in the maintainer workflow surfaces.

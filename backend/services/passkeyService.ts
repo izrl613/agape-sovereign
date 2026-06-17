@@ -31,7 +31,7 @@ export async function getRegistrationOptions(uid: string) {
   const options = await generateRegistrationOptions({
     rpName: 'Agape Sovereign',
     rpID: 'aitnyc.cloudflareaccess.com', // domain of the app
-    userID: uid,
+    userID: new TextEncoder().encode(uid),
     userName: uid,
     timeout: 60000,
     attestationType: 'none',

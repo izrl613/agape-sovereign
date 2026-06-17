@@ -64,7 +64,7 @@ export const generatePasskeyRegistration = async (
     rpID: WEBAUTHN_CONFIG.rpID,
     rpName: WEBAUTHN_CONFIG.rpName,
     userName: userName,
-    userID: userID,
+    userID: new TextEncoder().encode(userID),
     userDisplayName: userDisplayName,
     // Require resident key (passkey) support
     authenticatorSelection: {
