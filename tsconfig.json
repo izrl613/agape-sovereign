@@ -23,25 +23,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": [
-    "src/main.tsx",
-    "src/App.tsx",
-    "src/components/Layout.tsx",
-    "src/components/Login.tsx",
-    "src/components/Dashboard.tsx",
-    "src/components/DiffModules.tsx",
-    "src/components/ArchitectAI.tsx",
-    "src/components/AdminPortal.tsx",
-    "src/components/UserProfileSettings.tsx",
-    "src/components/SecurityTips.tsx",
-    "src/components/SplashEntry.tsx",
-    "src/components/UI.tsx",
-    "src/components/ErrorBoundary.tsx",
-    "src/AuthContext.tsx",
-    "src/ScanContext.tsx",
-    "src/firebase.ts",
-    "src/architectPrompt.ts"
-  ],
+  "include": ["src"],
   "exclude": [
     "node_modules",
     "dist",

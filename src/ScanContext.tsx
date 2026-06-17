@@ -89,17 +89,17 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check for new NUKED findings to notify
       if (!isLoading) {
         newFindings.forEach(finding => {
-          if (finding.status === 'NUKED' && !notifiedFindingIds.has(finding.id)) {
+          if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
             toast.error(`CRITICAL EXPOSURE DETECTED`, {
               description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
               duration: 10000,
             });
-            setNotifiedFindingIds(prev => new Set(prev).add(finding.id));
+            setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
           }
         });
       } else {
         // Initial load: just mark existing NUKED as notified so we don't spam on login
-        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED').map(f => f.id));
+        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
         setNotifiedFindingIds(initialNukedIds);
       }
 

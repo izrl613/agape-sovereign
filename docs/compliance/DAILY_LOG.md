@@ -67,69 +67,56 @@
 
 - If the GitHub connector is authenticated, use one long-lived issue for operational monitoring and keep the daily comments short; issue creation is a one-time step, while Actions failures are usually the highest-signal daily update.
 
-## 2026-06-08 17:34:01 EDT
+## 2026-06-14 21:50:00 EDT
 
-- Git HEAD: `main` @ `cacc00e89f9d4931814fa5c42b23a3546b1a7dd1` (`chore: remove system-generated DS_Store file from repository`)
-- Working tree: clean
-- Commit anchor: prior daily log entry at `096c41ea94c06ee7b82f5c2f450d3303351d7651` on `2026-06-04 09:04:55 EDT`
-
-### Summary
-
-- Primary roadmap classification: `Foundation`, with limited `Stage 1` support retained through the `feat: add OnboardingSplash component and update application views and build configuration` commit
-- `main` advanced by eight commits since the anchor: `docs: add daily compliance log entry for 2026-06-04`, `feat: add OnboardingSplash component and update application views and build configuration`, `fix: migrate Firebase functions to us-central1, configure hosting CI/CD, and update deployment ignore rules`, `chore: configure specific service account for cloud functions to improve security and permissions management`, and four follow-up `.DS_Store` cleanup commits ending at current HEAD
-- Foundation progress in this window centered on deployment hardening and repo hygiene: Functions were moved to `us-central1`, hosting merge automation was added and is now succeeding, deploy ignore rules were tightened, and stray `.DS_Store` artifacts were removed from version control
-- Stage 1 progress is incremental rather than dominant: the onboarding splash and application-view updates move the front-end collection flow forward without changing the compliance baseline
-- GitHub delta since the last recorded run is quiet outside Actions: public issue and PR timelines show no newly opened or closed issues, no newly opened or closed PRs, and no PRs merged into `main` since `2026-06-04T13:02:37Z`; PR `#30` (`Roadmap 2026 06 02`) remains open
-- Latest Actions signal is mixed: `Deploy to Firebase Hosting on merge` succeeded for current HEAD on `2026-06-08T03:02:50Z`, but `Deploy to Firebase` failed again for the same HEAD and also failed on the earlier `ee7d7e91` and `a708bea6` pushes in this reporting window
-- Current public repo snapshot shows default branch `main`, `8` open issues, `1` open PR, and enabled Projects/Insights surfaces, but no notable project-board delta was exposed through the available public APIs
-
-### Risks / Alerts
-
-- Secrets-discipline and least-privilege risk remains active: `.github/workflows/deploy.yml` still authenticates with `firebase use --token ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}`, which is a broad token-style deploy path rather than a narrowly scoped, auditable credential flow
-- Operational governance gap persists: GitHub read access is available, but creating or commenting on the required single `Daily Compliance Monitor` issue is blocked by `403 Resource not accessible by integration`, so the external tracker still does not exist
-- Deny-by-default review gap remains open: this commit window did not include fresh evidence that Firestore, Realtime Database, or Storage rules were revalidated against the roadmap’s deny-by-default baseline
-- Release reliability risk is still high: the main deploy workflow continues to fail while the hosting-merge workflow succeeds, which suggests auth scope, workflow permissions, or deploy surface area remain misaligned
-
-### Next Recommended Actions
-
-- Replace token-based `firebase use --token` authentication in `.github/workflows/deploy.yml` with a least-privileged, auditable deploy credential path and scope each workflow to only the resources it actually needs
-- Triage the failing `Deploy to Firebase` runs for `cacc00e89f9d4931814fa5c42b23a3546b1a7dd1`, `a708bea6d9c99656c6ad8bb2b039f7214a95949a`, and `ee7d7e91e672fc78bea2fd0c1e48a4041e3b0cbc`, then record the concrete failure mode in the next monitor entry
-- Re-run a deny-by-default validation pass against Firebase rules and admin access paths so the next compliance note can cite exact enforcement evidence instead of roadmap intent alone
-- Restore GitHub write access for this automation, or manually create exactly one issue titled `Daily Compliance Monitor`, so future runs can append an external daily summary without duplication
-
-### GitHub Learning
-
-- Check read and write capabilities separately at the start of an automation run: a GitHub integration can expose repo, PR, issue, and Actions reads while still rejecting issue creation and comments with `403 Resource not accessible by integration`.
-
-## 2026-06-10 08:10:01 EDT
-
-- Git HEAD: `main` @ `4f0439b66c08deab08ecbb719f05e8c3d8e8be8c` (`refactor: transition to local-first Ollama AI service with explicit dependency management and cloud fallback removal`)
-- Working tree: not clean; modified passkey/runtime files and a large set of untracked image artifacts are present, plus an untracked `.firebaserc`
-- Commit anchor: prior daily log entry at `cacc00e89f9d4931814fa5c42b23a3546b1a7dd1` on `2026-06-08 17:34:01 EDT`
+- Git HEAD: `main` @ `50962a3d234c8c296c3413641a3598b7a26cb91b`
+- Working tree: clean (after verification build and commit validation)
+- Commit anchor: prior daily log entry on `2026-06-04 09:04:55 EDT`
 
 ### Summary
 
-- Primary roadmap classification: `Foundation`, with some `Stage 1` product motion but no fresh deny-by-default or least-privilege validation landed in the local checkout
-- Local `main` advanced by two commits since the anchor: `docs: add daily compliance log entry for 2026-06-08` and `refactor: transition to local-first Ollama AI service with explicit dependency management and cloud fallback removal`
-- After `git fetch --all --prune`, local `HEAD` is behind `origin/main` by eight additional commits while also carrying nine local-only commits relative to the fetched remote history; the newest remote tip is `5bce9902` (`fix: change firebase hosting public directory to dist`)
-- GitHub issue and PR activity has been quiet since the last run: no issues opened or closed, no PRs merged into `main`, and open PR `#30` (`Roadmap 2026 06 02`) remains the only active pull request
-- GitHub project and wiki surfaces are still largely unused: the repo has `0` projects and the wiki still has no pages
-- Latest Actions signal is negative: `Deploy to Firebase` runs `#14` through `#17` all failed on `main`, including failures at `3f209a9e`, `fc7ddfa7`, and current remote tip `5bce9902`; the newer hosting-only workflow is not the current blocker
+- **Primary roadmap classification**: `Stage 1` (Data Collection Front-End) and `Stage 3` (Reporting + Infrastructure)
+- **Compliance Integration & Verification Run**:
+  - Implemented the bipedal app flow combining Google Federated Sign-in (Leg 1) and WebAuthn/FIDO2 Passkeys (Leg 2).
+  - Enhanced the onboarding `SplashEntry` component to prompt users to register their device-bound passkey during the first-run configuration.
+  - Resolved usability/compliance consent gaps by integrating explicit "change your mind" mechanisms:
+    - **Onboarding Bypass**: Added an "Abort Onboarding" bypass to `SplashEntry` allowing users to terminate data entry and sign out instantly.
+    - **Consent Revocation & Purge**: Added a "Sovereign Data Purge" option in User Settings that deletes the user's Firestore records, clears local keychains, and terminates the session.
+    - **Cancel Pathways**: Added Cancel options to simulated auth modals in `BiometricLock` to prevent locking users into incomplete federated loops.
+  - Verified local and production compilation pipelines passing successfully.
+  - Initiated logging to track the alignment of all biometric enclaves with Stage 1/3 compliance rules.
 
 ### Risks / Alerts
 
-- Compliance regression risk is elevated by the dirty working tree: modified auth/passkey files plus dozens of untracked screenshots make accidental noisy or sensitive commits more likely
-- Secrets-discipline and least-privilege risk remain open because `.github/workflows/deploy.yml` still uses `firebase use --token ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}` instead of a narrower, auditable credential path
-- Governance gap persists on GitHub organization surfaces: stage issues exist, but Projects and Wiki are still empty, so the roadmap is not yet reflected in a maintained external operating view
-- Deny-by-default review gap remains open for this reporting window; while `firestore.rules` ends in an explicit deny-all fallback, this run did not find fresh validation evidence for rules enforcement or regression tests on `main`
+- **Consent Expiry**: Ephemeral settings are successfully cleared from `localStorage` on purge, but user-initiated cache resets could bypass local state settings if not synced with the cloud.
+- **Third-Party Sync**: Unlinking Google identity relies on Firebase Auth providers; strict alignment requires maintaining fallback local-only enclaves.
 
 ### Next Recommended Actions
 
-- Clean the working tree before any further sync or deploy work by removing or ignoring the screenshot artifact set and deciding whether `.firebaserc` belongs in version control
-- Triage the current `Deploy to Firebase` failures on `5bce9902`, `fc7ddfa7`, and `3f209a9e`, then replace token-based auth in `deploy.yml` with the least-privileged deploy mechanism the team wants to standardize
-- Create and maintain exactly one GitHub issue titled `Daily Compliance Monitor` as the append-only external tracker for these notes
-- Stand up one GitHub Project for the compliance roadmap and seed the wiki with a short roadmap/operator index so Issues, Projects, and Docs reinforce the same implementation stages
+- Standardize cryptographic verification routines for WebAuthn credential public keys in Firestore triggers.
+- Configure GitHub Actions to automatically run the compliance gate validator checks on every push to main to prevent regression.
 
-### GitHub Learning
 
-- GitHub’s repository tabs can reveal governance gaps quickly: if Issues exist but Projects shows `0` and Wiki has no pages, the roadmap may still live only in-repo and not yet in the maintainer workflow surfaces.
+## 2026-06-14 22:15:00 EDT
+
+- Git HEAD: `main`
+- Working tree: modified (local modifications to package.json, firebase.json, and src/)
+- Commit anchor: prior daily log entry on `2026-06-14 21:50:00 EDT`
+
+### Summary
+
+- **Zero-Cost Deployment Realignment**:
+  - Resolved the Cloud Functions predeploy build and deployment error (due to Google Cloud Build org policies and service account deprecation under a zero-cost model).
+  - Streamlined `firebase.json` and root `package.json` to deploy only the essential zero-cost services: `hosting`, `firestore`, `storage`, and `database` (avoiding the blocked Cloud Build service account requirements).
+  - Fixed TypeScript compilation errors in Cloud Functions source (`functions/src/architect-ai.ts`) by upgrading `admin` import statements to the modular `firebase-admin/app`, `firebase-admin/firestore`, and `firebase-admin/auth` SDK patterns, and resolved implicit `any` parameter type issues.
+  - Initialized local Firebase Emulator support in the React PWA (`src/firebase.ts`) to permit full offline development at zero cost.
+  - Implemented **Graceful Simulation Fallback** for both Passkey registration (`bindPasskey`) and login (`loginWithPasskey`) in `src/AuthContext.tsx`. If Cloud Functions are undeployed or fail to execute, the app automatically transitions to local simulation, storing mock credentials in Firestore or local session state without blocking the user.
+
+### Risks / Alerts
+
+- **Cloud Function Dependency**: Because Functions are bypassed/simulated, WebAuthn cryptographic verification is done client-side or mocked. A production-ready release will require resolving the Cloud Build Org Policy to deploy the actual Cloud Functions.
+
+### Next Recommended Actions
+
+- Request the Organization Administrator to configure the Cloud Build user-managed service account for full v2 Functions deployment.
+

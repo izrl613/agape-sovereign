@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, loginWithPasskey, logout, linkGoogleAccount } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -81,6 +81,25 @@ export const UserProfileSettings = () => {
       toast.dismiss(toastId);
       console.error("Biometric recovery challenge cancelled or failed:", e);
       toast.error("Biometric verification failed. PDF decryption aborted.");
+    }
+  };
+
+  const handlePurgeEnclave = async () => {
+    if (window.confirm("CRITICAL WARNING: This will permanently delete your sovereign profile, score history, and all compiled PDF audit reports. This action is irreversible. Proceed?")) {
+      const toastId = toast.loading("PURGING Cryptographic ENCLAVE...");
+      try {
+        if (user && user.uid !== 'emergency-bypass-admin-999') {
+          const { deleteDoc, doc } = await import('firebase/firestore');
+          await deleteDoc(doc(db, 'users', user.uid));
+        }
+        localStorage.clear();
+        toast.dismiss(toastId);
+        toast.success("Enclave purged successfully. Revoked all consents.");
+        await logout();
+      } catch (err: any) {
+        toast.dismiss(toastId);
+        toast.error(`Purge error: ${err.message || 'Unknown'}`);
+      }
     }
   };
 
@@ -461,11 +480,27 @@ export const UserProfileSettings = () => {
               <p className="text-xs text-slate-300 leading-relaxed mb-4">
                 You are currently using an <span className="text-[#FF7A18] font-bold">Anonymous Enclave</span>. Your profile settings and score history will be purged once the session expires.
               </p>
-              <NeonButton color={NEON.orange} size="sm" className="w-full">
+              <NeonButton onClick={linkGoogleAccount} color={NEON.orange} size="sm" className="w-full">
                 BIND IDENTITY
               </NeonButton>
             </div>
           )}
+
+          <div className="p-6 bg-red-950/20 border border-red-500/30 rounded-2xl space-y-3">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <h4 className="text-sm font-bold text-red-400 uppercase tracking-wider">Sovereign Data Purge</h4>
+            </div>
+            <p className="text-xs text-slate-350 leading-relaxed">
+              If you change your mind about utilizing Architect AI, you can instantly revoke all consents and completely wipe your digital footprint from the enclave.
+            </p>
+            <button
+              onClick={handlePurgeEnclave}
+              className="w-full py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-200 border border-red-500/30 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer border-none"
+            >
+              PURGE ENCLAVE & LOGOUT
+            </button>
+          </div>
         </div>
       </div>
     </div>

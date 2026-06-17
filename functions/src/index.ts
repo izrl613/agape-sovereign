@@ -9,6 +9,12 @@
 
 import {setGlobalOptions} from "firebase-functions";
 
+setGlobalOptions({
+  maxInstances: 10,
+  region: "us-central1",
+  serviceAccount: "firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+});
+
 export * from "./architect-ai";
 
 // Start writing functions
@@ -24,7 +30,7 @@ export * from "./architect-ai";
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({maxInstances: 10});
+
 
 // export const helloWorld = onRequest((request, response) => {
 //   logger.info("Hello logs!", {structuredData: true});

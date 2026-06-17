@@ -4,6 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { Shield, ArrowRight, Check, Lock, Cpu, Loader2 } from 'lucide-react';
 import { NeonButton, NEON } from './UI';
+import { EncryptedFooter } from './EncryptedFooter';
 import { doc, setDoc, writeBatch, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { encryptClientSide, generateSHA256 } from '../utils/crypto';
@@ -26,6 +27,7 @@ const MODULE_STEPS = [
   { id: "oauth", label: "Third-Party OAuth", desc: "App permission reviews.", icon: "🔑" },
   { id: "legal", label: "Legal/Records", desc: "Public court and legal filings.", icon: "⚖" },
   { id: "ai", label: "AI/Biometric", desc: "Facial and voice data exposure.", icon: "⊛" },
+  { id: "passkey", label: "Universal Passkey", desc: "Bind a biometric WebAuthn Passkey (Touch ID, Face ID, or security key) to this device for zero-password local enclaves.", icon: "🔑" },
   { id: "final", label: "DIFF Initialization", desc: "Review and initialize your Digital Identity Federated Footprint.", icon: "⚡" },
 ];
 
@@ -33,7 +35,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Record<string, string>>({});
   const [isInitializing, setIsInitializing] = useState(false);
-  const { user } = useAuth();
+  const { user, bindPasskey, logout } = useAuth();
   
   const currentStep = MODULE_STEPS[step];
   
@@ -56,6 +58,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
       
       // 1. Process and encrypt all entered data
       for (const stepConfig of MODULE_STEPS.slice(0, -1)) {
+        if (stepConfig.id === 'passkey') continue;
         const rawValue = data[stepConfig.id] || "";
         const hash = await generateSHA256(rawValue);
         const encrypted = await encryptClientSide(rawValue, user.uid);
@@ -217,7 +220,50 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
                 </div>
                 <p className="text-slate-400 text-sm mb-6 leading-relaxed">{currentStep.desc}</p>
 
-                {currentStep.id !== 'final' ? (
+                {currentStep.id === 'passkey' ? (
+                  <div className="flex flex-col items-center justify-center py-6 gap-4">
+                    <p className="text-slate-400 text-xs text-center max-w-md mb-2">
+                      Leg 2 of Bipedal Authentication. Binding a passkey links your secure hardware enclave to your Google Identity.
+                    </p>
+                    {data.passkeyBound === 'true' ? (
+                      <div className="flex flex-col items-center text-emerald-400 gap-2 font-mono">
+                        <Check className="w-12 h-12 stroke-[2]" />
+                        <span className="text-sm font-bold uppercase tracking-wider">Passkey Registered & Sealed</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3 w-full max-w-xs">
+                        <button
+                          onClick={async () => {
+                            const toastId = toast.loading("PROMPTING BIOMETRIC/HARDWARE KEY REGISTRATION...");
+                            try {
+                              await bindPasskey();
+                              setData({ ...data, passkeyBound: 'true' });
+                              toast.dismiss(toastId);
+                              toast.success("Passkey successfully bound!");
+                            } catch (err: any) {
+                              toast.dismiss(toastId);
+                              console.error("Passkey registration failed:", err);
+                              toast.error(`WebAuthn Error: ${err.message || 'Unknown'}`);
+                            }
+                          }}
+                          className="px-6 py-3 bg-[#00D4FF]/10 text-[#00D4FF] hover:bg-[#00D4FF]/20 border border-[#00D4FF]/30 hover:border-[#00D4FF]/50 rounded-xl font-bold tracking-wider transition-all cursor-pointer font-mono text-xs text-center border-none"
+                        >
+                          🔑 REGISTER BIOMETRIC PASSKEY
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setData({ ...data, passkeyBound: 'skipped' });
+                            toast.info("Passkey binding deferred. You can link it later in Profile Settings.");
+                          }}
+                          className="px-6 py-2.5 bg-white/5 text-slate-400 hover:text-white rounded-xl text-xs transition-all cursor-pointer font-mono border-none"
+                        >
+                          I've Changed My Mind / Skip
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : currentStep.id !== 'final' ? (
                   <div className="space-y-4">
                     <div className="relative group">
                       <input 
@@ -243,7 +289,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
                           <span className="text-[10px] font-medium text-slate-300 truncate">{s.label}</span>
                         </div>
                         <div className="text-[8px] font-mono text-[#00D4FF] opacity-80 flex-shrink-0">
-                          {data[s.id] ? "READY" : "SKIP"}
+                          {s.id === 'passkey' ? (data.passkeyBound === 'true' ? "BOUND" : "DEFERRED") : (data[s.id] ? "READY" : "SKIP")}
                         </div>
                       </div>
                     ))}
@@ -262,21 +308,41 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
                 ))}
               </div>
               
-              <button
-                disabled={step < MODULE_STEPS.length - 1 && !data[currentStep.id]}
-                onClick={handleNext}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
-                  (step === MODULE_STEPS.length - 1 || data[currentStep.id]) 
-                    ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105' 
-                    : 'bg-white/5 text-white/20 cursor-not-allowed'
-                }`}
-              >
-                {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-3">
+                {step < MODULE_STEPS.length - 1 && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm("Abort onboarding and sign out? All entered parameters will be purged.")) {
+                        await logout();
+                      }
+                    }}
+                    className="px-4 py-2.5 text-[10px] text-slate-500 hover:text-[#FF2E9F] border border-white/5 hover:border-[#FF2E9F]/30 rounded-xl font-mono uppercase tracking-wider transition-all cursor-pointer bg-transparent"
+                  >
+                    Abort Onboarding
+                  </button>
+                )}
+                
+                <button
+                  disabled={step < MODULE_STEPS.length - 1 && currentStep.id !== 'passkey' && !data[currentStep.id]}
+                  onClick={handleNext}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
+                    (step === MODULE_STEPS.length - 1 || currentStep.id === 'passkey' || data[currentStep.id] || (currentStep.id === 'passkey' && data.passkeyBound)) 
+                      ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105' 
+                      : 'bg-white/5 text-white/20 cursor-not-allowed'
+                  }`}
+                >
+                  {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
+
+        {/* Encrypted Integrity Footer */}
+        <div className="px-2 pb-2">
+          <EncryptedFooter moduleId="splash-entry" uid={user?.uid} />
+        </div>
 
         {/* Decorative corner elements */}
         <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-[#FF2E9F]/30" />

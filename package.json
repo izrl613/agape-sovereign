@@ -6,15 +6,16 @@
     "backend"
   ],
   "scripts": {
-    "dev-frontend": "npm run dev --prefix frontend",
+    "dev-frontend": "vite",
     "dev-backend": "npm run dev --prefix backend",
     "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
     "typecheck": "tsc --noEmit",
     "build": "vite build && esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --packages=external",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "deploy": "firebase deploy --only hosting,firestore,storage,database",
+    "deploy-all": "firebase deploy"
   },
   "dependencies": {
-    "@google/genai": "latest",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "@tailwindcss/vite": "^4.3.0",
@@ -24,11 +25,13 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "firebase": "latest",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.0.0",
     "framer-motion": "latest",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "latest",
+    "npm": "^11.17.0",
+    "ollama": "^0.6.3",
     "react": "latest",
     "react-dom": "latest",
     "react-markdown": "^10.1.0",
@@ -41,9 +44,12 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/reach__dialog": "^0.1.1",
     "@types/react": "latest",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "latest",
-    "concurrently": "latest",
+    "concurrently": "^10.0.3",
     "esbuild": "latest",
     "typescript": "latest",
     "vite": "latest"

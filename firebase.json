@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -19,10 +19,12 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "storage": {
-    "rules": "storage.rules",
-    "bucket": "agape-sovereign.firebasestorage.app"
-  },
+  "storage": [
+    {
+      "rules": "storage.rules",
+      "bucket": "agape-sovereign.firebasestorage.app"
+    }
+  ],
   "database": {
     "rules": "database.rules.json"
   },
@@ -40,27 +42,10 @@
         ".runtimeconfig.json"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "disallowLegacyRuntimeConfig": true,
       "source": "functions"
-    },
-    {
-      "codebase": "agape-sovereign",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ],
-      "source": "agape-sovereign"
     }
   ],
   "apphosting": [

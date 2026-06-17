@@ -108,19 +108,30 @@ const AppRoutes = () => {
 };
 
 import { Toaster } from 'sonner';
+import ArchitectUIApp from './ArchitectUI';
+import { UIDesignProvider, useUIDesign } from './UIDesignContext';
+import { ThemeProvider } from './context/ThemeContext'; // Assuming ThemeProvider is here or change it if missing
+
+const UniversalApp = () => {
+  const { currentDesign } = useUIDesign();
+  return currentDesign === 'architect' ? <ArchitectUIApp /> : <AppRoutes />;
+};
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <ScanProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster position="top-right" theme="dark" richColors closeButton />
-          </BrowserRouter>
-        </ScanProvider>
-      </AuthProvider>
+      <UIDesignProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <ScanProvider>
+              <BrowserRouter>
+                <UniversalApp />
+                <Toaster position="top-right" theme="dark" richColors closeButton />
+              </BrowserRouter>
+            </ScanProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </UIDesignProvider>
     </ErrorBoundary>
   );
 }
-

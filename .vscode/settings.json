@@ -21,11 +21,15 @@
   },
   "typescript.tsserver.maxTsServerMemory": 1024,
   "workbench.colorCustomizations": {
-    "statusBar.background": "#0F4C81",
+    "statusBar.background": "#0000FF",
     "statusBar.foreground": "#FFFFFF",
-    "statusBar.border": "#0F4C81",
-    "statusBarItem.hoverBackground": "#165d9c",
-    "statusBarItem.remoteBackground": "#0F4C81",
-    "statusBarItem.remoteForeground": "#FFFFFF"
+    "statusBar.border": "#0000FF",
+    "statusBarItem.hoverBackground": "#0000CC",
+    "statusBarItem.remoteBackground": "#0000FF",
+    "statusBarItem.remoteForeground": "#FFFFFF",
+    "titleBar.activeBackground": "#0000FF",
+    "titleBar.activeForeground": "#FFFFFF",
+    "titleBar.inactiveBackground": "#0000AA",
+    "titleBar.inactiveForeground": "#CCCCCC"
   }
 }

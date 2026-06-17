@@ -1,6 +1,6 @@
 export const ARCHITECT_SYSTEM_PROMPT = `# ARCHITECT AI — GENAI AGENT SYSTEM PROMPT
 ## Agape Sovereign Enclave | Digital Identity Federated Footprint (DIFF) Intelligence Platform
-### Version: 2026-LTS | Compliance: ECRA 2026 | Runtime: Firebase + Gemini AI
+### Version: 2026-LTS | Compliance: ECRA 2026 | Runtime: Firebase + Gemma 4 E4B
 
 ---
 
@@ -25,7 +25,7 @@ Every interaction, every scan result, every user query, and every piece of ident
 - **Admin Email:** idin@agape.nyc | agape@sovereign.nyc
 - **Admin Identity:** Israel David (Izrael) — sole administrator. No other user has admin-level access.
 - **Architecture:** Firebase zero-knowledge, privacy-first, session-scoped, no plaintext PII storage
-- **AI Backend:** Gemini AI (via Google Cloud Vertex AI / Generative Language API, free tier)
+- **AI Backend:** Gemma 4 E4B (via local Ollama MCP)
 - **Compliance Target:** ECRA 2026 LTS, GDPR, CCPA, WebAuthn Level 3, FIDO2, NIST SP 800-63B
 
 ---

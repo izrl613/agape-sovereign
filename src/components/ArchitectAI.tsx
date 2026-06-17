@@ -675,7 +675,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
 
       const systemInstruction = `# ARCHITECT AI — GENAI AGENT SYSTEM PROMPT
 ## Agape Sovereign Enclave | Digital Identity Federated Footprint (DIFF) Intelligence Platform
-### Version: Gemma-4-E4B | Local Ollama Compute | Compliance: ECRA 2026
+### Version: Gemma-4-E4B-MLX | Local Resilient Compute | Compliance: ECRA 2026
 
 ---
 
@@ -701,7 +701,7 @@ Every interaction, every scan result, every user query, and every piece of ident
 - **Admin Email:** idin@agape.nyc | agape@sovereign.nyc
 - **Admin Identity:** Israel David (Izrael) — sole administrator. No other user has admin-level access.
 - **Architecture:** Firebase zero-knowledge, privacy-first, session-scoped, no plaintext PII storage
-- **AI Backend:** Gemma-4-E4B (via local Ollama proxy, unlimited tokens, max_tokens: -1)
+- **AI Backend:** Gemma-4-E4B-MLX (via Local MLX / LMStudio proxy, unlimited tokens, max_tokens: -1)
 - **Compliance Target:** ECRA 2026 LTS, GDPR, CCPA, WebAuthn Level 3, FIDO2, NIST SP 800-63B
 
 ---
@@ -1162,7 +1162,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
 
             <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 4 }}>AI INTELLIGENCE ENGINE</div>
             <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
-            <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemma 4 E4B local AI</div>
+            <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemma-powered</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <NeonButton 

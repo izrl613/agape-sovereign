@@ -24,6 +24,16 @@ models:
     defaultCompletionOptions:
       temperature: 0.1
       contextLength: 4096
+  - name: Codex Agent Proxy (Gemini/Ollama)
+    provider: openai
+    model: gemini-1.5-pro
+    apiBase: http://localhost:8090/v1
+    apiKey: EMPTY
+    roles:
+      - chat
+      - edit
+      - apply
+
 
 embeddingsProvider:
   provider: ollama
