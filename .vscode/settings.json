@@ -31,5 +31,8 @@
     "titleBar.activeForeground": "#FFFFFF",
     "titleBar.inactiveBackground": "#0000AA",
     "titleBar.inactiveForeground": "#CCCCCC"
-  }
+  },
+  "github-actions.secrets": [
+    "FIREBASE_SERVICE_ACCOUNT"
+  ]
 }
