@@ -19,7 +19,21 @@ console.log("BOOT: Starting Agape Sovereign Enclave server...");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
   console.log("BOOT: Initializing Firebase Admin...");
-  admin.initializeApp();
+  
+  const serviceAccountPath = path.resolve(process.cwd(), "serviceAccountKey.json");
+  if (fs.existsSync(serviceAccountPath)) {
+    console.log("BOOT: Found serviceAccountKey.json. Initializing with explicit credentials.");
+    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf-8"));
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://agape-sovereign-default-rtdb.firebaseio.com"
+    });
+  } else {
+    console.log("BOOT: No serviceAccountKey.json found. Falling back to Application Default Credentials.");
+    admin.initializeApp({
+      databaseURL: "https://agape-sovereign-default-rtdb.firebaseio.com"
+    });
+  }
   console.log("BOOT: Firebase Admin initialized.");
 }
 console.log("BOOT: Obtaining Firestore reference...");
