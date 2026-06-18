@@ -19,6 +19,8 @@ import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
 import { getRemoteConfig } from 'firebase/remote-config';
 import { getDatabase } from 'firebase/database';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
+import { getPerformance } from 'firebase/performance';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -78,6 +80,17 @@ export const analytics = typeof window !== 'undefined' && (firebaseConfig as { m
 export const messaging = typeof window !== 'undefined'
   ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null)
   : Promise.resolve(null);
+
+// Initialize App Check & Performance conditionally
+export const appCheck = typeof window !== 'undefined'
+  ? initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider('YOUR_RECAPTCHA_SITE_KEY_HERE'),
+      isTokenAutoRefreshEnabled: true
+    })
+  : null;
+export const performance = typeof window !== 'undefined' 
+  ? getPerformance(app) 
+  : null;
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({

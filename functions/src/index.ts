@@ -36,3 +36,4 @@ export * from "./architect-ai";
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+export * from "./bigquery";
