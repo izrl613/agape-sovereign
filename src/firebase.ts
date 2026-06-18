@@ -84,7 +84,7 @@ export const messaging = typeof window !== 'undefined'
 // Initialize App Check & Performance conditionally
 export const appCheck = typeof window !== 'undefined'
   ? initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider('YOUR_RECAPTCHA_SITE_KEY_HERE'),
+      provider: new ReCaptchaEnterpriseProvider('6LcO8b0sAAAAACJ41dUAABALGxZSOHbgUZyQTyMa'),
       isTokenAutoRefreshEnabled: true
     })
   : null;
