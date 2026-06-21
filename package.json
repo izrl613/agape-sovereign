@@ -40,7 +40,8 @@
     "recharts": "latest",
     "remark-gfm": "^4.0.1",
     "sonner": "latest",
-    "tailwindcss": "latest"
+    "tailwindcss": "latest",
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
     "@types/node": "latest",
