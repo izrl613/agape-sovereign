@@ -82,14 +82,21 @@ export const messaging = typeof window !== 'undefined'
   : Promise.resolve(null);
 
 // Initialize App Check & Performance conditionally
-export const appCheck = typeof window !== 'undefined'
+// App Check is intentionally skipped on localhost/emulator to avoid blocking
+// anonymous auth and other calls while developing against local emulators.
+const isEmulatorEnv =
+  (typeof window !== 'undefined' &&
+   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ||
+  import.meta.env.VITE_DISABLE_APP_CHECK === 'true';
+
+export const appCheck = typeof window !== 'undefined' && !isEmulatorEnv
   ? initializeAppCheck(app, {
       provider: new ReCaptchaEnterpriseProvider('6LcO8b0sAAAAACJ41dUAABALGxZSOHbgUZyQTyMa'),
       isTokenAutoRefreshEnabled: true
     })
   : null;
-export const performance = typeof window !== 'undefined' 
-  ? getPerformance(app) 
+export const performance = typeof window !== 'undefined' && !isEmulatorEnv
+  ? getPerformance(app)
   : null;
 
 export const googleProvider = new GoogleAuthProvider();

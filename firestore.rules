@@ -25,15 +25,13 @@ service cloud.firestore {
     }
 
     // ─── RATE LIMITING HELPER ──────────────────────────────
-    // Returns true if the field is absent or the last action was on a different calendar day.
+    // Returns true if the rate-limit field is absent (first action) or
+    // the last action was at least windowSeconds ago.
+    // NOTE: unused params (limit) kept for API compatibility.
     function withinRateLimit(field, limit, windowSeconds) {
-      let now = request.time;
-      // resource may not exist on create; fall back gracefully.
-      let lastAction = resource == null || !resource.data.keys().hasAny([field])
-                       ? null : resource.data[field];
-      return lastAction == null ||
-             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDayOfMonth()) >
-             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDayOfMonth());
+      let hasField = resource != null && resource.data.keys().hasAny([field]);
+      return !hasField ||
+             request.time.toMillis() - resource.data[field].toMillis() >= windowSeconds * 1000;
     }
 
     // ─── USERS COLLECTION ──────────────────────────────
@@ -92,14 +90,10 @@ service cloud.firestore {
       // Scans are immutable (no updates after creation)
       allow update: if false;
       
-      // Users can delete their own scans after 90 days (~3 months)
+      // Users can delete their own scans after 90 days (7,776,000,000 ms)
       allow delete: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid &&
-                       (
-                         request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
-                         (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
-                          request.time.getMonth() > resource.data.timestamp.getMonth() + 2)
-                       );
+                       request.time.toMillis() - resource.data.timestamp.toMillis() >= 7776000000;
 
       // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
       match /vectorResults/{vectorId} {
