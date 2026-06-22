@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -19,9 +19,12 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "storage": [
+    {
+      "rules": "storage.rules",
+      "bucket": "agape-sovereign.firebasestorage.app"
+    }
+  ],
   "database": {
     "rules": "database.rules.json"
   },
@@ -33,7 +36,10 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        ".runtimeconfig.json"
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
@@ -42,6 +48,7 @@
       "source": "functions"
     }
   ],
+
   "dataconnect": {
     "source": "dataconnect"
   },
@@ -100,16 +107,5 @@
       "enabled": true
     },
     "singleProjectMode": true
-  },
-  "apphosting": {
-    "backendId": "agape-sovereign",
-    "rootDir": "/",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
-    ]
   }
 }
