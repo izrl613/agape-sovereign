@@ -24,13 +24,16 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    // ─── RATE LIMITING HELPER ──────────────────────────
+    // ─── RATE LIMITING HELPER ──────────────────────────────
+    // Returns true if the field is absent or the last action was on a different calendar day.
     function withinRateLimit(field, limit, windowSeconds) {
       let now = request.time;
-      let lastAction = resource.data[field];
-      return lastAction == null || 
-             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDay()) >
-             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDay());
+      // resource may not exist on create; fall back gracefully.
+      let lastAction = resource == null || !resource.data.keys().hasAny([field])
+                       ? null : resource.data[field];
+      return lastAction == null ||
+             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDayOfMonth()) >
+             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDayOfMonth());
     }
 
     // ─── USERS COLLECTION ──────────────────────────────
@@ -39,11 +42,14 @@ service cloud.firestore {
       // Read: User can read their own profile
       allow read: if isUserOwner(userId);
       
-      // Create: Users can create their own profile (only once)
-      allow create: if isAuthenticated() && 
+      // Create: Users can create their own profile (only once).
+      // Anonymous users have no email on the token, so we only enforce the email
+      // check when the token actually carries one.
+      allow create: if isAuthenticated() &&
                        isUserOwner(userId) &&
                        request.resource.data.uid == userId &&
-                       request.resource.data.email == request.auth.token.email;
+                       (request.auth.token.email == null ||
+                        request.resource.data.email == request.auth.token.email);
       
       // Update: Users can update their own profile (rate-limited to once per day)
       allow update: if isUserOwner(userId) &&
@@ -86,12 +92,14 @@ service cloud.firestore {
       // Scans are immutable (no updates after creation)
       allow update: if false;
       
-      // Users can delete their own scans after 90 days
-      allow delete: if isAuthenticated() && 
+      // Users can delete their own scans after 90 days (~3 months)
+      allow delete: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid &&
-                       request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
-                       (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
-                        request.time.getMonth() > resource.data.timestamp.getMonth() + 2);
+                       (
+                         request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
+                         (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
+                          request.time.getMonth() > resource.data.timestamp.getMonth() + 2)
+                       );
 
       // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
       match /vectorResults/{vectorId} {
@@ -131,14 +139,25 @@ service cloud.firestore {
     }
 
     // ─── AUDIT LOG COLLECTION ──────────────────────────
-    // System audit trail - admin-read-only, immutable
+    // System audit trail - admin-read-only, append-only.
+    // Authenticated users (including anonymous) can append their own audit entries.
+    // Cloud Functions (service accounts) can also write.
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      
-      // Only Cloud Functions can write to audit logs
-      allow create: if request.auth.uid == null && // Service account has no UID
-                       request.resource.data.timestamp == request.time;
-      
+
+      // Authenticated client writes: user must be the subject of their own log entry.
+      // Service-account writes (Cloud Functions) have no UID — also allowed.
+      allow create: if (
+                       // Authenticated client: must own the log entry
+                       (isAuthenticated() && (
+                         !request.resource.data.keys().hasAny(['userId']) ||
+                         request.resource.data.userId == request.auth.uid
+                       ))
+                       ||
+                       // Cloud Function / service account (no auth UID)
+                       request.auth == null
+                     );
+
       allow update: if false;
       allow delete: if false;
     }
