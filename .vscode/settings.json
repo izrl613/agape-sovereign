@@ -1,38 +1,11 @@
 {
-  "files.watcherExclude": {
-    "**/node_modules/**": true,
-    "**/.git/**": true,
-    "**/.firebase/**": true,
-    "**/dist/**": true,
-    "**/build/**": true,
-    "**/.next/**": true,
-    "**/.cache/**": true,
-    "**/coverage/**": true
-  },
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/.git": true,
-    "**/.firebase": true,
-    "**/dist": true,
-    "**/build": true,
-    "**/.next": true,
-    "**/.cache": true,
-    "**/coverage": true
-  },
-  "typescript.tsserver.maxTsServerMemory": 1024,
   "workbench.colorCustomizations": {
-    "statusBar.background": "#0000FF",
-    "statusBar.foreground": "#FFFFFF",
-    "statusBar.border": "#0000FF",
-    "statusBarItem.hoverBackground": "#0000CC",
-    "statusBarItem.remoteBackground": "#0000FF",
-    "statusBarItem.remoteForeground": "#FFFFFF",
-    "titleBar.activeBackground": "#0000FF",
-    "titleBar.activeForeground": "#FFFFFF",
-    "titleBar.inactiveBackground": "#0000AA",
-    "titleBar.inactiveForeground": "#CCCCCC"
-  },
-  "github-actions.secrets": [
-    "FIREBASE_SERVICE_ACCOUNT"
-  ]
+    "titleBar.activeBackground": "#0f4c81",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#0a355c",
+    "statusBar.background": "#0f4c81",
+    "statusBar.foreground": "#ffffff",
+    "statusBar.noFolderBackground": "#0f4c81",
+    "statusBar.debuggingBackground": "#0f4c81"
+  }
 }
