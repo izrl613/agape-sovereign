@@ -17,16 +17,27 @@ export const Login = () => {
     return re.test(email);
   };
 
+  // Strip raw JSON blobs or Firebase error prefixes for user-facing display
+  const formatError = (err: unknown): string => {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Catches firestoreErrorHandler JSON blobs
+    if (msg.startsWith('{')) return 'A server error occurred. Please try again.';
+    // Catches raw Firebase codes like "Firebase: Error (auth/internal-error)."
+    if (msg.startsWith('Firebase:')) return 'Authentication service error. Try refreshing or use Emergency Bypass below.';
+    return msg;
+  };
+
   const handlePasskeyLogin = async () => {
     setError(null);
     if (!validateEmail(email)) {
-      setEmailError("Please enter a valid email to use your passkey.");
+      setEmailError('Please enter a valid email to use your passkey.');
       return;
     }
     try {
       await loginWithPasskey(email);
+      setStep('creating');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Passkey authentication failed.");
+      setError(formatError(err));
     }
   };
 
@@ -36,7 +47,7 @@ export const Login = () => {
       await login();
       setStep('creating');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Google authentication failed.");
+      setError(formatError(err));
     }
   };
 

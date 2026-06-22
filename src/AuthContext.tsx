@@ -119,7 +119,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const handleLogin = async () => {
-    await loginWithGoogle();
+    try {
+      await loginWithGoogle();
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        // User dismissed the popup — not an error worth surfacing
+        return;
+      }
+      if (code === 'auth/unauthorized-domain') {
+        throw new Error('This domain is not authorized for sign-in. Please contact support.');
+      }
+      if (code === 'auth/internal-error' || code === 'auth/network-request-failed') {
+        throw new Error('Sign-in service unavailable. Try refreshing, or use the Emergency Bypass below.');
+      }
+      throw err;
+    }
   };
 
   const handleLogout = async () => {
@@ -229,7 +244,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error.name === 'NotAllowedError') {
         toast.error('Passkey registration cancelled by user.');
       } else {
-        const isFunctionsError = error.code === 'not-found' || error.message?.includes('not-found') || error.message?.includes('network-error') || error.code === 'internal';
+        const isFunctionsError =
+          error.code === 'functions/not-found' ||
+          error.code === 'functions/internal' ||
+          error.code === 'functions/unavailable' ||
+          error.code === 'not-found' ||
+          error.code === 'internal' ||
+          error.message?.includes('not-found') ||
+          error.message?.includes('network-error') ||
+          error.message?.includes('UNAVAILABLE') ||
+          error.message?.includes('deadline-exceeded');
         if (isFunctionsError) {
           console.warn("Cloud Functions unavailable. Falling back to local simulation.");
           const toastId = toast.loading("PROMPTING BIOMETRIC/HARDWARE KEY REGISTRATION (SIMULATION)...");
@@ -331,7 +355,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
       } else {
-        const isFunctionsError = error.code === 'not-found' || error.message?.includes('not-found') || error.message?.includes('network-error') || error.code === 'internal';
+        const isFunctionsError =
+          error.code === 'functions/not-found' ||
+          error.code === 'functions/internal' ||
+          error.code === 'functions/unavailable' ||
+          error.code === 'not-found' ||
+          error.code === 'internal' ||
+          error.message?.includes('not-found') ||
+          error.message?.includes('network-error') ||
+          error.message?.includes('UNAVAILABLE') ||
+          error.message?.includes('deadline-exceeded');
         if (isFunctionsError) {
           console.warn("Cloud Functions unavailable for login. Falling back to local bypass simulation.");
           const toastId = toast.loading("PERFORMING BIOMETRIC AUTHENTICATION (SIMULATION)...");
