@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
-    "@simplewebauthn/server": "^13.3.1",
-    "@tailwindcss/vite": "^4.3.0",
+    "@simplewebauthn/server": "^13.3.2",
+    "@tailwindcss/vite": "^4.3.1",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "cookie-parser": "^1.4.7",
@@ -45,7 +45,7 @@
   },
   "devDependencies": {
     "@types/node": "latest",
-    "@types/reach__dialog": "^0.1.1",
+    "@types/reach__dialog": "^0.4.0",
     "@types/react": "latest",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",

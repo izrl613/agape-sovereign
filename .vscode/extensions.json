@@ -1,7 +1,5 @@
 {
-  "recommendations": [
-    "Continue.continue"
-  ],
+  "recommendations": [],
   "unwantedRecommendations": [
     "google.securecoder"
   ]
