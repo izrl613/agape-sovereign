@@ -36,19 +36,16 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        ".runtimeconfig.json"
+        "*.local"
       ],
       "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "disallowLegacyRuntimeConfig": true,
       "source": "functions"
     }
   ],
-
   "dataconnect": {
     "source": "dataconnect"
   },
@@ -107,5 +104,16 @@
       "enabled": true
     },
     "singleProjectMode": true
+  },
+  "apphosting": {
+    "backendId": "agape-sovereign",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ]
   }
 }
