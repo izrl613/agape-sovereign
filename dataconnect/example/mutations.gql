@@ -1,0 +1,71 @@
+# Mutations for Agape Sovereign Enclave 2026
+
+mutation UpsertUser($name: String!, $email: String!, $provider: String) @auth(level: USER) {
+  user_upsert(data: {
+    uid_expr: "auth.uid"
+    name: $name
+    email: $email
+    provider: $provider
+    lastLoginAt_expr: "request.time"
+  })
+}
+
+mutation UpdateSovereignScore($score: Int!) @auth(level: USER) {
+  user_update(
+    key: { uid_expr: "auth.uid" }
+    data: { sovereignScore: $score }
+  )
+}
+
+mutation UpsertUserVectorStatus(
+  $vectorId: String!
+  $sovereigntyScore: Int!
+  $nukedCount: Int!
+  $knoxedCount: Int!
+  $monitoredCount: Int!
+  $statusNotes: String
+) @auth(level: USER) {
+  userVectorStatus_upsert(data: {
+    user: { uid_expr: "auth.uid" }
+    identityVector: { id: $vectorId }
+    sovereigntyScore: $sovereigntyScore
+    nukedCount: $nukedCount
+    knoxedCount: $knoxedCount
+    monitoredCount: $monitoredCount
+    statusNotes: $statusNotes
+    lastScanAt_expr: "request.time"
+  })
+}
+
+mutation AddFinding(
+  $vectorId: String!
+  $type: String!
+  $label: String!
+  $detail: String!
+  $action: String
+  $status: String
+) @auth(level: USER) {
+  finding_insert(data: {
+    user: { uid_expr: "auth.uid" }
+    identityVector: { id: $vectorId }
+    type: $type
+    label: $label
+    detail: $detail
+    action: $action
+    status: $status
+  })
+}
+
+mutation AddMonitoredEmail($emailAddress: String!) @auth(level: USER) {
+  monitoredEmail_insert(data: {
+    user: { uid_expr: "auth.uid" }
+    emailAddress: $emailAddress
+    status: "MONITORED"
+  })
+}
+
+mutation RemoveMonitoredEmail($id: UUID!) @auth(level: USER) {
+  monitoredEmail_delete(
+    first: { where: { id: { eq: $id }, user: { uid: { eq_expr: "auth.uid" } } } }
+  )
+}
