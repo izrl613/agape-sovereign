@@ -46,9 +46,6 @@
       "source": "functions"
     }
   ],
-  "dataconnect": {
-    "source": "dataconnect"
-  },
   "remoteconfig": {
     "template": "remoteconfig.template.json"
   },
@@ -90,10 +87,6 @@
     },
     "tasks": {
       "port": 9499
-    },
-    "dataconnect": {
-      "dataDir": "dataconnect/.dataconnect/pgliteData",
-      "port": 9399
     },
     "apphosting": {
       "port": 5002,
