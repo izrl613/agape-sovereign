@@ -25,12 +25,11 @@ service cloud.firestore {
     }
 
     // ─── RATE LIMITING HELPER ──────────────────────────
-    function withinRateLimit(field, limit, windowSeconds) {
-      let now = request.time;
+    // Checks if at least 'windowSeconds' have passed since the last action
+    function withinRateLimit(field, windowSeconds) {
       let lastAction = resource.data[field];
-      return lastAction == null || 
-             (now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDay()) >
-             (lastAction.getFullYear() * 10000 + (lastAction.getMonth() + 1) * 100 + lastAction.getDay());
+      return lastAction == null ||
+             request.time > lastAction + duration.value(windowSeconds, 's');
     }
 
     // ─── USERS COLLECTION ──────────────────────────────
@@ -47,7 +46,7 @@ service cloud.firestore {
       
       // Update: Users can update their own profile (rate-limited to once per day)
       allow update: if isUserOwner(userId) &&
-                       withinRateLimit('lastProfileUpdate', 1, 86400);
+                       withinRateLimit('lastProfileUpdate', 86400);
       
       // Delete: Users cannot delete their own profile; admin-only
       allow delete: if isAdmin();
@@ -87,11 +86,9 @@ service cloud.firestore {
       allow update: if false;
       
       // Users can delete their own scans after 90 days
-      allow delete: if isAuthenticated() && 
+      allow delete: if isAuthenticated() &&
                        resource.data.userId == request.auth.uid &&
-                       request.time.getFullYear() > resource.data.timestamp.getFullYear() ||
-                       (request.time.getFullYear() == resource.data.timestamp.getFullYear() &&
-                        request.time.getMonth() > resource.data.timestamp.getMonth() + 2);
+                       request.time > resource.data.timestamp + duration.value(90, 'd');
 
       // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
       match /vectorResults/{vectorId} {
