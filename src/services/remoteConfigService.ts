@@ -12,7 +12,7 @@ const DEFAULT_CONFIG = {
   enable_dark_web_scan: true,
   max_scan_frequency_hours: 24,
   maintenance_mode: false,
-  ai_model_version: "gemma-4-e4b"
+  ai_model_version: "gemini-3.1-pro-preview"
 };
 
 export const initializeRemoteConfig = async () => {

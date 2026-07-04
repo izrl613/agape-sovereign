@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
-import { EncryptedFooter } from './EncryptedFooter';
 import { motion } from 'framer-motion';
 import { Fingerprint } from 'lucide-react';
 
@@ -17,27 +16,16 @@ export const Login = () => {
     return re.test(email);
   };
 
-  // Strip raw JSON blobs or Firebase error prefixes for user-facing display
-  const formatError = (err: unknown): string => {
-    const msg = err instanceof Error ? err.message : String(err);
-    // Catches firestoreErrorHandler JSON blobs
-    if (msg.startsWith('{')) return 'A server error occurred. Please try again.';
-    // Catches raw Firebase codes like "Firebase: Error (auth/internal-error)."
-    if (msg.startsWith('Firebase:')) return 'Authentication service error. Try refreshing or use Emergency Bypass below.';
-    return msg;
-  };
-
   const handlePasskeyLogin = async () => {
     setError(null);
     if (!validateEmail(email)) {
-      setEmailError('Please enter a valid email to use your passkey.');
+      setEmailError("Please enter a valid email to use your passkey.");
       return;
     }
     try {
       await loginWithPasskey(email);
-      setStep('creating');
     } catch (err: unknown) {
-      setError(formatError(err));
+      setError(err instanceof Error ? err.message : "Passkey authentication failed.");
     }
   };
 
@@ -47,7 +35,7 @@ export const Login = () => {
       await login();
       setStep('creating');
     } catch (err: unknown) {
-      setError(formatError(err));
+      setError(err instanceof Error ? err.message : "Google authentication failed.");
     }
   };
 
@@ -73,9 +61,9 @@ export const Login = () => {
               <text x="40" y="46" textAnchor="middle" fill={NEON.blue} fontFamily="Orbitron" fontSize="16" fontWeight="900">AI</text>
             </svg>
           </div>
-          <NeonText color={NEON.blue} size="1.6rem" weight={900}>Agape Sovereign AI</NeonText>
+          <NeonText color={NEON.blue} size="1.6rem" weight={900}>ARCHITECT AI</NeonText>
           <div style={{ color: NEON.textMuted, fontSize: "0.7rem", fontFamily: "'Share Tech Mono'", marginTop: 4, letterSpacing: "0.15em" }}>
-            ARCHITECT AI ENCLAVE 2026
+            AGAPE SOVEREIGN ENCLAVE 2026
           </div>
         </motion.div>
 
@@ -90,9 +78,9 @@ export const Login = () => {
 
         {step === "landing" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ color: NEON.text, fontSize: "0.9rem", marginBottom: 8, fontWeight: 500 }}>Digital Identity Management Platform</div>
+            <div style={{ color: NEON.text, fontSize: "0.9rem", marginBottom: 8, fontWeight: 500 }}>Digital Identity Federated Footprint</div>
             <div style={{ color: NEON.textMuted, fontSize: "0.78rem", marginBottom: 20, lineHeight: 1.6 }}>
-              Agape Sovereign AI helps you analyze, manage, and secure your personal data footprint across third-party services. Authenticate to begin your <span style={{ color: NEON.magenta, fontWeight: 700 }}>DIFF</span> analysis and reclaim your digital sovereignty.
+              Authenticate to begin your <span style={{ color: NEON.magenta, fontWeight: 700 }}>DIFF</span> analysis. Your sovereignty begins here.
             </div>
             
             <div style={{ marginBottom: 20, textAlign: "left" }}>
@@ -174,8 +162,6 @@ export const Login = () => {
             <div style={{ color: NEON.textMuted, fontSize: "0.7rem", marginTop: 8 }}>Preparing your DIFF sovereignty console</div>
           </motion.div>
         )}
-        {/* Encrypted Integrity Footer */}
-        <EncryptedFooter moduleId="auth-gate" style={{ marginTop: 20 }} />
       </GlassCard>
     </div>
   );

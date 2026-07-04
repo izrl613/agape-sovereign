@@ -9,8 +9,8 @@ import FirebaseAILogic
 // Initialize the Firebase AI service and the generative model.
 let ai = FirebaseAI.firebaseAI()
 
-// [AGENT] Replace "<latest_supported_model>" with the latest model from https://firebase.google.com/docs/ai-logic/models.md.txt
-let model = ai.generativeModel(modelName: "<latest_supported_model>")
+// Specify a model that's appropriate for your use case.
+let model = ai.generativeModel(modelName: "gemini-flash-latest")
 ```
 
 ## 2. SwiftUI Integration (Best Practices)
@@ -26,8 +26,8 @@ import FirebaseAILogic
 @MainActor
 @Observable
 final class AIViewModel {
-    // [AGENT] Replace with the latest model from https://firebase.google.com/docs/ai-logic/models.md.txt
-    private lazy var model = FirebaseAI.firebaseAI().generativeModel(modelName: "<latest_supported_model>")
+    // Initialize lazily to ensure FirebaseApp is configured first
+    private lazy var model = FirebaseAI.firebaseAI().generativeModel(modelName: "gemini-flash-latest")
     
     var responseText: String = ""
     var isFetching: Bool = false
@@ -85,7 +85,7 @@ let safetySettings = [
 ]
 
 let model = FirebaseAI.firebaseAI().generativeModel(
-  modelName: "<latest_supported_model>", // [AGENT] Replace with the latest model from https://firebase.google.com/docs/ai-logic/models.md.txt
+  modelName: "gemini-flash-latest",
   safetySettings: safetySettings
 )
 ```
@@ -129,7 +129,7 @@ let getStockPriceTool = Tool(functionDeclarations: [
 ])
 
 let model = FirebaseAI.firebaseAI().generativeModel(
-  modelName: "<latest_supported_model>", // [AGENT] Replace with the latest model from https://firebase.google.com/docs/ai-logic/models.md.txt
+  modelName: "gemini-flash-latest",
   tools: [getStockPriceTool]
 )
 
