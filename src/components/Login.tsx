@@ -73,9 +73,9 @@ export const Login = () => {
               <text x="40" y="46" textAnchor="middle" fill={NEON.blue} fontFamily="Orbitron" fontSize="16" fontWeight="900">AI</text>
             </svg>
           </div>
-          <NeonText color={NEON.blue} size="1.6rem" weight={900}>ARCHITECT AI</NeonText>
+          <NeonText color={NEON.blue} size="1.6rem" weight={900}>Agape Sovereign AI</NeonText>
           <div style={{ color: NEON.textMuted, fontSize: "0.7rem", fontFamily: "'Share Tech Mono'", marginTop: 4, letterSpacing: "0.15em" }}>
-            AGAPE SOVEREIGN ENCLAVE 2026
+            ARCHITECT AI ENCLAVE 2026
           </div>
         </motion.div>
 
@@ -90,9 +90,9 @@ export const Login = () => {
 
         {step === "landing" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div style={{ color: NEON.text, fontSize: "0.9rem", marginBottom: 8, fontWeight: 500 }}>Digital Identity Federated Footprint</div>
+            <div style={{ color: NEON.text, fontSize: "0.9rem", marginBottom: 8, fontWeight: 500 }}>Digital Identity Management Platform</div>
             <div style={{ color: NEON.textMuted, fontSize: "0.78rem", marginBottom: 20, lineHeight: 1.6 }}>
-              Authenticate to begin your <span style={{ color: NEON.magenta, fontWeight: 700 }}>DIFF</span> analysis. Your sovereignty begins here.
+              Agape Sovereign AI helps you analyze, manage, and secure your personal data footprint across third-party services. Authenticate to begin your <span style={{ color: NEON.magenta, fontWeight: 700 }}>DIFF</span> analysis and reclaim your digital sovereignty.
             </div>
             
             <div style={{ marginBottom: 20, textAlign: "left" }}>
