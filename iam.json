@@ -1,0 +1,980 @@
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "organizations/230005932885/roles/CustomRole"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "organizations/230005932885/roles/CustomSuperCloudAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/Billing"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/CloudBuild"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/CloudRun"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/GlobalAccess"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/IAM"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/Organization"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "projects/agape-sovereign/roles/ServiceAccount"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/actions.Admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/actions.Viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/appengine.appAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/apphub.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/artifactregistry.reader"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/artifactregistry.repoAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-artifactregistry.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/artifactregistry.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/artifactregistry.writer"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/axt.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-logging.iam.gserviceaccount.com"
+      ],
+      "role": "roles/bigquery.dataEditor"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/bigquery.dataViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:billing-export-bigquery@system.gserviceaccount.com"
+      ],
+      "role": "roles/bigquery.user"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/billing.projectManager"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/browser"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudbuild.builds.builder"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudbuild.builds.editor"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudbuild.builds.viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudbuild.editor"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudbuild.integrationsOwner"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudbuild.serviceAgent"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudbuild.tokenAccessor"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudbuild.workerPoolUser"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudconfig.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudfunctions.developer"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudfunctions.invoker"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcf-admin-robot.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudfunctions.serviceAgent"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudfunctions.viewer"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudhub.operator"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudkms.cryptoKeyDecrypter"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com"
+      ],
+      "role": "roles/cloudquotas.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+      ],
+      "role": "roles/cloudscheduler.serviceAgent"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudsupport.techSupportEditor"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/cloudsupport.techSupportViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/compute.instanceAdmin.v1"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-connectors.iam.gserviceaccount.com"
+      ],
+      "role": "roles/connectors.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/container.developer"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@containerregistry.iam.gserviceaccount.com"
+      ],
+      "role": "roles/containerregistry.ServiceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@dataflow-service-producer-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/dataflow.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-dataplex.iam.gserviceaccount.com"
+      ],
+      "role": "roles/dataplex.serviceAgent"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/designcenter.admin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/developerconnect.admin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/developerconnect.oauthUser"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/developerconnect.readTokenAccessor"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-devconnect.iam.gserviceaccount.com"
+      ],
+      "role": "roles/developerconnect.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+      ],
+      "role": "roles/developerconnect.tokenAccessor"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com"
+      ],
+      "role": "roles/discoveryengine.agentAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/dlp.jobTriggersEditor"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/edgecontainer.identityProviderAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/edgecontainer.serviceAccountAdmin"
+    },
+    {
+      "members": [
+        "deleted:serviceAccount:goog-sc-dynamic-java-web-ap-40@agape-sovereign.iam.gserviceaccount.com?uid=108256717449656230219",
+        "deleted:serviceAccount:goog-sc-dynamic-java-web-ap-40@agape-sovereign.iam.gserviceaccount.com?uid=111406546431409788490",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-config.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/editor"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/eventarc.eventReceiver"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/firebase.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebase.analyticsAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firebase.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebase.managementServiceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebase.qualityAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebase.sdkAdminServiceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebase.viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseappcheck.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseappcheck.tokenVerifier"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseappdistro.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseapphosting.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseapphosting.computeRunner"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firebaseapphosting.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseapphosting.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseauth.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasedatabase.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasedatabase.viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firebasedataconnect.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasedataconnect.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseextensions.editor"
+    },
+    {
+      "members": [
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasehosting.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseinappmessaging.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseml.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firebasemods.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasemods.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaseperformance.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaserules.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@firebase-rules.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaserules.system"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebaserules.viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasestorage.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firebasestorage.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasestorage.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firebasevertexai.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-firestore.iam.gserviceaccount.com"
+      ],
+      "role": "roles/firestore.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/fpnv.admin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.accessPolicyUser"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.oauthClientAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.roleAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.serviceAccountAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.serviceAccountCreator"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com"
+      ],
+      "role": "roles/iam.serviceAccountDeleter"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.serviceAccountOpenIdTokenCreator"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.serviceAccountTokenCreator"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-build-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/iam.serviceAccountUser"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/identityplatform.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-identitytoolkit.iam.gserviceaccount.com"
+      ],
+      "role": "roles/identitytoolkit.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/logging.configWriter"
+    },
+    {
+      "members": [
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/logging.logWriter"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-logging.iam.gserviceaccount.com"
+      ],
+      "role": "roles/logging.serviceAgent"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/networkconnectivity.serviceClassUser"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/owner"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com"
+      ],
+      "role": "roles/pubsub.publisher"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/recommender.billingAccountCudAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/recommender.firestoredatabasefirebaserulesAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/recommender.firestoredatabasefirebaserulesViewer"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/recommender.projectUtilAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/resourcemanager.lienModifier"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/resourcemanager.organizationAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/resourcemanager.projectDeleter"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/resourcemanager.projectIamAdmin"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/resourcemanager.projectMover"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/run.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/run.builder"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/run.developer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/run.editor"
+    },
+    {
+      "members": [
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/run.invoker"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/run.jobsExecutorWithOverrides"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/run.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudservices.gserviceaccount.com"
+      ],
+      "role": "roles/run.servicesInvoker"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/run.sourceDeveloper"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/run.sourceViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/run.viewer"
+    },
+    {
+      "condition": {
+        "expression": "request.time < timestamp(\"2026-06-27T17:49:48.407Z\")",
+        "title": "developer-connect-connection-setup"
+      },
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-devconnect.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/secretmanager.secretAccessor"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@service-networking.iam.gserviceaccount.com"
+      ],
+      "role": "roles/servicenetworking.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/serviceusage.apiKeysViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/serviceusage.serviceUsageAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:github-action-1216214957@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gcp-sa-cloudbuild.iam.gserviceaccount.com",
+        "serviceAccount:service-956088455461@gs-project-accounts.iam.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/serviceusage.serviceUsageConsumer"
+    },
+    {
+      "members": [
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/serviceusage.serviceUsageViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/storage.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/storage.objectAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/storage.objectCreator"
+    },
+    {
+      "members": [
+        "serviceAccount:firebase-app-hosting-compute@agape-sovereign.iam.gserviceaccount.com"
+      ],
+      "role": "roles/storage.objectViewer"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@gcp-sa-storageinsights.iam.gserviceaccount.com"
+      ],
+      "role": "roles/storageinsights.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:956088455461@cloudbuild.gserviceaccount.com",
+        "user:idin@agape.nyc"
+      ],
+      "role": "roles/telemetry.consumerAdmin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-956088455461@serverless-robot-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/viewer"
+    }
+  ],
+  "etag": "BwZVz4n8rGU=",
+  "version": 3
+}
