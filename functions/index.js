@@ -56,7 +56,7 @@ function generateSHA256(data) {
 }
 
 // ─── INITIATE DIFF SCAN (HTTP CALLABLE) ────────────────────
-exports.initiateDIFFScan = functions.runWith({ memory: '256MB', maxInstances: 5 }).https.onCall(async (data, context) => {
+exports.initiateDIFFScan = functions.https.onCall(async (data, context) => {
   // ─── AUTHENTICATION CHECK ──────────────────────────────
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -242,7 +242,7 @@ function generateFindings(vectorId, nuked, knoxed, monitored) {
 }
 
 // ─── GENERATE PDF REPORT (HTTP CALLABLE) ──────────────────
-exports.generateDIFFReport = functions.runWith({ memory: '512MB', maxInstances: 5 }).https.onCall(async (data, context) => {
+exports.generateDIFFReport = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "User must be authenticated.");
   }
@@ -395,7 +395,7 @@ async function generatePDFBuffer(scanData, reportId) {
 }
 
 // ─── CLEANUP OLD REPORTS (SCHEDULED) ───────────────────────
-exports.cleanupOldReports = functions.runWith({ memory: '256MB', maxInstances: 1 }).pubsub
+exports.cleanupOldReports = functions.pubsub
   .schedule("every day 02:00")
   .timeZone("America/New_York")
   .onRun(async () => {
@@ -416,7 +416,7 @@ exports.cleanupOldReports = functions.runWith({ memory: '256MB', maxInstances: 1
   });
 
 // ─── HEALTH CHECK ENDPOINT ────────────────────────────────
-exports.healthCheck = functions.runWith({ memory: '128MB', maxInstances: 5 }).https.onRequest((req, res) => {
+exports.healthCheck = functions.https.onRequest((req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.json({
     status: "HEALTHY",

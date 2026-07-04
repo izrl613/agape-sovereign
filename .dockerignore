@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.gitignore
+.firebaserc
+firebase.json
+firestore.rules
+storage.rules
+database.rules.json
+*.log
+.vscode
+.env
+.env.local

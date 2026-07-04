@@ -35,7 +35,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060D1F] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B1020] flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-[#00D4FF]/20 border-t-[#00D4FF] rounded-full animate-spin"></div>
       </div>
     );
@@ -53,7 +53,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060D1F] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B1020] flex items-center justify-center">
         <div className="w-16 h-16 border-4 border-[#00D4FF]/20 border-t-[#00D4FF] rounded-full animate-spin"></div>
       </div>
     );
@@ -108,30 +108,19 @@ const AppRoutes = () => {
 };
 
 import { Toaster } from 'sonner';
-import ArchitectUIApp from './ArchitectUI';
-import { UIDesignProvider, useUIDesign } from './UIDesignContext';
-import { ThemeProvider } from './context/ThemeContext'; // Assuming ThemeProvider is here or change it if missing
-
-const UniversalApp = () => {
-  const { currentDesign } = useUIDesign();
-  return currentDesign === 'architect' ? <ArchitectUIApp /> : <AppRoutes />;
-};
 
 export default function App() {
   return (
     <ErrorBoundary>
-      <UIDesignProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <ScanProvider>
-              <BrowserRouter>
-                <UniversalApp />
-                <Toaster position="top-right" theme="dark" richColors closeButton />
-              </BrowserRouter>
-            </ScanProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </UIDesignProvider>
+      <AuthProvider>
+        <ScanProvider>
+          <BrowserRouter>
+            <AppRoutes />
+            <Toaster position="top-right" theme="dark" richColors closeButton />
+          </BrowserRouter>
+        </ScanProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
+

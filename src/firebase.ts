@@ -1,26 +1,23 @@
 import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
+import { 
+  getAuth, 
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup,
+  signInWithPopup, 
   signInAnonymously,
   signOut,
   setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
-  User,
-  connectAuthEmulator
+  User
 } from 'firebase/auth';
-import { getFirestore, getDocFromServer, doc, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, getDocFromServer, doc } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
 import { getRemoteConfig } from 'firebase/remote-config';
 import { getDatabase } from 'firebase/database';
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
-import { getPerformance } from 'firebase/performance';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -30,26 +27,9 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)');
 export const storage = getStorage(app);
-export const functions = getFunctions(app, 'us-central1');
+export const functions = getFunctions(app);
 export const remoteConfig = getRemoteConfig(app);
 export const database = getDatabase(app);
-
-// Connect to emulators if running locally
-if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-  try {
-    const emulatorsKey = '_firebase_emulators_connected';
-    if (!(window as any)[emulatorsKey]) {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      connectStorageEmulator(storage, 'localhost', 9199);
-      connectFunctionsEmulator(functions, 'localhost', 5001);
-      (window as any)[emulatorsKey] = true;
-      console.log("Connected to Firebase Emulators (Local Zero-Cost Mode)");
-    }
-  } catch (e) {
-    console.warn("Failed to connect to Firebase Emulators:", e);
-  }
-}
 
 // Test Firestore connection on boot
 async function testConnection() {
@@ -63,7 +43,7 @@ async function testConnection() {
     } catch (error) {
       // If it's a permission error, the config is actually fine, just the rules blocked it.
       // If it's "offline", it might be a real config issue OR just a transient network thing.
-      if (error instanceof Error && error.message.includes('the client is offline')) {
+      if(error instanceof Error && error.message.includes('the client is offline')) {
         // Only log if it's consistently failing or if we're sure it's a config issue.
         // For now, let's just log it as a warning instead of a scary error if it's likely transient.
         console.warn("Firestore connection test: client is offline. This is expected if you are using Emergency Bypass or have no internet connection.");
@@ -74,30 +54,12 @@ async function testConnection() {
 testConnection();
 
 // Initialize Analytics & Messaging conditionally
-export const analytics = typeof window !== 'undefined' && (firebaseConfig as { measurementId?: string }).measurementId
-  ? isAnalyticsSupported().then(yes => yes ? getAnalytics(app) : null)
+export const analytics = typeof window !== 'undefined' && (firebaseConfig as { measurementId?: string }).measurementId 
+  ? isAnalyticsSupported().then(yes => yes ? getAnalytics(app) : null) 
   : Promise.resolve(null);
-export const messaging = typeof window !== 'undefined'
-  ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null)
+export const messaging = typeof window !== 'undefined' 
+  ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null) 
   : Promise.resolve(null);
-
-// Initialize App Check & Performance conditionally
-// App Check is intentionally skipped on localhost/emulator to avoid blocking
-// anonymous auth and other calls while developing against local emulators.
-const isEmulatorEnv =
-  (typeof window !== 'undefined' &&
-   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ||
-  import.meta.env.VITE_DISABLE_APP_CHECK === 'true';
-
-export const appCheck = typeof window !== 'undefined' && !isEmulatorEnv
-  ? initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider('6LcO8b0sAAAAACJ41dUAABALGxZSOHbgUZyQTyMa'),
-      isTokenAutoRefreshEnabled: true
-    })
-  : null;
-export const performance = typeof window !== 'undefined' && !isEmulatorEnv
-  ? getPerformance(app)
-  : null;
 
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
@@ -105,10 +67,9 @@ googleProvider.setCustomParameters({
 });
 
 export const appleProvider = new OAuthProvider('apple.com');
-appleProvider.addScope('email');
-appleProvider.addScope('name');
+appleProvider.addScopes('email', 'name');
 appleProvider.setCustomParameters({
-  usePopup: 'true'
+  usePopup: true
 });
 
 export const loginWithGoogle = async () => {
@@ -117,7 +78,7 @@ export const loginWithGoogle = async () => {
     return result.user;
   } catch (error: unknown) {
     console.error("Error signing in with Google:", error);
-
+    
     if (error instanceof Error && 'code' in error) {
       const firebaseError = error as { code: string };
       if (firebaseError.code === 'auth/unauthorized-domain') {
@@ -129,7 +90,7 @@ export const loginWithGoogle = async () => {
         console.error("This may be caused by third-party cookies being blocked in the iframe. Try opening the app in a new tab.");
       }
     }
-
+    
     throw error;
   }
 };

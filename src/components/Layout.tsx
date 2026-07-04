@@ -4,22 +4,20 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, NeonButton } from './UI';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2, Copy, Download, RefreshCw, X as CloseIcon, Loader2 as LoaderIcon, Sparkles } from 'lucide-react';
+import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileText, History, Activity, AlertCircle, CheckCircle2, Copy, Download, RefreshCw, X as CloseIcon, Loader2 as LoaderIcon } from 'lucide-react';
 import { checkBackendHealth } from '../services/functionsService';
 import { toast } from 'sonner';
 import { decryptClientSide, generateSHA256 } from '../utils/crypto';
 import { compileIdentityAuditReport } from '../services/pdfService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getLocalAIStatus, LocalStatus } from '../services/localAIService';
-import { useUIDesign } from '../UIDesignContext';
 
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
   { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/social" },
   { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/device" },
   { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/system" },
-  { id: "non-mobile-os", icon: "💻", label: "Non-Mobile OS Privacy Audit", vector: "V-05", to: "/laptop" },
+  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/system" },
   { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/deepweb" },
   { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/databroker" },
   { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/password" },
@@ -331,7 +329,6 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
 
 const Header = () => {
   const { user, isAdmin, isAnonymous, logout, sovereignScore, bindPasskey } = useAuth();
-  const { toggleDesign } = useUIDesign();
   const { isScanning } = useScan();
   const [time, setTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -339,30 +336,6 @@ const Header = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const navigate = useNavigate();
-
-  const [localAI, setLocalAI] = useState<LocalStatus>({
-    online: false,
-    port: 3000,
-    modelName: "Gemma-4-E4B-MLX",
-    usage: "Checking...",
-    costModel: "Standard Billing"
-  });
-
-
-  const checkLocalHealth = async () => {
-    const status = await getLocalAIStatus();
-    setLocalAI(status);
-  };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem('selected_llm_model')) {
-      localStorage.setItem('selected_llm_model', 'gemma');
-    }
-    checkLocalHealth();
-    const interval = setInterval(checkLocalHealth, 10000); // Check local AI every 10s
-    return () => clearInterval(interval);
-  }, []);
-
 
   useEffect(() => {
     const checkHealth = async () => {
@@ -531,58 +504,6 @@ const Header = () => {
         </NavLink>
       )}
 
-      {/* Model Selector Widget */}
-      <div style={{ position: 'relative' }}>
-        <div 
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: localAI.online ? 'rgba(26, 115, 232, 0.12)' : 'rgba(245, 158, 11, 0.08)',
-            border: `1px solid ${localAI.online ? '#1a73e8' : 'rgba(245, 158, 11, 0.25)'}`,
-            padding: '4px 10px',
-            borderRadius: 8,
-            boxShadow: localAI.online ? '0 0 10px rgba(26, 115, 232, 0.2)' : 'none'
-          }}
-          className="mr-2"
-          title={localAI.usage}
-        >
-          <span 
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: localAI.online ? '#1a73e8' : '#f59e0b',
-              boxShadow: `0 0 8px ${localAI.online ? '#1a73e8' : '#f59e0b'}`,
-            }}
-            className={localAI.online ? 'animate-pulse' : ''}
-          />
-          <span 
-            style={{
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: '0.68rem',
-              fontWeight: 'bold',
-              color: localAI.online ? '#8ab4f8' : '#fbbf24',
-              letterSpacing: '0.05em'
-            }}
-          >
-            {localAI.online ? 'Gemma 4 E4B' : 'Gemma Offline'}
-          </span>
-          <span 
-            style={{
-              fontFamily: "'Share Tech Mono'",
-              fontSize: '0.52rem',
-              color: localAI.online ? 'rgba(138, 180, 248, 0.7)' : 'rgba(251, 191, 36, 0.7)',
-              background: 'rgba(255,255,255,0.05)',
-              padding: '1px 4px',
-              borderRadius: 3
-            }}
-          >
-            {localAI.online ? '∞ TOKENS' : 'LOCAL'}
-          </span>
-        </div>
-      </div>
-
       {/* Profile button */}
       <div className="flex items-center gap-3 pl-6 border-l border-white/10 relative">
         {isAnonymous && (
@@ -605,7 +526,7 @@ const Header = () => {
             <span className="text-xs text-slate-400 font-mono">{sovereignScore} SCORE</span>
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FF2E9F] to-[#00D4FF] p-[2px]">
-            <div className="w-full h-full rounded-full bg-[#060D1F] flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full rounded-full bg-[#0B1020] flex items-center justify-center overflow-hidden">
               {user?.photoURL ? (
                 <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -617,7 +538,7 @@ const Header = () => {
         </div>
 
         {isProfileOpen && (
-          <div className="absolute top-full right-0 mt-2 w-56 bg-[#060D1F] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
+          <div className="absolute top-full right-0 mt-2 w-56 bg-[#0B1020] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl">
             <div className="p-4 border-b border-white/5">
               <div className="text-xs font-mono text-[#00D4FF] mb-1">
                 {isAnonymous ? 'TEMPORARY SESSION' : 'SOVEREIGN IDENTITY'}
@@ -640,15 +561,6 @@ const Header = () => {
               >
                 <History className="w-4 h-4 text-[#FF2E9F]" />
                 Score History
-              </button>
-            </div>
-            <div className="p-2 border-b border-white/5">
-              <button 
-                onClick={() => { toggleDesign(); setIsProfileOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-              >
-                <RefreshCw className="w-4 h-4 text-[#00D4FF]" />
-                Switch to Architect UI
               </button>
             </div>
             <div className="p-2">
@@ -744,7 +656,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         }
 
         const compiledModules = await Promise.all(DIFF_MODULES.map(async (m) => {
-          const encVal = (m.id && typeof m.id === 'string' && !['__proto__', 'constructor', 'prototype'].includes(m.id) && Object.prototype.hasOwnProperty.call(activeData, m.id)) ? activeData[m.id] : "";
+          const encVal = activeData[m.id] || "";
           let decrypted = "";
           if (encVal) {
             try {
@@ -754,8 +666,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
             }
           }
           
-          const hashKey = `${m.id}Hash`;
-          let hash = (m.id && typeof m.id === 'string' && !['__proto__', 'constructor', 'prototype'].includes(hashKey) && Object.prototype.hasOwnProperty.call(hashes, hashKey)) ? hashes[hashKey] : "";
+          let hash = hashes[`${m.id}Hash`] || "";
           if (!hash) {
             hash = await generateSHA256(decrypted);
           }
@@ -1200,3 +1111,4 @@ export const Layout = () => {
     </div>
   );
 };
+

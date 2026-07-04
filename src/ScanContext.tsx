@@ -18,7 +18,7 @@ interface ScanContextType {
   lastScanDate: Date | null;
   error: string | null;
   triggerFullScan: () => Promise<void>;
-  triggerModuleScan: (module: string, userData?: string) => Promise<void>;
+  triggerModuleScan: (module: string) => Promise<void>;
 }
 
 const ScanContext = createContext<ScanContextType | undefined>(undefined);
@@ -89,17 +89,17 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check for new NUKED findings to notify
       if (!isLoading) {
         newFindings.forEach(finding => {
-          if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
+          if (finding.status === 'NUKED' && !notifiedFindingIds.has(finding.id)) {
             toast.error(`CRITICAL EXPOSURE DETECTED`, {
               description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
               duration: 10000,
             });
-            setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
+            setNotifiedFindingIds(prev => new Set(prev).add(finding.id));
           }
         });
       } else {
         // Initial load: just mark existing NUKED as notified so we don't spam on login
-        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
+        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED').map(f => f.id));
         setNotifiedFindingIds(initialNukedIds);
       }
 
@@ -146,7 +146,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const triggerModuleScan = React.useCallback(async (module: string, userData: string = "") => {
+  const triggerModuleScan = React.useCallback(async (module: string) => {
     if (!user) return;
     setIsScanning(true);
     setScanProgress(0);
@@ -157,7 +157,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     logEvent(AuditLogType.SCAN_INITIATED, `${module.toUpperCase()} scan initiated by ${user.email}`, user.uid, user.email || undefined);
     try {
-      await startModuleScan(user.uid, user.email!, module, userData, (current, total, moduleName, subTask) => {
+      await startModuleScan(user.uid, user.email!, module, (current, total, moduleName, subTask) => {
         setScanProgress(Math.round((current / total) * 100));
         setCurrentStep(current);
         setTotalSteps(total);
