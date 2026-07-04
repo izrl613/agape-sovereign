@@ -12,7 +12,12 @@
 			"statusBar.border": "#0F4C81",
 			"statusBarItem.hoverBackground": "#165d9c",
 			"statusBarItem.remoteBackground": "#0F4C81",
-			"statusBarItem.remoteForeground": "#FFFFFF"
+			"statusBarItem.remoteForeground": "#FFFFFF",
+			"titleBar.activeBackground": "#5500ff",
+			"titleBar.activeForeground": "#FFFFFF",
+			"titleBar.inactiveBackground": "#3d00bb",
+			"titleBar.inactiveForeground": "#cccccc",
+			"titleBar.border": "#5500ff"
 		}
 	}
 }
