@@ -1,0 +1,15 @@
+{
+  "models": [
+    {
+      "title": "Ollama (Local)",
+      "provider": "ollama",
+      "model": "gemma4-e4b", 
+      "apiBase": "http://localhost:11434/api"
+    }
+  ],
+  "completionOptions": {
+    "temperature": 0.2,
+    "maxTokens": 2048
+  },
+  "models_to_use": ["gemma4-e4b"]
+}
