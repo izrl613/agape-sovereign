@@ -9,13 +9,17 @@
     "rewrites": [
       {
         "source": "/api/**",
-        "function": "yourFunctionName", // Placeholder: You must update this to the actual function name handling /api/*
-        "region": "us-central1"
+        "run": {
+          "serviceId": "agape-sovereign-server",
+          "region": "us-central1"
+        }
       },
       {
         "source": "/api-proxy",
-        "function": "yourOtherApiFunction", // Placeholder: Update this if needed
-        "region": "us-central1"
+        "run": {
+          "serviceId": "agape-sovereign-server",
+          "region": "us-central1"
+        }
       },
       {
         "source": "**",
