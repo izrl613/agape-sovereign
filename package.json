@@ -33,6 +33,7 @@
     "next": "^16.2.6",
     "react": "latest",
     "react-dom": "latest",
+    "react-is": "^19.2.7",
     "react-markdown": "^10.1.0",
     "react-router-dom": "latest",
     "react-syntax-highlighter": "^16.1.1",
