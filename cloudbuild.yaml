@@ -1,7 +1,7 @@
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/agape-sovereign/app', '.']
-images:
-  - 'gcr.io/agape-sovereign/app'
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'us-central1-docker.pkg.dev/agape-sovereign/cloud-run-source-deploy/agape-sovereign-server:latest', '.' ]
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'push', 'us-central1-docker.pkg.dev/agape-sovereign/cloud-run-source-deploy/agape-sovereign-server:latest' ]
 options:
   logging: CLOUD_LOGGING_ONLY
