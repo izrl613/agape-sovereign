@@ -6,6 +6,8 @@ import { doc, getDoc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "fir
 import { startRegistration } from "@simplewebauthn/browser";
 import { httpsCallable } from "firebase/functions";
 import { useUIDesign } from "./UIDesignContext";
+import { chatComplete } from "./services/localAIService";
+import { ARCHITECT_SYSTEM_PROMPT } from "./architectPrompt";
 // ============================================================
 // ARCHITECT AI — AGAPE SOVEREIGN ENCLAVE 2026
 // Digital Identity Federated Footprint (DIFF) Intelligence
@@ -610,7 +612,7 @@ const LeftNav = ({ diffModules, activeModule, setActiveModule, activeSection, se
 };
 
 // ─── TOP HEADER ───────────────────────────────────────────────
-const TopHeader = ({ user, onAdmin, onProfile }) => {
+const TopHeader = ({ user, onAdmin, onProfile, isCloudMode, setIsCloudMode }: any) => {
   const [time, setTime] = useState(new Date());
   const { toggleDesign } = useUIDesign();
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
@@ -656,6 +658,11 @@ const TopHeader = ({ user, onAdmin, onProfile }) => {
 
       {/* Switch UI button */}
       <NeonButton onClick={toggleDesign} color={NEON.blue} size="sm">⟲ AGAPE UI</NeonButton>
+
+      {/* Cloud/Local Toggle */}
+      <NeonButton onClick={() => setIsCloudMode(!isCloudMode)} color={isCloudMode ? NEON.blue : NEON.magenta} size="sm">
+        {isCloudMode ? "☁️ CLOUD GEMINI" : "🔒 LOCAL GEMMA"}
+      </NeonButton>
 
       {/* Profile button */}
       <button className="btn-neon neon-border" onClick={onProfile} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,46,159,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: NEON.magenta, fontSize: "1rem" }}>
@@ -927,7 +934,7 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
 };
 
 // ─── Architect AI Chat ────────────────────────────────────────
-const ArchitectAIView = ({ user, diffModules }: { user: any, diffModules: any[] }) => {
+const ArchitectAIView = ({ user, diffModules, isCloudMode }: { user: any, diffModules: any[], isCloudMode: boolean }) => {
   const initialGreeting = `Greetings, ${user?.displayName || "Sovereign"}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.\n\nI have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1))}/100**.\n\n🔥 **${diffModules.reduce((s, m) => s + m.nuked, 0)} NUKED** exposures identified across data brokers and breach databases.\n🛡️ **${diffModules.reduce((s, m) => s + m.knoxed, 0)} KNOXED** vectors hardened and secured.\n\nWhat aspect of your digital sovereignty would you like to reclaim today?`;
 
   const [messages, setMessages] = useState([
@@ -947,27 +954,38 @@ const ArchitectAIView = ({ user, diffModules }: { user: any, diffModules: any[] 
     setLoading(true);
 
     try {
-      // Map history to the format expected by our backend API (Gemma uses 'model' instead of 'assistant')
-      const history = messages.map(m => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }]
-      }));
-      
-      const response = await fetch("/api/architect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMsg,
-          history: history
-        })
-      });
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
+      if (isCloudMode) {
+        // Map history to the format expected by our backend API (Gemma uses 'model' instead of 'assistant')
+        const history = messages.map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }]
+        }));
+        
+        const response = await fetch("/api/architect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userMsg,
+            history: history
+          })
+        });
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setMessages(prev => [...prev, { role: "assistant", content: data.reply || "Unable to process request." }]);
+      } else {
+        // Use Local LLM (Sovereign Mode)
+        const localHistory = messages.filter(m => m.role !== 'system').map(m => ({
+          role: m.role === "assistant" ? "model" : "user",
+          content: m.content
+        }));
+        
+        const response = await chatComplete(userMsg, ARCHITECT_SYSTEM_PROMPT, false, localHistory);
+        setMessages(prev => [...prev, { role: "assistant", content: response.text || "Unable to process request locally." }]);
       }
-      
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply || "Unable to process request." }]);
     } catch (error) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Secure channel temporarily interrupted. Reconnecting..." }]);
@@ -1313,6 +1331,7 @@ export default function App() {
   const [showAnonUpgrade, setShowAnonUpgrade] = useState(false);
   const [passkeyBound, setPasskeyBound] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [isCloudMode, setIsCloudMode] = useState(true);
 
   // Real-time listener for Auth and Firestore
   useEffect(() => {
@@ -1419,7 +1438,7 @@ export default function App() {
   const handleModuleClick = (id: string) => { setActiveModule(id); setActiveSection("modules"); };
 
   const renderMain = () => {
-    if (activeSection === "architect") return <ArchitectAIView user={user} diffModules={diffModules} />;
+    if (activeSection === "architect") return <ArchitectAIView user={user} diffModules={diffModules} isCloudMode={isCloudMode} />;
     if (activeSection === "report") return <ReportView diffModules={diffModules} />;
     if (activeSection === "modules" && activeModule) return <ModuleDetailView diffModules={diffModules} moduleId={activeModule} />;
     return <DashboardView diffModules={diffModules} onModuleClick={handleModuleClick} />;
@@ -1433,7 +1452,7 @@ export default function App() {
         {/* Top border gradient */}
         <div style={{ height: 2, background: GRADIENT_BORDER, backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite", flexShrink: 0 }} />
 
-        <TopHeader user={user} onAdmin={() => setShowAdmin(true)} onProfile={() => setShowProfile(true)} />
+        <TopHeader user={user} onAdmin={() => setShowAdmin(true)} onProfile={() => setShowProfile(true)} isCloudMode={isCloudMode} setIsCloudMode={setIsCloudMode} />
 
         {/* Anonymous upgrade banner — Layer 1 → Layer 2 */}
         {showAnonUpgrade && !passkeyBound && (

@@ -165,11 +165,15 @@ async function callGemma4(
 export async function chatComplete(
   prompt: string,
   systemInstruction?: string,
-  jsonMode: boolean = false
+  jsonMode: boolean = false,
+  history: { role: string; content: string }[] = []
 ): Promise<AIResponse> {
   const messages: { role: string; content: string }[] = [];
   if (systemInstruction) {
     messages.push({ role: "system", content: systemInstruction });
+  }
+  for (const h of history) {
+    messages.push({ role: h.role, content: h.content });
   }
   messages.push({ role: "user", content: prompt });
 
