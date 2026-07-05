@@ -24,7 +24,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     setStep("creating");
     try {
       // 1. Get registration options from backend
-      const optionsRes = await fetch('/passkey/register/options', {
+      const optionsRes = await fetch('/api/auth/register-options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -39,7 +39,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
       const attestationResponse = await startRegistration({ optionsJSON: options });
 
       // 3. Send attestation to backend for verification
-      const verifyRes = await fetch('/passkey/register', {
+      const verifyRes = await fetch('/api/auth/verify-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...attestationResponse, email })
