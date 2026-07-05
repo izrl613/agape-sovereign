@@ -1,25 +1,25 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
-# Copy everything first to ensure NPM workspaces can find their directories
-COPY . .
+# Copy package files
+COPY package.json package-lock.json ./
+COPY frontend/package.json ./frontend/package.json
+COPY backend/package.json ./backend/package.json
 
-# Install all dependencies (required for Vite and esbuild)
+# Install all dependencies
 RUN npm ci
 
-# Build the frontend and the server bundle
+# Copy the rest of the application code
+COPY . .
+
+# Build the frontend and backend
 RUN npm run build
 
-# Remove dev dependencies to slim down the image
-RUN npm prune --production
-
-# Set production environment
-ENV NODE_ENV=production
-ENV PORT=8080
-
-# Expose the port (Cloud Run will inject PORT automatically, but we set a default)
+# Expose port
 EXPOSE 8080
+ENV PORT=8080
+ENV NODE_ENV=production
 
 # Start the server
 CMD ["npm", "start"]
