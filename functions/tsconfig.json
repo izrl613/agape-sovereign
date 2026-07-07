@@ -14,9 +14,5 @@
   "compileOnSave": true,
   "include": [
     "src"
-  ],
-  "exclude": [
-    "src/genkit-sample.ts",
-    "src/dataconnect-admin-generated/**"
   ]
 }

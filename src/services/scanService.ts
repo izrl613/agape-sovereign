@@ -4,7 +4,7 @@ import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, s
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
 import { logScanStarted, logUserEvent, logExposureNuked } from "./analyticsService";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_API_KEY' });
 
 export interface ScanFinding {
   id?: string;

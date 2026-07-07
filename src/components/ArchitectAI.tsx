@@ -273,7 +273,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     const fetchThreatFeed = async () => {
       setIsFeedLoading(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_API_KEY' });
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: "Search for the latest, high-impact cybersecurity threats and data breaches reported in the last 24-48 hours, specifically focusing on data brokers, identity theft, and personal data exposures. Return a curated list of 4-5 items as a JSON array of objects with: title, severity (Critical/High/Medium/Low), source (the news outlet or security firm), time (e.g. '2h ago'), vector (one of: email, social, device, mobile, deepweb, broker, password, location, browser, financial, medical, biometric, iot, cloud, darkweb, behavioral), and description (a short summary). Ensure the threats are real and current.",
@@ -638,7 +638,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     logAIChatMessage(messageText.length);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_API_KEY' });
       
       const detailedBreakdown = {
         nuked: findings.filter(f => f.status === 'NUKED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),

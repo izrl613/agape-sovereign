@@ -1,4 +1,5 @@
 import { auth } from '../firebase';
+import { toast } from 'sonner';
 
 export enum OperationType {
   CREATE = 'create',
@@ -64,5 +65,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     safeErrorString = `Error: ${errInfo.error}, Operation: ${errInfo.operationType}, Path: ${errInfo.path}`;
   }
   
-  throw new Error(safeErrorString);
+  toast.error(`Database Error: ${errInfo.error}`, { 
+    description: `Operation: ${errInfo.operationType}`,
+    duration: 5000
+  });
 }

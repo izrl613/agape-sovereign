@@ -1,5 +1,5 @@
 import {genkit, z} from "genkit";
-import {googleAI} from "@genkit-ai/google-genai";
+
 
 // Cloud Functions for Firebase supports Genkit natively. The onCallGenkit function creates a callable
 // function from a Genkit action. It automatically implements streaming if your flow does.
@@ -23,11 +23,7 @@ enableFirebaseTelemetry();
 
 const ai = genkit({
   plugins: [
-    // Load the GoogleAI provider. You can optionally specify your API key by
-    // passing in a config object; if you don't, the provider uses the value
-    // from the GOOGLE_GENAI_API_KEY environment variable, which is the
-    // recommended practice.
-    googleAI()
+    /* Add your plugins here. */
   ],
 });
 
@@ -42,7 +38,7 @@ const menuSuggestionFlow = ai.defineFlow({
     const prompt =
       `Suggest an item for the menu of a ${subject} themed restaurant`;
     const { response, stream } = ai.generateStream({
-      model: googleAI.model("gemini-2.5-flash"),
+      model: '' /* TODO: Set a model. */,
       prompt: prompt,
       config: {
         temperature: 1,
