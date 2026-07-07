@@ -27,6 +27,7 @@
     "firebase": "latest",
     "firebase-admin": "^10.3.0",
     "framer-motion": "latest",
+    "git": "^0.1.5",
     "google-auth-library": "^10.9.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -53,5 +54,8 @@
     "tsx": "^4.23.0",
     "typescript": "latest",
     "vite": "latest"
+  },
+  "allowScripts": {
+    "git@0.1.5": true
   }
 }

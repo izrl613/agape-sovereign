@@ -41,72 +41,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubscribeUserDoc: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // Initialize Remote Config for the user
-        initializeRemoteConfig();
-        
-        const userRef = doc(db, 'users', currentUser.uid);
-        
-        try {
-          const userSnap = await getDoc(userRef);
+      try {
+        setUser(currentUser);
+        if (currentUser) {
+          // Initialize Remote Config for the user
+          initializeRemoteConfig();
           
-          const isSuperAdmin = currentUser.email === 'idin@agape.nyc' || 
-                               currentUser.email === 'agape@sovereign.nyc' || 
-                               (currentUser.isAnonymous && currentUser.uid === 'emergency-bypass-admin-999');
+          const userRef = doc(db, 'users', currentUser.uid);
           
-          if (!userSnap.exists()) {
-            const initialData = {
-              uid: currentUser.uid,
-              email: currentUser.email || 'unknown@example.com',
-              displayName: currentUser.displayName || '',
-              role: isSuperAdmin ? 'admin' : 'user',
-              createdAt: serverTimestamp(),
-              sovereignScore: 100,
-              setupComplete: false,
-              notificationsEnabled: false
-            };
-            try {
-              await setDoc(userRef, initialData);
-              setSetupCompleteState(false);
-              setUserData(initialData);
-              logEvent(AuditLogType.USER_REGISTERED, `New user registered: ${currentUser.email}`, currentUser.uid, currentUser.email || undefined);
-            } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}`);
-            }
-            setIsAdmin(isSuperAdmin);
-            setSovereignScore(100);
-          } else {
-            const data = userSnap.data();
-            setUserData(data);
-            setIsAdmin(data.role === 'admin' || isSuperAdmin);
-            setSovereignScore(data.sovereignScore || 100);
-            setSetupCompleteState(data.setupComplete || false);
-            logEvent(AuditLogType.USER_LOGIN, `User logged in: ${currentUser.email}`, currentUser.uid, currentUser.email || undefined);
-          }
-
-          unsubscribeUserDoc = onSnapshot(userRef, (doc) => {
-            if (doc.exists()) {
-              const data = doc.data();
+          try {
+            const userSnap = await getDoc(userRef);
+            
+            const isSuperAdmin = currentUser.email === 'idin@agape.nyc' || 
+                                 currentUser.email === 'agape@sovereign.nyc' || 
+                                 (currentUser.isAnonymous && currentUser.uid === 'emergency-bypass-admin-999');
+            
+            if (!userSnap.exists()) {
+              const initialData = {
+                uid: currentUser.uid,
+                email: currentUser.email || 'unknown@example.com',
+                displayName: currentUser.displayName || '',
+                role: isSuperAdmin ? 'admin' : 'user',
+                createdAt: serverTimestamp(),
+                sovereignScore: 100,
+                setupComplete: false,
+                notificationsEnabled: false
+              };
+              try {
+                await setDoc(userRef, initialData);
+                setSetupCompleteState(false);
+                setUserData(initialData);
+                logEvent(AuditLogType.USER_REGISTERED, `New user registered: ${currentUser.email}`, currentUser.uid, currentUser.email || undefined);
+              } catch (err) {
+                handleFirestoreError(err, OperationType.CREATE, `users/${currentUser.uid}`);
+              }
+              setIsAdmin(isSuperAdmin);
+              setSovereignScore(100);
+            } else {
+              const data = userSnap.data();
               setUserData(data);
-              setSovereignScore(data.sovereignScore || 100);
               setIsAdmin(data.role === 'admin' || isSuperAdmin);
+              setSovereignScore(data.sovereignScore || 100);
               setSetupCompleteState(data.setupComplete || false);
+              logEvent(AuditLogType.USER_LOGIN, `User logged in: ${currentUser.email}`, currentUser.uid, currentUser.email || undefined);
             }
-          }, (error) => {
-            handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
-          });
-        } catch (err) {
-          handleFirestoreError(err, OperationType.GET, `users/${currentUser.uid}`);
+
+            unsubscribeUserDoc = onSnapshot(userRef, (doc) => {
+              if (doc.exists()) {
+                const data = doc.data();
+                setUserData(data);
+                setSovereignScore(data.sovereignScore || 100);
+                setIsAdmin(data.role === 'admin' || isSuperAdmin);
+                setSetupCompleteState(data.setupComplete || false);
+              }
+            }, (error) => {
+              handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
+            });
+          } catch (err) {
+            handleFirestoreError(err, OperationType.GET, `users/${currentUser.uid}`);
+          }
+        } else {
+          setIsAdmin(false);
+          setSovereignScore(100);
+          setSetupCompleteState(false);
+          setUserData(null);
+          if (unsubscribeUserDoc) unsubscribeUserDoc();
         }
-      } else {
-        setIsAdmin(false);
-        setSovereignScore(100);
-        setSetupCompleteState(false);
-        setUserData(null);
-        if (unsubscribeUserDoc) unsubscribeUserDoc();
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {

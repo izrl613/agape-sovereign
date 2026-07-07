@@ -42,7 +42,7 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                        isUserOwner(userId) &&
                        request.resource.data.uid == userId &&
-                       request.resource.data.email == request.auth.token.email;
+                       (request.auth.token.email == null || request.resource.data.email == request.auth.token.email);
       
       // Update: Users can update their own profile (rate-limited to once per day)
       allow update: if isUserOwner(userId) &&
