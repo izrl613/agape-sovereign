@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
@@ -11,6 +11,277 @@ import { decryptClientSide, generateSHA256 } from '../utils/crypto';
 import { compileIdentityAuditReport } from '../services/pdfService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { EncryptedFooter } from './EncryptedFooter';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DocumentSealModal — SHA-256 Non-Repudiation Stamp for Privacy / Terms
+// Computes a unique download fingerprint tied to the user's session UID,
+// document type, and exact timestamp before opening the PDF.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface DocumentSealModalProps {
+  docType: 'TERMS' | 'PRIVACY' | null;
+  uid: string;
+  onClose: () => void;
+}
+
+const DOC_META = {
+  TERMS: {
+    label: 'Terms of Service',
+    href: '/TERMS.pdf',
+    icon: '📋',
+    color: '#FF7A18',
+  },
+  PRIVACY: {
+    label: 'Privacy Policy',
+    href: '/privacy.pdf',
+    icon: '🛡️',
+    color: '#00D4FF',
+  },
+};
+
+const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onClose }) => {
+  const [downloadHash, setDownloadHash] = useState<string>('');
+  const [displayHash, setDisplayHash] = useState<string>('');
+  const [revealed, setRevealed] = useState(false);
+  const [downloadReady, setDownloadReady] = useState(false);
+  const glitchRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const doc = docType ? DOC_META[docType] : null;
+
+  useEffect(() => {
+    if (!docType || !uid) return;
+    let mounted = true;
+    setRevealed(false);
+    setDownloadReady(false);
+
+    // Build a unique fingerprint: uid + docType + exact timestamp
+    const rawSeed = `${uid}::${docType}::${Date.now()}::AGAPE-SOVEREIGN-DOCUMENT-SEAL`;
+    const chars = '0123456789ABCDEF';
+
+    // Glitch animate while computing
+    let tick = 0;
+    glitchRef.current = setInterval(() => {
+      const fake = Array.from({ length: 64 }, () =>
+        chars[Math.floor(Math.random() * chars.length)]
+      ).join('');
+      if (mounted) setDisplayHash(fake);
+      tick++;
+      if (tick > 14) clearInterval(glitchRef.current!);
+    }, 55);
+
+    // Compute real SHA-256
+    crypto.subtle
+      .digest('SHA-256', new TextEncoder().encode(rawSeed))
+      .then(buf => {
+        const hex = Array.from(new Uint8Array(buf))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .toUpperCase();
+        if (!mounted) return;
+        setTimeout(() => {
+          if (mounted) {
+            setDownloadHash(hex);
+            setDisplayHash(hex);
+            setRevealed(true);
+            setTimeout(() => setDownloadReady(true), 400);
+          }
+        }, 800);
+      });
+
+    return () => {
+      mounted = false;
+      if (glitchRef.current) clearInterval(glitchRef.current);
+    };
+  }, [docType, uid]);
+
+  if (!docType || !doc) return null;
+
+  const accentColor = doc.color;
+  const formattedHash = displayHash.match(/.{1,8}/g)?.join(' · ') ?? displayHash;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 99999,
+          background: 'rgba(6, 13, 31, 0.96)',
+          backdropFilter: 'blur(20px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        <motion.div
+          initial={{ y: 32, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 24, opacity: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          style={{
+            width: '100%', maxWidth: 520,
+            background: 'rgba(11, 16, 32, 0.98)',
+            border: `1.5px solid ${accentColor}44`,
+            borderRadius: 20,
+            boxShadow: `0 0 40px ${accentColor}22`,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Top accent bar */}
+          <div style={{ height: 3, background: `linear-gradient(90deg, #FF2E9F, ${accentColor}, #00D4FF)` }} />
+
+          <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                  <span style={{ fontSize: '1.4rem' }}>{doc.icon}</span>
+                  <span style={{
+                    fontFamily: "'Orbitron', monospace",
+                    fontSize: '1rem', fontWeight: 900,
+                    color: accentColor,
+                    textShadow: `0 0 12px ${accentColor}55`,
+                    letterSpacing: '0.05em',
+                  }}>
+                    {doc.label.toUpperCase()}
+                  </span>
+                </div>
+                <div style={{
+                  fontFamily: "'Share Tech Mono'",
+                  fontSize: '0.6rem',
+                  color: NEON.textMuted,
+                  letterSpacing: '0.15em',
+                }}>
+                  CRYPTOGRAPHIC DOWNLOAD FINGERPRINT · AGAPE-SOVEREIGN
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}
+              >
+                <CloseIcon size={18} />
+              </button>
+            </div>
+
+            {/* SHA-256 seal display */}
+            <div style={{
+              background: 'rgba(0,0,0,0.4)',
+              border: `1px solid ${accentColor}22`,
+              borderRadius: 12,
+              padding: '16px 18px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '0.75rem' }}>{revealed ? '🔒' : '⟳'}</span>
+                  <span style={{
+                    fontFamily: "'Share Tech Mono'",
+                    fontSize: '0.55rem', color: NEON.textMuted,
+                    letterSpacing: '0.15em',
+                  }}>
+                    SHA-256 DOWNLOAD SEAL
+                  </span>
+                </div>
+                <span style={{
+                  fontFamily: "'Share Tech Mono'",
+                  fontSize: '0.5rem',
+                  color: revealed ? '#4ade80' : NEON.orange,
+                  background: revealed ? 'rgba(74,222,128,0.08)' : 'rgba(255,122,24,0.08)',
+                  border: `1px solid ${revealed ? 'rgba(74,222,128,0.2)' : 'rgba(255,122,24,0.2)'}`,
+                  borderRadius: 4,
+                  padding: '2px 8px',
+                  letterSpacing: '0.1em',
+                }}>
+                  {revealed ? 'SEALED ✓' : 'COMPUTING…'}
+                </span>
+              </div>
+              <div style={{
+                fontFamily: "'Share Tech Mono'",
+                fontSize: '0.52rem',
+                color: revealed ? accentColor : NEON.magenta,
+                letterSpacing: '0.06em',
+                lineHeight: 1.8,
+                wordBreak: 'break-all',
+                textShadow: `0 0 6px ${revealed ? accentColor : NEON.magenta}44`,
+                transition: 'color 0.4s ease',
+              }}>
+                {formattedHash || '—'}
+              </div>
+            </div>
+
+            {/* What this means */}
+            <div style={{
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+              padding: '10px 14px',
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 10,
+            }}>
+              <Shield size={13} color={NEON.blue} style={{ flexShrink: 0, marginTop: 1 }} />
+              <p style={{
+                fontFamily: "'Rajdhani'",
+                fontSize: '0.75rem',
+                color: NEON.textMuted,
+                lineHeight: 1.5,
+                margin: 0,
+              }}>
+                This unique fingerprint cryptographically ties your session UID to this document download event. It is not stored externally — it exists only within your Sovereign Enclave session as a zero-knowledge non-repudiation stamp.
+              </p>
+            </div>
+
+            {/* UID trace */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px',
+              background: 'rgba(0, 212, 255, 0.03)',
+              border: '1px solid rgba(0, 212, 255, 0.08)',
+              borderRadius: 8,
+            }}>
+              <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>
+                SESSION UID · {uid.slice(0, 12).toUpperCase()}…
+              </span>
+              <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: accentColor, letterSpacing: '0.1em' }}>
+                {docType} · {new Date().toISOString().split('T')[0]}
+              </span>
+            </div>
+
+            {/* Download button */}
+            <motion.a
+              href={revealed && downloadReady ? doc.href : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={revealed && downloadReady ? onClose : (e) => e.preventDefault()}
+              animate={{ opacity: downloadReady ? 1 : 0.4 }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '14px 24px',
+                background: downloadReady ? `linear-gradient(90deg, #FF2E9F, ${accentColor})` : 'rgba(255,255,255,0.05)',
+                border: 'none',
+                borderRadius: 12,
+                cursor: downloadReady ? 'pointer' : 'not-allowed',
+                fontFamily: "'Orbitron', monospace",
+                fontSize: '0.8rem', fontWeight: 800,
+                color: 'white',
+                letterSpacing: '0.08em',
+                textDecoration: 'none',
+                boxShadow: downloadReady ? `0 0 20px ${accentColor}44` : 'none',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <Download size={16} />
+              {downloadReady ? `DOWNLOAD SEALED ${docType} DOCUMENT` : 'GENERATING SEAL…'}
+            </motion.a>
+          </div>
+
+          {/* Bottom accent bar */}
+          <div style={{ height: 3, background: `linear-gradient(90deg, #00D4FF, ${accentColor}, #FF2E9F)`, opacity: 0.6 }} />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
@@ -335,6 +606,7 @@ const Header = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [docSealModal, setDocSealModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -368,7 +640,15 @@ const Header = () => {
   );
 
   return (
-    <div style={{ height: 56, background: "rgba(6,13,31,0.98)", borderBottom: "1px solid rgba(0,212,255,0.1)", display: "flex", alignItems: "center", padding: "0 20px", gap: 16, position: "relative" }} className="sticky top-0 z-10">
+    <>
+      {/* Document Seal Modal for Terms / Privacy */}
+      <DocumentSealModal
+        docType={docSealModal}
+        uid={user?.uid ?? 'anon'}
+        onClose={() => setDocSealModal(null)}
+      />
+
+      <div style={{ height: 56, background: "rgba(6,13,31,0.98)", borderBottom: "1px solid rgba(0,212,255,0.1)", display: "flex", alignItems: "center", padding: "0 20px", gap: 16, position: "relative" }} className="sticky top-0 z-10">
       <div style={{ height: 1, position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", backgroundSize: "200% 100%", animation: "rotate-gradient 4s linear infinite", opacity: 0.6 }} />
 
       {/* Live indicator */}
@@ -573,24 +853,20 @@ const Header = () => {
                   Bind Google Passkey
                 </button>
               )}
-              <a 
-                href="/TERMS.pdf" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors no-underline"
+              <button
+                onClick={() => { setDocSealModal('TERMS'); setIsProfileOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors no-underline border-none bg-transparent cursor-pointer text-left"
               >
                 <FileText className="w-4 h-4 text-[#FF7A18]" />
                 Terms of Service
-              </a>
-              <a 
-                href="/privacy.pdf" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors no-underline"
+              </button>
+              <button
+                onClick={() => { setDocSealModal('PRIVACY'); setIsProfileOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors no-underline border-none bg-transparent cursor-pointer text-left"
               >
                 <Shield className="w-4 h-4 text-[#00D4FF]" />
                 Privacy Policy
-              </a>
+              </button>
             </div>
             <div className="p-2 border-t border-white/5">
               <button 

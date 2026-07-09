@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NEON, GRADIENT_BORDER } from './constants';
 import { GlobalStyles } from './components/GlobalStyles';
 import { AuthScreen } from './components/AuthScreen';
@@ -11,11 +11,13 @@ import { ArchitectAIView } from './components/ArchitectAIView';
 import { ReportView } from './components/ReportView';
 import { AdminPortal } from './components/AdminPortal';
 import { ProfilePanel } from './components/ProfilePanel';
+import { auth, onAuthStateChanged } from './lib/firebase';
 
 interface UserType {
   name: string;
   email: string;
   provider: string;
+  photoURL?: string;
   nukedCount?: number;
   knoxedCount?: number;
 }
@@ -27,12 +29,34 @@ export default function App() {
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          name: firebaseUser.displayName || "Sovereign User",
+          email: firebaseUser.email || "user@agape.nyc",
+          provider: firebaseUser.providerData[0]?.providerId || "custom",
+          photoURL: firebaseUser.photoURL || ""
+        });
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (authLoading) {
+    return <div className="w-screen h-screen flex items-center justify-center bg-black"><div className="text-white">Loading...</div></div>;
+  }
 
   if (!user) {
     return (
       <>
         <GlobalStyles />
-        <AuthScreen onAuth={(u) => setUser(u)} />
+        <AuthScreen onAuth={(u) => {}} />
       </>
     );
   }
@@ -42,7 +66,7 @@ export default function App() {
       <>
         <GlobalStyles />
         <OnboardingSplash onComplete={(completedUser) => {
-          setUser(completedUser);
+          // You might want to update Firestore user record here
           setIsOnboarded(true);
         }} />
       </>

@@ -17,8 +17,16 @@ const BUILD_TS = (() => {
   }
 })();
 
-async function generateSeal(moduleId: string, uid: string): Promise<string> {
-  const raw = `${uid}::${moduleId}::${BUILD_TS}::AGAPE-SOVEREIGN-ENCLAVE`;
+async function generateSeal(
+  moduleId: string,
+  uid: string,
+  storedHash?: string
+): Promise<{ seal: string; fullHex: string }> {
+  // Incorporate the user's stored data hash when available so every
+  // module's seal is unique to what the user actually entered.
+  const raw = storedHash
+    ? `${uid}::${moduleId}::${BUILD_TS}::${storedHash}::AGAPE-SOVEREIGN-ENCLAVE`
+    : `${uid}::${moduleId}::${BUILD_TS}::AGAPE-SOVEREIGN-ENCLAVE`;
   const encoded = new TextEncoder().encode(raw);
   const hashBuf = await crypto.subtle.digest("SHA-256", encoded);
   const hex = Array.from(new Uint8Array(hashBuf))
@@ -26,13 +34,18 @@ async function generateSeal(moduleId: string, uid: string): Promise<string> {
     .join("")
     .toUpperCase();
   // Format as AGP-XXXX-XXXX-XXXX-XXXX
-  return `AGP-${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}`;
+  const seal = `AGP-${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}`;
+  return { seal, fullHex: hex };
 }
 
 interface EncryptedFooterProps {
   moduleId: string;
   uid?: string;
   compact?: boolean;
+  /** When provided, seeds the SHA-256 with the user's stored data hash */
+  storedHash?: string;
+  /** Show the full 64-character SHA-256 hex beneath the AGP seal */
+  showFullHash?: boolean;
   style?: React.CSSProperties;
 }
 
@@ -40,9 +53,12 @@ export const EncryptedFooter: React.FC<EncryptedFooterProps> = ({
   moduleId,
   uid = "anon",
   compact = false,
+  storedHash,
+  showFullHash = false,
   style = {}
 }) => {
   const [seal, setSeal] = useState<string>("AGP-XXXX-XXXX-XXXX-XXXX");
+  const [fullHex, setFullHex] = useState<string>("");
   const [revealed, setRevealed] = useState(false);
   const glitchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -59,11 +75,12 @@ export const EncryptedFooter: React.FC<EncryptedFooterProps> = ({
       if (tick > 8) clearInterval(scramble);
     }, 60);
 
-    generateSeal(moduleId, uid).then(s => {
+    generateSeal(moduleId, uid, storedHash).then(({ seal: s, fullHex: h }) => {
       if (!mounted) return;
       glitchRef.current = setTimeout(() => {
         if (mounted) {
           setSeal(s);
+          setFullHex(h);
           setRevealed(true);
         }
       }, 520);
@@ -74,7 +91,7 @@ export const EncryptedFooter: React.FC<EncryptedFooterProps> = ({
       clearInterval(scramble);
       if (glitchRef.current) clearTimeout(glitchRef.current);
     };
-  }, [moduleId, uid]);
+  }, [moduleId, uid, storedHash]);
 
   if (compact) {
     return (
@@ -151,6 +168,25 @@ export const EncryptedFooter: React.FC<EncryptedFooterProps> = ({
           }}>
             {seal}
           </div>
+          {/* Full SHA-256 hex (optional) */}
+          {showFullHash && revealed && fullHex && (
+            <div style={{
+              marginTop: 6,
+              paddingTop: 6,
+              borderTop: `1px dashed rgba(0,212,255,0.08)`,
+            }}>
+              <div style={{
+                fontFamily: "'Share Tech Mono'",
+                fontSize: "0.48rem",
+                color: `${NEON.blue}66`,
+                letterSpacing: "0.05em",
+                wordBreak: "break-all",
+                lineHeight: 1.6,
+              }}>
+                SHA-256: {fullHex.match(/.{1,8}/g)?.join(' ') ?? fullHex}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
