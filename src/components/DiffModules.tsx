@@ -10,6 +10,8 @@ import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/crypto';
 import { toast } from 'sonner';
+import { ModuleSplashScreen } from './ModuleSplashScreen';
+import { EncryptedFooter } from './EncryptedFooter';
 
 interface ModuleProps {
   title: string;
@@ -33,6 +35,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const [isDecrypting, setIsDecrypting] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showValue, setShowValue] = useState<boolean>(false);
+
+  // Per-module splash — re-triggers on every navigation to this module
+  const [showSplash, setShowSplash] = useState(true);
 
   const findings = allFindings.filter(f => f.module === moduleId);
   const nuked = findings.filter(f => f.status === 'NUKED').length;
@@ -295,7 +300,27 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   ];
 
   return (
-    <div style={{ animation: "fade-in 0.3s ease" }}>
+    <>
+      {/* Per-module adaptive splash screen */}
+      {showSplash && user && (
+        <ModuleSplashScreen
+          moduleId={moduleId}
+          vector={vector}
+          icon={icon}
+          title={title}
+          uid={user.uid}
+          storedHash={storedHash || undefined}
+          hasData={!!decryptedValue}
+          status={
+            findings.length > 0
+              ? findings[0].status as 'KNOXED' | 'NUKED' | 'MONITORED'
+              : null
+          }
+          onDismiss={() => setShowSplash(false)}
+        />
+      )}
+
+      <div style={{ animation: "fade-in 0.3s ease" }}>
       {/* Integrity Tag */}
       <div className="flex justify-between items-center mb-6">
         <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
@@ -636,11 +661,28 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       )}
 
       {/* Action buttons */}
-      <div style={{ display: "flex", gap: 12 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
         <NeonButton color={NEON.magenta} style={{ flex: 1 }}>🔥 NUKE ALL EXPOSURES</NeonButton>
         <NeonButton color={NEON.blue} style={{ flex: 1 }}>🛡️ KNOX ALL SECURED</NeonButton>
       </div>
+
+      {/* ── Sovereign Integrity Footer Seal ─────────────────────────────── */}
+      <div style={{
+        marginTop: 8,
+        padding: '14px 16px',
+        background: 'rgba(0, 212, 255, 0.02)',
+        border: '1px solid rgba(0, 212, 255, 0.08)',
+        borderRadius: 12,
+      }}>
+        <EncryptedFooter
+          moduleId={moduleId}
+          uid={user?.uid ?? 'anon'}
+          storedHash={storedHash || undefined}
+          showFullHash={true}
+        />
+      </div>
     </div>
+    </>
   );
 };
 

@@ -1,58 +1,98 @@
 import React, { useState } from 'react';
 import { NEON, GRADIENT_BORDER } from '../constants';
 import { GlassCard, NeonText, NeonButton } from './ui/NeonElements';
-import { startRegistration } from '@simplewebauthn/browser';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
+import { auth, googleProvider, signInWithPopup, signInWithCustomToken } from '../lib/firebase';
 
 interface AuthScreenProps {
-  onAuth: (user: { name: string, email: string, provider: string }) => void;
+  onAuth: (user: any) => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
   const [step, setStep] = useState<"landing" | "passkey" | "creating">("landing");
   const [scanning, setScanning] = useState(false);
   const [email, setEmail] = useState("user@agape.nyc");
+  const [authError, setAuthError] = useState("");
 
-  const handleProvider = (provider: string) => {
+  const handleGoogleProvider = async () => {
     setScanning(true);
-    setTimeout(() => { 
-      setScanning(false); 
-      setStep("passkey"); 
-    }, 2000);
+    setAuthError("");
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      onAuth(result.user);
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      setAuthError(error.message || "Google Sign-In failed.");
+      setScanning(false);
+    }
   };
 
   const handlePasskey = async () => {
     setStep("creating");
+    setAuthError("");
     try {
-      // 1. Get registration options from backend
-      const optionsRes = await fetch('/api/auth/register-options', {
+      // 1. Try to see if user has existing passkeys (login flow)
+      const loginOptsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      if (!optionsRes.ok) {
-        const err = await optionsRes.json();
-        throw new Error(err.error || 'Failed to obtain registration options');
-      }
-      const options = await optionsRes.json();
+      
+      let verifiedToken = null;
 
-      // 2. Create credential on client (triggers native OS/browser prompt!)
-      const attestationResponse = await startRegistration({ optionsJSON: options });
-
-      // 3. Send attestation to backend for verification
-      const verifyRes = await fetch('/api/auth/verify-registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...attestationResponse, email })
-      });
-      const verifyResult = await verifyRes.json();
-      if (verifyResult.success || verifyResult.credential) {
-        onAuth({ name: "Sovereign User", email, provider: "google" });
+      if (loginOptsRes.ok) {
+        // Exists, perform login
+        const loginOptions = await loginOptsRes.json();
+        const authResponse = await startAuthentication({ optionsJSON: loginOptions });
+        
+        const verifyLoginRes = await fetch('/api/auth/verify-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(authResponse)
+        });
+        const verifyLoginResult = await verifyLoginRes.json();
+        if (verifyLoginResult.verified && verifyLoginResult.token) {
+          verifiedToken = verifyLoginResult.token;
+        } else {
+          throw new Error(verifyLoginResult.error || 'Login verification failed');
+        }
       } else {
-        throw new Error(verifyResult.error || 'Verification failed');
+        // Doesn't exist, perform registration
+        const optionsRes = await fetch('/api/auth/register-options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        if (!optionsRes.ok) {
+          const err = await optionsRes.json();
+          throw new Error(err.error || 'Failed to obtain registration options');
+        }
+        const options = await optionsRes.json();
+
+        // Create credential on client
+        const attestationResponse = await startRegistration({ optionsJSON: options });
+
+        // Send attestation to backend for verification
+        const verifyRes = await fetch('/api/auth/verify-registration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...attestationResponse, email })
+        });
+        const verifyResult = await verifyRes.json();
+        if (verifyResult.verified && verifyResult.token) {
+          verifiedToken = verifyResult.token;
+        } else {
+          throw new Error(verifyResult.error || 'Registration verification failed');
+        }
+      }
+
+      if (verifiedToken) {
+        const userCredential = await signInWithCustomToken(auth, verifiedToken);
+        onAuth(userCredential.user);
       }
     } catch (error: any) {
-      console.error('WebAuthn registration error:', error);
-      alert(`WebAuthn Error: ${error.message || 'Registration failed'}`);
+      console.error('WebAuthn error:', error);
+      setAuthError(`Passkey Error: ${error.message || 'Operation failed'}`);
       setStep("passkey");
     }
   };
@@ -85,6 +125,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
         {/* Neon separator */}
         <div className="h-[1px] mb-7 rounded-sm opacity-70" style={{ background: GRADIENT_BORDER }} />
 
+        {authError && (
+          <div className="mb-4 text-xs p-2 rounded border" style={{ color: NEON.orange, borderColor: NEON.orange, background: 'rgba(255,165,0,0.1)' }}>
+            {authError}
+          </div>
+        )}
+
         {step === "landing" && !scanning && (
           <div style={{ animation: "fade-in 0.4s ease" }}>
             <div className="text-[0.9rem] mb-2 font-medium" style={{ color: NEON.text }}>Digital Identity Federated Footprint</div>
@@ -105,7 +151,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
             </div>
 
              <div className="flex flex-col gap-3">
-              <button className="btn-neon neon-border py-3 px-5 rounded-lg text-white font-semibold flex items-center justify-center gap-3 text-[0.95rem]" onClick={() => handleProvider("google")} style={{ background: "rgba(66,133,244,0.1)" }}>
+              <button className="btn-neon neon-border py-3 px-5 rounded-lg text-white font-semibold flex items-center justify-center gap-3 text-[0.95rem]" onClick={handleGoogleProvider} style={{ background: "rgba(66,133,244,0.1)" }}>
                 <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                 Continue with Google
               </button>
@@ -116,7 +162,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
                 setTimeout(() => {
                   setScanning(false);
                   setStep("passkey");
-                }, 1500);
+                }, 1000);
               }} style={{ background: "rgba(0,212,255,0.05)", borderColor: `${NEON.blue}44` }}>
                 🔑 Sign in with Passkey
               </button>
@@ -144,7 +190,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
               Your passkey will be device-bound to this session.<br />No password. No breach. Pure sovereignty.
             </div>
             <NeonButton onClick={handlePasskey} color={NEON.orange} size="lg" className="w-full">
-              CREATE PASSKEY & ENTER
+              AUTHENTICATE WITH PASSKEY
             </NeonButton>
           </div>
         )}
@@ -162,3 +208,4 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuth }) => {
     </div>
   );
 };
+
