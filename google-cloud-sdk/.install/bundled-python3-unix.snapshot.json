@@ -3,6 +3,7 @@
     {
       "dependencies": [
         "bundled-python3-unix-darwin-arm",
+        "bundled-python3-unix-darwin-x86_64",
         "bundled-python3-unix-linux-x86_64",
         "core"
       ],
@@ -32,11 +33,11 @@
       }
     }
   ],
-  "revision": 20260622153051,
+  "revision": 20260707143519,
   "schema_version": {
     "no_update": false,
     "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.tar.gz",
     "version": 3
   },
-  "version": "574.0.0"
+  "version": "575.0.1"
 }
