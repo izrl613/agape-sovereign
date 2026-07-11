@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/auth/**",
+        "function": "authApi"
+      },
+      {
         "source": "/api/**",
         "run": {
           "serviceId": "agape-sovereign-server",
@@ -51,7 +55,6 @@
         "*.local"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "disallowLegacyRuntimeConfig": true,
@@ -82,6 +85,17 @@
         "functions"
       ],
       "alwaysDeployFromSource": true
+    },
+    {
+      "backendId": "agape-sovereign",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
     }
   ],
   "dataconnect": {

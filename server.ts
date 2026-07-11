@@ -1,12 +1,6 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import { 
-  generateRegistrationOptions, 
-  verifyRegistrationResponse, 
-  generateAuthenticationOptions, 
-  verifyAuthenticationResponse 
-} from "@simplewebauthn/server";
 import admin from "firebase-admin";
 import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
@@ -14,7 +8,6 @@ import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
 import { GoogleAuth } from "google-auth-library";
 import rateLimit from "express-rate-limit";
 import { WebSocketServer, WebSocket } from "ws";
-import crypto from "crypto";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
 if (!admin.apps.length) {
@@ -29,7 +22,7 @@ console.log("BOOT: Firestore reference obtained.");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const RP_NAME = "Agape Sovereign";
+
 
 // --- Google Auth / Proxy Setup ---
 const GOOGLE_CLOUD_LOCATION = process?.env?.GOOGLE_CLOUD_LOCATION;
@@ -328,146 +321,6 @@ async function startServer() {
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to generate erasure request" });
-    }
-  });
-
-  async function ensureUserExists(email: string) {
-    const usersRef = db.collection('users');
-    const userSnap = await usersRef.where('email', '==', email).limit(1).get();
-    if (userSnap.empty) {
-      const userId = crypto.randomUUID();
-      await usersRef.doc(userId).set({ email, createdAt: admin.firestore.FieldValue.serverTimestamp() });
-      return { userId, userEmail: email };
-    }
-    return { userId: userSnap.docs[0].id, userEmail: email };
-  }
-
-  app.post("/api/auth/register-options", async (req, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Missing user email" });
-      const { userId, userEmail } = await ensureUserExists(email);
-      const host = req.get('host')?.split(':')[0] || 'localhost';
-      const rpId = host === '127.0.0.1' ? 'localhost' : host;
-      const userRef = db.collection('users').doc(userId);
-      const credsSnap = await userRef.collection('passkeyCredentials').get();
-      const excludeCredentials = credsSnap.docs.map(doc => ({
-        id: doc.id,
-        type: 'public-key' as const,
-        transports: doc.data().transports,
-      }));
-      const options = await generateRegistrationOptions({
-        rpName: RP_NAME,
-        rpID: rpId,
-        userID: new TextEncoder().encode(userId),
-        userName: userEmail,
-        userDisplayName: userEmail,
-        attestationType: 'none',
-        excludeCredentials: excludeCredentials as any,
-        authenticatorSelection: {
-          residentKey: 'preferred',
-          userVerification: 'preferred',
-          authenticatorAttachment: 'platform',
-        },
-      });
-      res.cookie('registration-challenge', options.challenge, { 
-        httpOnly: true, secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60000 
-      });
-      res.cookie('auth-user-id', userId, { httpOnly: true, signed: true });
-      res.json(options);
-    } catch (error) {
-      console.error("Register Options Error:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-  app.post("/api/auth/verify-registration", async (req, res) => {
-    try {
-      const { body } = req;
-      const { email } = req.body; 
-      const expectedChallenge = req.signedCookies['registration-challenge'];
-      const userId = req.signedCookies['auth-user-id'];
-      if (!expectedChallenge || !userId) return res.status(400).json({ error: "Challenge expired or missing" });
-      const host = req.get('host')?.split(':')[0] || 'localhost';
-      const rpId = host === '127.0.0.1' ? 'localhost' : host;
-      const origin = `${req.protocol}://${req.get('host')}`;
-      const verification = await verifyRegistrationResponse({
-        response: body, expectedChallenge, expectedOrigin: origin, expectedRPID: rpId,
-      });
-      if (verification.verified && verification.registrationInfo) {
-        const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
-        await db.collection('users').doc(userId).collection('passkeyCredentials').doc(Buffer.from(credentialID).toString('base64url')).set({
-          publicKey: Buffer.from(credentialPublicKey).toString('base64url'),
-          credentialID: Buffer.from(credentialID).toString('base64url'),
-          counter, transports: body.response.transports || [], createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        const customToken = await admin.auth().createCustomToken(userId);
-        res.json({ verified: true, token: customToken });
-      } else {
-        res.status(400).json({ verified: false, error: "Verification failed" });
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-  app.post("/api/auth/login-options", async (req, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Missing email" });
-      const userSnap = await db.collection('users').where('email', '==', email).limit(1).get();
-      if (userSnap.empty) return res.status(404).json({ error: "User not found" });
-      const userDoc = userSnap.docs[0];
-      const userId = userDoc.id;
-      const credsSnap = await userDoc.ref.collection('passkeyCredentials').get();
-      const allowCredentials = credsSnap.docs.map(doc => ({
-        id: doc.id, type: 'public-key' as const, transports: doc.data().transports,
-      }));
-      const host = req.get('host')?.split(':')[0] || 'localhost';
-      const rpId = host === '127.0.0.1' ? 'localhost' : host;
-      const options = await generateAuthenticationOptions({
-        rpID: rpId, allowCredentials: allowCredentials as any, userVerification: 'preferred',
-      });
-      res.cookie('authentication-challenge', options.challenge, { 
-        httpOnly: true, secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60000 
-      });
-      res.cookie('auth-user-id', userId, { httpOnly: true, signed: true });
-      res.json(options);
-    } catch (error) {
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-  app.post("/api/auth/verify-login", async (req, res) => {
-    try {
-      const { body } = req;
-      const expectedChallenge = req.signedCookies['authentication-challenge'];
-      const userId = req.signedCookies['auth-user-id'];
-      if (!expectedChallenge || !userId) return res.status(400).json({ error: "Challenge expired or missing" });
-      const credentialId = body.id;
-      const credDoc = await db.collection('users').doc(userId).collection('passkeyCredentials').doc(credentialId).get();
-      if (!credDoc.exists) return res.status(400).json({ error: "Credential not found" });
-      const credData = credDoc.data()!;
-      const host = req.get('host')?.split(':')[0] || 'localhost';
-      const rpId = host === '127.0.0.1' ? 'localhost' : host;
-      const origin = `${req.protocol}://${req.get('host')}`;
-      const verification = await verifyAuthenticationResponse({
-        response: body, expectedChallenge, expectedOrigin: origin, expectedRPID: rpId,
-        authenticator: {
-          credentialID: Buffer.from(credData.credentialID, 'base64url') as any,
-          credentialPublicKey: Buffer.from(credData.publicKey, 'base64url') as any,
-          counter: credData.counter,
-        },
-      });
-      if (verification.verified) {
-        await credDoc.ref.update({ counter: verification.authenticationInfo.newCounter });
-        const customToken = await admin.auth().createCustomToken(userId);
-        res.json({ verified: true, token: customToken });
-      } else {
-        res.status(400).json({ verified: false, error: "Authentication failed" });
-      }
-    } catch (error) {
-      res.status(500).json({ error: "Internal Server Error" });
     }
   });
 
