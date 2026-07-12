@@ -1,56 +1,27 @@
-# Agape Sovereign AI — Wiki Home
+# Agape Sovereign — Wiki
 
-Welcome to the **Agape Sovereign AI** documentation hub. This wiki covers architecture, authentication, identity modules, the Shield Platform, deployment, and OAuth verification for the PWA hosted at [sovereign.nyc](https://sovereign.nyc).
+> **AI Digital Identity Sovereign Restoration Platform**  
+> Live at: [sovereign.nyc](https://sovereign.nyc)
 
-## Quick Navigation
+## Overview
 
-| Page | Description |
-|------|-------------|
-| [Architecture](Architecture.md) | Full system architecture — React, Firebase, GCP |
-| [Authentication](Authentication.md) | Google Sign-In + WebAuthn Passkey flows |
-| [Identity Modules](Identity-Modules.md) | 16+ identity vector modules |
-| [Shield Platform](Shield-Platform.md) | 5-pillar privacy & security stack |
-| [Deployment](Deployment.md) | Firebase Hosting / GCP deployment guide |
-| [OAuth Verification](OAuth-Verification.md) | Google OAuth consent screen verification status |
+Agape Sovereign is a consumer-grade privacy and security PWA that gives users full visibility and control over their 16 digital identity vectors. Built on React 19, Firebase, and Vite, it fuses five state-of-the-art privacy platform paradigms into a single sovereign enclave.
 
----
+## Quick Links
 
-## About the App
+| Section | Description |
+|---|---|
+| [Architecture](docs/wiki/Architecture.md) | Stack, project layout, data flow |
+| [Identity Vectors](docs/wiki/Identity-Vectors.md) | All 16 V-01–V-16 modules |
+| [Shield Platform](docs/wiki/Shield-Platform.md) | 5-pillar privacy/security engine |
+| [Authentication](docs/wiki/Authentication.md) | Google OAuth + Passkey/WebAuthn |
+| [Deployment](docs/wiki/Deployment.md) | Firebase Hosting + GCP setup |
+| [Changelog](docs/wiki/Changelog.md) | Version history |
 
-**Agape Sovereign AI** is a privacy-first Progressive Web App (PWA) that gives individuals complete sovereignty over their digital identity. It aggregates identity signals across 16+ vectors, applies AI-powered analysis, and provides actionable remediation through the Shield Platform.
+## Core Principles
 
-### Core Principles
-
-- **Zero Trust** — no implicit trust for any user, device, or network ([zero-trust docs](../zero-trust.md))
-- **Privacy by Design** — data minimization, anonymization, and user-controlled erasure
-- **Sovereign Identity** — users own and control all identity data
-- **Compliance-First** — GDPR, CCPA, SOC 2 aligned ([compliance docs](../compliance/))
-
-### Live URLs
-
-| Environment | URL |
-|-------------|-----|
-| Production | https://sovereign.nyc |
-| Firebase default | https://agape-sovereign.web.app |
-| Privacy Policy | https://sovereign.nyc/privacy |
-| Terms of Service | https://sovereign.nyc/terms |
-
----
-
-## Technology Stack
-
-```
-Frontend  : React 18 + TypeScript + Vite (PWA)
-Backend   : Firebase (Auth, Firestore, Functions, Hosting)
-Cloud     : Google Cloud Platform (GCP)
-CI/CD     : GitHub Actions (SAST, secret scan, compliance gate, Dependabot)
-Auth      : Firebase Auth (Google Sign-In) + WebAuthn Passkeys
-```
-
----
-
-## Related Docs
-
-- [`docs/stage-1A1.md`](../stage-1A1.md) — Passkey setup architecture (Stage 1A-1)
-- [`docs/zero-trust.md`](../zero-trust.md) — Zero Trust architecture
-- [`docs/compliance/`](../compliance/) — Compliance documentation
+1. **Sovereignty First** — All scans run client-side where possible; no sensitive data leaves the device.
+2. **16 Identity Vectors** — Every surface of a user's digital identity has a dedicated module.
+3. **5-Pillar Shield** — DLP, Identity Guard, PII Anonymizer, Privacy Monitor, AI Armor.
+4. **Zero-Trust Auth** — Google OAuth + Passkey (WebAuthn level 2) with no password storage.
+5. **AEGIS Dark Theme** — Obsidian/Magenta/Blue/Orange design language throughout.
