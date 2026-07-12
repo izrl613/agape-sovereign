@@ -1,7 +1,8 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import * as admin from "firebase-admin";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
@@ -10,13 +11,13 @@ import rateLimit from "express-rate-limit";
 import { WebSocketServer, WebSocket } from "ws";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
-if (!admin.apps.length) {
+if (!getApps().length) {
   console.log("BOOT: Initializing Firebase Admin...");
-  admin.initializeApp();
+  initializeApp();
   console.log("BOOT: Firebase Admin initialized.");
 }
 console.log("BOOT: Obtaining Firestore reference...");
-const db = admin.firestore();
+const db = getFirestore();
 console.log("BOOT: Firestore reference obtained.");
 
 const __filename = fileURLToPath(import.meta.url);

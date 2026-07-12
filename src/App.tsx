@@ -28,6 +28,7 @@ import {
   OauthModule,
   LegalModule,
   BiometricModule,
+  BiometricIdentityModule,
   ErasureModule,
   // V-08 through V-15 — previously missing routes
   LocationModule,
@@ -116,7 +117,7 @@ const AppRoutes = () => {
         <Route path="location"   element={<LocationModule />} />
         <Route path="browser"    element={<BrowserTrackerModule />} />
         <Route path="medical"    element={<MedicalModule />} />
-        <Route path="biometric"  element={<BiometricModule />} />
+        <Route path="biometric"  element={<BiometricIdentityModule />} />
         <Route path="iot"        element={<IoTModule />} />
         <Route path="darkweb"    element={<DarkWebModule />} />
         <Route path="behavioral" element={<BehavioralModule />} />
