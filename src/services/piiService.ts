@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 /**
  * piiService.ts — Nymiz-inspired AI PII Detection & Anonymization
  *
