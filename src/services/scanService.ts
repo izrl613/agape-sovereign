@@ -430,9 +430,9 @@ export const recalculateSovereignScore = async (userId: string) => {
       userId,
       score,
       timestamp: new Date(),
-      nukedCount: findings.filter(f => f.status === 'NUKED').length,
-      knoxedCount: findings.filter(f => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter(f => f.status === 'MONITORED').length,
+      nukedCount: findings.filter((f: ScanFinding) => f.status === 'NUKED').length,
+      knoxedCount: findings.filter((f: ScanFinding) => f.status === 'KNOXED').length,
+      monitoredCount: findings.filter((f: ScanFinding) => f.status === 'MONITORED').length,
       findings
     });
     localStorage.setItem(`score_history_${userId}`, JSON.stringify(history));
@@ -441,14 +441,14 @@ export const recalculateSovereignScore = async (userId: string) => {
 
   try {
     await updateDoc(doc(db, "users", userId), { sovereignScore: score });
-    
+
     // Save to history
     await addDoc(collection(db, "score_history"), {
       userId,
       score,
-      nukedCount: findings.filter(f => f.status === 'NUKED').length,
-      knoxedCount: findings.filter(f => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter(f => f.status === 'MONITORED').length,
+      nukedCount: findings.filter((f: ScanFinding) => f.status === 'NUKED').length,
+      knoxedCount: findings.filter((f: ScanFinding) => f.status === 'KNOXED').length,
+      monitoredCount: findings.filter((f: ScanFinding) => f.status === 'MONITORED').length,
       findings: findings,
       timestamp: serverTimestamp()
     });
