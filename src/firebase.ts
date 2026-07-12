@@ -67,9 +67,10 @@ googleProvider.setCustomParameters({
 });
 
 export const appleProvider = new OAuthProvider('apple.com');
-appleProvider.addScopes('email', 'name');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
 appleProvider.setCustomParameters({
-  usePopup: true
+  usePopup: 'true'
 });
 
 export const loginWithGoogle = async () => {

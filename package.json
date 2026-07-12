@@ -27,7 +27,6 @@
     "firebase": "^12.15.0",
     "firebase-admin": "^14.1.0",
     "framer-motion": "latest",
-    "git": "^0.1.5",
     "google-auth-library": "^10.9.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -48,13 +47,15 @@
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "esbuild": "latest",
     "tsx": "^4.23.0",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "^8.1.4"
   },
   "allowScripts": {
     "git@0.1.5": true,
