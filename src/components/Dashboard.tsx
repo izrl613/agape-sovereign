@@ -37,6 +37,7 @@ const MODULE_CONFIG = [
   { id: "darkweb", icon: "◈", label: "Dark Web Monitoring", vector: "V-14", to: "/darkweb" },
   { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis", vector: "V-15", to: "/behavioral" },
   { id: "erasure", icon: "⌫", label: "Sovereign Erasure Engine", vector: "V-16", to: "/erasure" },
+  { id: "shield",  icon: "⬡", label: "Shield Platform Suite",   vector: "V-17", to: "/shield"  },
 ];
 
 const SovereignScore = ({ score }: { score: number }) => {
