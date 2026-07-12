@@ -20,7 +20,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onModuleClick, use
         <div className="flex-1">
           <div className="font-['Orbitron'] text-[0.6rem] tracking-[0.2em] mb-1.5" style={{ color: NEON.orange }}>DIGITAL IDENTITY FEDERATED FOOTPRINT</div>
           <NeonText color={NEON.blue} size="1.5rem" weight={900}>DIFF COMMAND CENTER</NeonText>
-          <div className="text-[0.8rem] mt-1" style={{ color: NEON.textMuted }}>16-Layer identity vector analysis · Real-time threat intelligence</div>
+          <div className="text-[0.8rem] mt-1" style={{ color: NEON.textMuted }}>16-vector digital identity analysis · Polymer · Unosecur · Nymiz · PrivacyProctor · Prisma AIRS</div>
         </div>
         <SovereignScore score={sovereignScore} />
       </div>

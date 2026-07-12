@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NEON, DIFF_MODULES } from '../constants';
+import { NEON, DIFF_MODULES, PILLARS } from '../constants';
 import { GlassCard, NeonText, NeonButton, StatusBadge } from './ui/NeonElements';
 
 interface ModuleDetailViewProps {
@@ -97,6 +97,36 @@ export const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ moduleId }) 
           ))}
         </div>
       </GlassCard>
+
+      {/* Pillar Capability Block */}
+      {m.pillar && (() => {
+        const pillar = PILLARS[m.pillar];
+        return (
+          <GlassCard className="p-4 mb-5" style={{ borderLeft: `3px solid ${pillar.color}`, background: pillar.accentBg }}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="rounded-md px-2 py-0.5 font-['Share_Tech_Mono'] text-[0.58rem] font-bold tracking-[0.12em]"
+                style={{ background: `${pillar.color}22`, color: pillar.color, border: `1px solid ${pillar.color}44` }}>
+                {pillar.label.toUpperCase()}
+              </div>
+              <span className="font-['Share_Tech_Mono'] text-[0.58rem] tracking-[0.08em]" style={{ color: NEON.textMuted }}>IDENTITY VECTOR ENGINE</span>
+            </div>
+            <div className="font-['Rajdhani'] text-[0.82rem] font-semibold mb-3" style={{ color: NEON.text }}>{m.capability}</div>
+            <div className="font-['Share_Tech_Mono'] text-[0.6rem] tracking-[0.1em] mb-2" style={{ color: NEON.textMuted }}>ACTIVE TECHNIQUES</div>
+            <div className="flex flex-col gap-1.5">
+              {(m.techniques || []).map((t, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span style={{ color: pillar.color }} className="shrink-0 mt-0.5">▸</span>
+                  <span className="font-['Rajdhani'] text-[0.78rem]" style={{ color: NEON.text }}>{t}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-2.5 flex justify-between items-center" style={{ borderTop: `1px solid ${pillar.color}22` }}>
+              <span className="font-['Share_Tech_Mono'] text-[0.58rem]" style={{ color: pillar.color }}>{pillar.tagline}</span>
+              <span className="font-['Share_Tech_Mono'] text-[0.55rem]" style={{ color: NEON.textMuted }}>PILLAR · {m.vector}</span>
+            </div>
+          </GlassCard>
+        );
+      })()}
 
       {/* Findings */}
       <div className="mb-4">
