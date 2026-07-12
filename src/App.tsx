@@ -10,13 +10,14 @@ import { ArchitectAI } from './components/ArchitectAI';
 import { AdminPortal } from './components/AdminPortal';
 import { UserProfileSettings } from './components/UserProfileSettings';
 import { SecurityTips } from './components/SecurityTips';
-import { 
-  EmailModule, 
-  SocialModule, 
-  DeviceModule, 
-  SystemModule, 
+import { ShieldModule } from './components/ShieldModule';
+import {
+  EmailModule,
+  SocialModule,
+  DeviceModule,
+  SystemModule,
   LaptopModule,
-  DeepWebModule, 
+  DeepWebModule,
   DataBrokerModule,
   PasswordModule,
   NetworkModule,
@@ -27,7 +28,15 @@ import {
   OauthModule,
   LegalModule,
   BiometricModule,
-  ErasureModule
+  BiometricIdentityModule,
+  ErasureModule,
+  // V-08 through V-15 — previously missing routes
+  LocationModule,
+  BrowserTrackerModule,
+  MedicalModule,
+  IoTModule,
+  DarkWebModule,
+  BehavioralModule,
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -44,7 +53,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -60,13 +69,14 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   }
   
   if (!user || !isAdmin) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
   
   return <>{children}</>;
 };
 
 import { SplashEntry } from './components/SplashEntry';
+import { LandingPage } from './components/LandingPage';
 
 const AppRoutes = () => {
   const { user, setupComplete, setSetupComplete } = useAuth();
@@ -77,9 +87,14 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+      {/* Public landing page — no auth required — satisfies Google OAuth branding verification */}
+      <Route path="/" element={<LandingPage />} />
+
+      {/* Auth route — redirect to dashboard if already signed in */}
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+
+      {/* Protected app — all authenticated routes live under /dashboard */}
+      <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="email" element={<EmailModule />} />
         <Route path="social" element={<SocialModule />} />
@@ -98,6 +113,15 @@ const AppRoutes = () => {
         <Route path="legal" element={<LegalModule />} />
         <Route path="ai" element={<BiometricModule />} />
         <Route path="erasure" element={<ErasureModule />} />
+        {/* V-08 through V-15 — identity-vector routes */}
+        <Route path="location"   element={<LocationModule />} />
+        <Route path="browser"    element={<BrowserTrackerModule />} />
+        <Route path="medical"    element={<MedicalModule />} />
+        <Route path="biometric"  element={<BiometricIdentityModule />} />
+        <Route path="iot"        element={<IoTModule />} />
+        <Route path="darkweb"    element={<DarkWebModule />} />
+        <Route path="behavioral" element={<BehavioralModule />} />
+        <Route path="shield" element={<ShieldModule />} />
         <Route path="architect" element={<ArchitectAI />} />
         <Route path="security-tips" element={<SecurityTips />} />
         <Route path="settings" element={<UserProfileSettings />} />
@@ -108,6 +132,7 @@ const AppRoutes = () => {
 };
 
 import { Toaster } from 'sonner';
+import { PasskeySetupPrompt } from './components/auth/PasskeySetupPrompt';
 
 export default function App() {
   return (
@@ -117,6 +142,8 @@ export default function App() {
           <BrowserRouter>
             <AppRoutes />
             <Toaster position="top-right" theme="dark" richColors closeButton />
+            {/* Passkey onboarding: appears once after first Google login on capable devices */}
+            <PasskeySetupPrompt />
           </BrowserRouter>
         </ScanProvider>
       </AuthProvider>

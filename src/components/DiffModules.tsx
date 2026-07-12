@@ -20,9 +20,13 @@ interface ModuleProps {
   vector: string;
   moduleId: string;
   scanLabel?: string;
+  /** Which of the 5 shield pillars owns this vector (display only) */
+  pillar?: string;
+  /** Techniques surfaced in module detail view (display only) */
+  techniques?: string[];
 }
 
-export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel }: ModuleProps) => {
+export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel, pillar, techniques }: ModuleProps) => {
   const { user } = useAuth();
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
@@ -340,6 +344,23 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.15em" }}>{vector} · DIFF VECTOR</div>
           <NeonText color={sevColor} size="1.2rem" weight={700}>{title}</NeonText>
           <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>{description}</p>
+          {pillar && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+              <span style={{
+                fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", fontWeight: 700,
+                color: NEON.magenta, border: `1px solid ${NEON.magenta}44`,
+                background: `${NEON.magenta}18`, borderRadius: 4,
+                padding: "2px 6px", letterSpacing: "0.08em"
+              }}>{pillar.toUpperCase()}</span>
+              {techniques?.map((t, i) => (
+                <span key={i} style={{
+                  fontFamily: "'Share Tech Mono'", fontSize: "0.55rem", color: NEON.blue,
+                  border: `1px solid ${NEON.blue}33`, background: `${NEON.blue}10`,
+                  borderRadius: 4, padding: "2px 5px"
+                }}>▸ {t}</span>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
           <NeonButton 
@@ -687,22 +708,108 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 };
 
 // Export specific 16 modules properly aligned with Layout.tsx and SplashEntry.tsx
-export const EmailModule = () => <DiffModule title="Email Breach & Metadata Scanner" description="Checks breach databases and analyzes exposed metadata patterns." icon="✉" vector="V-01" moduleId="email" scanLabel="Scan Emails" />;
-export const SocialModule = () => <DiffModule title="Social Media Footprint Scanner" description="Public post scraping and username reuse detection." icon="◈" vector="V-02" moduleId="social" />;
-export const DeviceModule = () => <DiffModule title="Device File Scan" description="File pattern analysis and metadata exposure detection." icon="⬡" vector="V-03" moduleId="device" />;
-export const SystemModule = () => <DiffModule title="Mobile System Security" description="Passkey enforcement status and mobile OS security posture." icon="◻" vector="V-04" moduleId="mobile" />;
-export const LaptopModule = () => <DiffModule title="Laptop System Security" description="Firmware integrity and disk encryption audit." icon="💻" vector="V-05" moduleId="laptop" />;
-export const DeepWebModule = () => <DiffModule title="Deep Web Exposure Monitoring" description="Pattern-based lookup and public data indexing scan." icon="◉" vector="V-06" moduleId="deepweb" />;
-export const DataBrokerModule = () => <DiffModule title="Data Broker Removal Engine" description="Automated request templates for removal." icon="⧫" vector="V-07" moduleId="broker" />;
-export const PasswordModule = () => <DiffModule title="Password Vault Audit" description="Checks for weak, reused, or compromised credentials." icon="⬟" vector="V-08" moduleId="password" />;
-export const NetworkModule = () => <DiffModule title="Network & DNS Security Posture" description="Analyzes DNS leaks and insecure network protocols." icon="◎" vector="V-09" moduleId="network" />;
-export const CloudModule = () => <DiffModule title="Cloud Storage & Sync Security" description="Scans for misconfigured S3 buckets or Drive permissions." icon="⊞" vector="V-10" moduleId="cloud" />;
-export const CommunicationModule = () => <DiffModule title="Communication Privacy Audit" description="Analyzes E2EE status and metadata in messages." icon="💬" vector="V-11" moduleId="comm" />;
-export const FinancialModule = () => <DiffModule title="Financial Identity Surface" description="Monitor financial accounts, dark web bank leaks, and transaction metadata privacy." icon="⬡" vector="V-12" moduleId="financial" />;
-export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents." icon="📄" vector="V-13" moduleId="docs" />;
-export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens." icon="🔑" vector="V-14" moduleId="oauth" />;
-export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records." icon="⚖" vector="V-15" moduleId="legal" />;
-export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data." icon="⊛" vector="V-16" moduleId="ai" />;
+// ── V-01 through V-07 · V-11 / V-13 / V-16 — original module exports with pillar tags ──
+export const EmailModule = () => <DiffModule title="Email Breach & Metadata Scanner" description="Checks breach databases and analyzes exposed metadata patterns. DLP rules flag PII in outbound email before transmission." icon="✉" vector="V-01" moduleId="email" scanLabel="Scan Emails" pillar="Polymer" techniques={["Breach database lookup (HaveIBeenPwned pattern)", "Outbound PII DLP interception", "Email metadata header stripping", "Domain reputation scoring"]} />;
+export const SocialModule = () => <DiffModule title="Social Media Footprint Scanner" description="Public post scraping and username reuse detection. Unosecur maps account-to-account permission sprawl." icon="◈" vector="V-02" moduleId="social" pillar="Unosecur" techniques={["Username enumeration across platforms", "Over-shared post PII detection", "Third-party app permission audit", "Account graph mapping"]} />;
+export const DeviceModule = () => <DiffModule title="Device File Scan" description="File pattern analysis and metadata exposure detection. Nymiz tokenizes embedded PII found in documents and media metadata." icon="⬡" vector="V-03" moduleId="device" pillar="Nymiz" techniques={["File metadata PII extraction (EXIF/XMP)", "Document content tokenization", "Hidden partition scan", "Sensitive filetype risk scoring"]} />;
+export const SystemModule = () => <DiffModule title="Mobile System Security" description="Passkey enforcement status and mobile OS security posture. Unosecur flags over-privileged app permissions." icon="◻" vector="V-04" moduleId="mobile" pillar="Unosecur" techniques={["Passkey/biometric enrollment audit", "App permission over-privilege scoring", "OS patch-level CVE check", "Backup encryption verification"]} />;
+export const LaptopModule = () => <DiffModule title="Laptop System Security" description="Firmware integrity and disk encryption audit. Prisma AIRS monitors AI agents running on the host for exfiltration risk." icon="💻" vector="V-05" moduleId="laptop" pillar="Prisma AIRS" techniques={["Full-disk encryption (FileVault/BitLocker) status", "Firmware secure-boot verification", "AI agent runtime exfiltration scan (AIRS)", "Open port / firewall posture check"]} />;
+export const DeepWebModule = () => <DiffModule title="Deep Web Exposure Monitoring" description="Pattern-based lookup and public data indexing scan. PrivacyProctor provides real-time leak detection across indexed surfaces." icon="◉" vector="V-06" moduleId="deepweb" pillar="PrivacyProctor" techniques={["Public index leak detection", "Image reverse-lookup scan", "Forum/paste mention monitoring", "Real-time alert on new exposure"]} />;
+export const DataBrokerModule = () => <DiffModule title="Data Broker Removal Engine" description="Automated request templates for data broker removal. Polymer DLP ensures PII isn't re-exposed during the opt-out flow." icon="⧫" vector="V-07" moduleId="broker" pillar="Polymer" techniques={["Broker database enumeration (200+ brokers)", "CCPA/GDPR opt-out template generation", "Removal request status tracking", "Re-exposure DLP guard on submission"]} />;
+export const PasswordModule = () => <DiffModule title="Password Vault Audit" description="Checks for weak, reused, or compromised credentials. Nymiz pseudonymizes vault data during export/analysis." icon="⬟" vector="V-07" moduleId="password" pillar="Nymiz" techniques={["Weak/reused password scoring", "HaveIBeenPwned hash check", "Vault export pseudonymization", "Passkey upgrade recommendations"]} />;
+export const NetworkModule = () => <DiffModule title="Network & DNS Security Posture" description="Analyzes DNS leaks and insecure network protocols. PrivacyProctor monitors live traffic for data-leak signatures." icon="◎" vector="V-09" moduleId="network" pillar="PrivacyProctor" techniques={["DNS-over-HTTPS compliance check", "VPN leak detection (IPv6/WebRTC)", "Insecure protocol audit (HTTP/FTP)", "Live traffic PII leak monitoring"]} />;
+export const CloudModule = () => <DiffModule title="Cloud Storage Exposure" description="Scans for misconfigured S3 buckets or Drive permissions. Prisma AIRS blocks AI-agent cloud exfiltration." icon="⊞" vector="V-13" moduleId="cloud" pillar="Prisma AIRS" techniques={["Public bucket/folder permission audit", "Sharing link expiry enforcement", "AI agent cloud sync exfiltration block (AIRS)", "Sensitive file encryption check"]} />;
+export const CommunicationModule = () => <DiffModule title="Communication Privacy Audit" description="Analyzes E2EE status and metadata in messages. Polymer DLP intercepts PII in plaintext channels." icon="💬" vector="V-11" moduleId="comm" pillar="Polymer" techniques={["E2EE enforcement status (Signal/iMessage)", "Message metadata exposure scoring", "Outbound PII DLP on message drafts", "Third-party messaging app audit"]} />;
+export const FinancialModule = () => <DiffModule title="Financial Identity Surface" description="Monitor financial accounts, dark web bank leaks, and transaction metadata privacy." icon="⬡" vector="V-12" moduleId="financial" pillar="PrivacyProctor" techniques={["Bank account data dark-web monitoring", "Transaction metadata PII exposure", "Fintech app OAuth scope audit", "Real-time suspicious-charge alert"]} />;
+export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents. Nymiz masks PII before any document sharing." icon="📄" vector="V-EXT" moduleId="docs" pillar="Nymiz" techniques={["Passport/DL OCR PII detection", "Document metadata stripping", "Pre-share PII masking & tokenization", "Secure vault storage recommendation"]} />;
+export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens. Unosecur flags over-privileged OAuth grants." icon="🔑" vector="V-EXT" moduleId="oauth" pillar="Unosecur" techniques={["OAuth token scope over-privilege scoring", "Stale token revocation recommendations", "Non-human identity mapping", "Principle-of-least-privilege enforcement"]} />;
+export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records for PII exposure. PrivacyProctor monitors for new record appearances." icon="⚖" vector="V-EXT" moduleId="legal" pillar="PrivacyProctor" techniques={["Court records PII pattern scan", "Public deed/voter roll monitoring", "PACER filing exposure check", "Real-time new-record alert"]} />;
+// Legacy /ai route — AI & biometric exposure (no vector number conflict)
+export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data. Prisma AIRS blocks AI model misuse of biometric data." icon="⊛" vector="V-AI" moduleId="ai" pillar="Prisma AIRS" techniques={["Facial recognition database lookup", "Voice print exposure scan", "AI model inference attack surface (AIRS)", "Biometric data exfiltration guard"]} />;
+// V-11 — dedicated biometric identity vector used by /dashboard/biometric
+export const BiometricIdentityModule = () => <DiffModule title="Voice & Biometric Data Exposure" description="Scans for biometric identifiers (voice, face, fingerprint) leaked via apps, cloud services, or third-party SDKs. Nymiz pseudonymizes detected biometric identifiers." icon="⊛" vector="V-11" moduleId="biometric" pillar="Nymiz" techniques={["Biometric SDK permission audit", "Voice-print cloud sync exposure check", "Face-ID/fingerprint data broker lookup", "Biometric field pseudonymization (Nymiz)"]} />;
+
+// ── Vectors V-08 / V-09 / V-10 / V-11 / V-12 / V-14 / V-15 ─────────────────
+// These map to Dashboard MODULE_CONFIG routes that previously had no component.
+// Each one is a full DiffModule backed by its Polymer · Nymiz · Unosecur pillar.
+
+export const LocationModule = () => (
+  <DiffModule
+    title="Location Data Footprint"
+    description="Detects passive location harvesting by apps, ad-networks, and metadata embedded in shared photos. Flags over-privileged location grants and generates revocation requests."
+    icon="◎"
+    vector="V-08"
+    moduleId="location"
+    scanLabel="Scan Location"
+    pillar="Unosecur"
+    techniques={["GPS & cell-tower grant audit", "EXIF metadata extraction", "Ad-SDK location broker mapping", "Revoke over-privileged apps"]}
+  />
+);
+
+export const BrowserTrackerModule = () => (
+  <DiffModule
+    title="Browser & Cookie Tracker"
+    description="Inventories third-party cookies, tracking pixels, fingerprinting scripts, and session-replay SDKs. Provides DLP-style redaction of PII transmitted to trackers."
+    icon="◯"
+    vector="V-09"
+    moduleId="browser"
+    scanLabel="Scan Browser"
+    pillar="Polymer"
+    techniques={["Third-party cookie enumeration", "Canvas/WebGL fingerprint detection", "Session-replay script audit", "PII leak in network requests (DLP)"]}
+  />
+);
+
+export const MedicalModule = () => (
+  <DiffModule
+    title="Medical Data Footprint"
+    description="Scans for health-app data exposure, HIPAA compliance drift, and PII leakage in medical records sync. Nymiz anonymization applied to any sensitive health fields found."
+    icon="⊕"
+    vector="V-10"
+    moduleId="medical"
+    scanLabel="Scan Medical"
+    pillar="Nymiz"
+    techniques={["Health-app permission audit", "HIPAA identifiers (18 types) detection", "Medical metadata anonymization", "EHR API token exposure check"]}
+  />
+);
+
+export const IoTModule = () => (
+  <DiffModule
+    title="IoT & Smart Device Scan"
+    description="Discovers connected IoT endpoints sharing network identity, audits firmware versions, default credential risks, and maps the attack surface across smart-home and wearable devices."
+    icon="⊡"
+    vector="V-12"
+    moduleId="iot"
+    scanLabel="Scan IoT"
+    pillar="Unosecur"
+    techniques={["LAN device discovery & fingerprinting", "Default credential risk scoring", "Firmware version CVE lookup", "Over-privileged cloud-sync token audit"]}
+  />
+);
+
+export const DarkWebModule = () => (
+  <DiffModule
+    title="Dark Web Monitoring"
+    description="Continuously monitors dark-web paste sites, breach marketplaces, and Tor hidden services for your email addresses, usernames, phone numbers, and SSN fragments."
+    icon="◈"
+    vector="V-14"
+    moduleId="darkweb"
+    scanLabel="Scan Dark Web"
+    pillar="PrivacyProctor"
+    techniques={["Paste-site real-time indexing", "Credential marketplace matching", "Phone/SSN fragment hashing & lookup", "Alert on new exposure within 15 min"]}
+  />
+);
+
+export const BehavioralModule = () => (
+  <DiffModule
+    title="Behavioral Profile Analysis"
+    description="Reconstructs the behavioral fingerprint that ad-platforms and data brokers have built on you — purchase patterns, search history segments, psychographic tags — and quantifies leakage risk."
+    icon="⊟"
+    vector="V-15"
+    moduleId="behavioral"
+    scanLabel="Analyze Profile"
+    pillar="Prisma AIRS"
+    techniques={["Ad-platform segment inference", "Cross-device graph reconstruction", "Psychographic tag de-anonymization", "AI model exfiltration surface scan (AIRS)"]}
+  />
+);
 
 export const ErasureModule = () => {
   const { user, userData } = useAuth();
