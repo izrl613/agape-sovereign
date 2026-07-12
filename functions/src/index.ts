@@ -8,8 +8,6 @@
  */
 
 import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
 
 // Re-export authApi so Firebase Functions can discover it
 export { authApi } from "./auth";
