@@ -77,6 +77,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 import { SplashEntry } from './components/SplashEntry';
 import { LandingPage } from './components/LandingPage';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 
 const AppRoutes = () => {
   const { user, setupComplete, setSetupComplete } = useAuth();
@@ -87,8 +88,9 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public landing page — no auth required — satisfies Google OAuth branding verification */}
+      {/* Public routes — no auth required */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
