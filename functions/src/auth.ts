@@ -205,7 +205,7 @@ export const authApi = onRequest(
     region: "us-central1",
     timeoutSeconds: 30,
     memory: "256MiB",
-    serviceAccount: "cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
+    serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
   },
   authApp
 );
