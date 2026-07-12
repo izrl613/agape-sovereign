@@ -24,7 +24,7 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
-    "firebase": "^12.15.0",
+    "firebase": "^12.16.0",
     "firebase-admin": "^14.1.0",
     "framer-motion": "latest",
     "git": "^0.1.5",
