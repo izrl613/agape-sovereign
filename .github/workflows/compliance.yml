@@ -46,12 +46,17 @@ jobs:
 
       - name: Check for .env files committed
         run: |
-          if git ls-files | grep -qE '(\.env$|\.env\.|service[-_]account.*\.json$|credentials\.json$)'; then
-            echo "::error::Credential file detected in tracked files. Remove immediately."
-            git ls-files | grep -E '(\.env$|\.env\.|service[-_]account.*\.json$|credentials\.json$)'
+          # Exclude intentionally tracked template/example files (.env.example, .env.sample, .env.template)
+          VIOLATIONS=$(git ls-files \
+            | grep -E '(\.env$|\.env\.[^.]+$|service[-_]account.*\.json$|credentials\.json$)' \
+            | grep -vE '(\.env\.example$|\.env\.sample$|\.env\.template$|\.env\.test$|\.env\.ci$)' \
+            || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Real credential file(s) detected in tracked files. Remove immediately."
+            echo "$VIOLATIONS"
             exit 1
           fi
-          echo "No credential files found in repo."
+          echo "No credential files found in repo (template files excluded)."
 
   # ----------------------------------------------------------
   # 2. Dependency Vulnerability Scan
