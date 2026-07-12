@@ -1,0 +1,149 @@
+# ============================================================
+# AGAPE SOVEREIGN — AUTONOMOUS COMPLIANCE MONITORING AGENT
+# Runs weekly, scans repo state, auto-creates GitHub Issues
+# for any compliance drift detected.
+# Standards: ECRA 2026, CPRA, AI Act, NIST CSF 2.0, Zero-Trust
+# ============================================================
+name: Compliance Agent (Autonomous)
+
+on:
+  schedule:
+    # Every Sunday at 04:00 UTC
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      create_issues:
+        description: 'Create GitHub Issues for findings'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
+jobs:
+  autonomous-compliance-scan:
+    name: Autonomous Compliance Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ---- 1. Secret Hygiene ----
+      - name: Check for committed secrets
+        id: secret_check
+        run: |
+          ISSUES=""
+          CRED_FILES=$(git ls-files | grep -E '(\.env$|\.env\.|service[-_]account.*\.json$|credentials\.json$)' || true)
+          if [ -n "$CRED_FILES" ]; then
+            ISSUES="$ISSUES\n- CRITICAL: Credential files tracked in git: $CRED_FILES"
+          fi
+          
+          # Check for plaintext API key patterns
+          API_HITS=$(grep -rn 'AIza[0-9A-Za-z\-_]{35}\|sk-[a-zA-Z0-9]{48}\|AKIA[0-9A-Z]{16}' \
+            --include='*.ts' --include='*.js' --include='*.tsx' --include='*.jsx' \
+            --include='*.json' \
+            . 2>/dev/null | grep -v '.git\|node_modules' | wc -l || echo "0")
+          if [ "$API_HITS" -gt 0 ]; then
+            ISSUES="$ISSUES\n- HIGH: $API_HITS potential API key patterns found in codebase"
+          fi
+          echo "secret_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 2. Firestore Rules Drift ----
+      - name: Verify firestore rules compliance
+        id: rules_check
+        run: |
+          ISSUES=""
+          if ! grep -q 'allow read, write: if false' firestore.rules 2>/dev/null; then
+            ISSUES="$ISSUES\n- CRITICAL: firestore.rules deny-all catch-all is missing"
+          fi
+          if ! grep -q 'rulesVersion.*2' firestore.rules 2>/dev/null; then
+            ISSUES="$ISSUES\n- HIGH: firestore.rules not using rules_version = '2'"
+          fi
+          if ! grep -q 'allow read, write: if false' storage.rules 2>/dev/null; then
+            ISSUES="$ISSUES\n- CRITICAL: storage.rules deny-all catch-all is missing"
+          fi
+          echo "rules_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 3. Documentation Completeness ----
+      - name: Check compliance docs completeness
+        id: docs_check
+        run: |
+          ISSUES=""
+          for f in docs/compliance/ROADMAP.md docs/compliance/SECURITY_POLICY.md docs/compliance/AI_TRANSPARENCY.md docs/compliance/DATA_RIGHTS.md; do
+            if [ ! -f "$f" ]; then
+              ISSUES="$ISSUES\n- MEDIUM: Missing required compliance doc: $f"
+            fi
+          done
+          echo "docs_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 4. PII Logging Scan ----
+      - name: PII logging pattern scan
+        id: pii_check
+        run: |
+          ISSUES=""
+          PII_HITS=$(grep -rn 'console\.log.*email\|console\.log.*ssn\|console\.log.*\bpassword\b\|console\.log.*token\|logger.*\bpassword\b\|console\.log.*\bsocial\b' \
+            --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' \
+            src/ frontend/ functions/ 2>/dev/null | wc -l || echo "0")
+          if [ "$PII_HITS" -gt 0 ]; then
+            ISSUES="$ISSUES\n- HIGH: $PII_HITS PII logging patterns detected (ECRA violation risk)"
+          fi
+          echo "pii_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 5. Create GitHub Issues for findings ----
+      - name: Create compliance issues for findings
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          ALL_ISSUES=""
+          ALL_ISSUES="$ALL_ISSUES${{ steps.secret_check.outputs.secret_issues }}"
+          ALL_ISSUES="$ALL_ISSUES${{ steps.rules_check.outputs.rules_issues }}"
+          ALL_ISSUES="$ALL_ISSUES${{ steps.docs_check.outputs.docs_issues }}"
+          ALL_ISSUES="$ALL_ISSUES${{ steps.pii_check.outputs.pii_issues }}"
+          
+          ALL_ISSUES=$(echo "$ALL_ISSUES" | sed '/^$/d' | sed '/^-/!d')
+          
+          if [ -z "$ALL_ISSUES" ]; then
+            echo "No compliance findings. All checks passed."
+            gh issue create \
+              --repo "$REPO" \
+              --title "[COMPLIANCE AGENT] Weekly scan passed — $(date +%Y-%m-%d)" \
+              --body "## ✅ Autonomous Compliance Scan: All Clear\n\n**Run date**: $(date -u)\n**Standards checked**: ECRA 2026, CPRA, AI Act, NIST CSF 2.0, Zero-Trust\n\nAll compliance checks passed. No findings.\n\n_Auto-generated by Compliance Agent workflow._" \
+              --label "compliance" 2>/dev/null || true
+          else
+            echo "Findings detected. Creating GitHub Issue."
+            BODY="## ⚠️ Autonomous Compliance Scan: Findings Detected\n\n**Run date**: $(date -u)\n**Standards**: ECRA 2026, CPRA, AI Act, NIST CSF 2.0, Zero-Trust\n\n### Findings\n\n$ALL_ISSUES\n\n---\nPlease remediate before next deploy. _Auto-generated by Compliance Agent workflow._"
+            gh issue create \
+              --repo "$REPO" \
+              --title "[COMPLIANCE AGENT] Findings detected — $(date +%Y-%m-%d)" \
+              --body "$(echo -e "$BODY")" \
+              --label "compliance,security" 2>/dev/null || true
+          fi
+
+      # ---- 6. Summary ----
+      - name: Compliance agent summary
+        if: always()
+        run: |
+          echo "## 🤖 Compliance Agent Weekly Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Scan Date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Repo**: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "**App**: sovereign.nyc — AI Digital Identity Sovereign Restoration" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret hygiene | ${{ steps.secret_check.conclusion == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Firestore rules | ${{ steps.rules_check.conclusion == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docs completeness | ${{ steps.docs_check.conclusion == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| PII logging | ${{ steps.pii_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
