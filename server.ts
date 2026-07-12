@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
-import admin from "firebase-admin";
+import * as admin from "firebase-admin";
 import cookieParser from "cookie-parser";
 import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";

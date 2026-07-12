@@ -91,7 +91,27 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "functions"
+        "functions",
+        "gemma-chat-public",
+        "google-cloud-sdk",
+        "architect-ai",
+        "architectai",
+        "frontend",
+        "backend",
+        "dist",
+        "public",
+        "docs",
+        ".github",
+        ".vscode",
+        ".agents",
+        ".firebase",
+        "scripts",
+        "dataconnect",
+        ".DS_Store",
+        "*.mp4",
+        "*.zip",
+        "*.tar",
+        "*.tar.gz"
       ],
       "alwaysDeployFromSource": true
     }
