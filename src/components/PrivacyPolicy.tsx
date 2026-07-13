@@ -1,164 +1,183 @@
 import React from 'react';
-import { NEON, NeonText } from './UI';
-import { motion } from 'framer-motion';
-import { Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
-export const PrivacyPolicy = () => {
-  return (
-    <div style={{ minHeight: '100vh', background: NEON.bg, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-      {/* Top gradient bar */}
-      <div style={{ height: 3, background: 'linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)', flexShrink: 0 }} />
+const NEON_BLUE = '#00D4FF';
 
-      {/* Animated grid background */}
-      <div style={{ position: 'absolute', inset: 0, backgroundImage: `linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)`, backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div style={{ marginBottom: 36 }}>
+    <h2 style={{ fontSize: 18, fontWeight: 700, color: NEON_BLUE, marginBottom: 12, borderBottom: '1px solid rgba(0,212,255,0.15)', paddingBottom: 8 }}>
+      {title}
+    </h2>
+    {children}
+  </div>
+);
 
-      {/* Header */}
-      <header style={{ padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,212,255,0.1)', position: 'relative', zIndex: 1 }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
-          <svg viewBox="0 0 32 32" width="28" style={{ filter: `drop-shadow(0 0 6px ${NEON.blue})` }}>
-            <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" fill="none" stroke={NEON.blue} strokeWidth="1.5" />
-            <polygon points="16,8 24,12 24,20 16,24 8,20 8,12" fill="none" stroke={NEON.magenta} strokeWidth="0.8" opacity="0.7" />
-            <text x="16" y="20" textAnchor="middle" fill={NEON.blue} fontFamily="Orbitron" fontSize="8" fontWeight="900">AI</text>
-          </svg>
-          <div>
-            <div style={{ fontFamily: "'Orbitron', monospace", fontSize: '0.7rem', fontWeight: 700, color: NEON.blue, letterSpacing: '0.1em' }}>AGAPE SOVEREIGN</div>
-            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>ARCHITECT AI 2026</div>
-          </div>
-        </Link>
-        <Link to="/login" style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.75rem', color: NEON.blue, textDecoration: 'none', border: `1px solid ${NEON.blue}44`, padding: '6px 14px', borderRadius: 6 }}>
-          ← Back to App
-        </Link>
-      </header>
+const P = ({ children }: { children: React.ReactNode }) => (
+  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: '0 0 12px' }}>{children}</p>
+);
 
-      {/* Content */}
-      <main style={{ flex: 1, display: 'flex', justifyContent: 'center', padding: '48px 24px', position: 'relative', zIndex: 1 }}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          style={{ maxWidth: 820, width: '100%' }}
-        >
-          {/* Title */}
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <Shield style={{ color: NEON.blue, width: 40, height: 40 }} />
-            </div>
-            <NeonText color={NEON.blue} size="2rem" weight={900}>Privacy Policy</NeonText>
-            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.7rem', color: NEON.textMuted, marginTop: 8, letterSpacing: '0.1em' }}>
-              AGAPE SOVEREIGN AI · Effective Date: January 1, 2026 · Last Updated: July 2026
-            </div>
-            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #00D4FF, transparent)', marginTop: 24, opacity: 0.5 }} />
-          </div>
+const Li = ({ children }: { children: React.ReactNode }) => (
+  <li style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, marginBottom: 6 }}>{children}</li>
+);
 
-          {/* Sections */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            {[
-              {
-                title: '1. Overview',
-                body: `Agape Sovereign AI ("we," "us," or "our") operates the Agape Sovereign platform accessible at sovereign.nyc. This Privacy Policy explains how we collect, use, disclose, and protect your information when you use our Digital Identity Federated Footprint (DIFF) service.
+const Note = ({ children }: { children: React.ReactNode }) => (
+  <div style={{
+    background: 'rgba(0,212,255,0.06)',
+    border: '1px solid rgba(0,212,255,0.18)',
+    borderRadius: 8,
+    padding: '10px 14px',
+    fontSize: 13,
+    color: 'rgba(0,212,255,0.85)',
+    lineHeight: 1.6,
+    margin: '12px 0',
+  }}>
+    ℹ {children}
+  </div>
+);
 
-We are committed to zero-knowledge architecture — meaning your sensitive identity data is encrypted client-side before it ever leaves your device and is never readable by our servers.`,
-              },
-              {
-                title: '2. Information We Collect',
-                body: `Authentication Data: When you sign in with Google or a passkey, we receive your email address, display name, and profile photo from your identity provider. We do not receive or store your password.
+export const PrivacyPolicy = () => (
+  <div style={{ minHeight: '100vh', background: '#0B1020', color: '#fff', fontFamily: 'Inter, Roboto, Arial, sans-serif' }}>
+    {/* Nav strip */}
+    <nav style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '20px 48px', borderBottom: '1px solid rgba(0,212,255,0.1)',
+      backdropFilter: 'blur(8px)', background: 'rgba(11,16,32,0.85)',
+      position: 'sticky', top: 0, zIndex: 10,
+    }}>
+      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+        <svg viewBox="0 0 40 40" width={28} height={28} style={{ filter: `drop-shadow(0 0 6px ${NEON_BLUE})` }}>
+          <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke={NEON_BLUE} strokeWidth="1.5" />
+          <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke="#FF2E9F" strokeWidth="1" opacity="0.7" />
+          <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill="#FF6B00" fillOpacity="0.8" stroke="#FF6B00" strokeWidth="0.5" />
+        </svg>
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Agape Sovereign AI</span>
+      </a>
+      <a href="/" style={{ fontSize: 12, color: NEON_BLUE, textDecoration: 'none', letterSpacing: '0.1em' }}>← Home</a>
+    </nav>
 
-Module Data: The 16 DIFF identity vectors you enter (email addresses, social handles, device information, etc.) are encrypted client-side using AES-256-GCM with a key derived from your user ID. The encrypted ciphertext is stored in Firebase Firestore. We cannot decrypt this data.
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '64px 48px 100px' }}>
+      <div style={{ marginBottom: 48, textAlign: 'center' }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.25em', color: NEON_BLUE, fontFamily: 'monospace', marginBottom: 12 }}>
+          LEGAL
+        </div>
+        <h1 style={{ fontSize: 42, fontWeight: 900, margin: '0 0 16px', color: '#fff' }}>Privacy Policy</h1>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+          Effective Date: March 11, 2026 · Version 1.0 · Platform: sovereign.nyc
+        </p>
+        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Contact: <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a></p>
+      </div>
 
-Usage Analytics: We collect anonymous usage events (e.g., module completion, scan initiation) through Firebase Analytics to improve the service. No personally identifiable information is attached to these events.
+      <P>This Privacy Policy applies to all users of the Agape Sovereign – Architect AI platform. By using the platform, you agree to the data practices described below.</P>
 
-Audit Logs: When findings are recorded (NUKED, KNOXED, MONITORED statuses), a timestamped audit log entry is stored in your Firestore subcollection for a 2-year compliance retention period.`,
-              },
-              {
-                title: '3. How We Use Your Information',
-                body: `We use your information solely to provide and improve the Agape Sovereign service:
-• To authenticate you and maintain your session
-• To store and retrieve your encrypted identity vectors
-• To calculate your Sovereign Score based on your DIFF analysis
-• To generate your Identity Audit PDF report (processed entirely client-side)
-• To comply with applicable privacy regulations (ECRA 2026, GDPR, CCPA)
+      <Section title="1. Our Privacy Philosophy">
+        <P>Agape Sovereign – Architect AI ("the Platform," "we," "us," or "our") is a privacy-first, security-intelligence web application operated by Israel David, doing business as Agape Sovereign, at sovereign.nyc. The Platform exists to help you understand, protect, and reclaim every dimension of your Digital Identity Federated Footprint (DIFF) — not to profit from it.</P>
+        <P>We operate under a zero-knowledge architecture:</P>
+        <ul style={{ margin: '0 0 12px', paddingLeft: 20 }}>
+          <Li>Your sensitive identity data is encrypted client-side before it ever leaves your device.</Li>
+          <Li>We cannot read, access, sell, share, or monetize the content you enter into the Platform.</Li>
+          <Li>No advertising is served. No behavioral profiling is performed.</Li>
+          <Li>The Platform administrator has access only to anonymized operational telemetry — never to your personal identity data.</Li>
+        </ul>
+        <Note>In Plain English: We cannot see what you put in. It is encrypted on your device before it is ever stored anywhere. Nobody — not us, not Google, not Apple — can read your private identity data.</Note>
+      </Section>
 
-We do not sell, rent, or broker your data to any third party. We do not use your data for advertising.`,
-              },
-              {
-                title: '4. Data Storage and Security',
-                body: `All identity vector data is encrypted with AES-256-GCM before transmission. Encryption keys are derived from your authenticated user ID and are never transmitted to or stored on our servers.
+      <Section title="2. Who We Are">
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <Li><strong>Operator:</strong> Israel David, operating as Agape Sovereign</Li>
+          <Li><strong>Platform URL:</strong> https://sovereign.nyc</Li>
+          <Li><strong>GitHub:</strong> https://github.com/izrl613/agape-sovereign</Li>
+          <Li><strong>Contact:</strong> <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a></Li>
+        </ul>
+      </Section>
 
-Data is stored on Google Firebase (Firestore) with strict security rules that only permit access by your authenticated user account. Firebase is SOC 2 Type II certified and GDPR compliant.
+      <Section title="3. Information We Collect">
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '0 0 8px' }}>3.1 Information You Provide Directly</h3>
+        <P>When you create an account and use the Platform's sixteen (16) identity vector modules, you may provide email addresses, social media usernames, device information, file metadata patterns, security posture information, and answers to identity-mapping questions. All data is processed locally and encrypted using SHA-256 cryptographic standards before transmission or storage.</P>
+        <Note>In Plain English: The information you type into each module is locked with a unique cryptographic key — like a personal lock on a safe — before it goes anywhere.</Note>
 
-Audit logs are retained for 2 years per the ECRA 2026 Standard and then automatically purged.`,
-              },
-              {
-                title: '5. Third-Party Services',
-                body: `We use the following third-party services:
-• Google Firebase (Authentication, Firestore, Hosting, Cloud Functions) — Google Privacy Policy: https://policies.google.com/privacy
-• Google Analytics (Firebase Analytics) — anonymous usage tracking
-• Google Sign-In — OAuth 2.0 identity delegation
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.2 Google OAuth Authentication Data</h3>
+        <P>When you sign in using Google OAuth, we receive only: your display name, your email address (used solely for account identification), and a unique provider-issued user identifier (UID). This authentication data is never linked to or merged with the identity intelligence data you enter in the Platform's DIFF modules.</P>
+        <Note>In Plain English: When you sign in with Google, we receive only your name, email, and a unique ID. We cannot see your Gmail, Drive, or any other Google data.</Note>
 
-We integrate optionally with privacy protection services (Polymer, Unosecur, Nymiz, PrivacyProctor, Prisma AIRS) as part of the 5-Pillar Shield Platform. These integrations only activate with your explicit consent and do not receive your raw identity data.`,
-              },
-              {
-                title: '6. Your Rights',
-                body: `You have the right to:
-• Access your data: All your data is visible within the DIFF modules in the app
-• Export your data: Use the Identity Audit PDF Compiler to export a full encrypted report
-• Delete your data: Contact us at privacy@sovereign.nyc to request account and data deletion
-• Opt out of analytics: Disable Firebase Analytics collection in your browser settings
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.3 Google OAuth Scopes Used</h3>
+        <P>The Platform requests only the minimum OAuth scopes required to authenticate users:</P>
+        <ul style={{ margin: '0 0 12px', paddingLeft: 20 }}>
+          <Li><code style={{ color: NEON_BLUE }}>openid</code> — confirms your identity with Google.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>email</code> — retrieves your email address for account identification.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>profile</code> — retrieves your basic name and profile picture for your account display.</Li>
+        </ul>
+        <P>We do not request access to Gmail, Google Drive, Google Contacts, Google Calendar, or any other Google service.</P>
+        <Note>In Plain English: We ask Google for only three things — who you are, your email, and your name. We do not access any of your other Google account data.</Note>
 
-California residents have additional rights under CCPA. EU residents have additional rights under GDPR. Contact us to exercise any of these rights.`,
-              },
-              {
-                title: '7. Children\'s Privacy',
-                body: `Agape Sovereign AI is not directed to individuals under the age of 13. We do not knowingly collect personal information from children. If you believe we have inadvertently collected such information, please contact us immediately at privacy@sovereign.nyc.`,
-              },
-              {
-                title: '8. Changes to This Policy',
-                body: `We may update this Privacy Policy from time to time. We will notify you of material changes by updating the "Last Updated" date at the top of this page and, where appropriate, by sending an in-app notification. Your continued use of the service after changes constitutes acceptance of the updated policy.`,
-              },
-              {
-                title: '9. Contact Us',
-                body: `If you have questions about this Privacy Policy or your data, contact us at:
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.4 WebAuthn Passkey Data</h3>
+        <P>After initial sign-in, the Platform creates a WebAuthn passkey bound to your physical device. We store only the public-key component of your passkey credential. The private key never leaves your device and is never transmitted to our servers.</P>
 
-Agape Sovereign AI
-Email: privacy@sovereign.nyc
-Website: https://sovereign.nyc`,
-              },
-            ].map((section, i) => (
-              <div
-                key={i}
-                style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(0,212,255,0.08)',
-                  borderRadius: 12,
-                  padding: '24px 28px',
-                }}
-              >
-                <h2 style={{ fontFamily: "'Orbitron', monospace", fontSize: '0.9rem', fontWeight: 700, color: NEON.blue, marginBottom: 12, letterSpacing: '0.05em' }}>
-                  {section.title}
-                </h2>
-                <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: '0.88rem', color: 'rgba(255,255,255,0.75)', lineHeight: 1.75, whiteSpace: 'pre-line' }}>
-                  {section.body}
-                </div>
-              </div>
-            ))}
-          </div>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.5 Operational and Technical Data</h3>
+        <P>To maintain security, performance, and integrity, we collect limited technical data: authentication event logs, Firebase usage statistics (anonymized and aggregated), cloud infrastructure health metrics, and application error reports (no personal data included). This operational data is retained for no longer than ninety (90) days unless required by applicable law.</P>
+        <Note>In Plain English: We keep basic system logs to make sure the system works and is not being abused. These logs do not contain your personal identity information.</Note>
 
-          {/* Footer */}
-          <div style={{ marginTop: 48, textAlign: 'center', paddingTop: 24, borderTop: '1px solid rgba(0,212,255,0.1)' }}>
-            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.65rem', color: NEON.textMuted }}>
-              © 2026 Agape Sovereign AI · sovereign.nyc · privacy@sovereign.nyc
-            </div>
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 24 }}>
-              <Link to="/login" style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.65rem', color: NEON.blue, textDecoration: 'none' }}>Home</Link>
-              <a href="mailto:privacy@sovereign.nyc" style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.65rem', color: NEON.textMuted, textDecoration: 'none' }}>Contact</a>
-            </div>
-          </div>
-        </motion.div>
-      </main>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.6 Information We Do Not Collect</h3>
+        <P>We do not collect: financial information, government IDs, biometric raw data, health records, location data beyond what is technically incidental to IP-based routing, third-party social account contents, or any data beyond what is described in this Policy.</P>
+      </Section>
 
-      {/* Bottom gradient bar */}
-      <div style={{ height: 3, background: 'linear-gradient(135deg, #FF7A18 0%, #00D4FF 50%, #FF2E9F 100%)', flexShrink: 0 }} />
+      <Section title="4. How We Use Your Information">
+        <P>We use the information we collect exclusively to: provide, maintain, and improve the Platform; authenticate your identity and maintain your session; send security and service-related communications; comply with legal obligations; and protect the security and integrity of the Platform.</P>
+        <P>We do not use your information for advertising, profiling, data brokering, or sale to third parties.</P>
+      </Section>
+
+      <Section title="5. Data Storage and Security">
+        <P>All sensitive identity data you enter is encrypted client-side using AES-GCM 256-bit encryption before transmission. Encrypted data is stored in Google Firebase Firestore under security rules that prevent unauthorized access. We use Firebase Security Rules, Google Cloud IAM, and industry-standard HTTPS/TLS for all data in transit.</P>
+        <Note>In Plain English: Your data is locked before it leaves your device. Even if someone broke into our servers, they would only find encrypted data they cannot read.</Note>
+      </Section>
+
+      <Section title="6. Data Retention">
+        <P>Encrypted identity data you store in DIFF modules is retained until you delete your account or request deletion. Authentication tokens and session data are retained for the duration of your session plus a short rolling window for security purposes. Operational logs are retained for no longer than 90 days. You may request complete deletion of your data at any time by emailing <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a>.</P>
+      </Section>
+
+      <Section title="7. Third-Party Services">
+        <P>The Platform uses the following third-party services subject to their own privacy policies:</P>
+        <ul style={{ margin: '0 0 12px', paddingLeft: 20 }}>
+          <Li><strong>Google Firebase / Google Cloud Platform</strong> — hosting, authentication, and database infrastructure.</Li>
+          <Li><strong>Google OAuth 2.0</strong> — user authentication only.</Li>
+        </ul>
+        <P>We do not share your personal data with any other third parties. We do not use third-party analytics, advertising networks, or tracking pixels.</P>
+      </Section>
+
+      <Section title="8. Your Rights">
+        <P>You have the right to: access the personal data we hold about you; request correction of inaccurate data; request deletion of your account and associated data; withdraw consent for processing at any time; and file a complaint with your applicable data protection authority.</P>
+        <P>To exercise any of these rights, contact us at <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a>.</P>
+      </Section>
+
+      <Section title="9. Children's Privacy">
+        <P>The Platform is not directed to children under the age of 13. We do not knowingly collect personal data from children under 13. If you believe we have inadvertently collected such data, please contact us immediately at <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a>.</P>
+      </Section>
+
+      <Section title="10. Changes to This Policy">
+        <P>We may update this Privacy Policy from time to time. Material changes will be communicated via email or a prominent notice on the Platform. Your continued use of the Platform after the effective date of any update constitutes your acceptance of the revised Policy.</P>
+      </Section>
+
+      <Section title="11. Contact Us">
+        <P>For questions, requests, or concerns about this Privacy Policy or our data practices:</P>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          <Li><strong>Email:</strong> <a href="mailto:agape@sovereign.nyc" style={{ color: NEON_BLUE }}>agape@sovereign.nyc</a></Li>
+          <Li><strong>Platform:</strong> <a href="https://sovereign.nyc" style={{ color: NEON_BLUE }}>https://sovereign.nyc</a></Li>
+        </ul>
+      </Section>
     </div>
-  );
-};
+
+    {/* Footer */}
+    <footer style={{
+      borderTop: '1px solid rgba(255,255,255,0.06)',
+      padding: '24px 48px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      flexWrap: 'wrap', gap: 12,
+    }}>
+      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
+        © {new Date().getFullYear()} Agape Sovereign AI · sovereign.nyc
+      </div>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <a href="/privacy" style={{ fontSize: 12, color: NEON_BLUE, textDecoration: 'none' }}>Privacy Policy</a>
+        <a href="/terms" style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>Terms of Service</a>
+      </div>
+    </footer>
+  </div>
+);
