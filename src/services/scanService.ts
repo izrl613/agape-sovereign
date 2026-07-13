@@ -1,10 +1,7 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "../firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
 import { logScanStarted, logUserEvent, logExposureNuked } from "./analyticsService";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || 'MISSING_API_KEY' });
 
 export interface ScanFinding {
   id?: string;
@@ -317,43 +314,52 @@ const generateFinding = async (module: string, email: string) => {
 
     let retryCount = 0;
     const maxRetries = 2;
-    let response;
+    let responseText = "";
+
+    // Connect to the local Ollama instance running gemma4:e2b
+    const OLLAMA_URL = "http://localhost:11434/api/chat";
 
     while (retryCount <= maxRetries) {
       try {
-        response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".
-          ${moduleSpecificInstructions}
-          Return the result in JSON format with the following fields:
-          - title: A short description of the finding.
-          - status: One of "NUKED", "KNOXED", "MONITORED".
-          - details: A more detailed explanation of the finding and recommended action.
-          
-          Make it sound technical and professional, fitting for the "Architect AI" persona.`,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                status: { type: Type.STRING },
-                details: { type: Type.STRING }
+        const res = await fetch(OLLAMA_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gemma4:e2b",
+            stream: false,
+            format: "json",
+            messages: [
+              {
+                role: "system",
+                content: "You are Architect AI. Generate a realistic digital identity scan finding for the requested module. Output MUST be valid JSON with 'title', 'status', and 'details' fields. The 'status' must be one of 'NUKED', 'KNOXED', or 'MONITORED'. Make it sound technical and professional, fitting for the Architect AI persona. Do not wrap in markdown code blocks."
               },
-              required: ["title", "status", "details"]
+              {
+                role: "user",
+                content: `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".\n${moduleSpecificInstructions}`
+              }
+            ],
+            options: {
+              temperature: 0.6
             }
-          }
+          })
         });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        responseText = data.message?.content || "{}";
         break; // Success, break out of retry loop
       } catch (err) {
         retryCount++;
         if (retryCount > maxRetries) throw err;
-        console.warn(`Gemini API 500 error, retrying... (${retryCount}/${maxRetries})`);
+        console.warn(`Local Ollama error, retrying... (${retryCount}/${maxRetries})`, err);
         await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
     }
 
-    const result = JSON.parse(response?.text || "{}");
+    const result = JSON.parse(responseText || "{}");
     return result;
   } catch (error) {
     console.error("Error generating finding:", error);
