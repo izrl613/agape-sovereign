@@ -1,0 +1,53 @@
+# ============================================================
+# Gitleaks Configuration — agape-sovereign / sovereign.nyc
+# 2026 Compliance: ECRA, CPRA, NIST CSF 2.0
+# ============================================================
+
+title = "agape-sovereign gitleaks config"
+
+[allowlist]
+  description = "Project-level allowlist for intentionally tracked non-secret files"
+
+  # Template / example env files (no real secrets, just structure documentation)
+  paths = [
+    ".env.example",
+    ".env.sample",
+    ".env.template",
+    ".env.test",
+    ".env.ci",
+  ]
+
+  # Known non-credential config files that may trip generic rules
+  regexes = [
+    # Firebase public config (non-secret API keys for client-side SDK)
+    '''(?i)firebase-config\.json''',
+    # App hosting / blueprint manifests
+    '''(?i)firebase-blueprint\.json''',
+    '''(?i)firebase-applet-config\.json''',
+    # GCloud non-secret policy files
+    '''(?i)cloudbuild_service_account_policy\.yaml''',
+    # IAM structure definition (not a live credential dump)
+    '''(?i)iam\.json''',
+  ]
+
+  # Commits that pre-date compliance hardening (known-clean historical commits)
+  # Add commit SHAs here if gitleaks flags old commits that have already been reviewed
+  commits = []
+
+# Suppress specific rule IDs that produce false positives for public Firebase API keys
+# Firebase Web API keys are NOT secrets — they are public client identifiers
+# See: https://firebase.google.com/docs/projects/api-keys
+[[rules]]
+  id = "firebase-api-key-allowlist"
+  description = "Firebase client-side API keys are public identifiers, not secrets"
+  regex = '''(?i)AIza[0-9A-Za-z\-_]{35}'''
+  allowlist.regexes = [
+    '''(?i)firebase[-_]?config''',
+    '''(?i)firebase[-_]?applet''',
+    '''(?i)firebase[-_]?blueprint''',
+    '''(?i)\.env\.example''',
+    '''(?i)\.env\.sample''',
+    '''(?i)\.env\.template''',
+    '''(?i)VITE_FIREBASE_API_KEY''',
+    '''(?i)REACT_APP_FIREBASE_API_KEY''',
+  ]

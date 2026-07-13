@@ -78,6 +78,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 import { SplashEntry } from './components/SplashEntry';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { TermsOfService } from './components/TermsOfService';
 
 const AppRoutes = () => {
   const { user, setupComplete, setSetupComplete } = useAuth();
@@ -91,6 +92,10 @@ const AppRoutes = () => {
       {/* Public routes — no auth required */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+
+      {/* Public legal pages — no auth required */}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />

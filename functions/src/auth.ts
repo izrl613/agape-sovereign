@@ -23,6 +23,9 @@ const authApp = express();
 authApp.use(express.json());
 authApp.use(cookieParser(COOKIE_SECRET));
 
+// Router used at both /  (direct Cloud Functions URL) and /api/auth (Firebase Hosting rewrite)
+const router = express.Router();
+
 async function ensureUserExists(email: string): Promise<{ userId: string; userEmail: string }> {
   const usersRef = db.collection("users");
   const userSnap = await usersRef.where("email", "==", email).limit(1).get();
@@ -42,8 +45,8 @@ function getRpId(req: Request): string {
   return host === "127.0.0.1" ? "localhost" : host;
 }
 
-// POST /api/auth/register-options
-authApp.post("/register-options", async (req: Request, res: Response) => {
+// POST /register-options  (also served at /api/auth/register-options via Hosting rewrite)
+router.post("/register-options", async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email) { res.status(400).json({ error: "Missing user email" }); return; }
@@ -81,8 +84,8 @@ authApp.post("/register-options", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/verify-registration
-authApp.post("/verify-registration", async (req: Request, res: Response) => {
+// POST /verify-registration
+router.post("/verify-registration", async (req: Request, res: Response) => {
   try {
     const { body } = req;
     const expectedChallenge = req.signedCookies["registration-challenge"];
@@ -117,8 +120,8 @@ authApp.post("/verify-registration", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/login-options
-authApp.post("/login-options", async (req: Request, res: Response) => {
+// POST /login-options
+router.post("/login-options", async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
     if (!email) { res.status(400).json({ error: "Missing email" }); return; }
@@ -151,8 +154,8 @@ authApp.post("/login-options", async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/verify-login
-authApp.post("/verify-login", async (req: Request, res: Response) => {
+// POST /verify-login
+router.post("/verify-login", async (req: Request, res: Response) => {
   try {
     const { body } = req;
     const expectedChallenge = req.signedCookies["authentication-challenge"];
@@ -193,7 +196,16 @@ authApp.post("/verify-login", async (req: Request, res: Response) => {
   }
 });
 
+// Mount router at root (direct function URL) and at /api/auth (Firebase Hosting rewrite prefix)
+authApp.use("/", router);
+authApp.use("/api/auth", router);
+
 export const authApi = onRequest(
-  { region: "us-central1", timeoutSeconds: 30, memory: "256MiB" },
+  {
+    region: "us-central1",
+    timeoutSeconds: 30,
+    memory: "256MiB",
+    serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+  },
   authApp
 );

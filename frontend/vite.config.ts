@@ -15,6 +15,18 @@ export default defineConfig(({ mode }) => {
           '/api-proxy': 'http://localhost:5000',
           '/api': 'http://localhost:5000',
           '/ws-proxy': {target: 'ws://localhost:5000', ws: true},
+          // Architect AI MCP server — /api/mcp proxied locally (mirrors Firebase Hosting rewrite in prod)
+          '/api/mcp': {
+            target: process.env.ARCHITECT_AI_DEV_URL ?? 'http://127.0.0.1:3001',
+            rewrite: (path: string) => path.replace(/^\/api\/mcp/, ''),
+            changeOrigin: true,
+          },
+          // Legacy /mcp path kept for backwards compatibility during local dev
+          '/mcp': {
+            target: process.env.ARCHITECT_AI_DEV_URL ?? 'http://127.0.0.1:3001',
+            rewrite: (path: string) => path.replace(/^\/mcp/, ''),
+            changeOrigin: false,
+          },
         },
       },
       plugins: react(),
