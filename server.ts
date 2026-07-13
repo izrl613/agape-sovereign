@@ -4,7 +4,6 @@ import { fileURLToPath } from "url";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import cookieParser from "cookie-parser";
-import { GoogleGenAI } from "@google/genai";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
 import { GoogleAuth } from "google-auth-library";
 import rateLimit from "express-rate-limit";
@@ -280,16 +279,27 @@ async function startServer() {
   app.post("/api/architect", async (req, res) => {
     try {
       const { message, history = [] } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [...history, message],
-        config: { systemInstruction: ARCHITECT_SYSTEM_PROMPT }
+      const response = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gemma4:e2b",
+          stream: false,
+          messages: [
+            { role: "system", content: ARCHITECT_SYSTEM_PROMPT },
+            ...history.map((h: any) => ({
+              role: h.role === "user" ? "user" : "assistant",
+              content: h.parts?.[0]?.text || h.content || ""
+            })),
+            { role: "user", content: message.parts?.[0]?.text || message.content || "" }
+          ]
+        })
       });
-      res.json({ reply: response.text });
+      if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);
+      const data = await response.json();
+      res.json({ reply: data.message?.content || "" });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to generate AI response" });
     }
   });
@@ -297,30 +307,43 @@ async function startServer() {
   app.post("/api/erasure/initiate", async (req, res) => {
     try {
       const { brokerName, userEmail, userName, userState } = req.body;
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY is not set" });
-      const ai = new GoogleGenAI({ apiKey });
       const prompt = `You are an automated privacy agent representing ${userName}. Generate a legally binding data deletion request under CCPA, GDPR, and FCRA regulations addressed to the data broker "${brokerName}".
       Return ONLY a JSON object with this exact format, nothing else:
       {
         "subject": "URGENT LEGAL: CCPA/GDPR Data Deletion Request - ${userName}",
         "body": "The full formal email body..."
-      }
-      Do not include markdown formatting or backticks around the JSON.`;
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [prompt],
-        config: { temperature: 0.2 }
+      }`;
+      
+      const response = await fetch("http://localhost:11434/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gemma4:e2b",
+          stream: false,
+          format: "json",
+          messages: [
+            { role: "system", content: "You are an automated privacy agent. Output must be a valid JSON object matching the requested schema. Do not output markdown backticks." },
+            { role: "user", content: prompt }
+          ],
+          options: {
+            temperature: 0.2
+          }
+        })
       });
+
+      if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);
+      const data = await response.json();
+      const text = data.message?.content || "{}";
+
       try {
-        const text = response.text || "{}";
         const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
         const result = JSON.parse(cleaned);
         res.json(result);
       } catch (parseError) {
-        res.status(500).json({ error: "Failed to generate properly formatted legal request." });
+        res.status(500).json({ error: "Failed to parse AI JSON response", text });
       }
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Failed to generate erasure request" });
     }
   });

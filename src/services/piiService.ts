@@ -11,7 +11,6 @@
  *  - Scan history persisted to Firestore (collection: pii_scans)
  */
 
-import { GoogleGenAI } from '@google/genai';
 import { db } from '../firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
 
@@ -137,24 +136,37 @@ export function anonymizePii(text: string, technique: AnonymizeTechnique): PiiSc
 
 export async function detectPiiWithAi(
   text: string,
-  technique: AnonymizeTechnique = 'MASKING',
-  apiKey?: string
+  technique: AnonymizeTechnique = 'MASKING'
 ): Promise<PiiScanResult> {
   // Start with regex scan as baseline
   const baseResult = anonymizePii(text, technique);
 
-  if (!apiKey && !import.meta.env.VITE_GEMINI_API_KEY) return baseResult;
-
   try {
-    const ai = new GoogleGenAI({ apiKey: apiKey ?? import.meta.env.VITE_GEMINI_API_KEY });
     const prompt = `You are a PII detection engine. Identify ALL personal information in the following text and return a JSON array of objects with fields: type (NAME|EMAIL|PHONE|SSN|DOB|ADDRESS|IP|ID|CARD), original (exact match), confidence (0.0-1.0). Only return valid JSON, no prose.\n\nText:\n${text}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
+    const res = await fetch("http://localhost:11434/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gemma4:e2b",
+        stream: false,
+        format: "json",
+        messages: [
+          {
+            role: "system",
+            content: "You are a PII detection engine. Identify ALL personal information in the user text and return a JSON array of objects. Conforming to: [ { 'type': 'NAME'|'EMAIL'|'PHONE'|'SSN'|'DOB'|'ADDRESS'|'IP'|'ID'|'CARD', 'original': string, 'confidence': number } ]. No markdown or extra prose."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      })
     });
 
-    const raw = response.text?.trim().replace(/^```json\n?/, '').replace(/\n?```$/, '') ?? '[]';
+    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
+    const data = await res.json();
+    const raw = data.message?.content?.trim() ?? '[]';
     const aiEntities: PiiEntity[] = JSON.parse(raw).map((e: Partial<PiiEntity>, i: number) => ({
       type: e.type ?? 'NAME',
       original: e.original ?? '',
