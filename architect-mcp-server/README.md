@@ -1,6 +1,6 @@
 # Architect AI — MCP Server
 
-Local MCP (Model Context Protocol) server that wraps **gemma4:e2b via Ollama** for the Agape Sovereign PWA.  
+Local MCP (Model Context Protocol) server that wraps **gemma4:e2b via Ollama** for the Agape Sovereign platform — both the PWA and the Android app (`com.agape.sovereign.ai`).  
 Runs on `http://127.0.0.1:3001` — fully offline, no external API calls.
 
 ## Quick Start
@@ -17,11 +17,25 @@ npm run dev             # terminal 2 — listens on :3001
 
 ## Endpoints
 
+### PWA (SSE/MCP)
+
 | Endpoint | Purpose |
 |---|---|
 | `GET /health` | Server + Ollama liveness check |
 | `GET /sse` | MCP SSE stream (connect here first) |
 | `POST /message?sessionId=<id>` | MCP JSON-RPC messages |
+
+### Android REST bridge
+
+Plain HTTP POST endpoints — consumed by `ArchitectMcpClient.kt` via OkHttp.  
+Android emulator reaches the host at `http://10.0.2.2:3001`.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/android/health` | GET | Health + Ollama status |
+| `/android/ask` | POST | General AI question `{ question, context? }` |
+| `/android/analyze_vector` | POST | Identity vector analysis `{ vector_id, vector_name, raw_data, sovereign_score? }` |
+| `/android/audit_recommendation` | POST | Audit finding fix `{ finding, severity, affected_vectors }` |
 
 ## MCP Tools
 
@@ -64,10 +78,15 @@ PWA (browser, localhost:5173 or installed PWA)
   └─► ArchitectMCPClient.ts  (SSE + POST JSON-RPC)
         └─► architect-mcp-server (:3001)   ← this package
               └─► Ollama (:11434) — gemma4:e2b (7.2 GB, local)
+
+Android app (com.agape.sovereign.ai)
+  └─► ArchitectMcpClient.kt  (OkHttp REST, /android/* endpoints)
+        └─► architect-mcp-server (:3001, reached via 10.0.2.2 on emulator)
+              └─► Ollama (:11434) — gemma4:e2b (runs on host)
 ```
 
 The service worker (`frontend/public/sw.js`) passes all `127.0.0.1:3001` and `127.0.0.1:11434` traffic directly to the network — no caching interference.  
-"Offline" means: offline from the internet. The local loop (`127.0.0.1`) always works as long as Ollama + this server are running.
+"Offline" means: offline from the internet. The local loop always works as long as Ollama + this server are running.
 
 ## Environment Variables
 
