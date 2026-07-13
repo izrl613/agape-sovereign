@@ -36,13 +36,6 @@
         }
       },
       {
-        "source": "/api/mcp/**",
-        "run": {
-          "serviceId": "architect-ai",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "/api/**",
         "run": {
           "serviceId": "agape-sovereign-server",
