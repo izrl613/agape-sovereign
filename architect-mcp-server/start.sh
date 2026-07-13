@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
-# Architect AI MCP Server — quick start
-# Ensures Ollama is serving gemma4:e2b, then starts the MCP server.
+# Architect AI MCP Server — local quick start
+# Ensures Ollama is serving gemma4:e2b, then starts the MCP server locally.
+#
+# For production (sovereign.nyc), deploy to Cloud Run instead:
+#   cd architect-mcp-server
+#   gcloud run deploy architect-ai \
+#     --source . \
+#     --region us-central1 \
+#     --project agape-sovereign \
+#     --set-env-vars OLLAMA_BASE_URL=<your-ollama-url>,ALLOWED_ORIGINS=https://sovereign.nyc \
+#     --allow-unauthenticated
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

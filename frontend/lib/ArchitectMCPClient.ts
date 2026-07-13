@@ -1,15 +1,16 @@
 /**
  * Architect AI — MCP Client for the Agape Sovereign PWA
  *
- * Connects to the local architect-mcp-server (http://127.0.0.1:3001)
- * via HTTP/SSE transport. Works fully offline as long as Ollama is running.
+ * In development: proxied through Vite → http://127.0.0.1:3001
+ * In production:  relative /api/mcp path → Cloud Run via Firebase Hosting rewrite
  *
  * Usage:
  *   const client = ArchitectMCPClient.getInstance();
  *   const answer = await client.ask("Is my email on any breach lists?");
  */
 
-const MCP_BASE_URL = "http://127.0.0.1:3001";
+// Relative path — works both locally (Vite dev proxy) and on sovereign.nyc (Firebase → Cloud Run)
+const MCP_BASE_URL = "/api/mcp";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -119,9 +120,11 @@ export class ArchitectMCPClient {
       });
 
       es.addEventListener("endpoint", (evt: MessageEvent) => {
-        // MCP SDK SSEServerTransport emits an "endpoint" event with the POST URL
+        // MCP SDK SSEServerTransport emits an "endpoint" event with the POST URL.
+        // Resolve relative to current origin so it works both locally and on sovereign.nyc.
         const postPath: string = evt.data;
-        const url = new URL(postPath, MCP_BASE_URL);
+        const base = typeof window !== "undefined" ? window.location.origin : "";
+        const url = new URL(postPath, base || MCP_BASE_URL);
         this.sessionId = url.searchParams.get("sessionId");
         this.initialized = true;
         resolve();
@@ -131,19 +134,19 @@ export class ArchitectMCPClient {
         if (!this.initialized) {
           reject(
             new Error(
-              "Architect AI MCP server is not reachable. Run: ollama serve && cd architect-mcp-server && npm run dev"
+              "Architect AI is not reachable. If running locally: ollama serve && cd architect-mcp-server && npm run dev. On sovereign.nyc the Cloud Run service may be starting up — retry in a moment."
             )
           );
         }
       };
 
-      // Timeout after 5 s
+      // Timeout after 10 s (Cloud Run cold-start can take a few seconds)
       setTimeout(() => {
         if (!this.initialized) {
           es.close();
-          reject(new Error("Architect AI MCP server connection timed out after 5 s."));
+          reject(new Error("Architect AI connection timed out after 10 s. Cloud Run may still be cold-starting — try again."));
         }
-      }, 5000);
+      }, 10_000);
     });
   }
 
