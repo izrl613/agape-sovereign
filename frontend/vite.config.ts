@@ -15,6 +15,12 @@ export default defineConfig(({ mode }) => {
           '/api-proxy': 'http://localhost:5000',
           '/api': 'http://localhost:5000',
           '/ws-proxy': {target: 'ws://localhost:5000', ws: true},
+          // Architect AI MCP server (local gemma4:e2b — offline-only)
+          '/mcp': {
+            target: 'http://127.0.0.1:3001',
+            rewrite: (path: string) => path.replace(/^\/mcp/, ''),
+            changeOrigin: false,
+          },
         },
       },
       plugins: react(),
