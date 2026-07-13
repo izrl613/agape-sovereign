@@ -2,20 +2,21 @@
  * Agape Sovereign PWA — Service Worker
  *
  * Strategy:
- *   - MCP server traffic (127.0.0.1:3001) → NETWORK ONLY (never cached)
- *   - Ollama direct traffic (127.0.0.1:11434) → NETWORK ONLY
+ *   - Architect AI /api/mcp/** → NETWORK ONLY (never cached — SSE + AI responses change each call)
+ *   - Local dev Ollama direct traffic → NETWORK ONLY
  *   - App shell + assets → Cache-First (offline PWA shell)
  *   - Firebase / GCP → Network-First with stale fallback
  */
 
-const CACHE_NAME = "agape-sovereign-v1";
+const CACHE_NAME = "agape-sovereign-v2";
 const OFFLINE_FALLBACK = "/index.html";
 
-// Local-only endpoints that must never be cached
-const LOCAL_PASSTHROUGH_PATTERNS = [
-  "127.0.0.1:3001",   // Architect AI MCP server
+// Patterns that must never be cached (AI responses, SSE streams, local Ollama)
+const NO_CACHE_PATTERNS = [
+  "/api/mcp",          // Architect AI MCP server (prod: Cloud Run via Firebase rewrite)
+  "127.0.0.1:3001",   // local dev MCP server
   "localhost:3001",
-  "127.0.0.1:11434",  // Ollama direct
+  "127.0.0.1:11434",  // Ollama direct (local dev only)
   "localhost:11434",
 ];
 
@@ -52,11 +53,11 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // 1. Local MCP / Ollama — always go to network, never cache
-  const isLocal = LOCAL_PASSTHROUGH_PATTERNS.some(
+  // 1. Architect AI / local Ollama — always go to network, never cache
+  const isAiTraffic = NO_CACHE_PATTERNS.some(
     (p) => request.url.includes(p)
   );
-  if (isLocal) {
+  if (isAiTraffic) {
     event.respondWith(fetch(request));
     return;
   }

@@ -1,16 +1,22 @@
 /**
  * Architect AI — MCP Server
- * Wraps local Ollama gemma4:e2b for the Agape Sovereign platform (offline-first).
+ * Wraps Ollama gemma4:e2b for the Agape Sovereign platform.
+ *
+ * Deployment modes:
+ *   - Local dev:   localhost:3001 (Ollama running locally)
+ *   - Cloud Run:   PORT env var (set by Cloud Run), OLLAMA_BASE_URL points to
+ *                  a sidecar container or Vertex AI endpoint
  *
  * Clients:
- *   - PWA  (agape-sovereign)    — SSE transport on localhost:3001
+ *   - PWA  (sovereign.nyc)             — SSE transport via /api/mcp (Firebase Hosting → Cloud Run)
  *   - Android (com.agape.sovereign.ai) — REST /android/* endpoints (OkHttp-friendly)
  *
- * Transport: HTTP + SSE on localhost:3001
+ * Transport: HTTP + SSE
  * Model: gemma4:e2b (unlimited tokens, num_predict = -1)
  *
- * Start: npm run dev  (dev)  |  npm start  (prod after build)
- * Requires: ollama serve  (must be running separately)
+ * Start:
+ *   Local dev: npm run dev  (requires: ollama serve)
+ *   Cloud Run: automatically via Dockerfile / Cloud Run deploy
  *
  * Android emulator reaches host via 10.0.2.2:3001
  */
@@ -279,23 +285,32 @@ Format the output as:
 // ── Express HTTP + SSE transport ──────────────────────────────────────────────
 const app = express();
 
-// Allow PWA on any localhost origin (Vite dev ports + production localhost)
-// Also allow Android emulator host (10.0.2.2 = host loopback from emulator)
+// CORS — allow sovereign.nyc (production), localhost (dev), Android emulator
+// ALLOWED_ORIGINS env var: comma-separated list of extra origins for production
+const EXTRA_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, cb) => {
       // Allow: no origin (curl/native app), localhost:* origins, file:// (PWA offline),
-      // and 10.0.2.2:* (Android emulator → host loopback)
+      // 10.0.2.2:* (Android emulator → host loopback), sovereign.nyc, and any extra origins
       if (
         !origin ||
         origin.startsWith("http://localhost:") ||
+        origin.startsWith("https://localhost:") ||
         origin.startsWith("http://127.0.0.1:") ||
         origin.startsWith("http://10.0.2.2:") ||
-        origin === "null" // file:// in some browsers
+        origin === "null" || // file:// in some browsers
+        origin === "https://sovereign.nyc" ||
+        origin === "https://www.sovereign.nyc" ||
+        EXTRA_ORIGINS.includes(origin)
       ) {
         cb(null, true);
       } else {
-        cb(new Error(`CORS: ${origin} not allowed — server is local-only`));
+        cb(new Error(`CORS: ${origin} not allowed`));
       }
     },
     methods: ["GET", "POST", "OPTIONS"],
@@ -472,12 +487,21 @@ app.get("/android/health", async (_req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, "127.0.0.1", async () => {
+// Bind to 0.0.0.0 so Cloud Run (and Docker) can receive traffic on all interfaces.
+// Locally this is equivalent to listening on 127.0.0.1 but also works on 0.0.0.0.
+const HOST = process.env.HOST ?? "0.0.0.0";
+
+app.listen(PORT, HOST, async () => {
   const ollamaUp = await ollamaHealthCheck();
+  const isCloudRun = !!process.env.K_SERVICE; // Cloud Run sets K_SERVICE automatically
   console.log(`\n🏛️  Architect AI MCP Server`);
-  console.log(`   Listening on http://127.0.0.1:${PORT}`);
+  console.log(`   Listening on http://${HOST}:${PORT}`);
+  console.log(`   Environment: ${isCloudRun ? `Cloud Run (${process.env.K_SERVICE})` : "local"}`);
   console.log(`   Model: ${MODEL}`);
   console.log(`   Ollama: ${OLLAMA_BASE_URL} — ${ollamaUp ? "✅ reachable" : "⚠️  not reachable (run: ollama serve)"}`);
+  if (!ollamaUp && isCloudRun) {
+    console.log(`   ⚠️  OLLAMA_BASE_URL must point to a reachable Ollama instance or sidecar.`);
+  }
   console.log(`\n   Endpoints (PWA — SSE/MCP):`);
   console.log(`     GET  /health  — liveness check`);
   console.log(`     GET  /sse     — MCP SSE stream`);
