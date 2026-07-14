@@ -18,6 +18,7 @@
 			"titleBar.inactiveBackground": "#3d00bb",
 			"titleBar.inactiveForeground": "#cccccc",
 			"titleBar.border": "#5500ff"
-		}
+		},
+		"python.defaultInterpreterPath": "python3"
 	}
 }
