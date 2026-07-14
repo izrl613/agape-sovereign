@@ -4,14 +4,10 @@
 // NO external AI calls. Zero external billing.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Primary: Cloud Run hosted Gemma4 E4B MCP server
-const CLOUD_MCP_URL = "https://gemma4-mcp-server-956088455461.us-central1.run.app";
-// Fallback: local Ollama / MLX server
-const LOCAL_PROXY_URL = "http://localhost:3000";
-// Ollama native API (alternative local path)
+// Ollama is user-controlled and is the only AI endpoint for this service.
 const LOCAL_OLLAMA_URL = "http://localhost:11434";
 
-let ACTIVE_PROXY_URL = CLOUD_MCP_URL;
+let ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
 
 // ─── Model identifiers ────────────────────────────────────────────────────────
 const GEMMA_MODEL = "gemma4:e4b";
@@ -22,8 +18,8 @@ const OFFLINE_RESPONSE = `⚠️ Gemma 4 E4B is currently unreachable.
 Your Sovereign Enclave is operating in **offline mode**. No data has left your device.
 
 To restore AI capabilities:
-1. Ensure the Gemma4 MCP server is running locally via Ollama: \`ollama run gemma2:2b\`
-2. Or verify Cloud Run endpoint is healthy at ${CLOUD_MCP_URL}
+1. Ensure the configured model is available locally: \`ollama run gemma4:e4b\`
+2. Verify that Ollama is running locally at ${LOCAL_OLLAMA_URL}
 
 All scan logic, encryption, and identity protection continue to function offline.`;
 
@@ -43,36 +39,9 @@ export interface LocalStatus {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Live status probe — checks Cloud Run then localhost fallback
+// 1. Live status probe — local Ollama only
 // ─────────────────────────────────────────────────────────────────────────────
 export async function getLocalAIStatus(): Promise<LocalStatus> {
-  // Try Cloud Run first
-  for (const url of [CLOUD_MCP_URL, LOCAL_PROXY_URL]) {
-    try {
-      const res = await fetch(`${url}/api/status`, {
-        method: "GET",
-        signal: AbortSignal.timeout(2500)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        ACTIVE_PROXY_URL = url;
-        return {
-          online: true,
-          port: data.port || (url === CLOUD_MCP_URL ? 443 : 3000),
-          modelName: "Gemma 4 E4B",
-          usage: "Unlimited Tokens · Offline-First",
-          costModel: url === CLOUD_MCP_URL
-            ? "Cloud Run — Zero External Billing"
-            : "Local Ollama — Zero External Billing",
-          activeEndpoint: url
-        };
-      }
-    } catch {
-      // Try next
-    }
-  }
-
-  // Try Ollama native API as last resort
   try {
     const res = await fetch(`${LOCAL_OLLAMA_URL}/api/tags`, {
       signal: AbortSignal.timeout(2000)
@@ -94,7 +63,7 @@ export async function getLocalAIStatus(): Promise<LocalStatus> {
 
   return {
     online: false,
-    port: 3000,
+    port: 11434,
     modelName: "Gemma 4 E4B",
     usage: "Offline Mode — No data leaves device",
     costModel: "Zero External Billing",
@@ -109,31 +78,6 @@ async function callGemma4(
   messages: { role: string; content: string }[],
   jsonMode = false
 ): Promise<string> {
-  // Via MCP proxy (Cloud Run or local server.js)
-  const proxyUrls = [CLOUD_MCP_URL, LOCAL_PROXY_URL];
-  for (const url of proxyUrls) {
-    try {
-      const response = await fetch(`${url}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages,
-          max_tokens: -1,
-          stream: false,
-          ...(jsonMode ? { response_format: { type: "json_object" } } : {})
-        }),
-        signal: AbortSignal.timeout(30000)
-      });
-      if (response.ok) {
-        ACTIVE_PROXY_URL = url;
-        const data = await response.json();
-        return data.choices?.[0]?.message?.content || "";
-      }
-    } catch {
-      // Try next proxy
-    }
-  }
-
   // Via Ollama native API
   try {
     const response = await fetch(`${LOCAL_OLLAMA_URL}/api/chat`, {
@@ -250,7 +194,7 @@ export async function callMCPTool(
   toolName: string,
   args: Record<string, unknown>
 ): Promise<{ result: string; offline: boolean }> {
-  for (const url of [CLOUD_MCP_URL, LOCAL_PROXY_URL]) {
+  for (const url of ["http://127.0.0.1:3001"]) {
     try {
       const response = await fetch(`${url}/mcp/tool`, {
         method: "POST",

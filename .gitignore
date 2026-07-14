@@ -12,3 +12,22 @@ firebase-debug.log
 firebase-debug.*.log
 .firebase/
 .env
+
+# --- Repo hygiene fix (2026-07-10) ---
+# GCP CLI SDK must never be vendored into the repo
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+# Infra/IAM exports and local IDE MCP config back up local machine + org details
+iam.json
+mcp_config_backup.json
+
+# Accidental/junk files
+conflicts.txt
+FILE_NAME
+package 2.json
+*.orig
+
+# Firebase / functions build output
+functions/lib/
+functions/node_modules/

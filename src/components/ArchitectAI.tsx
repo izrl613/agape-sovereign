@@ -276,7 +276,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gemma4:e2b",
+            model: "gemma4:e4b",
             stream: false,
             format: "json",
             messages: [
@@ -720,7 +720,7 @@ Every interaction, every scan result, every user query, and every piece of ident
 - **Admin Email:** idin@agape.nyc | agape@sovereign.nyc
 - **Admin Identity:** Israel David (Izrael) — sole administrator. No other user has admin-level access.
 - **Architecture:** Firebase zero-knowledge, privacy-first, session-scoped, no plaintext PII storage
-- **AI Backend:** Local Ollama gemma4:e2b (fully offline, unlimited processing)
+- **AI Backend:** Local Ollama gemma4:e4b (fully offline, local processing)
 - **Compliance Target:** ECRA 2026 LTS, GDPR, CCPA, WebAuthn Level 3, FIDO2, NIST SP 800-63B
 
 ---
@@ -821,7 +821,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gemma4:e2b",
+          model: "gemma4:e4b",
           stream: true,
           messages: [
             { role: "system", content: systemInstruction },

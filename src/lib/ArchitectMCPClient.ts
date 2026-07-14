@@ -220,7 +220,7 @@ export class ArchitectMCPClient {
     } catch {
       return {
         status: "offline",
-        model: "gemma4:e2b",
+        model: "gemma4:e4b",
         ollamaReachable: false,
         timestamp: new Date().toISOString(),
       };

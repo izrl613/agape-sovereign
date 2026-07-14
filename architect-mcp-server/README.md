@@ -1,6 +1,6 @@
 # Architect AI — MCP Server
 
-Local MCP (Model Context Protocol) server that wraps **gemma4:e2b via Ollama** for the Agape Sovereign platform — both the PWA and the Android app (`com.agape.sovereign.ai`).  
+Local MCP (Model Context Protocol) server that wraps **gemma4:e4b via Ollama** for the Agape Sovereign platform — both the PWA and the Android app (`com.agape.sovereign.ai`).
 Runs on `http://127.0.0.1:3001` — fully offline, no external API calls.
 
 ## Quick Start
@@ -77,12 +77,12 @@ const analysis = await client.analyzeVector({
 PWA (browser, localhost:5173 or installed PWA)
   └─► ArchitectMCPClient.ts  (SSE + POST JSON-RPC)
         └─► architect-mcp-server (:3001)   ← this package
-              └─► Ollama (:11434) — gemma4:e2b (7.2 GB, local)
+              └─► Ollama (:11434) — gemma4:e4b (9.6 GB, local)
 
 Android app (com.agape.sovereign.ai)
   └─► ArchitectMcpClient.kt  (OkHttp REST, /android/* endpoints)
         └─► architect-mcp-server (:3001, reached via 10.0.2.2 on emulator)
-              └─► Ollama (:11434) — gemma4:e2b (runs on host)
+              └─► Ollama (:11434) — gemma4:e4b (runs on host)
 ```
 
 The service worker (`frontend/public/sw.js`) passes all `127.0.0.1:3001` and `127.0.0.1:11434` traffic directly to the network — no caching interference.  
@@ -94,7 +94,7 @@ The service worker (`frontend/public/sw.js`) passes all `127.0.0.1:3001` and `12
 |---|---|---|
 | `ARCHITECT_MCP_PORT` | `3001` | Port for this server |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama endpoint |
-| `ARCHITECT_MODEL` | `gemma4:e2b` | Model to use |
+| `ARCHITECT_MODEL` | `gemma4:e4b` | Model to use |
 
 ## Cline / Antigravity IDE
 

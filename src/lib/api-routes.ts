@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemma4:e2b",
+        model: "gemma4:e4b",
         stream: false,
         messages: [
           {
