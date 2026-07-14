@@ -16,6 +16,7 @@
   "dependencies": {
     "@google-cloud/bigquery": "^8.3.1",
     "@google/genai": "latest",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.0",
     "@tailwindcss/vite": "^4.3.0",

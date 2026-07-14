@@ -2,6 +2,7 @@ import { db } from "../firebase";
 import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
 import { logScanStarted, logUserEvent, logExposureNuked } from "./analyticsService";
+import { chatComplete } from "./localAIService";
 
 export interface ScanFinding {
   id?: string;
@@ -316,7 +317,7 @@ const generateFinding = async (module: string, email: string) => {
     const maxRetries = 2;
     let responseText = "";
 
-    // Connect to the local Ollama instance running gemma4:e2b
+    // Connect to the local Ollama instance running gemma4:e4b
     const OLLAMA_URL = "http://localhost:11434/api/chat";
 
     while (retryCount <= maxRetries) {
@@ -325,7 +326,7 @@ const generateFinding = async (module: string, email: string) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gemma4:e2b",
+            model: "gemma4:e4b",
             stream: false,
             format: "json",
             messages: [
@@ -467,9 +468,8 @@ export const recalculateSovereignScore = async (userId: string) => {
 
 export const generateSuspiciousReport = async (finding: ScanFinding) => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
-      contents: `Generate a detailed security report for a suspicious finding in the "${finding.module}" module.
+    const { text } = await chatComplete(
+      `Generate a detailed security report for a suspicious finding in the "${finding.module}" module.
       
       Finding: ${finding.finding}
       Status: ${finding.status}
@@ -483,9 +483,10 @@ export const generateSuspiciousReport = async (finding: ScanFinding) => {
       5. Sovereign Protocol Recommendations
       
       Format the report in Markdown. Use a professional, authoritative "Architect AI" tone.`,
-    });
+      "You are an offline privacy and security analyst. Use only the supplied finding; do not invent evidence or claim that an external scan occurred."
+    );
 
-    return response.text;
+    return text;
   } catch (error) {
     console.error("Error generating report:", error);
     return "Failed to generate detailed report. Please contact the Architect.";

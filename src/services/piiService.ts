@@ -148,7 +148,7 @@ export async function detectPiiWithAi(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemma4:e2b",
+        model: "gemma4:e4b",
         stream: false,
         format: "json",
         messages: [

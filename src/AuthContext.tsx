@@ -186,14 +186,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!optionsRes.ok) throw new Error('Failed to fetch registration options');
       const options = await optionsRes.json();
 
-      // 2. Start registration with the browser
-      const attestationResponse = await startRegistration(options);
+      // 2. Start registration with the browser (v13 API requires optionsJSON wrapper)
+      const attestationResponse = await startRegistration({ optionsJSON: options });
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid }),
+        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid, email: currentUser.email }),
       });
       const { verified } = await verifyRes.json();
 
@@ -233,8 +233,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       const options = await optionsRes.json();
 
-      // 2. Start authentication
-      const assertionResponse = await startAuthentication(options);
+      // 2. Start authentication (v13 API requires optionsJSON wrapper)
+      const assertionResponse = await startAuthentication({ optionsJSON: options });
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-login', {

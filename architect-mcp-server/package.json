@@ -1,7 +1,7 @@
 {
   "name": "architect-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Architect AI (gemma4:e2b via Ollama) — offline-first for Agape Sovereign PWA",
+  "description": "MCP server for Architect AI (gemma4:e4b via Ollama) — offline-first for Agape Sovereign PWA",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

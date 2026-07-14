@@ -32,7 +32,7 @@ ENV HOST=0.0.0.0
 #   - Ollama running in a separate Cloud Run service or VM
 #   - Vertex AI endpoint (requires adapting ollamaChat to use Vertex AI SDK)
 ENV OLLAMA_BASE_URL=http://localhost:11434
-ENV ARCHITECT_MODEL=gemma4:e2b
+ENV ARCHITECT_MODEL=gemma4:e4b
 
 EXPOSE $PORT
 

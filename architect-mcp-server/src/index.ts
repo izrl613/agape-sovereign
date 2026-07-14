@@ -1,6 +1,6 @@
 /**
  * Architect AI — MCP Server
- * Wraps Ollama gemma4:e2b for the Agape Sovereign platform.
+ * Wraps Ollama gemma4:e4b for the Agape Sovereign platform.
  *
  * Deployment modes:
  *   - Local dev:   localhost:3001 (Ollama running locally)
@@ -12,7 +12,7 @@
  *   - Android (com.agape.sovereign.ai) — REST /android/* endpoints (OkHttp-friendly)
  *
  * Transport: HTTP + SSE
- * Model: gemma4:e2b (unlimited tokens, num_predict = -1)
+ * Model: gemma4:e4b (local Ollama, num_predict = -1)
  *
  * Start:
  *   Local dev: npm run dev  (requires: ollama serve)
@@ -30,7 +30,7 @@ import { z } from "zod";
 // ── Configuration ─────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ARCHITECT_MCP_PORT ?? "3001", 10);
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-const MODEL = process.env.ARCHITECT_MODEL ?? "gemma4:e2b";
+const MODEL = process.env.ARCHITECT_MODEL ?? "gemma4:e4b";
 
 // Agape Sovereign system prompt — scoped to privacy & mobile-security
 const SYSTEM_PROMPT = `You are Architect AI, a privacy and mobile-security intelligence engine embedded in the Agape Sovereign Digital Identity Platform.
@@ -105,7 +105,7 @@ function createMcpServer(): McpServer {
   // Tool: ask — general privacy/security question
   server.tool(
     "ask",
-    "Ask Architect AI a privacy or mobile-security question. Runs fully offline using local gemma4:e2b.",
+    "Ask Architect AI a privacy or mobile-security question. Runs fully offline using local gemma4:e4b.",
     {
       question: z.string().describe("The question or task for Architect AI"),
       context: z
@@ -262,7 +262,7 @@ Format the output as:
   // Tool: health_check — confirm Ollama + model are reachable
   server.tool(
     "health_check",
-    "Check if the local Ollama instance and gemma4:e2b model are reachable.",
+    "Check if the local Ollama instance and gemma4:e4b model are reachable.",
     {},
     async () => {
       const healthy = await ollamaHealthCheck();

@@ -1,15 +1,33 @@
 {
   "models": [
     {
-      "title": "Ollama (Local)",
+      "title": "Gemma 4 E4B (M5 Air 8K)",
       "provider": "ollama",
-      "model": "gemma4-e4b", 
-      "apiBase": "http://localhost:11434/api"
+      "model": "gemma4-e4b-m5air"
+    },
+    {
+      "title": "Gemma 4 E4B (M5 Air 16K)",
+      "provider": "ollama",
+      "model": "gemma4-e4b-m5air-16k"
+    },
+    {
+      "title": "Gemma 4 E4B (Base)",
+      "provider": "ollama",
+      "model": "gemma4:e4b"
+    },
+    {
+      "title": "Gemma 4 E2B (Base)",
+      "provider": "ollama",
+      "model": "gemma4:e2b"
     }
   ],
+  "tabAutocompleteModel": {
+    "title": "Gemma 4 E2B (Base)",
+    "provider": "ollama",
+    "model": "gemma4:e2b"
+  },
   "completionOptions": {
     "temperature": 0.2,
     "maxTokens": 2048
-  },
-  "models_to_use": ["gemma4-e4b"]
+  }
 }

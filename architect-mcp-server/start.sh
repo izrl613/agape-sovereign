@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Architect AI MCP Server — local quick start
-# Ensures Ollama is serving gemma4:e2b, then starts the MCP server locally.
+# Ensures Ollama is serving gemma4:e4b, then starts the MCP server locally.
 #
 # For production (sovereign.nyc), deploy to Cloud Run instead:
 #   cd architect-mcp-server
@@ -35,11 +35,11 @@ else
 fi
 
 # 3. Check model
-if ! ollama list 2>/dev/null | grep -q "gemma4:e2b"; then
-  echo "⬇  Pulling gemma4:e2b (7.2 GB — first run only)..."
-  ollama pull gemma4:e2b
+if ! ollama list 2>/dev/null | grep -q "gemma4:e4b"; then
+  echo "Pulling gemma4:e4b (about 9.6 GB; first run only)..."
+  ollama pull gemma4:e4b
 fi
-echo "✅  Model gemma4:e2b ready"
+echo "Model gemma4:e4b ready"
 
 # 4. Install deps if needed
 if [ ! -d "$SCRIPT_DIR/node_modules" ]; then

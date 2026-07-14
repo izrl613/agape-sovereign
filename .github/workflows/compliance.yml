@@ -192,22 +192,37 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - run: npm ci --prefer-offline || npm install
+      - run: npm ci
 
       - name: TypeScript type check
-        run: npx tsc --noEmit || echo "::warning::TypeScript errors found — review before production deploy."
+        run: npx tsc --noEmit
 
       - name: Build
-        run: npm run build 2>&1 | tail -20
-        continue-on-error: true
+        run: npm run build
 
   # ----------------------------------------------------------
-  # 6. Compliance Summary Report
+  # 6. Local-only AI and real-data boundary
+  # ----------------------------------------------------------
+  sovereign-boundary-check:
+    name: Sovereign Boundary Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify local-only AI and no known seeded findings
+        run: node scripts/compliance/verify-sovereign-boundaries.mjs
+
+  # ----------------------------------------------------------
+  # 7. Compliance Summary Report
   # ----------------------------------------------------------
   compliance-summary:
     name: Compliance Summary
     runs-on: ubuntu-latest
-    needs: [secret-scan, dependency-audit, firestore-rules-lint, ecra-privacy-check, build-check]
+    needs: [secret-scan, dependency-audit, firestore-rules-lint, ecra-privacy-check, build-check, sovereign-boundary-check]
     if: always()
     steps:
       - name: Generate compliance status
@@ -221,6 +236,7 @@ jobs:
           echo "| Firestore/Storage Rules | ${{ needs.firestore-rules-lint.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| ECRA & Privacy Checks | ${{ needs.ecra-privacy-check.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build Integrity | ${{ needs.build-check.result == 'success' && '✅ PASS' || '⚠️ WARN' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Local-only AI and real-data boundary | ${{ needs.sovereign-boundary-check.result == 'success' && '✅ PASS' || '❌ FAIL' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Standards**: ECRA 2026, CPRA, NIST CSF 2.0, EU AI Act, Zero-Trust Architecture" >> $GITHUB_STEP_SUMMARY
           echo "**App**: sovereign.nyc — AI Digital Identity Sovereign Restoration" >> $GITHUB_STEP_SUMMARY
