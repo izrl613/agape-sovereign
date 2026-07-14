@@ -206,6 +206,7 @@ export const authApi = onRequest(
     timeoutSeconds: 30,
     memory: "256MiB",
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+    secrets: ["PASSKEY_COOKIE_SECRET"],
   },
   authApp
 );

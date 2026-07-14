@@ -30,8 +30,8 @@
     "rewrites": [
       {
         "source": "/api/auth/**",
-        "run": {
-          "serviceId": "authapi",
+        "function": {
+          "functionId": "authApi",
           "region": "us-central1"
         }
       },
