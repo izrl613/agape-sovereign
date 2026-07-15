@@ -8,110 +8,121 @@ export type Int64String = string;
 export type DateString = string;
 
 
-export interface AddFindingData {
-  finding_insert: Finding_Key;
+export interface AddReviewData {
+  review_upsert: Review_Key;
 }
 
-export interface AddFindingVariables {
-  vectorId: string;
-  type: string;
-  label: string;
-  detail: string;
-  action?: string | null;
-  status?: string | null;
+export interface AddReviewVariables {
+  movieId: UUIDString;
+  rating: number;
+  reviewText: string;
 }
 
-export interface AddMonitoredEmailData {
-  monitoredEmail_insert: MonitoredEmail_Key;
+export interface CreateMovieData {
+  movie_insert: Movie_Key;
 }
 
-export interface AddMonitoredEmailVariables {
-  emailAddress: string;
+export interface CreateMovieVariables {
+  title: string;
+  genre: string;
+  imageUrl: string;
 }
 
-export interface Finding_Key {
+export interface DeleteReviewData {
+  review_delete?: Review_Key | null;
+}
+
+export interface DeleteReviewVariables {
+  movieId: UUIDString;
+}
+
+export interface GetMovieByIdData {
+  movie?: {
+    id: UUIDString;
+    title: string;
+    imageUrl: string;
+    genre?: string | null;
+    metadata?: {
+      rating?: number | null;
+      releaseYear?: number | null;
+      description?: string | null;
+    };
+    reviews: ({
+      reviewText?: string | null;
+      reviewDate: DateString;
+      rating?: number | null;
+      user: {
+        id: string;
+        username: string;
+      } & User_Key;
+    })[];
+  } & Movie_Key;
+}
+
+export interface GetMovieByIdVariables {
   id: UUIDString;
-  __typename?: 'Finding_Key';
 }
 
-export interface GetFindingsData {
-  findings: ({
+export interface ListMoviesData {
+  movies: ({
     id: UUIDString;
-    type: string;
-    label: string;
-    detail: string;
-    createdAt: TimestampString;
-    action?: string | null;
-    status?: string | null;
-  } & Finding_Key)[];
+    title: string;
+    imageUrl: string;
+    genre?: string | null;
+  } & Movie_Key)[];
 }
 
-export interface GetFindingsVariables {
-  vectorId: string;
-}
-
-export interface GetMonitoredEmailsData {
-  monitoredEmails: ({
-    id: UUIDString;
-    emailAddress: string;
-    status: string;
-    createdAt: TimestampString;
-    lastCheckedAt?: TimestampString | null;
-  } & MonitoredEmail_Key)[];
-}
-
-export interface GetUserData {
+export interface ListUserReviewsData {
   user?: {
-    uid: string;
-    name: string;
-    email: string;
-    provider?: string | null;
-    sovereignScore?: number | null;
-    lastLoginAt?: TimestampString | null;
+    id: string;
+    username: string;
+    reviews: ({
+      rating?: number | null;
+      reviewDate: DateString;
+      reviewText?: string | null;
+      movie: {
+        id: UUIDString;
+        title: string;
+      } & Movie_Key;
+    })[];
   } & User_Key;
 }
 
-export interface GetUserVectorStatusesData {
-  userVectorStatuses: ({
-    identityVector: {
-      id: string;
-      name: string;
-      icon: string;
-      description?: string | null;
-    } & IdentityVector_Key;
-      sovereigntyScore: number;
-      nukedCount: number;
-      knoxedCount: number;
-      monitoredCount: number;
-      lastScanAt: TimestampString;
-      statusNotes?: string | null;
-  })[];
+export interface ListUsersData {
+  users: ({
+    id: string;
+    username: string;
+  } & User_Key)[];
 }
 
-export interface IdentityVector_Key {
-  id: string;
-  __typename?: 'IdentityVector_Key';
-}
-
-export interface MonitoredEmail_Key {
+export interface MovieMetadata_Key {
   id: UUIDString;
-  __typename?: 'MonitoredEmail_Key';
+  __typename?: 'MovieMetadata_Key';
 }
 
-export interface RemoveMonitoredEmailData {
-  monitoredEmail_delete?: MonitoredEmail_Key | null;
-}
-
-export interface RemoveMonitoredEmailVariables {
+export interface Movie_Key {
   id: UUIDString;
+  __typename?: 'Movie_Key';
 }
 
-export interface UpdateSovereignScoreData {
-  user_update?: User_Key | null;
+export interface Review_Key {
+  userId: string;
+  movieId: UUIDString;
+  __typename?: 'Review_Key';
 }
 
-export interface UpdateSovereignScoreVariables {
-  score: number;
+export interface SearchMovieData {
+  movies: ({
+    id: UUIDString;
+    title: string;
+    genre?: string | null;
+    imageUrl: string;
+  } & Movie_Key)[];
+}
+
+export interface SearchMovieVariables {
+  titleInput?: string | null;
+  genre?: string | null;
 }
 
 export interface UpsertUserData {
@@ -119,82 +130,56 @@ export interface UpsertUserData {
 }
 
 export interface UpsertUserVariables {
-  name: string;
-  email: string;
-  provider?: string | null;
-}
-
-export interface UpsertUserVectorStatusData {
-  userVectorStatus_upsert: UserVectorStatus_Key;
-}
-
-export interface UpsertUserVectorStatusVariables {
-  vectorId: string;
-  sovereigntyScore: number;
-  nukedCount: number;
-  knoxedCount: number;
-  monitoredCount: number;
-  statusNotes?: string | null;
-}
-
-export interface UserVectorStatus_Key {
-  userUid: string;
-  identityVectorId: string;
-  __typename?: 'UserVectorStatus_Key';
+  username: string;
 }
 
 export interface User_Key {
-  uid: string;
+  id: string;
   __typename?: 'User_Key';
 }
+
+/** Generated Node Admin SDK operation action function for the 'CreateMovie' Mutation. Allow users to execute without passing in DataConnect. */
+export function createMovie(dc: DataConnect, vars: CreateMovieVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateMovieData>>;
+/** Generated Node Admin SDK operation action function for the 'CreateMovie' Mutation. Allow users to pass in custom DataConnect instances. */
+export function createMovie(vars: CreateMovieVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<CreateMovieData>>;
 
 /** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to execute without passing in DataConnect. */
 export function upsertUser(dc: DataConnect, vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
 /** Generated Node Admin SDK operation action function for the 'UpsertUser' Mutation. Allow users to pass in custom DataConnect instances. */
 export function upsertUser(vars: UpsertUserVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserData>>;
 
-/** Generated Node Admin SDK operation action function for the 'UpdateSovereignScore' Mutation. Allow users to execute without passing in DataConnect. */
-export function updateSovereignScore(dc: DataConnect, vars: UpdateSovereignScoreVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSovereignScoreData>>;
-/** Generated Node Admin SDK operation action function for the 'UpdateSovereignScore' Mutation. Allow users to pass in custom DataConnect instances. */
-export function updateSovereignScore(vars: UpdateSovereignScoreVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpdateSovereignScoreData>>;
+/** Generated Node Admin SDK operation action function for the 'AddReview' Mutation. Allow users to execute without passing in DataConnect. */
+export function addReview(dc: DataConnect, vars: AddReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddReviewData>>;
+/** Generated Node Admin SDK operation action function for the 'AddReview' Mutation. Allow users to pass in custom DataConnect instances. */
+export function addReview(vars: AddReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddReviewData>>;
 
-/** Generated Node Admin SDK operation action function for the 'UpsertUserVectorStatus' Mutation. Allow users to execute without passing in DataConnect. */
-export function upsertUserVectorStatus(dc: DataConnect, vars: UpsertUserVectorStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserVectorStatusData>>;
-/** Generated Node Admin SDK operation action function for the 'UpsertUserVectorStatus' Mutation. Allow users to pass in custom DataConnect instances. */
-export function upsertUserVectorStatus(vars: UpsertUserVectorStatusVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<UpsertUserVectorStatusData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteReview' Mutation. Allow users to execute without passing in DataConnect. */
+export function deleteReview(dc: DataConnect, vars: DeleteReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteReviewData>>;
+/** Generated Node Admin SDK operation action function for the 'DeleteReview' Mutation. Allow users to pass in custom DataConnect instances. */
+export function deleteReview(vars: DeleteReviewVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<DeleteReviewData>>;
 
-/** Generated Node Admin SDK operation action function for the 'AddFinding' Mutation. Allow users to execute without passing in DataConnect. */
-export function addFinding(dc: DataConnect, vars: AddFindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddFindingData>>;
-/** Generated Node Admin SDK operation action function for the 'AddFinding' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addFinding(vars: AddFindingVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddFindingData>>;
+/** Generated Node Admin SDK operation action function for the 'ListMovies' Query. Allow users to execute without passing in DataConnect. */
+export function listMovies(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListMoviesData>>;
+/** Generated Node Admin SDK operation action function for the 'ListMovies' Query. Allow users to pass in custom DataConnect instances. */
+export function listMovies(options?: OperationOptions): Promise<ExecuteOperationResponse<ListMoviesData>>;
 
-/** Generated Node Admin SDK operation action function for the 'AddMonitoredEmail' Mutation. Allow users to execute without passing in DataConnect. */
-export function addMonitoredEmail(dc: DataConnect, vars: AddMonitoredEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddMonitoredEmailData>>;
-/** Generated Node Admin SDK operation action function for the 'AddMonitoredEmail' Mutation. Allow users to pass in custom DataConnect instances. */
-export function addMonitoredEmail(vars: AddMonitoredEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<AddMonitoredEmailData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to execute without passing in DataConnect. */
+export function listUsers(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUsers' Query. Allow users to pass in custom DataConnect instances. */
+export function listUsers(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUsersData>>;
 
-/** Generated Node Admin SDK operation action function for the 'RemoveMonitoredEmail' Mutation. Allow users to execute without passing in DataConnect. */
-export function removeMonitoredEmail(dc: DataConnect, vars: RemoveMonitoredEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveMonitoredEmailData>>;
-/** Generated Node Admin SDK operation action function for the 'RemoveMonitoredEmail' Mutation. Allow users to pass in custom DataConnect instances. */
-export function removeMonitoredEmail(vars: RemoveMonitoredEmailVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<RemoveMonitoredEmailData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUserReviews' Query. Allow users to execute without passing in DataConnect. */
+export function listUserReviews(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserReviewsData>>;
+/** Generated Node Admin SDK operation action function for the 'ListUserReviews' Query. Allow users to pass in custom DataConnect instances. */
+export function listUserReviews(options?: OperationOptions): Promise<ExecuteOperationResponse<ListUserReviewsData>>;
 
-/** Generated Node Admin SDK operation action function for the 'GetUser' Query. Allow users to execute without passing in DataConnect. */
-export function getUser(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUser' Query. Allow users to pass in custom DataConnect instances. */
-export function getUser(options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMovieById' Query. Allow users to execute without passing in DataConnect. */
+export function getMovieById(dc: DataConnect, vars: GetMovieByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMovieByIdData>>;
+/** Generated Node Admin SDK operation action function for the 'GetMovieById' Query. Allow users to pass in custom DataConnect instances. */
+export function getMovieById(vars: GetMovieByIdVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMovieByIdData>>;
 
-/** Generated Node Admin SDK operation action function for the 'GetUserVectorStatuses' Query. Allow users to execute without passing in DataConnect. */
-export function getUserVectorStatuses(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserVectorStatusesData>>;
-/** Generated Node Admin SDK operation action function for the 'GetUserVectorStatuses' Query. Allow users to pass in custom DataConnect instances. */
-export function getUserVectorStatuses(options?: OperationOptions): Promise<ExecuteOperationResponse<GetUserVectorStatusesData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetFindings' Query. Allow users to execute without passing in DataConnect. */
-export function getFindings(dc: DataConnect, vars: GetFindingsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetFindingsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetFindings' Query. Allow users to pass in custom DataConnect instances. */
-export function getFindings(vars: GetFindingsVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<GetFindingsData>>;
-
-/** Generated Node Admin SDK operation action function for the 'GetMonitoredEmails' Query. Allow users to execute without passing in DataConnect. */
-export function getMonitoredEmails(dc: DataConnect, options?: OperationOptions): Promise<ExecuteOperationResponse<GetMonitoredEmailsData>>;
-/** Generated Node Admin SDK operation action function for the 'GetMonitoredEmails' Query. Allow users to pass in custom DataConnect instances. */
-export function getMonitoredEmails(options?: OperationOptions): Promise<ExecuteOperationResponse<GetMonitoredEmailsData>>;
+/** Generated Node Admin SDK operation action function for the 'SearchMovie' Query. Allow users to execute without passing in DataConnect. */
+export function searchMovie(dc: DataConnect, vars?: SearchMovieVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchMovieData>>;
+/** Generated Node Admin SDK operation action function for the 'SearchMovie' Query. Allow users to pass in custom DataConnect instances. */
+export function searchMovie(vars?: SearchMovieVariables, options?: OperationOptions): Promise<ExecuteOperationResponse<SearchMovieData>>;
 

@@ -10,6 +10,18 @@ export const dataConnectSettings = {
     cacheProvider: makeMemoryCacheProvider()
   }
 };
+export const createMovieRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'CreateMovie', inputVars);
+}
+createMovieRef.operationName = 'CreateMovie';
+
+export function createMovie(dcOrVars, vars) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
+  return executeMutation(createMovieRef(dcInstance, inputVars));
+}
+
 export const upsertUserRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -22,115 +34,92 @@ export function upsertUser(dcOrVars, vars) {
   return executeMutation(upsertUserRef(dcInstance, inputVars));
 }
 
-export const updateSovereignScoreRef = (dcOrVars, vars) => {
+export const addReviewRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpdateSovereignScore', inputVars);
+  return mutationRef(dcInstance, 'AddReview', inputVars);
 }
-updateSovereignScoreRef.operationName = 'UpdateSovereignScore';
+addReviewRef.operationName = 'AddReview';
 
-export function updateSovereignScore(dcOrVars, vars) {
+export function addReview(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(updateSovereignScoreRef(dcInstance, inputVars));
+  return executeMutation(addReviewRef(dcInstance, inputVars));
 }
 
-export const upsertUserVectorStatusRef = (dcOrVars, vars) => {
+export const deleteReviewRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'UpsertUserVectorStatus', inputVars);
+  return mutationRef(dcInstance, 'DeleteReview', inputVars);
 }
-upsertUserVectorStatusRef.operationName = 'UpsertUserVectorStatus';
+deleteReviewRef.operationName = 'DeleteReview';
 
-export function upsertUserVectorStatus(dcOrVars, vars) {
+export function deleteReview(dcOrVars, vars) {
   const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(upsertUserVectorStatusRef(dcInstance, inputVars));
+  return executeMutation(deleteReviewRef(dcInstance, inputVars));
 }
 
-export const addFindingRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddFinding', inputVars);
-}
-addFindingRef.operationName = 'AddFinding';
-
-export function addFinding(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addFindingRef(dcInstance, inputVars));
-}
-
-export const addMonitoredEmailRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'AddMonitoredEmail', inputVars);
-}
-addMonitoredEmailRef.operationName = 'AddMonitoredEmail';
-
-export function addMonitoredEmail(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(addMonitoredEmailRef(dcInstance, inputVars));
-}
-
-export const removeMonitoredEmailRef = (dcOrVars, vars) => {
-  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
-  dcInstance._useGeneratedSdk();
-  return mutationRef(dcInstance, 'RemoveMonitoredEmail', inputVars);
-}
-removeMonitoredEmailRef.operationName = 'RemoveMonitoredEmail';
-
-export function removeMonitoredEmail(dcOrVars, vars) {
-  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dcOrVars, vars, true);
-  return executeMutation(removeMonitoredEmailRef(dcInstance, inputVars));
-}
-
-export const getUserRef = (dc) => {
+export const listMoviesRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUser');
+  return queryRef(dcInstance, 'ListMovies');
 }
-getUserRef.operationName = 'GetUser';
+listMoviesRef.operationName = 'ListMovies';
 
-export function getUser(dcOrOptions, options) {
+export function listMovies(dcOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getUserRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+  return executeQuery(listMoviesRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
-export const getUserVectorStatusesRef = (dc) => {
+export const listUsersRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetUserVectorStatuses');
+  return queryRef(dcInstance, 'ListUsers');
 }
-getUserVectorStatusesRef.operationName = 'GetUserVectorStatuses';
+listUsersRef.operationName = 'ListUsers';
 
-export function getUserVectorStatuses(dcOrOptions, options) {
+export function listUsers(dcOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getUserVectorStatusesRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+  return executeQuery(listUsersRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
-export const getFindingsRef = (dcOrVars, vars) => {
+export const listUserReviewsRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'ListUserReviews');
+}
+listUserReviewsRef.operationName = 'ListUserReviews';
+
+export function listUserReviews(dcOrOptions, options) {
+  
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
+  return executeQuery(listUserReviewsRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
+}
+
+export const getMovieByIdRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetFindings', inputVars);
+  return queryRef(dcInstance, 'GetMovieById', inputVars);
 }
-getFindingsRef.operationName = 'GetFindings';
+getMovieByIdRef.operationName = 'GetMovieById';
 
-export function getFindings(dcOrVars, varsOrOptions, options) {
+export function getMovieById(dcOrVars, varsOrOptions, options) {
   
   const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, true);
-  return executeQuery(getFindingsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+  return executeQuery(getMovieByIdRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
-export const getMonitoredEmailsRef = (dc) => {
-  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+export const searchMovieRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars);
   dcInstance._useGeneratedSdk();
-  return queryRef(dcInstance, 'GetMonitoredEmails');
+  return queryRef(dcInstance, 'SearchMovie', inputVars);
 }
-getMonitoredEmailsRef.operationName = 'GetMonitoredEmails';
+searchMovieRef.operationName = 'SearchMovie';
 
-export function getMonitoredEmails(dcOrOptions, options) {
+export function searchMovie(dcOrVars, varsOrOptions, options) {
   
-  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrOptions, options, undefined,false, false);
-  return executeQuery(getMonitoredEmailsRef(dcInstance, inputVars), inputOpts && inputOpts.fetchPolicy);
+  const { dc: dcInstance, vars: inputVars, options: inputOpts } = validateArgsWithOptions(connectorConfig, dcOrVars, varsOrOptions, options, true, false);
+  return executeQuery(searchMovieRef(dcInstance, inputVars), inputOpts && { fetchPolicy: inputOpts.fetchPolicy });
 }
 
