@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Fingerprint } from 'lucide-react';
 
 export const Login = () => {
-  const { login, loginWithPasskey, emergencyBypass } = useAuth();
+  const { login, loginWithPasskey } = useAuth();
   const [step, setStep] = useState<'landing' | 'creating'>('landing');
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -23,7 +23,7 @@ export const Login = () => {
     // Catches firestoreErrorHandler JSON blobs
     if (msg.startsWith('{')) return 'A server error occurred. Please try again.';
     // Catches raw Firebase codes like "Firebase: Error (auth/internal-error)."
-    if (msg.startsWith('Firebase:')) return 'Authentication service error. Try refreshing or use Emergency Bypass below.';
+    if (msg.startsWith('Firebase:')) return 'Authentication service error. Try refreshing the page.';
     return msg;
   };
 
@@ -148,20 +148,6 @@ export const Login = () => {
               🔒 All data encrypted client-side. Zero-knowledge architecture.<br/>
               Your identity. Your sovereignty. Your rules.
             </div>
-            <button 
-              onClick={async () => {
-                setError(null);
-                try {
-                  await emergencyBypass();
-                  setStep('creating');
-                } catch (err: unknown) {
-                  setError(err instanceof Error ? err.message : "Emergency bypass failed.");
-                }
-              }}
-              className="mt-6 text-[10px] text-slate-600 hover:text-slate-400 uppercase tracking-widest font-mono transition-colors"
-            >
-              [ Initialize Emergency Bypass ]
-            </button>
           </motion.div>
         )}
 
@@ -176,6 +162,27 @@ export const Login = () => {
         )}
         {/* Encrypted Integrity Footer */}
         <EncryptedFooter moduleId="auth-gate" style={{ marginTop: 20 }} />
+        <footer
+          aria-label="Legal links"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "8px 14px",
+            marginTop: 16,
+            fontFamily: "'Share Tech Mono'",
+            fontSize: "0.62rem",
+            letterSpacing: "0.08em",
+            textAlign: "center",
+          }}
+        >
+          <a href="https://sovereign.nyc/terms/terms.pdf" style={{ color: "#60A5FA", textDecoration: "underline" }}>TERMS OF SERVICE</a>
+          <span aria-hidden="true" style={{ color: "rgba(224,230,255,0.35)" }}>|</span>
+          <span style={{ color: "#D946EF" }}>COPYRIGHT 2026 Agape Sovereign AI</span>
+          <span aria-hidden="true" style={{ color: "rgba(224,230,255,0.35)" }}>|</span>
+          <a href="https://sovereign.nyc/privacy/privacy.pdf" style={{ color: "#F97316", textDecoration: "underline" }}>PRIVACY POLICY</a>
+        </footer>
       </GlassCard>
     </div>
   );
