@@ -1,7 +1,6 @@
+import { collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
-import { logScanStarted, logUserEvent, logExposureNuked } from "./analyticsService";
 import { chatComplete } from "./localAIService";
 
 export interface ScanFinding {
@@ -9,503 +8,91 @@ export interface ScanFinding {
   userId: string;
   module: string;
   finding: string;
-  status: 'NUKED' | 'KNOXED' | 'MONITORED';
+  status: "NUKED" | "KNOXED" | "MONITORED";
   timestamp: Date;
   details: string;
 }
 
-export const startFullScan = async (userId: string, email: string, onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
-  const modules = [
-    "email", "social", "device", "mobile", "deepweb", "broker", 
-    "password", "location", "browser", "financial", "medical", 
-    "biometric", "iot", "cloud", "darkweb", "behavioral"
-  ];
-  const total = modules.length;
-  const findings: ScanFinding[] = [];
-  
-  // Log scan start to Analytics
-  logScanStarted('FULL_SCAN');
+const EVIDENCE_REQUIRED =
+  "A scan cannot run until you provide verifiable, consented evidence. Agape Sovereign does not fabricate findings, scrape third parties, or overwrite prior records.";
 
-  if (onProgress) onProgress(0, total, "Initializing...", "Clearing previous scan cache...");
+/**
+ * Deliberately fails closed. Earlier versions generated plausible-sounding
+ * findings from an email address alone. A future evidence-import workflow must
+ * validate user consent and provenance before it can create a finding.
+ */
+export async function startFullScan(
+  _userId: string,
+  _email: string,
+  onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void,
+): Promise<never> {
+  onProgress?.(0, 0, "Awaiting evidence", EVIDENCE_REQUIRED);
+  throw new Error(EVIDENCE_REQUIRED);
+}
 
-  // Handle emergency bypass user with local storage
-  if (userId === 'emergency-bypass-admin-999') {
-    localStorage.removeItem(`scan_findings_${userId}`);
-    for (let i = 0; i < modules.length; i++) {
-      const module = modules[i];
-      if (onProgress) onProgress(i, total, module, "Connecting to neural network...");
-      await new Promise(resolve => setTimeout(resolve, 100));
-      if (onProgress) onProgress(i, total, module, `Analyzing ${module} metadata patterns...`);
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const finding = await generateFinding(module, email);
-      const scanData: ScanFinding = {
-        id: `local-${module}-${Date.now()}`,
-        userId,
-        module,
-        finding: finding.title || `Standard ${module} check completed`,
-        status: finding.status || "KNOXED",
-        timestamp: new Date(),
-        details: finding.details || "No immediate threats detected in this vector."
-      };
-      findings.push(scanData);
-      if (onProgress) onProgress(i + 1, total);
-    }
-    const score = calculateScore(findings);
-    localStorage.setItem(`scan_findings_${userId}`, JSON.stringify(findings));
-    const history = JSON.parse(localStorage.getItem(`score_history_${userId}`) || "[]");
-    history.push({
-      userId,
-      score,
-      timestamp: new Date(),
-      nukedCount: findings.filter(f => f.status === 'NUKED').length,
-      knoxedCount: findings.filter(f => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter(f => f.status === 'MONITORED').length,
-      findings
-    });
-    localStorage.setItem(`score_history_${userId}`, JSON.stringify(history));
-    return { findings, score };
-  }
+/** See startFullScan. Targeted scans require the same evidence contract. */
+export async function startModuleScan(
+  _userId: string,
+  _email: string,
+  module: string,
+  onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void,
+): Promise<never> {
+  onProgress?.(0, 0, module, EVIDENCE_REQUIRED);
+  throw new Error(EVIDENCE_REQUIRED);
+}
 
-  // Clear previous scans for a fresh start (optional, but usually better for a "Full Scan")
-  const q = query(collection(db, "diff_scans"), where("userId", "==", userId));
-  let snapshot;
-  try {
-    snapshot = await getDocs(q);
-  } catch (err) {
-    handleFirestoreError(err, OperationType.LIST, 'diff_scans');
-    throw err;
-  }
-  
-  const deletePromises = snapshot.docs.map(d => {
-    return deleteDoc(doc(db, "diff_scans", d.id)).catch(err => {
-      handleFirestoreError(err, OperationType.DELETE, `diff_scans/${d.id}`);
-    });
-  });
-  await Promise.all(deletePromises);
-
-  for (let i = 0; i < modules.length; i++) {
-    const module = modules[i];
-    
-    if (onProgress) onProgress(i, total, module, "Connecting to neural network...");
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    if (onProgress) onProgress(i, total, module, `Analyzing ${module} metadata patterns...`);
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    if (onProgress) onProgress(i, total, module, "Querying global threat database...");
-    const finding = await generateFinding(module, email);
-    
-    if (onProgress) onProgress(i, total, module, "Synthesizing risk assessment...");
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    const scanData: any = {
-      userId,
-      module,
-      finding: finding.title || `Standard ${module} check completed`,
-      status: finding.status || "KNOXED",
-      timestamp: serverTimestamp(),
-      details: finding.details || "No immediate threats detected in this vector."
-    };
-    
-    try {
-      const docRef = await addDoc(collection(db, "diff_scans"), scanData);
-      findings.push({ ...scanData, id: docRef.id });
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'diff_scans');
-    }
-
-    if (onProgress) onProgress(i + 1, total);
-  }
-
-  // Calculate new sovereign score
-  const score = calculateScore(findings);
-  try {
-    await updateDoc(doc(db, "users", userId), { sovereignScore: score });
-    
-    // Save to history
-    await addDoc(collection(db, "score_history"), {
-      userId,
-      score,
-      nukedCount: findings.filter(f => f.status === 'NUKED').length,
-      knoxedCount: findings.filter(f => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter(f => f.status === 'MONITORED').length,
-      findings: findings,
-      timestamp: serverTimestamp()
-    });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`);
-  }
-
-  // Log scan completion
-  logUserEvent('scan_completed', { 
-    scan_type: 'FULL_SCAN', 
-    score, 
-    nuked_count: findings.filter(f => f.status === 'NUKED').length 
-  });
-
-  return { findings, score };
-};
-
-export const startModuleScan = async (userId: string, email: string, module: string, onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void) => {
-  // Log module scan start
-  logScanStarted(`MODULE_${module.toUpperCase()}`);
-  
-  if (onProgress) onProgress(0, 1, module, "Initializing targeted scan...");
-  
-  // Handle emergency bypass user with local storage
-  if (userId === 'emergency-bypass-admin-999') {
-    const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${userId}`) || "[]");
-    const filtered = localFindings.filter((f: any) => f.module !== module);
-    if (onProgress) onProgress(0, 1, module, `Deep-diving into ${module} architecture...`);
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const finding = await generateFinding(module, email);
-    const scanData: ScanFinding = {
-      id: `local-${module}-${Date.now()}`,
-      userId,
-      module,
-      finding: finding.title || `Standard ${module} check completed`,
-      status: finding.status || "KNOXED",
-      timestamp: new Date(),
-      details: finding.details || "No immediate threats detected in this vector."
-    };
-    filtered.push(scanData);
-    localStorage.setItem(`scan_findings_${userId}`, JSON.stringify(filtered));
-    if (onProgress) onProgress(1, 1, module, "Scan complete.");
-    return scanData;
-  }
-
-  // Clear previous scans for this specific module
-  const q = query(collection(db, "diff_scans"), 
-    where("userId", "==", userId),
-    where("module", "==", module)
+export function calculateScore(findings: ScanFinding[]): number {
+  if (findings.length === 0) return 0;
+  const weights = { KNOXED: 10, MONITORED: 5, NUKED: 0 } as const;
+  return Math.round(
+    (findings.reduce((total, finding) => total + weights[finding.status], 0) /
+      (findings.length * 10)) *
+      100,
   );
-  
-  let snapshot;
+}
+
+export async function updateFindingStatus(
+  findingId: string,
+  status: ScanFinding["status"],
+): Promise<boolean> {
   try {
-    snapshot = await getDocs(q);
-  } catch (err) {
-    handleFirestoreError(err, OperationType.LIST, 'diff_scans');
-    throw err;
-  }
-  
-  const deletePromises = snapshot.docs.map(d => {
-    return deleteDoc(doc(db, "diff_scans", d.id)).catch(err => {
-      handleFirestoreError(err, OperationType.DELETE, `diff_scans/${d.id}`);
-    });
-  });
-  await Promise.all(deletePromises);
-
-  if (onProgress) onProgress(0, 1, module, `Deep-diving into ${module} architecture...`);
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  if (onProgress) onProgress(0, 1, module, "Running heuristic analysis...");
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  if (onProgress) onProgress(0, 1, module, "Consulting Architect intelligence...");
-  const finding = await generateFinding(module, email);
-  
-  if (onProgress) onProgress(0.8, 1, module, "Finalizing report...");
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const scanData: any = {
-    userId,
-    module,
-    finding: finding.title || `Standard ${module} check completed`,
-    status: finding.status || "KNOXED",
-    timestamp: serverTimestamp(),
-    details: finding.details || "No immediate threats detected in this vector."
-  };
-  
-  try {
-    const docRef = await addDoc(collection(db, "diff_scans"), scanData);
-    const newFinding = { ...scanData, id: docRef.id };
-    
-    // Recalculate score
-    await recalculateSovereignScore(userId);
-    
-    if (onProgress) onProgress(1, 1, module, "Scan complete.");
-    
-    // Log module scan completion
-    logUserEvent('scan_completed', { 
-      scan_type: `MODULE_${module.toUpperCase()}`, 
-      finding_status: newFinding.status 
-    });
-
-    return newFinding;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.CREATE, 'diff_scans');
-    throw err;
-  }
-};
-
-const generateFinding = async (module: string, email: string) => {
-  try {
-    let moduleSpecificInstructions = "";
-    if (module === "mobile") {
-      moduleSpecificInstructions = `
-      For the "mobile" module, focus on specific vulnerabilities such as:
-      - Outdated OS versions (e.g., iOS 16.x when 17.x is current).
-      - Missing Passkey/Biometric enforcement.
-      - Unsecured Wi-Fi auto-join settings.
-      - Excessive app permissions (e.g., calculator app requesting location).
-      - Detected side-loaded applications or root/jailbreak status.
-      - Unencrypted local backups.
-      `;
-    } else if (module === "email") {
-      moduleSpecificInstructions = `
-      For the "email" module, focus on:
-      - Pwned accounts in specific historical breaches (e.g., LinkedIn 2016, Canva 2019).
-      - Plaintext password exposures in Pastebin dumps.
-      - Missing MFA on primary recovery accounts.
-      - Suspicious SMTP forwarding rules.
-      - Analysis of email metadata for patterns indicative of tracking (e.g., hidden pixels, unique tracking IDs in headers).
-      - Spoofing detection (e.g., DMARC/SPF/DKIM failures, look-alike domain analysis).
-      `;
-    } else if (module === "social") {
-      moduleSpecificInstructions = `
-      For the "social" module, focus on:
-      - Publicly accessible posts containing PII (e.g., birthday, pet names, location).
-      - Username reuse across multiple platforms (e.g., same handle on X, Instagram, and Reddit).
-      - Exposed friend/follower lists that could be used for social engineering.
-      - Geotagged photos revealing home or work locations.
-      - Mentions in third-party posts that link the user to sensitive groups or activities.
-      `;
-    } else if (module === "broker") {
-      moduleSpecificInstructions = `
-      For the "broker" module, identify specific data brokers holding the user's info:
-      - Whitepages, Spokeo, Acxiom, or Epsilon.
-      - Specific data types exposed: home address, relative names, estimated income.
-      `;
-    } else if (module === "device") {
-      moduleSpecificInstructions = `
-      For the "device" module, focus on:
-      - Outdated UEFI/BIOS firmware.
-      - Unencrypted swap or hibernation files.
-      - Disabled DMA (Direct Memory Access) protections.
-      - Missing OS-level security patches (e.g., KB updates for Windows, Security Updates for macOS).
-      - Detected hardware-level side-channel vulnerabilities.
-      - Unsecured peripheral configurations (e.g., USB auto-run enabled).
-      `;
-    } else if (module === "password") {
-      moduleSpecificInstructions = `
-      For the "password" module, focus on:
-      - Weak or common passwords (e.g., "123456", "password").
-      - Password reuse across multiple critical services.
-      - Passwords found in recent credential stuffing lists.
-      - Lack of a password manager or use of an unencrypted one.
-      - Passwords that haven't been changed in over 365 days.
-      `;
-    } else if (module === "darkweb") {
-      moduleSpecificInstructions = `
-      For the "darkweb" module, focus on:
-      - Credentials (email/password) found in specific dark web marketplaces or forums.
-      - Mentions of the user's PII in identity theft forums.
-      - Leaked credit card numbers or bank account info.
-      - Compromised session cookies or browser fingerprints.
-      `;
-    } else if (module === "iot") {
-      moduleSpecificInstructions = `
-      For the "iot" module, focus on:
-      - Default credentials on smart home devices (e.g., cameras, routers).
-      - Unencrypted communication between IoT devices and the cloud.
-      - Outdated firmware on smart appliances.
-      - Excessive data collection by smart home apps.
-      `;
-    }
-
-    let retryCount = 0;
-    const maxRetries = 2;
-    let responseText = "";
-
-    // Connect to the local Ollama instance running gemma4:e4b
-    const OLLAMA_URL = "http://localhost:11434/api/chat";
-
-    while (retryCount <= maxRetries) {
-      try {
-        const res = await fetch(OLLAMA_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemma4:e4b",
-            stream: false,
-            format: "json",
-            messages: [
-              {
-                role: "system",
-                content: "You are Architect AI. Generate a realistic digital identity scan finding for the requested module. Output MUST be valid JSON with 'title', 'status', and 'details' fields. The 'status' must be one of 'NUKED', 'KNOXED', or 'MONITORED'. Make it sound technical and professional, fitting for the Architect AI persona. Do not wrap in markdown code blocks."
-              },
-              {
-                role: "user",
-                content: `Generate a realistic digital identity scan finding for the module "${module}" for a user with email "${email}".\n${moduleSpecificInstructions}`
-              }
-            ],
-            options: {
-              temperature: 0.6
-            }
-          })
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        responseText = data.message?.content || "{}";
-        break; // Success, break out of retry loop
-      } catch (err) {
-        retryCount++;
-        if (retryCount > maxRetries) throw err;
-        console.warn(`Local Ollama error, retrying... (${retryCount}/${maxRetries})`, err);
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
-    }
-
-    const result = JSON.parse(responseText || "{}");
-    return result;
-  } catch (error) {
-    console.error("Error generating finding:", error);
-    return {
-      title: `Standard ${module} check completed`,
-      status: "KNOXED",
-      details: "No immediate threats detected in this vector."
-    };
-  }
-};
-
-export const calculateScore = (findings: ScanFinding[]) => {
-  if (findings.length === 0) return 100;
-  
-  const weights = {
-    KNOXED: 10,
-    MONITORED: 5,
-    NUKED: 0
-  };
-
-  const totalPoints = findings.reduce((acc, f) => acc + weights[f.status], 0);
-  const maxPoints = findings.length * 10;
-  
-  return Math.round((totalPoints / maxPoints) * 100);
-};
-
-export const updateFindingStatus = async (findingId: string, status: 'NUKED' | 'KNOXED' | 'MONITORED') => {
-  // Handle local findings
-  if (findingId.startsWith('local-')) {
-    const userId = 'emergency-bypass-admin-999';
-    const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${userId}`) || "[]");
-    const index = localFindings.findIndex((f: any) => f.id === findingId);
-    if (index !== -1) {
-      const oldStatus = localFindings[index].status;
-      localFindings[index].status = status;
-      localStorage.setItem(`scan_findings_${userId}`, JSON.stringify(localFindings));
-      
-      // Log remediation if status changed to KNOXED
-      if (oldStatus === 'NUKED' && status === 'KNOXED') {
-        logExposureNuked(localFindings[index].module, findingId);
-      }
-      return true;
-    }
-    return false;
-  }
-
-  try {
-    const findingRef = doc(db, "diff_scans", findingId);
-    const findingSnap = await getDocs(query(collection(db, "diff_scans"), where("__name__", "==", findingId))); // Minimal read to get module
-    const findingData = findingSnap.docs[0]?.data();
-    
-    await updateDoc(findingRef, { status });
-    
-    // Log remediation
-    if (findingData && findingData.status === 'NUKED' && status === 'KNOXED') {
-      logExposureNuked(findingData.module, findingId);
-    }
-    
+    await updateDoc(doc(db, "diff_scans", findingId), { status });
     return true;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.UPDATE, `diff_scans/${findingId}`);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `diff_scans/${findingId}`);
     return false;
   }
-};
+}
 
-export const recalculateSovereignScore = async (userId: string) => {
-  const findings = await getScanFindings(userId);
-  const score = calculateScore(findings);
-
-  // Handle emergency bypass user with local storage
-  if (userId === 'emergency-bypass-admin-999') {
-    const history = JSON.parse(localStorage.getItem(`score_history_${userId}`) || "[]");
-    history.push({
-      userId,
-      score,
-      timestamp: new Date(),
-      nukedCount: findings.filter((f: ScanFinding) => f.status === 'NUKED').length,
-      knoxedCount: findings.filter((f: ScanFinding) => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter((f: ScanFinding) => f.status === 'MONITORED').length,
-      findings
-    });
-    localStorage.setItem(`score_history_${userId}`, JSON.stringify(history));
-    return score;
-  }
-
+export async function getScanFindings(userId: string): Promise<ScanFinding[]> {
   try {
-    await updateDoc(doc(db, "users", userId), { sovereignScore: score });
-
-    // Save to history
-    await addDoc(collection(db, "score_history"), {
-      userId,
-      score,
-      nukedCount: findings.filter((f: ScanFinding) => f.status === 'NUKED').length,
-      knoxedCount: findings.filter((f: ScanFinding) => f.status === 'KNOXED').length,
-      monitoredCount: findings.filter((f: ScanFinding) => f.status === 'MONITORED').length,
-      findings: findings,
-      timestamp: serverTimestamp()
-    });
-    return score;
-  } catch (err) {
-    handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`);
-    return null;
-  }
-};
-
-export const generateSuspiciousReport = async (finding: ScanFinding) => {
-  try {
-    const { text } = await chatComplete(
-      `Generate a detailed security report for a suspicious finding in the "${finding.module}" module.
-      
-      Finding: ${finding.finding}
-      Status: ${finding.status}
-      Details: ${finding.details}
-      
-      The report should include:
-      1. Executive Summary
-      2. Technical Analysis (including metadata patterns if applicable)
-      3. Risk Assessment
-      4. Remediation Steps
-      5. Sovereign Protocol Recommendations
-      
-      Format the report in Markdown. Use a professional, authoritative "Architect AI" tone.`,
-      "You are an offline privacy and security analyst. Use only the supplied finding; do not invent evidence or claim that an external scan occurred."
+    const snapshot = await getDocs(
+      query(collection(db, "diff_scans"), where("userId", "==", userId)),
     );
-
-    return text;
+    return snapshot.docs.map((entry) => {
+      const data = entry.data();
+      return {
+        id: entry.id,
+        ...data,
+        timestamp: data.timestamp?.toDate?.() ?? new Date(0),
+      } as ScanFinding;
+    });
   } catch (error) {
-    console.error("Error generating report:", error);
-    return "Failed to generate detailed report. Please contact the Architect.";
-  }
-};
-
-export const getScanFindings = async (userId: string) => {
-  // Handle emergency bypass user with local storage
-  if (userId === 'emergency-bypass-admin-999') {
-    const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${userId}`) || "[]");
-    return localFindings.map((f: any) => ({ ...f, timestamp: new Date(f.timestamp) }));
-  }
-
-  const q = query(collection(db, "diff_scans"), where("userId", "==", userId));
-  try {
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ScanFinding));
-  } catch (err) {
-    handleFirestoreError(err, OperationType.LIST, 'diff_scans');
+    handleFirestoreError(error, OperationType.LIST, "diff_scans");
     return [];
   }
-};
+}
+
+export async function recalculateSovereignScore(userId: string): Promise<number> {
+  return calculateScore(await getScanFindings(userId));
+}
+
+export async function generateSuspiciousReport(finding: ScanFinding): Promise<string> {
+  const { text, offline } = await chatComplete(
+    `Analyze only the evidence below. Do not infer or claim an external scan occurred.\n\nFinding: ${finding.finding}\nStatus: ${finding.status}\nDetails: ${finding.details}`,
+    "You are an offline privacy and security analyst. State uncertainty plainly and provide remediation steps grounded only in the supplied evidence.",
+  );
+  return offline
+    ? "Architect AI is unavailable locally. No data was transmitted and no report was fabricated."
+    : text;
+}

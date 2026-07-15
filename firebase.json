@@ -43,13 +43,6 @@
         }
       },
       {
-        "source": "/api-proxy",
-        "run": {
-          "serviceId": "agape-sovereign-server",
-          "region": "us-central1"
-        }
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }

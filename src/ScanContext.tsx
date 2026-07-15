@@ -49,34 +49,6 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Handle emergency bypass user with local storage
-    if (user.uid === 'emergency-bypass-admin-999') {
-      setIsLoading(true);
-      const localFindings = localStorage.getItem(`scan_findings_${user.uid}`);
-      if (localFindings) {
-        try {
-          const parsed = JSON.parse(localFindings);
-          const findingsWithDates = parsed.map((f: any) => ({
-            ...f,
-            timestamp: new Date(f.timestamp)
-          }));
-          setFindings(findingsWithDates);
-          if (findingsWithDates.length > 0) {
-            const latest = findingsWithDates.reduce((prev: any, current: any) => 
-              (prev.timestamp > current.timestamp) ? prev : current
-            );
-            setLastScanDate(latest.timestamp);
-          }
-        } catch (e) {
-          setFindings([]);
-        }
-      } else {
-        setFindings([]);
-      }
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     const q = query(collection(db, "diff_scans"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -177,21 +149,6 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsScanning(false);
     }
   }, [user]);
-
-  useEffect(() => {
-    if (!user || isLoading || isScanning) return;
-
-    const now = new Date().getTime();
-    const lastScanTime = lastScanDate ? lastScanDate.getTime() : 0;
-    const twentyFourHours = 24 * 60 * 60 * 1000;
-
-    if (now - lastScanTime > twentyFourHours) {
-      const timer = setTimeout(() => {
-        triggerFullScan();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user, isLoading, lastScanDate, isScanning, triggerFullScan]);
 
   return (
     <ScanContext.Provider value={{ findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, currentSubTask, lastScanDate, error, triggerFullScan, triggerModuleScan }}>

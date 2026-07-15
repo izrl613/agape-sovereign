@@ -1,10 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
+import {
+  getAuth,
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup, 
-  signInAnonymously,
+  signInWithPopup,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -106,24 +105,6 @@ export const loginWithApple = async () => {
   }
 };
 
-export const loginAnonymously = async () => {
-  try {
-    const result = await signInAnonymously(auth);
-    return result.user;
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      const firebaseError = error as { code?: string, message: string };
-      if (firebaseError.code === 'auth/firebase-app-check-token-is-invalid' || firebaseError.code === 'auth/firebase-app-check-token-is-invalid.' || firebaseError.message?.includes('app-check')) {
-        // Suppress console error for App Check, as it is handled gracefully by the bypass
-      } else {
-        console.error("Error signing in anonymously:", error);
-      }
-    } else {
-      console.error("Error signing in anonymously:", error);
-    }
-    throw error;
-  }
-};
 
 export const logout = async () => {
   try {

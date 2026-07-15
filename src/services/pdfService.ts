@@ -1,7 +1,5 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { db } from '../firebase';
-import { collection, doc as firestoreDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { generateSHA256 } from '../utils/crypto';
 import { toast } from 'sonner';
 
@@ -374,53 +372,12 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
   doc.text(`VERIFICATION TIMESTAMP: ${dateStr} ${timeStr} UTC`, 20, finalY + 34);
   doc.text(`RETENTION LOCK ACTIVE: 2 YEARS (EXPIRY: ${timestamp.getFullYear() + 2}-${(timestamp.getMonth()+1).toString().padStart(2, '0')}-${timestamp.getDate().toString().padStart(2, '0')})`, 20, finalY + 40);
 
-  // --- SAVE AND EXPORT PROCESS ---
-  // Generate Data URI String
-  const pdfBase64 = doc.output('datauristring');
-
-  // Trigger browser download
+  // Reports may contain sensitive, user-supplied evidence. Do not create a
+  // cloud copy implicitly; export only to the user's selected local location.
   doc.save(`Agape_Sovereign_DIFF_Audit_${timestamp.getTime()}.pdf`);
-
-  // Write record to Firestore (/users/{uid}/reports/{reportId})
-  // We utilize the base64 Data URL to allow the user to retrieve their PDF for 2 years!
-  if (reportData.userId !== 'emergency-bypass-admin-999') {
-    try {
-      const reportRef = firestoreDoc(collection(db, 'users', reportData.userId, 'reports'), docId);
-      await setDoc(reportRef, {
-        reportId: docId,
-        generatedAt: serverTimestamp(),
-        sovereignScore: reportData.sovereignScore,
-        nukedCount: reportData.nukedCount,
-        knoxedCount: reportData.knoxedCount,
-        monitoredCount: reportData.monitoredCount,
-        cumulativeSeal: cumulativeSeal,
-        pdfDataUrl: pdfBase64 // Base64 data saved for 2-year recovery
-      });
-      toast.success("SOVEREIGN REPORT COMMITTED", {
-        description: "Audit trail verified and logged to your Sovereign Profile (2-year retention locked)."
-      });
-    } catch (e) {
-      console.error("Failed to commit PDF report metadata to Firestore:", e);
-      toast.warning("Report saved locally, but database sync failed.");
-    }
-  } else {
-    // Local storage mock for emergency admin bypass
-    const localReportsKey = `reports_history_${reportData.userId}`;
-    const existing = localStorage.getItem(localReportsKey);
-    const list = existing ? JSON.parse(existing) : [];
-    list.push({
-      reportId: docId,
-      generatedAt: timestamp.toISOString(),
-      sovereignScore: reportData.sovereignScore,
-      nukedCount: reportData.nukedCount,
-      knoxedCount: reportData.knoxedCount,
-      monitoredCount: reportData.monitoredCount,
-      cumulativeSeal: cumulativeSeal,
-      pdfDataUrl: pdfBase64
-    });
-    localStorage.setItem(localReportsKey, JSON.stringify(list));
-    toast.success("SOVEREIGN REPORT STORED LOCALLY (Bypass Enclave active)");
-  }
+  toast.success("SOVEREIGN REPORT EXPORTED", {
+    description: "The report was created and saved on this device only."
+  });
 
   return cumulativeSeal;
 };
