@@ -6,8 +6,8 @@
     "backend"
   ],
   "scripts": {
-    "dev-frontend": "npm run dev --prefix frontend",
-    "dev-backend": "tsx watch --env-file=.env.local server.ts",
+    "dev-frontend": "vite --host 127.0.0.1",
+    "dev-backend": "PORT=5002 WEBAUTHN_RP_ID=127.0.0.1 WEBAUTHN_ORIGIN=http://127.0.0.1:5173 tsx watch --env-file=.env.local server.ts",
     "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
     "typecheck": "tsc --noEmit",
     "build": "vite build && esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --packages=external",
