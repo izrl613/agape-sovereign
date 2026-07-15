@@ -174,6 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         toast.error(`WebAuthn Error: ${error.message || 'Unknown error'}`);
       }
+      throw error;
     }
   };
 
@@ -222,6 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         toast.error(`Passkey Error: ${error.message || 'Unknown error'}`);
       }
+      throw error;
     }
   };
 
