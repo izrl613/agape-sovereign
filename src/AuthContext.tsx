@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, db, loginWithGoogle, loginAnonymously, logout } from './firebase';
+import { auth, db, loginWithGoogle, logout } from './firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 import { logEvent, AuditLogType } from './services/auditService';
@@ -21,7 +21,6 @@ interface AuthContextType {
   login: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
-  emergencyBypass: () => Promise<void>;
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
@@ -52,9 +51,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const userSnap = await getDoc(userRef);
             
-            const isSuperAdmin = currentUser.email === 'idin@agape.nyc' || 
-                                 currentUser.email === 'agape@sovereign.nyc' || 
-                                 (currentUser.isAnonymous && currentUser.uid === 'emergency-bypass-admin-999');
+            const isSuperAdmin = currentUser.email === 'idin@agape.nyc' ||
+                                 currentUser.email === 'agape@sovereign.nyc';
             
             if (!userSnap.exists()) {
               const initialData = {
@@ -124,48 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleLogout = async () => {
     await logout();
-  };
-
-  const handleEmergencyBypass = async () => {
-    try {
-      await loginAnonymously();
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        const firebaseError = err as { code?: string, message: string };
-        if (firebaseError.code === 'auth/firebase-app-check-token-is-invalid' || firebaseError.code === 'auth/firebase-app-check-token-is-invalid.' || firebaseError.message?.includes('app-check')) {
-          console.log("Falling back to local mock bypass due to App Check enforcement");
-          const mockUser = {
-            uid: 'emergency-bypass-admin-999',
-            email: 'idin@agape.nyc', // Treat as super admin
-            displayName: 'Sovereign Admin (Bypass)',
-            photoURL: '',
-            emailVerified: true,
-            isAnonymous: true,
-            metadata: {},
-            providerData: [],
-            refreshToken: '',
-            tenantId: null,
-            delete: async () => {},
-            getIdToken: async () => '',
-            getIdTokenResult: async () => ({} as import('firebase/auth').IdTokenResult),
-            reload: async () => {},
-            toJSON: () => ({}),
-          } as unknown as User;
-          
-          setUser(mockUser);
-          setIsAdmin(true);
-          setSovereignScore(100);
-          setSetupCompleteState(true);
-          setLoading(false);
-        } else {
-          console.error("Emergency bypass failed", err);
-          throw err;
-        }
-      } else {
-        console.error("Emergency bypass failed", err);
-        throw err;
-      }
-    }
   };
 
   const handleBindPasskey = async () => {
@@ -308,7 +264,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login: handleLogin, 
       loginWithPasskey: handleLoginWithPasskey,
       logout: handleLogout, 
-      emergencyBypass: handleEmergencyBypass,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
       updateProfile: handleUpdateProfile

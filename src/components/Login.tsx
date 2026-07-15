@@ -21,7 +21,7 @@ const GoogleIcon = () => (
 );
 
 export const Login = () => {
-  const { login, loginWithPasskey, emergencyBypass } = useAuth();
+  const { login, loginWithPasskey } = useAuth();
 
   const [step, setStep] = useState<'landing' | 'passkey' | 'creating'>('landing');
   const [scanning, setScanning] = useState(false);
@@ -53,19 +53,6 @@ export const Login = () => {
 
   const handlePasskeyStep = async () => {
     setAuthError(null);
-
-    // "anon" shortcut → emergency bypass
-    if (email.trim().toLowerCase() === 'anon') {
-      setScanning(true);
-      try {
-        await emergencyBypass();
-        setStep('creating');
-      } catch (err: unknown) {
-        setScanning(false);
-        setAuthError(err instanceof Error ? err.message : 'Bypass failed.');
-      }
-      return;
-    }
 
     if (!validateEmail(email)) {
       setEmailError('Enter a valid email to locate your passkey.');
@@ -251,23 +238,6 @@ export const Login = () => {
               Your identity. Your sovereignty. Your rules.
             </div>
 
-            {/* Hidden emergency bypass */}
-            <button
-              onClick={async () => {
-                setAuthError(null);
-                try { await emergencyBypass(); setStep('creating'); }
-                catch (err: unknown) { setAuthError(err instanceof Error ? err.message : 'Bypass failed.'); }
-              }}
-              style={{
-                display: 'block', margin: '12px auto 0',
-                background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 9, color: 'rgba(255,255,255,0.12)',
-                fontFamily: 'monospace', letterSpacing: '0.2em', padding: '4px 0',
-              }}
-              aria-label="Emergency bypass"
-            >
-              [ EMERGENCY BYPASS ]
-            </button>
           </motion.div>
         )}
 

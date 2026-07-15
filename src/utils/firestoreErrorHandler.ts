@@ -30,15 +30,13 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const isBypass = auth.currentUser === null && window.location.pathname !== '/login';
-  
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid || (isBypass ? 'emergency-bypass-admin-999' : undefined),
+      userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
       emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous || isBypass,
+      isAnonymous: auth.currentUser?.isAnonymous,
       tenantId: auth.currentUser?.tenantId,
       providerInfo: auth.currentUser?.providerData.map(provider => ({
         providerId: provider.providerId,
@@ -52,11 +50,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   
   console.error('Firestore Error: ', errInfo);
-  
-  if (isBypass) {
-    console.warn("Ignoring Firestore error during emergency bypass mode.");
-    return;
-  }
   
   let safeErrorString = "Unknown error";
   try {
