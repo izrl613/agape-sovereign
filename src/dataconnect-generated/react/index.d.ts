@@ -1,36 +1,33 @@
-import { UpsertUserData, UpsertUserVariables, UpdateSovereignScoreData, UpdateSovereignScoreVariables, UpsertUserVectorStatusData, UpsertUserVectorStatusVariables, AddFindingData, AddFindingVariables, AddMonitoredEmailData, AddMonitoredEmailVariables, RemoveMonitoredEmailData, RemoveMonitoredEmailVariables, GetUserData, GetUserVectorStatusesData, GetFindingsData, GetFindingsVariables, GetMonitoredEmailsData } from '../';
+import { CreateMovieData, CreateMovieVariables, UpsertUserData, UpsertUserVariables, AddReviewData, AddReviewVariables, DeleteReviewData, DeleteReviewVariables, ListMoviesData, ListUsersData, ListUserReviewsData, GetMovieByIdData, GetMovieByIdVariables, SearchMovieData, SearchMovieVariables } from '../';
 import { UseDataConnectQueryResult, useDataConnectQueryOptions, UseDataConnectMutationResult, useDataConnectMutationOptions} from '@tanstack-query-firebase/react/data-connect';
 import { UseQueryResult, UseMutationResult} from '@tanstack/react-query';
 import { DataConnect } from 'firebase/data-connect';
 import { FirebaseError } from 'firebase/app';
 
 
+export function useCreateMovie(options?: useDataConnectMutationOptions<CreateMovieData, FirebaseError, CreateMovieVariables>): UseDataConnectMutationResult<CreateMovieData, CreateMovieVariables>;
+export function useCreateMovie(dc: DataConnect, options?: useDataConnectMutationOptions<CreateMovieData, FirebaseError, CreateMovieVariables>): UseDataConnectMutationResult<CreateMovieData, CreateMovieVariables>;
+
 export function useUpsertUser(options?: useDataConnectMutationOptions<UpsertUserData, FirebaseError, UpsertUserVariables>): UseDataConnectMutationResult<UpsertUserData, UpsertUserVariables>;
 export function useUpsertUser(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertUserData, FirebaseError, UpsertUserVariables>): UseDataConnectMutationResult<UpsertUserData, UpsertUserVariables>;
 
-export function useUpdateSovereignScore(options?: useDataConnectMutationOptions<UpdateSovereignScoreData, FirebaseError, UpdateSovereignScoreVariables>): UseDataConnectMutationResult<UpdateSovereignScoreData, UpdateSovereignScoreVariables>;
-export function useUpdateSovereignScore(dc: DataConnect, options?: useDataConnectMutationOptions<UpdateSovereignScoreData, FirebaseError, UpdateSovereignScoreVariables>): UseDataConnectMutationResult<UpdateSovereignScoreData, UpdateSovereignScoreVariables>;
+export function useAddReview(options?: useDataConnectMutationOptions<AddReviewData, FirebaseError, AddReviewVariables>): UseDataConnectMutationResult<AddReviewData, AddReviewVariables>;
+export function useAddReview(dc: DataConnect, options?: useDataConnectMutationOptions<AddReviewData, FirebaseError, AddReviewVariables>): UseDataConnectMutationResult<AddReviewData, AddReviewVariables>;
 
-export function useUpsertUserVectorStatus(options?: useDataConnectMutationOptions<UpsertUserVectorStatusData, FirebaseError, UpsertUserVectorStatusVariables>): UseDataConnectMutationResult<UpsertUserVectorStatusData, UpsertUserVectorStatusVariables>;
-export function useUpsertUserVectorStatus(dc: DataConnect, options?: useDataConnectMutationOptions<UpsertUserVectorStatusData, FirebaseError, UpsertUserVectorStatusVariables>): UseDataConnectMutationResult<UpsertUserVectorStatusData, UpsertUserVectorStatusVariables>;
+export function useDeleteReview(options?: useDataConnectMutationOptions<DeleteReviewData, FirebaseError, DeleteReviewVariables>): UseDataConnectMutationResult<DeleteReviewData, DeleteReviewVariables>;
+export function useDeleteReview(dc: DataConnect, options?: useDataConnectMutationOptions<DeleteReviewData, FirebaseError, DeleteReviewVariables>): UseDataConnectMutationResult<DeleteReviewData, DeleteReviewVariables>;
 
-export function useAddFinding(options?: useDataConnectMutationOptions<AddFindingData, FirebaseError, AddFindingVariables>): UseDataConnectMutationResult<AddFindingData, AddFindingVariables>;
-export function useAddFinding(dc: DataConnect, options?: useDataConnectMutationOptions<AddFindingData, FirebaseError, AddFindingVariables>): UseDataConnectMutationResult<AddFindingData, AddFindingVariables>;
+export function useListMovies(options?: useDataConnectQueryOptions<ListMoviesData>): UseDataConnectQueryResult<ListMoviesData, undefined>;
+export function useListMovies(dc: DataConnect, options?: useDataConnectQueryOptions<ListMoviesData>): UseDataConnectQueryResult<ListMoviesData, undefined>;
 
-export function useAddMonitoredEmail(options?: useDataConnectMutationOptions<AddMonitoredEmailData, FirebaseError, AddMonitoredEmailVariables>): UseDataConnectMutationResult<AddMonitoredEmailData, AddMonitoredEmailVariables>;
-export function useAddMonitoredEmail(dc: DataConnect, options?: useDataConnectMutationOptions<AddMonitoredEmailData, FirebaseError, AddMonitoredEmailVariables>): UseDataConnectMutationResult<AddMonitoredEmailData, AddMonitoredEmailVariables>;
+export function useListUsers(options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
+export function useListUsers(dc: DataConnect, options?: useDataConnectQueryOptions<ListUsersData>): UseDataConnectQueryResult<ListUsersData, undefined>;
 
-export function useRemoveMonitoredEmail(options?: useDataConnectMutationOptions<RemoveMonitoredEmailData, FirebaseError, RemoveMonitoredEmailVariables>): UseDataConnectMutationResult<RemoveMonitoredEmailData, RemoveMonitoredEmailVariables>;
-export function useRemoveMonitoredEmail(dc: DataConnect, options?: useDataConnectMutationOptions<RemoveMonitoredEmailData, FirebaseError, RemoveMonitoredEmailVariables>): UseDataConnectMutationResult<RemoveMonitoredEmailData, RemoveMonitoredEmailVariables>;
+export function useListUserReviews(options?: useDataConnectQueryOptions<ListUserReviewsData>): UseDataConnectQueryResult<ListUserReviewsData, undefined>;
+export function useListUserReviews(dc: DataConnect, options?: useDataConnectQueryOptions<ListUserReviewsData>): UseDataConnectQueryResult<ListUserReviewsData, undefined>;
 
-export function useGetUser(options?: useDataConnectQueryOptions<GetUserData>): UseDataConnectQueryResult<GetUserData, undefined>;
-export function useGetUser(dc: DataConnect, options?: useDataConnectQueryOptions<GetUserData>): UseDataConnectQueryResult<GetUserData, undefined>;
+export function useGetMovieById(vars: GetMovieByIdVariables, options?: useDataConnectQueryOptions<GetMovieByIdData>): UseDataConnectQueryResult<GetMovieByIdData, GetMovieByIdVariables>;
+export function useGetMovieById(dc: DataConnect, vars: GetMovieByIdVariables, options?: useDataConnectQueryOptions<GetMovieByIdData>): UseDataConnectQueryResult<GetMovieByIdData, GetMovieByIdVariables>;
 
-export function useGetUserVectorStatuses(options?: useDataConnectQueryOptions<GetUserVectorStatusesData>): UseDataConnectQueryResult<GetUserVectorStatusesData, undefined>;
-export function useGetUserVectorStatuses(dc: DataConnect, options?: useDataConnectQueryOptions<GetUserVectorStatusesData>): UseDataConnectQueryResult<GetUserVectorStatusesData, undefined>;
-
-export function useGetFindings(vars: GetFindingsVariables, options?: useDataConnectQueryOptions<GetFindingsData>): UseDataConnectQueryResult<GetFindingsData, GetFindingsVariables>;
-export function useGetFindings(dc: DataConnect, vars: GetFindingsVariables, options?: useDataConnectQueryOptions<GetFindingsData>): UseDataConnectQueryResult<GetFindingsData, GetFindingsVariables>;
-
-export function useGetMonitoredEmails(options?: useDataConnectQueryOptions<GetMonitoredEmailsData>): UseDataConnectQueryResult<GetMonitoredEmailsData, undefined>;
-export function useGetMonitoredEmails(dc: DataConnect, options?: useDataConnectQueryOptions<GetMonitoredEmailsData>): UseDataConnectQueryResult<GetMonitoredEmailsData, undefined>;
+export function useSearchMovie(vars?: SearchMovieVariables, options?: useDataConnectQueryOptions<SearchMovieData>): UseDataConnectQueryResult<SearchMovieData, SearchMovieVariables>;
+export function useSearchMovie(dc: DataConnect, vars?: SearchMovieVariables, options?: useDataConnectQueryOptions<SearchMovieData>): UseDataConnectQueryResult<SearchMovieData, SearchMovieVariables>;

@@ -12,28 +12,26 @@ For each operation, there is a wrapper hook that can be used to call the operati
 
 Here are all of the hooks that get generated:
 ```ts
-import { useUpsertUser, useUpdateSovereignScore, useUpsertUserVectorStatus, useAddFinding, useAddMonitoredEmail, useRemoveMonitoredEmail, useGetUser, useGetUserVectorStatuses, useGetFindings, useGetMonitoredEmails } from '@dataconnect/generated/react';
+import { useCreateMovie, useUpsertUser, useAddReview, useDeleteReview, useListMovies, useListUsers, useListUserReviews, useGetMovieById, useSearchMovie } from '@dataconnect/generated/react';
 // The types of these hooks are available in react/index.d.ts
+
+const { data, isPending, isSuccess, isError, error } = useCreateMovie(createMovieVars);
 
 const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
 
-const { data, isPending, isSuccess, isError, error } = useUpdateSovereignScore(updateSovereignScoreVars);
+const { data, isPending, isSuccess, isError, error } = useAddReview(addReviewVars);
 
-const { data, isPending, isSuccess, isError, error } = useUpsertUserVectorStatus(upsertUserVectorStatusVars);
+const { data, isPending, isSuccess, isError, error } = useDeleteReview(deleteReviewVars);
 
-const { data, isPending, isSuccess, isError, error } = useAddFinding(addFindingVars);
+const { data, isPending, isSuccess, isError, error } = useListMovies();
 
-const { data, isPending, isSuccess, isError, error } = useAddMonitoredEmail(addMonitoredEmailVars);
+const { data, isPending, isSuccess, isError, error } = useListUsers();
 
-const { data, isPending, isSuccess, isError, error } = useRemoveMonitoredEmail(removeMonitoredEmailVars);
+const { data, isPending, isSuccess, isError, error } = useListUserReviews();
 
-const { data, isPending, isSuccess, isError, error } = useGetUser();
+const { data, isPending, isSuccess, isError, error } = useGetMovieById(getMovieByIdVars);
 
-const { data, isPending, isSuccess, isError, error } = useGetUserVectorStatuses();
-
-const { data, isPending, isSuccess, isError, error } = useGetFindings(getFindingsVars);
-
-const { data, isPending, isSuccess, isError, error } = useGetMonitoredEmails();
+const { data, isPending, isSuccess, isError, error } = useSearchMovie(searchMovieVars);
 
 ```
 
@@ -72,38 +70,35 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertUser, updateSovereignScore, upsertUserVectorStatus, addFinding, addMonitoredEmail, removeMonitoredEmail, getUser, getUserVectorStatuses, getFindings, getMonitoredEmails } from '@dataconnect/generated';
+import { createMovie, upsertUser, addReview, deleteReview, listMovies, listUsers, listUserReviews, getMovieById, searchMovie } from '@dataconnect/generated';
 
+
+// Operation CreateMovie:  For variables, look at type CreateMovieVars in ../index.d.ts
+const { data } = await CreateMovie(dataConnect, createMovieVars);
 
 // Operation UpsertUser:  For variables, look at type UpsertUserVars in ../index.d.ts
 const { data } = await UpsertUser(dataConnect, upsertUserVars);
 
-// Operation UpdateSovereignScore:  For variables, look at type UpdateSovereignScoreVars in ../index.d.ts
-const { data } = await UpdateSovereignScore(dataConnect, updateSovereignScoreVars);
+// Operation AddReview:  For variables, look at type AddReviewVars in ../index.d.ts
+const { data } = await AddReview(dataConnect, addReviewVars);
 
-// Operation UpsertUserVectorStatus:  For variables, look at type UpsertUserVectorStatusVars in ../index.d.ts
-const { data } = await UpsertUserVectorStatus(dataConnect, upsertUserVectorStatusVars);
+// Operation DeleteReview:  For variables, look at type DeleteReviewVars in ../index.d.ts
+const { data } = await DeleteReview(dataConnect, deleteReviewVars);
 
-// Operation AddFinding:  For variables, look at type AddFindingVars in ../index.d.ts
-const { data } = await AddFinding(dataConnect, addFindingVars);
+// Operation ListMovies: 
+const { data } = await ListMovies(dataConnect);
 
-// Operation AddMonitoredEmail:  For variables, look at type AddMonitoredEmailVars in ../index.d.ts
-const { data } = await AddMonitoredEmail(dataConnect, addMonitoredEmailVars);
+// Operation ListUsers: 
+const { data } = await ListUsers(dataConnect);
 
-// Operation RemoveMonitoredEmail:  For variables, look at type RemoveMonitoredEmailVars in ../index.d.ts
-const { data } = await RemoveMonitoredEmail(dataConnect, removeMonitoredEmailVars);
+// Operation ListUserReviews: 
+const { data } = await ListUserReviews(dataConnect);
 
-// Operation GetUser: 
-const { data } = await GetUser(dataConnect);
+// Operation GetMovieById:  For variables, look at type GetMovieByIdVars in ../index.d.ts
+const { data } = await GetMovieById(dataConnect, getMovieByIdVars);
 
-// Operation GetUserVectorStatuses: 
-const { data } = await GetUserVectorStatuses(dataConnect);
-
-// Operation GetFindings:  For variables, look at type GetFindingsVars in ../index.d.ts
-const { data } = await GetFindings(dataConnect, getFindingsVars);
-
-// Operation GetMonitoredEmails: 
-const { data } = await GetMonitoredEmails(dataConnect);
+// Operation SearchMovie:  For variables, look at type SearchMovieVars in ../index.d.ts
+const { data } = await SearchMovie(dataConnect, searchMovieVars);
 
 
 ```

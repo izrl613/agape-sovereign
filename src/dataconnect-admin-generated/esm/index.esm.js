@@ -6,63 +6,57 @@ export const connectorConfig = {
   location: 'us-central1'
 };
 
+export function createMovie(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
+  dcInstance.useGen(true);
+  return dcInstance.executeMutation('CreateMovie', inputVars, inputOpts);
+}
+
 export function upsertUser(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
   return dcInstance.executeMutation('UpsertUser', inputVars, inputOpts);
 }
 
-export function updateSovereignScore(dcOrVarsOrOptions, varsOrOptions, options) {
+export function addReview(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpdateSovereignScore', inputVars, inputOpts);
+  return dcInstance.executeMutation('AddReview', inputVars, inputOpts);
 }
 
-export function upsertUserVectorStatus(dcOrVarsOrOptions, varsOrOptions, options) {
+export function deleteReview(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeMutation('UpsertUserVectorStatus', inputVars, inputOpts);
+  return dcInstance.executeMutation('DeleteReview', inputVars, inputOpts);
 }
 
-export function addFinding(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('AddFinding', inputVars, inputOpts);
-}
-
-export function addMonitoredEmail(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('AddMonitoredEmail', inputVars, inputOpts);
-}
-
-export function removeMonitoredEmail(dcOrVarsOrOptions, varsOrOptions, options) {
-  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
-  dcInstance.useGen(true);
-  return dcInstance.executeMutation('RemoveMonitoredEmail', inputVars, inputOpts);
-}
-
-export function getUser(dcOrOptions, options) {
+export function listMovies(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUser', undefined, inputOpts);
+  return dcInstance.executeQuery('ListMovies', undefined, inputOpts);
 }
 
-export function getUserVectorStatuses(dcOrOptions, options) {
+export function listUsers(dcOrOptions, options) {
   const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetUserVectorStatuses', undefined, inputOpts);
+  return dcInstance.executeQuery('ListUsers', undefined, inputOpts);
 }
 
-export function getFindings(dcOrVarsOrOptions, varsOrOptions, options) {
+export function listUserReviews(dcOrOptions, options) {
+  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+  dcInstance.useGen(true);
+  return dcInstance.executeQuery('ListUserReviews', undefined, inputOpts);
+}
+
+export function getMovieById(dcOrVarsOrOptions, varsOrOptions, options) {
   const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, true);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetFindings', inputVars, inputOpts);
+  return dcInstance.executeQuery('GetMovieById', inputVars, inputOpts);
 }
 
-export function getMonitoredEmails(dcOrOptions, options) {
-  const { dc: dcInstance, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrOptions, options, undefined);
+export function searchMovie(dcOrVarsOrOptions, varsOrOptions, options) {
+  const { dc: dcInstance, vars: inputVars, options: inputOpts} = validateAdminArgs(connectorConfig, dcOrVarsOrOptions, varsOrOptions, options, true, false);
   dcInstance.useGen(true);
-  return dcInstance.executeQuery('GetMonitoredEmails', undefined, inputOpts);
+  return dcInstance.executeQuery('SearchMovie', inputVars, inputOpts);
 }
 

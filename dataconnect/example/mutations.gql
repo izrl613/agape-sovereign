@@ -1,71 +1,33 @@
-# Mutations for Agape Sovereign Enclave 2026
+# Example mutations for a simple movie app
 
-mutation UpsertUser($name: String!, $email: String!, $provider: String) @auth(level: USER) {
-  user_upsert(data: {
-    uid_expr: "auth.uid"
-    name: $name
-    email: $email
-    provider: $provider
-    lastLoginAt_expr: "request.time"
-  })
+# Create a movie based on user input
+mutation CreateMovie($title: String!, $genre: String!, $imageUrl: String!)
+@auth(level: USER_EMAIL_VERIFIED, insecureReason: "Any email verified users can create a new movie.") {
+  movie_insert(data: { title: $title, genre: $genre, imageUrl: $imageUrl })
 }
 
-mutation UpdateSovereignScore($score: Int!) @auth(level: USER) {
-  user_update(
-    key: { uid_expr: "auth.uid" }
-    data: { sovereignScore: $score }
+# Upsert (update or insert) a user's username based on their auth.uid
+mutation UpsertUser($username: String!) @auth(level: USER) {
+  # The "auth.uid" server value ensures that users can only register their own user.
+  user_upsert(data: { id_expr: "auth.uid", username: $username })
+}
+
+# Add a review for a movie
+mutation AddReview($movieId: UUID!, $rating: Int!, $reviewText: String!)
+@auth(level: USER) {
+  review_upsert(
+    data: {
+      userId_expr: "auth.uid"
+      movieId: $movieId
+      rating: $rating
+      reviewText: $reviewText
+      # reviewDate defaults to today in the schema. No need to set it manually.
+    }
   )
 }
 
-mutation UpsertUserVectorStatus(
-  $vectorId: String!
-  $sovereigntyScore: Int!
-  $nukedCount: Int!
-  $knoxedCount: Int!
-  $monitoredCount: Int!
-  $statusNotes: String
-) @auth(level: USER) {
-  userVectorStatus_upsert(data: {
-    user: { uid_expr: "auth.uid" }
-    identityVector: { id: $vectorId }
-    sovereigntyScore: $sovereigntyScore
-    nukedCount: $nukedCount
-    knoxedCount: $knoxedCount
-    monitoredCount: $monitoredCount
-    statusNotes: $statusNotes
-    lastScanAt_expr: "request.time"
-  })
-}
-
-mutation AddFinding(
-  $vectorId: String!
-  $type: String!
-  $label: String!
-  $detail: String!
-  $action: String
-  $status: String
-) @auth(level: USER) {
-  finding_insert(data: {
-    user: { uid_expr: "auth.uid" }
-    identityVector: { id: $vectorId }
-    type: $type
-    label: $label
-    detail: $detail
-    action: $action
-    status: $status
-  })
-}
-
-mutation AddMonitoredEmail($emailAddress: String!) @auth(level: USER) {
-  monitoredEmail_insert(data: {
-    user: { uid_expr: "auth.uid" }
-    emailAddress: $emailAddress
-    status: "MONITORED"
-  })
-}
-
-mutation RemoveMonitoredEmail($id: UUID!) @auth(level: USER) {
-  monitoredEmail_delete(
-    first: { where: { id: { eq: $id }, user: { uid: { eq_expr: "auth.uid" } } } }
-  )
+# Logged in user can delete their review for a movie
+mutation DeleteReview($movieId: UUID!) @auth(level: USER) {
+  # The "auth.uid" server value ensures that users can only delete their own reviews.
+  review_delete(key: { userId_expr: "auth.uid", movieId: $movieId })
 }
