@@ -17,6 +17,11 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const RP_NAME = "Agape Sovereign";
+// Firebase Hosting and Cloudflare terminate TLS before invoking this function.
+// Do not derive WebAuthn values from proxy headers: the browser must validate
+// the public origin that it actually loaded.
+const RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
+const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
 const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET || "sovereign-secret-key";
 
 const authApp = express();
@@ -26,23 +31,18 @@ authApp.use(cookieParser(COOKIE_SECRET));
 // Router used at both /  (direct Cloud Functions URL) and /api/auth (Firebase Hosting rewrite)
 const router = express.Router();
 
-async function ensureUserExists(email: string): Promise<{ userId: string; userEmail: string }> {
-  const usersRef = db.collection("users");
-  const userSnap = await usersRef.where("email", "==", email).limit(1).get();
-  if (userSnap.empty) {
-    const userId = db.collection("users").doc().id;
-    await usersRef.doc(userId).set({
-      email,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    return { userId, userEmail: email };
+async function requireRegisteredUser(req: Request, email: string): Promise<{ uid: string; email: string }> {
+  const authorization = req.get("authorization");
+  if (!authorization?.startsWith("Bearer ")) {
+    throw new Error("Authentication is required to register a passkey.");
   }
-  return { userId: userSnap.docs[0].id, userEmail: email };
-}
 
-function getRpId(req: Request): string {
-  const host = req.get("host")?.split(":")[0] || "localhost";
-  return host === "127.0.0.1" ? "localhost" : host;
+  const decoded = await admin.auth().verifyIdToken(authorization.slice("Bearer ".length));
+  if (!decoded.email || decoded.email.toLowerCase() !== email.toLowerCase()) {
+    throw new Error("The passkey email must match the signed-in account.");
+  }
+
+  return { uid: decoded.uid, email: decoded.email };
 }
 
 // POST /register-options  (also served at /api/auth/register-options via Hosting rewrite)
@@ -51,16 +51,20 @@ router.post("/register-options", async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email) { res.status(400).json({ error: "Missing user email" }); return; }
 
-    const { userId, userEmail } = await ensureUserExists(email);
-    const rpId = getRpId(req);
-    const credsSnap = await db.collection("users").doc(userId).collection("passkeyCredentials").get();
+    const { uid: userId, email: userEmail } = await requireRegisteredUser(req, email);
+    const userRef = db.collection("users").doc(userId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      await userRef.set({ email: userEmail, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    }
+    const credsSnap = await userRef.collection("passkeyCredentials").get();
     const excludeCredentials = credsSnap.docs.map((doc) => ({
       id: doc.id, type: "public-key" as const, transports: doc.data().transports,
     }));
 
     const options = await generateRegistrationOptions({
       rpName: RP_NAME,
-      rpID: rpId,
+      rpID: RP_ID,
       userID: new TextEncoder().encode(userId),
       userName: userEmail,
       userDisplayName: userEmail,
@@ -80,6 +84,11 @@ router.post("/register-options", async (req: Request, res: Response) => {
     res.json(options);
   } catch (error) {
     logger.error("Register Options Error:", error);
+    const message = error instanceof Error ? error.message : "";
+    if (message === "Authentication is required to register a passkey." || message === "The passkey email must match the signed-in account.") {
+      res.status(401).json({ error: message });
+      return;
+    }
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -92,10 +101,8 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
     const userId = req.signedCookies["auth-user-id"];
     if (!expectedChallenge || !userId) { res.status(400).json({ error: "Challenge expired or missing" }); return; }
 
-    const rpId = getRpId(req);
-    const origin = `${req.protocol}://${req.get("host")}`;
     const verification = await verifyRegistrationResponse({
-      response: body, expectedChallenge, expectedOrigin: origin, expectedRPID: rpId,
+      response: body, expectedChallenge, expectedOrigin: EXPECTED_ORIGIN, expectedRPID: RP_ID,
     });
 
     if (verification.verified && verification.registrationInfo) {
@@ -138,9 +145,8 @@ router.post("/login-options", async (req: Request, res: Response) => {
       id: doc.id, type: "public-key" as const, transports: doc.data().transports,
     }));
 
-    const rpId = getRpId(req);
     const options = await generateAuthenticationOptions({
-      rpID: rpId, allowCredentials: allowCredentials as any, userVerification: "preferred",
+      rpID: RP_ID, allowCredentials: allowCredentials as any, userVerification: "preferred",
     });
 
     res.cookie("authentication-challenge", options.challenge, {
@@ -167,14 +173,11 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     if (!credDoc.exists) { res.status(400).json({ error: "Credential not found" }); return; }
 
     const credData = credDoc.data()!;
-    const rpId = getRpId(req);
-    const origin = `${req.protocol}://${req.get("host")}`;
-
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: origin,
-      expectedRPID: rpId,
+      expectedOrigin: EXPECTED_ORIGIN,
+      expectedRPID: RP_ID,
       credential: {
         id: credData.credentialID,
         publicKey: Buffer.from(credData.publicKey, "base64url"),

@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -74,8 +75,11 @@ appleProvider.setCustomParameters({
 
 export const loginWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
+    // A top-level redirect works in browsers that block Firebase's
+    // cross-origin popup helper. Firebase restores the signed-in user after
+    // returning to this app, which AuthContext observes normally.
+    await signInWithRedirect(auth, googleProvider);
+    return null;
   } catch (error: unknown) {
     console.error("Error signing in with Google:", error);
     

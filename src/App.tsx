@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { ScanProvider } from './ScanContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
-import { Login } from './components/Login';
+import { Login } from './components/Login 2';
 import { Dashboard } from './components/Dashboard';
 import { ArchitectAI } from './components/ArchitectAI';
 import { AdminPortal } from './components/AdminPortal';
@@ -156,4 +156,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-

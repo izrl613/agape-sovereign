@@ -132,11 +132,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
+      if (!currentUser.email) {
+        throw new Error('Your Google account must provide an email address before you can register a passkey.');
+      }
+      const idToken = await currentUser.getIdToken();
+
       // 1. Get registration options from server
       const optionsRes = await fetch('/api/auth/register-options', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: currentUser.uid, userEmail: currentUser.email }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ email: currentUser.email }),
       });
       
       if (!optionsRes.ok) throw new Error('Failed to fetch registration options');
