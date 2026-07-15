@@ -134,12 +134,18 @@ router.post("/login-options", async (req: Request, res: Response) => {
     if (!email) { res.status(400).json({ error: "Missing email" }); return; }
 
     const userSnap = await db.collection("users").where("email", "==", email).limit(1).get();
-    if (userSnap.empty) { res.status(404).json({ error: "User not found" }); return; }
+    if (userSnap.empty) {
+      res.status(404).json({ error: "No passkey is registered for this email. Sign in with Google to enroll one." });
+      return;
+    }
 
     const userDoc = userSnap.docs[0];
     const userId = userDoc.id;
     const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
-    if (credsSnap.empty) { res.status(404).json({ error: "No passkeys registered for this account" }); return; }
+    if (credsSnap.empty) {
+      res.status(404).json({ error: "No passkey is registered for this email. Sign in with Google to enroll one." });
+      return;
+    }
 
     const allowCredentials = credsSnap.docs.map((doc) => ({
       id: doc.id, type: "public-key" as const, transports: doc.data().transports,
