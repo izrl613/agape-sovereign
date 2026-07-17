@@ -12,7 +12,7 @@
   "npm.scriptRunner": "npm",
   "git.enabled": true,
   "git.path": "/usr/bin/git",
-  "git.defaultCloneDirectory": "/Users/israelaaron/Documents",
+  "git.defaultCloneDirectory": "${workspaceFolder}",
   "terminal.integrated.env.osx": {
     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   }

@@ -4,13 +4,15 @@
 // NO external AI calls. Zero external billing.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { DEFAULT_MODEL, OLLAMA_BASE_URL } from '../config/aiModel.js';
+
 // Ollama is user-controlled and is the only AI endpoint for this service.
-const LOCAL_OLLAMA_URL = "http://localhost:11434";
+const LOCAL_OLLAMA_URL = OLLAMA_BASE_URL;
 
 let ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
 
 // ─── Model identifiers ────────────────────────────────────────────────────────
-const GEMMA_MODEL = "gemma4:e4b";
+const GEMMA_MODEL = DEFAULT_MODEL;
 
 // ─── Offline response template ────────────────────────────────────────────────
 const OFFLINE_RESPONSE = `⚠️ Gemma 4 E4B is currently unreachable.

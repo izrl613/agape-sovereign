@@ -18,6 +18,7 @@ import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHand
 import { updateFindingStatus, recalculateSovereignScore, ScanFinding, generateSuspiciousReport } from '../services/scanService';
 import { logAIChatMessage, logUserEvent } from '../services/analyticsService';
 import { getFeatureFlag } from '../services/remoteConfigService';
+import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
 
 interface Message {
   id: string;
@@ -272,11 +273,10 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     const fetchThreatFeed = async () => {
       setIsFeedLoading(true);
       try {
-        const res = await fetch("http://localhost:11434/api/chat", {
+        const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "gemma4:e4b",
+          body: JSON.stringify(buildOllamaChatPayload({
             stream: false,
             format: "json",
             messages: [
@@ -289,7 +289,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
                 content: "Generate the latest cyberthreat feed items."
               }
             ]
-          })
+          }))
         });
 
         if (!res.ok) throw new Error();
@@ -817,17 +817,16 @@ Recalculate and surface the Sovereign Score after every module action or user-su
         remediationFor: remediationId
       }]);
 
-      const res = await fetch("http://localhost:11434/api/chat", {
+      const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gemma4:e4b",
+        body: JSON.stringify(buildOllamaChatPayload({
           stream: true,
           messages: [
             { role: "system", content: systemInstruction },
             { role: "user", content: promptText }
           ]
-        })
+        }))
       });
 
       if (!res.ok) {

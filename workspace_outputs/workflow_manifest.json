@@ -1,0 +1,30 @@
+{
+  "source": "/Users/aarondavid/Desktop/Sovereign Data Pipeline Defined - 2026-07-15 21.46.md",
+  "status": "completed",
+  "agents": [
+    {
+      "name": "extraction",
+      "status": "completed",
+      "details": "extraction agent completed"
+    },
+    {
+      "name": "synthesis",
+      "status": "completed",
+      "details": "synthesis agent completed"
+    },
+    {
+      "name": "audit",
+      "status": "completed",
+      "details": "audit agent completed"
+    },
+    {
+      "name": "reporting",
+      "status": "completed",
+      "details": "reporting agent completed"
+    }
+  ],
+  "output_files": [
+    "workspace_outputs/workflow_report.json",
+    "workspace_outputs/executive_briefing.md"
+  ]
+}

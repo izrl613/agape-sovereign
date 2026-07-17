@@ -24,13 +24,14 @@
 import express from "express";
 import cors from "cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { DEFAULT_MODEL, OLLAMA_BASE_URL } from "../../src/config/aiModel.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ARCHITECT_MCP_PORT ?? "3001", 10);
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? "http://127.0.0.1:11434";
-const MODEL = process.env.ARCHITECT_MODEL ?? "gemma4:e4b";
+const MODEL = process.env.ARCHITECT_MODEL || DEFAULT_MODEL;
+const OLLAMA_ENDPOINT = process.env.OLLAMA_BASE_URL || OLLAMA_BASE_URL;
 
 // Agape Sovereign system prompt — scoped to privacy & mobile-security
 const SYSTEM_PROMPT = `You are Architect AI, a privacy and mobile-security intelligence engine embedded in the Agape Sovereign Digital Identity Platform.
@@ -69,7 +70,7 @@ async function ollamaChat(
     },
   };
 
-  const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+  const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -86,7 +87,7 @@ async function ollamaChat(
 
 async function ollamaHealthCheck(): Promise<boolean> {
   try {
-    const res = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+    const res = await fetch(`${OLLAMA_ENDPOINT}/api/tags`, {
       signal: AbortSignal.timeout(3000),
     });
     return res.ok;

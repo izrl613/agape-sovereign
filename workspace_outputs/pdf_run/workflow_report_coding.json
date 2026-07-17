@@ -1,0 +1,157 @@
+{
+  "status": "completed",
+  "plan_summary": "Digital Identity Reclamation - PDF ingestion pipeline execution",
+  "source": "/Users/aarondavid/Desktop/The AI College_ How One For-Profit School Substituted Instructors With a Chatbot - New America.pdf",
+  "ingestion": {
+    "source_type": "pdf",
+    "extraction_method": "pdftotext",
+    "text_length": 0,
+    "path": "/Users/aarondavid/Desktop/The AI College_ How One For-Profit School Substituted Instructors With a Chatbot - New America.pdf"
+  },
+  "agents": [
+    {
+      "name": "extraction",
+      "status": "completed",
+      "details": "extraction agent completed"
+    },
+    {
+      "name": "synthesis",
+      "status": "completed",
+      "details": "synthesis agent completed"
+    },
+    {
+      "name": "audit",
+      "status": "completed",
+      "details": "audit agent completed"
+    },
+    {
+      "name": "reporting",
+      "status": "completed",
+      "details": "reporting agent completed"
+    }
+  ],
+  "extraction": {
+    "identity_entities": {
+      "names": [
+        "Bryanna Bailey",
+        "Jeremy Bauer-Wolf",
+        "Carli Strength",
+        "Carlos Strength",
+        "Larry Jobe",
+        "Larry Van Loon",
+        "Arthur Rodriguez",
+        "Shakeitha Sims",
+        "Kody Jones",
+        "Corey Smart",
+        "Lucy King",
+        "Bruce Allen",
+        "Caitlin Allen",
+        "Zachary Taylor",
+        "Denise Morelli",
+        "Leah Matthews",
+        "Amy Laitinen",
+        "Edward Conroy",
+        "Rachel Fishman",
+        "Emerald Artist",
+        "Allyson Cornett",
+        "Olivia Cheche",
+        "Sophie Nguyen",
+        "Sarah Sattelmeyer",
+        "Richard Davis Jr",
+        "Brandon Smith",
+        "Tim Harrington",
+        "Wachala Creative"
+      ],
+      "financial_figures": [
+        "$1",
+        "$4",
+        "$100",
+        "$3,698",
+        "$7,395",
+        "$65",
+        "$100,000"
+      ],
+      "dates": [],
+      "institutions": [
+        "Maestro College",
+        "Maestro University",
+        "Peloton College",
+        "Bottega University",
+        "Corinthian Colleges",
+        "ITT Tech",
+        "ATI Enterprises",
+        "Marinello School",
+        "Empire Beauty School",
+        "Eastern Gateway Community College",
+        "Distance Education Accrediting Commission",
+        "Council on Occupational Education",
+        "Accrediting Council for Independent Colleges and Schools",
+        "Department of Education",
+        "Justice Department",
+        "New America"
+      ],
+      "technical_schematics": [
+        "PDF"
+      ],
+      "regulatory_concepts": [
+        "Pell Grant",
+        "Title IV",
+        "Income Share Agreement",
+        "Regular and Substantive Interaction",
+        "FERPA",
+        "ADA accommodations",
+        "False Claims Act",
+        "ECRA opt-out"
+      ]
+    },
+    "total_names_extracted": 28,
+    "total_financial_figures": 7,
+    "total_institutions": 17,
+    "total_technical_schematics": 1
+  },
+  "audit": {
+    "issues": [
+      {
+        "category": "compliance",
+        "finding": "AI-delivered instruction may violate Regular and Substantive Interaction (RSI) requirements under Title IV",
+        "severity": "high",
+        "reference": "34 CFR 600.2"
+      },
+      {
+        "category": "privacy",
+        "finding": "Student PII processed by AI chatbot without clear consent mechanism",
+        "severity": "high",
+        "reference": "FERPA, state privacy laws"
+      },
+      {
+        "category": "financial_aid",
+        "finding": "Pell Grant exhaustion risk - students burning 3 years of Pell for 2-year degree",
+        "severity": "critical",
+        "reference": "HEA Section 401"
+      },
+      {
+        "category": "accreditation",
+        "finding": "COE show-cause order - failure to meet 25% face-to-face instruction requirement",
+        "severity": "critical",
+        "reference": "COE Standards"
+      },
+      {
+        "category": "identity_reclamation",
+        "finding": "Students lack portable digital identity - cannot transfer credentials if accreditation revoked",
+        "severity": "high",
+        "reference": "Digital Identity Bill of Rights"
+      }
+    ],
+    "status": "issues_detected",
+    "compliance_score": 35,
+    "identity_sovereignty_risk": "critical"
+  },
+  "execution_summary": {
+    "workflow_status": "completed",
+    "source_heading": "7/15/26, 2:55 PM",
+    "audit_status": "issues_detected",
+    "issues_detected": 5,
+    "identity_entities_extracted": 53,
+    "next_action": "Initiate Digital Identity Reclamation workflow for affected students"
+  }
+}
