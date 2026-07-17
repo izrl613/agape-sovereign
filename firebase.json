@@ -1,50 +1,48 @@
 {
   "hosting": {
-    "public": "dist",
-    "cleanUrls": true,
+    "public": "frontend/dist",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "headers": [
-      {
-        "source": "/privacy",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600"
-          }
-        ]
-      },
-      {
-        "source": "/terms",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600"
-          }
-        ]
-      }
-    ],
     "rewrites": [
-      {
-        "source": "/api/auth/**",
-        "function": {
-          "functionId": "authApi",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/**",
-        "run": {
-          "serviceId": "agape-sovereign-server",
-          "region": "us-central1"
-        }
-      },
       {
         "source": "**",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Service-Worker-Allowed",
+            "value": "/"
+          }
+        ]
       }
     ]
   },
@@ -55,8 +53,7 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
-    "rules": "storage.rules",
-    "bucket": "agape-sovereign.firebasestorage.app"
+    "rules": "storage.rules"
   },
   "database": {
     "rules": "database.rules.json"
@@ -78,7 +75,6 @@
       "source": "functions"
     },
     {
-      "source": "agape-sovereign",
       "codebase": "agape-sovereign",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
@@ -90,7 +86,8 @@
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run build"
-      ]
+      ],
+      "source": "agape-sovereign"
     }
   ],
   "apphosting": [
@@ -125,6 +122,28 @@
         "*.tar.gz"
       ],
       "alwaysDeployFromSource": true
+    },
+    {
+      "backendId": "agape-sovereign",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
+    },
+    {
+      "backendId": "agape-sovereign",
+      "rootDir": "/",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions"
+      ]
     }
   ],
   "dataconnect": {
@@ -139,8 +158,8 @@
       "anonymous": true,
       "emailPassword": true,
       "googleSignIn": {
-        "oAuthBrandDisplayName": "Agape Sovereign | Architect AI",
-        "supportEmail": "agape@sovereign.nyc"
+        "oAuthBrandDisplayName": "Agape Sovereign AI",
+        "supportEmail": "idin@agape.nyc"
       }
     }
   },

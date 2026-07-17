@@ -5,6 +5,7 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import cookieParser from "cookie-parser";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
+import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from "./src/config/aiModel.js";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
 if (!getApps().length) {
@@ -38,11 +39,10 @@ async function startServer() {
   app.post("/api/architect", async (req, res) => {
     try {
       const { message, history = [] } = req.body;
-      const response = await fetch("http://localhost:11434/api/chat", {
+      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gemma4:e4b",
+        body: JSON.stringify(buildOllamaChatPayload({
           stream: false,
           messages: [
             { role: "system", content: ARCHITECT_SYSTEM_PROMPT },
@@ -52,7 +52,7 @@ async function startServer() {
             })),
             { role: "user", content: message.parts?.[0]?.text || message.content || "" }
           ]
-        })
+        }))
       });
       if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);
       const data = await response.json();
@@ -73,11 +73,10 @@ async function startServer() {
         "body": "The full formal email body..."
       }`;
       
-      const response = await fetch("http://localhost:11434/api/chat", {
+      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "gemma4:e4b",
+        body: JSON.stringify(buildOllamaChatPayload({
           stream: false,
           format: "json",
           messages: [
@@ -87,7 +86,7 @@ async function startServer() {
           options: {
             temperature: 0.2
           }
-        })
+        }))
       });
 
       if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);

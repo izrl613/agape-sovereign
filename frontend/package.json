@@ -9,7 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@google/genai": "latest",
+    "crypto-browserify": "^3.12.1",
+    "pdf-lib": "^1.17.1",
     "react": "latest",
     "react-dom": "latest"
   },

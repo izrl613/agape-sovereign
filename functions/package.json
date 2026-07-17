@@ -14,17 +14,18 @@
   },
   "main": "lib/index.js",
   "dependencies": {
-    "firebase-admin": "^13.10.0",
-    "firebase-functions": "^7.0.0",
+    "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
     "@simplewebauthn/server": "^13.1.0",
     "cookie-parser": "^1.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "firebase-admin": "^13.10.0",
+    "firebase-functions": "^7.0.0"
   },
   "devDependencies": {
-    "typescript": "^6.0.0",
-    "firebase-functions-test": "^3.4.1",
+    "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
-    "@types/cookie-parser": "^1.4.9"
+    "firebase-functions-test": "^3.4.1",
+    "typescript": "^6.0.0"
   },
   "private": true
 }

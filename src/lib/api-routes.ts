@@ -184,6 +184,7 @@ export async function GET(req: NextRequest) {
 
 // pages/api/ai/chat.ts
 import { NextRequest, NextResponse } from "next/server";
+import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from "../../src/config/aiModel.js";
 
 
 export async function POST(req: NextRequest) {
@@ -195,13 +196,12 @@ export async function POST(req: NextRequest) {
 
     const { messages, context } = await req.json();
 
-    const response = await fetch("http://localhost:11434/api/chat", {
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "gemma4:e4b",
+      body: JSON.stringify(buildOllamaChatPayload({
         stream: false,
         messages: [
           {
@@ -220,7 +220,7 @@ Always be actionable and empowering. Reference ECRA 2026, GDPR, CCPA where relev
         options: {
           temperature: 0.7
         }
-      }),
+      })),
     });
 
     if (!response.ok) {

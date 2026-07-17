@@ -13,6 +13,7 @@
 
 import { db } from '../firebase';
 import { collection, addDoc, query, where, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
+import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -144,11 +145,10 @@ export async function detectPiiWithAi(
   try {
     const prompt = `You are a PII detection engine. Identify ALL personal information in the following text and return a JSON array of objects with fields: type (NAME|EMAIL|PHONE|SSN|DOB|ADDRESS|IP|ID|CARD), original (exact match), confidence (0.0-1.0). Only return valid JSON, no prose.\n\nText:\n${text}`;
 
-    const res = await fetch("http://localhost:11434/api/chat", {
+    const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "gemma4:e4b",
+      body: JSON.stringify(buildOllamaChatPayload({
         stream: false,
         format: "json",
         messages: [
@@ -160,8 +160,11 @@ export async function detectPiiWithAi(
             role: "user",
             content: prompt
           }
-        ]
-      })
+        ],
+        options: {
+          temperature: 0.2
+        }
+      }))
     });
 
     if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);

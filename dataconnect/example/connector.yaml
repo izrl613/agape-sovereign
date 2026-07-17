@@ -4,10 +4,28 @@ generate:
     - outputDir: ../../src/dataconnect-admin-generated
       package: "@dataconnect/admin-generated"
       packageJsonDir: ../..
+    - outputDir: ../../functions/src/dataconnect-admin-generated
+      package: "@dataconnect/admin-generated"
+      packageJsonDir: ../../functions
+    - outputDir: ../../agape-sovereign/src/dataconnect-admin-generated
+      package: "@dataconnect/admin-generated"
+      packageJsonDir: ../../agape-sovereign
   javascriptSdk:
     - outputDir: ../../src/dataconnect-generated
       package: "@dataconnect/generated"
       packageJsonDir: ../..
       react: true
+      angular: false
+      clientCache: {}
+    - outputDir: ../../frontend/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../frontend
+      react: true
+      angular: false
+      clientCache: {}
+    - outputDir: ../../backend/src/dataconnect-generated
+      package: "@dataconnect/generated"
+      packageJsonDir: ../../backend
+      react: false
       angular: false
       clientCache: {}

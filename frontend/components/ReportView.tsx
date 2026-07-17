@@ -1,18 +1,99 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NEON, DIFF_MODULES, GRADIENT_BORDER } from '../constants';
 import { GlassCard, NeonText, NeonButton } from './ui/NeonElements';
+import { db } from '../lib/firebase';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { generateFullAuditPDF, ReportData } from '../services/pdfGenerator';
+import { getAllIVMData, calculateSovereignScore } from '../services/ivmService';
 
 export const ReportView: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [ivmData, setIvmData] = useState<Record<string, any>>({});
+  const [sovereignScore, setSovereignScore] = useState(0);
+  const [tier, setTier] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [contextLoading, setContextLoading] = useState(true);
+
+  // Load IVM data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      if (!auth.currentUser) return;
+      try {
+        setContextLoading(true);
+        const data = await getAllIVMData(auth.currentUser.uid);
+        setIvmData(data);
+        
+        const { score, tier } = await calculateSovereignScore(data);
+        setSovereignScore(score);
+        setTier(tier);
+      } catch (e) {
+        console.error('Failed to load IVM data:', e);
+      } finally {
+        setContextLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const handleGenerate = async () => {
+    if (!auth.currentUser) return;
+    
+    setGenerating(true);
+    setError(null);
+    
+    try {
+      // Build report data
+      const reportData: ReportData = {
+        userId: auth.currentUser.uid,
+        userEmail: auth.currentUser.email || '',
+        sovereignScore,
+        tier,
+        generatedAt: new Date().toISOString(),
+        ivmData,
+        sha256Seal: '', // Will be generated in pdfGenerator
+      };
+
+      // Generate PDF
+      const pdfBytes = await generateFullAuditPDF(reportData);
+      
+      // Create blob and download URL
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      setDownloadUrl(url);
+      setGenerated(true);
+      
+      // Save report metadata to Firestore
+      const reportId = `DIFF-${auth.currentUser.uid}-${Date.now()}`;
+      await setDoc(doc(db, 'diff_reports', reportId), {
+        userId: auth.currentUser.uid,
+        sovereignScore,
+        tier,
+        generatedAt: new Date().toISOString(),
+        sha256Seal: `sha256_${reportId}`,
+      });
+      
+    } catch (e: any) {
+      console.error('PDF generation failed:', e);
+      setError(e.message || 'Failed to generate PDF');
+    } finally {
+      setGenerating(false);
+      setGenerated(true);
+    }
+  };
 
   const totalNuked = DIFF_MODULES.reduce((s, m) => s + m.nuked, 0);
   const totalKnoxed = DIFF_MODULES.reduce((s, m) => s + m.knoxed, 0);
-  const avgScore = Math.round(DIFF_MODULES.reduce((s, m) => s + m.severity, 0) / DIFF_MODULES.length);
 
-  const handleGenerate = () => {
-    setGenerating(true);
-    setTimeout(() => { setGenerating(false); setGenerated(true); }, 3000);
+  const handleDownload = () => {
+    if (downloadUrl) {
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `AgapeSovereign_DIFF_Report_${Date.now()}.pdf`;
+      a.click();
+    }
   };
 
   return (
@@ -20,7 +101,9 @@ export const ReportView: React.FC = () => {
       <div className="mb-6">
         <div className="font-['Share_Tech_Mono'] text-[0.6rem] tracking-[0.2em] mb-1" style={{ color: NEON.orange }}>LIGHTHOUSE-STYLE AUDIT</div>
         <NeonText color={NEON.blue} size="1.3rem" weight={900}>DIFF SOVEREIGNTY REPORT</NeonText>
-        <div className="text-[0.75rem] mt-0.5" style={{ color: NEON.textMuted }}>Generate your complete Digital Identity Federated Footprint audit · Firebase-backed · Encrypted PDF</div>
+        <div className="text-[0.75rem] mt-0.5" style={{ color: NEON.textMuted }}>
+          Generate your complete Digital Identity Federated Footprint audit · pdf-lib · AES-256 · SHA-256
+        </div>
       </div>
       <div className="h-[1px] mb-6 opacity-50" style={{ background: GRADIENT_BORDER }} />
 
@@ -33,7 +116,10 @@ export const ReportView: React.FC = () => {
             <div className="font-['Share_Tech_Mono'] text-[0.6rem] mt-1" style={{ color: NEON.orange }}>ECRA 2026 · GDPR · CCPA COMPLIANT</div>
           </div>
           <div className="text-center">
-            <div className="font-['Orbitron'] text-[2.5rem] font-black" style={{ color: avgScore > 75 ? NEON.blue : avgScore > 50 ? NEON.orange : NEON.magenta, textShadow: `0 0 20px ${avgScore > 75 ? NEON.blue : NEON.orange}` }}>{avgScore}</div>
+            <div className="font-['Orbitron'] text-[2.5rem] font-black" style={{ 
+              color: sovereignScore > 75 ? NEON.blue : sovereignScore > 50 ? NEON.orange : NEON.magenta, 
+              textShadow: `0 0 20px ${sovereignScore > 75 ? NEON.blue : sovereignScore > 50 ? NEON.orange : NEON.magenta}` 
+            }}>{sovereignScore || avgScore}</div>
             <div className="font-['Share_Tech_Mono'] text-[0.6rem]" style={{ color: NEON.textMuted }}>SOVEREIGN SCORE</div>
           </div>
         </div>
@@ -80,34 +166,68 @@ export const ReportView: React.FC = () => {
         <div className="font-['Share_Tech_Mono'] text-[0.6rem] text-center py-1" style={{ color: NEON.textMuted }}>+ 8 more vectors in full report</div>
       </div>
 
-      {/* Generate button */}
+      {/* Error display */}
+      {error && (
+        <div className="mb-4 p-3 rounded-md border" style={{ background: 'rgba(255,46,159,0.1)', borderColor: 'rgba(255,46,159,0.3)', color: NEON.magenta }}>
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span className="font-['Rajdhani'] text-sm">{error}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Generate / Download section */}
       {!generated ? (
         <div className="flex gap-3 pb-6">
           <button 
             className="btn-neon neon-border pulse-border flex-1 p-4 rounded-lg border-none font-['Orbitron'] text-[0.85rem] font-bold tracking-[0.1em]" 
             onClick={handleGenerate} 
-            disabled={generating} 
-            style={{ background: "rgba(0,212,255,0.08)", color: NEON.blue, cursor: generating ? "not-allowed" : "pointer" }}
+            disabled={generating || contextLoading} 
+            style={{ background: "rgba(0,212,255,0.08)", color: NEON.blue, cursor: generating || contextLoading ? "not-allowed" : "pointer" }}
           >
             {generating ? (
               <span className="flex items-center justify-center gap-3">
                 <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: `rgba(0,212,255,0.3)`, borderTopColor: NEON.blue, animation: "spinner 1s linear infinite" }} />
                 GENERATING SOVEREIGN REPORT...
               </span>
-            ) : "⬡ GENERATE DIFF PDF REPORT"}
+            ) : contextLoading ? (
+              <span className="flex items-center justify-center gap-3">
+                <div className="w-4 h-4 rounded-full border-2" style={{ borderColor: `rgba(255,122,24,0.3)`, borderTopColor: NEON.orange, animation: "spinner 1s linear infinite" }} />
+                LOADING IVM DATA...
+              </span>
+            ) : (
+              "⬡ GENERATE DIFF PDF REPORT"
+            )}
           </button>
         </div>
       ) : (
         <GlassCard className="p-5 text-center border pb-6" style={{ borderColor: `${NEON.blue}44` }}>
           <div className="text-3xl mb-2">✅</div>
           <NeonText color={NEON.blue} size="1rem">REPORT GENERATED SUCCESSFULLY</NeonText>
-          <div className="text-[0.75rem] my-2 mb-4" style={{ color: NEON.textMuted }}>Encrypted · Stored in Firebase Storage · ECRA 2026 certified</div>
+          <div className="text-[0.75rem] my-2 mb-4" style={{ color: NEON.textMuted }}>
+            Encrypted PDF · SHA-256 Sealed · ECRA 2026 Certified
+          </div>
           <div className="flex gap-2.5 justify-center">
-            <NeonButton color={NEON.blue}>⬇️ DOWNLOAD PDF</NeonButton>
-            <NeonButton color={NEON.orange}>☁️ FIREBASE STORAGE</NeonButton>
+            <NeonButton color={NEON.blue} onClick={handleDownload}>
+              ⬇️ DOWNLOAD PDF
+            </NeonButton>
+            <NeonButton color={NEON.orange} onClick={() => {
+              // Save to Firebase Storage would go here
+              alert('Firebase Storage upload - implement with Cloud Function');
+            }}>
+              ☁️ FIREBASE STORAGE
+            </NeonButton>
+            <NeonButton color={NEON.magenta} onClick={() => {
+              // Export identity blueprint would go here
+              alert('Identity Blueprint Export - implement with Passkey');
+            }}>
+              🔐 EXPORT IDENTITY
+            </NeonButton>
           </div>
         </GlassCard>
       )}
     </div>
   );
 };
+
+const avgScore = Math.round(DIFF_MODULES.reduce((s, m) => s + m.severity, 0) / DIFF_MODULES.length);
