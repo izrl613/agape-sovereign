@@ -33,10 +33,12 @@ export interface SovereignIdentityBlueprint {
   tier: string;
   sha256Seal: string;
   exportVersion: number;
+  validityWindowWeeks: number;
 }
 
-const IVM_COLLECTION = 'ivmData';
-const EXPORT_COLLECTION = 'identity_exports';
+// 226 weeks validity window (~4.3 years / ~52 months)
+export const VALIDITY_WINDOW_WEEKS = 226;
+export const VALIDITY_WINDOW_LABEL = `${VALIDITY_WINDOW_WEEKS} weeks (~4.3 years)`;
 
 export async function saveIVMModule(moduleId: string, data: Record<string, any>, userId: string): Promise<void> {
   const docRef = doc(db, 'users', userId, 'ivmData', moduleId);
@@ -119,6 +121,7 @@ export async function generateIdentityBlueprint(userId: string, email: string, i
     tier: ivmData.tier || 'PARTIALLY_SECURED',
     sha256Seal,
     exportVersion: 1,
+    validityWindowWeeks: VALIDITY_WINDOW_WEEKS,
   };
 
   return blueprint;

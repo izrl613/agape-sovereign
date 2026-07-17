@@ -4,6 +4,10 @@ import { auth } from '../lib/firebase';
 import { DIFF_MODULES } from '../constants';
 import * as crypto from 'crypto-browserify';
 
+// 226 weeks validity window (~4.3 years / ~52 months)
+export const VALIDITY_WINDOW_WEEKS = 226;
+export const VALIDITY_WINDOW_LABEL = `${VALIDITY_WINDOW_WEEKS} weeks (~4.3 years)`;
+
 export interface IdentityBlueprint {
   version: number;
   exportedAt: string;
@@ -14,6 +18,9 @@ export interface IdentityBlueprint {
   ivmData: Record<string, any>;
   sha256Seal: string;
   exportSchema: 'AgapeSovereign/v1';
+  validityWindowWeeks: number;
+}
+  validityWindowWeeks: number;
 }
 
 export interface RecoveryPackage {
@@ -24,9 +31,9 @@ export interface RecoveryPackage {
   mnemonic: string;
 }
 
-/**
- * Generate SHA-256 hash of the identity data
- */
+// Validity window constant - 226 weeks (approximately 4.3 years)
+export const VALIDITY_WINDOW_WEEKS = 226;
+export const VALIDITY_WINDOW_LABEL = `${VALIDITY_WINDOW_WEEKS} weeks (approximately 4.3 years)`;
 export function generateSHA256Seal(data: any): string {
   const json = JSON.stringify(data, Object.keys(data).sort());
   return crypto.createHash('sha256').update(json).digest('hex');
@@ -361,7 +368,7 @@ export async function exportIdentityBlueprint(
   const sovereignScore = userData.sovereignScore || 0;
   const tier = userData.sovereignTier || 'EXPOSURE_RISK';
 
-  // Build blueprint
+// Build blueprint
   const blueprint: IdentityBlueprint = {
     version: 1,
     exportedAt: new Date().toISOString(),
@@ -372,6 +379,7 @@ export async function exportIdentityBlueprint(
     ivmData,
     sha256Seal: '', // Will be filled below
     exportSchema: 'AgapeSovereign/v1',
+    validityWindowWeeks: VALIDITY_WINDOW_WEEKS,
   };
 
   blueprint.sha256Seal = generateSHA256Seal(blueprint);
@@ -392,6 +400,9 @@ This package contains your encrypted Digital Identity Blueprint.
 It contains your complete 16-vector identity profile, Sovereign Score,
 and SHA-256 integrity seal.
 
+VALIDITY WINDOW: ${VALIDITY_WINDOW_LABEL} (${blueprint.validityWindowWeeks} weeks)
+EXPORT DATE: ${blueprint.exportedAt}
+
 TO RECOVER YOUR IDENTITY:
 1. Install the Agape Sovereign app on any device
 2. Select "Recover Identity" on the login screen
@@ -404,6 +415,7 @@ ${mnemonic}
 
 SHA-256 SEAL: ${blueprint.sha256Seal}
 EXPORT DATE: ${blueprint.exportedAt}
+VALIDITY: ${VALIDITY_WINDOW_LABEL}
 SOVEREIGN SCORE: ${blueprint.sovereignScore}/100
 TIER: ${blueprint.tier}
 

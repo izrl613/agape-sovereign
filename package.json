@@ -24,9 +24,10 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "cookie-parser": "^1.4.7",
+    "crypto-browserify": "3.5.1",
     "express": "^5.2.1",
     "firebase": "^12.16.0",
-    "firebase-admin": "^14.1.0",
+    "firebase-admin": "^10.3.0",
     "framer-motion": "latest",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
@@ -63,6 +64,7 @@
     "protobufjs@6.11.3": true,
     "core-js@3.49.0": true,
     "esbuild@0.28.1": true,
-    "fsevents@2.3.3": true
+    "fsevents@2.3.3": true,
+    "@google/genai@2.11.0": true
   }
 }
