@@ -4,5 +4,9 @@
     "agape-sovereign": "agape-sovereign"
   },
   "targets": {},
-  "etags": {}
+  "etags": {
+    "agape-sovereign": {
+      "extensionInstances": {}
+    }
+  }
 }
