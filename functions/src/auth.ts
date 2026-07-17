@@ -77,10 +77,14 @@ router.post("/register-options", async (req: Request, res: Response) => {
       },
     });
 
-    res.cookie("registration-challenge", options.challenge, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production", signed: true, maxAge: 60_000,
+    const isProd = process.env.NODE_ENV === "production";
+    const sessionData = {
+      registrationChallenge: options.challenge,
+      authUserId: userId
+    };
+    res.cookie("__session", JSON.stringify(sessionData), {
+      httpOnly: true, secure: isProd, signed: true, maxAge: 60_000, sameSite: "lax",
     });
-    res.cookie("auth-user-id", userId, { httpOnly: true, signed: true, maxAge: 60_000 });
     res.json(options);
   } catch (error) {
     logger.error("Register Options Error:", error);
@@ -97,8 +101,17 @@ router.post("/register-options", async (req: Request, res: Response) => {
 router.post("/verify-registration", async (req: Request, res: Response) => {
   try {
     const { body } = req;
-    const expectedChallenge = req.signedCookies["registration-challenge"];
-    const userId = req.signedCookies["auth-user-id"];
+    const sessionCookie = req.signedCookies["__session"];
+    if (!sessionCookie) { res.status(400).json({ error: "Challenge expired or missing" }); return; }
+    let sessionData;
+    try {
+      sessionData = JSON.parse(sessionCookie);
+    } catch (e) {
+      res.status(400).json({ error: "Invalid session cookie format" });
+      return;
+    }
+    const expectedChallenge = sessionData.registrationChallenge;
+    const userId = sessionData.authUserId;
     if (!expectedChallenge || !userId) { res.status(400).json({ error: "Challenge expired or missing" }); return; }
 
     const verification = await verifyRegistrationResponse({
@@ -155,10 +168,14 @@ router.post("/login-options", async (req: Request, res: Response) => {
       rpID: RP_ID, allowCredentials: allowCredentials as any, userVerification: "preferred",
     });
 
-    res.cookie("authentication-challenge", options.challenge, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production", signed: true, maxAge: 60_000,
+    const isProd = process.env.NODE_ENV === "production";
+    const sessionData = {
+      authenticationChallenge: options.challenge,
+      authUserId: userId
+    };
+    res.cookie("__session", JSON.stringify(sessionData), {
+      httpOnly: true, secure: isProd, signed: true, maxAge: 60_000, sameSite: "lax",
     });
-    res.cookie("auth-user-id", userId, { httpOnly: true, signed: true, maxAge: 60_000 });
     res.json(options);
   } catch (error) {
     logger.error("Login Options Error:", error);
@@ -170,8 +187,17 @@ router.post("/login-options", async (req: Request, res: Response) => {
 router.post("/verify-login", async (req: Request, res: Response) => {
   try {
     const { body } = req;
-    const expectedChallenge = req.signedCookies["authentication-challenge"];
-    const userId = req.signedCookies["auth-user-id"];
+    const sessionCookie = req.signedCookies["__session"];
+    if (!sessionCookie) { res.status(400).json({ error: "Challenge expired or missing" }); return; }
+    let sessionData;
+    try {
+      sessionData = JSON.parse(sessionCookie);
+    } catch (e) {
+      res.status(400).json({ error: "Invalid session cookie format" });
+      return;
+    }
+    const expectedChallenge = sessionData.authenticationChallenge;
+    const userId = sessionData.authUserId;
     if (!expectedChallenge || !userId) { res.status(400).json({ error: "Challenge expired or missing" }); return; }
 
     const credentialId = body.id;
