@@ -1,5 +1,17 @@
 {
   "terminal.integrated.defaultProfile.osx": "bash",
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "/bin/bash",
+      "args": ["-l"],
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": ["-l"]
+    }
+  },
+  "terminal.integrated.shellIntegration.enabled": true,
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python3",
   "python.analysis.extraPaths": [
     "${workspaceFolder}/.venv/lib/python3.9/site-packages"
