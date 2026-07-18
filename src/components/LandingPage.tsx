@@ -514,19 +514,68 @@ export const LandingPage = () => {
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: 12,
+          backdropFilter: 'blur(8px)',
+          background: 'rgba(6,12,26,0.5)',
         }}
       >
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-          © {new Date().getFullYear()} Agape Sovereign AI · sovereign.nyc
-        </div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <a href="/privacy" style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>
-            Privacy Policy
-          </a>
-          <a href="/terms" style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>
-            Terms of Service
-          </a>
-        </div>
+        {/* LEFT — Terms of Service in Blue */}
+        <a
+          href="/terms"
+          id="footer-terms-link"
+          style={{
+            fontSize: 11,
+            color: NEON_BLUE,
+            textDecoration: 'none',
+            letterSpacing: '0.18em',
+            fontFamily: 'monospace',
+            fontWeight: 700,
+            textShadow: `0 0 10px ${NEON_BLUE}66`,
+            transition: 'text-shadow 0.2s',
+            flex: '1 1 0',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.textShadow = `0 0 18px ${NEON_BLUE}`)}
+          onMouseLeave={(e) => (e.currentTarget.style.textShadow = `0 0 10px ${NEON_BLUE}66`)}
+        >
+          TERMS OF SERVICE
+        </a>
+
+        {/* CENTER — Copyright in Magenta */}
+        <span
+          style={{
+            fontSize: 11,
+            color: NEON_MAGENTA,
+            letterSpacing: '0.18em',
+            fontFamily: 'monospace',
+            fontWeight: 700,
+            textShadow: `0 0 10px ${NEON_MAGENTA}66`,
+            textAlign: 'center',
+            flex: '1 1 0',
+          }}
+        >
+          © {new Date().getFullYear()} AGAPE SOVEREIGN AI
+        </span>
+
+        {/* RIGHT — Privacy Policy in Orange */}
+        <a
+          href="/privacy"
+          id="footer-privacy-link"
+          style={{
+            fontSize: 11,
+            color: NEON_ORANGE,
+            textDecoration: 'none',
+            letterSpacing: '0.18em',
+            fontFamily: 'monospace',
+            fontWeight: 700,
+            textShadow: `0 0 10px ${NEON_ORANGE}66`,
+            transition: 'text-shadow 0.2s',
+            textAlign: 'right',
+            flex: '1 1 0',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.textShadow = `0 0 18px ${NEON_ORANGE}`)}
+          onMouseLeave={(e) => (e.currentTarget.style.textShadow = `0 0 10px ${NEON_ORANGE}66`)}
+        >
+          PRIVACY POLICY
+        </a>
       </footer>
     </div>
   );
