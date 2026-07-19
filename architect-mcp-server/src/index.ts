@@ -24,7 +24,7 @@
 import express from "express";
 import cors from "cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { DEFAULT_MODEL, OLLAMA_BASE_URL } from "../../src/config/aiModel.js";
+import { DEFAULT_MODEL, OLLAMA_BASE_URL } from "./config.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
 

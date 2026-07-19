@@ -8,17 +8,18 @@
  */
 
 import { onCall, HttpsError } from 'firebase-functions/https';
-import { onDocumentWritten } from 'firebase-functions/firestore';
-import { onSchedule } from 'firebase-functions/scheduler';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import * as logger from 'firebase-functions/logger';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
@@ -66,7 +67,7 @@ export const generateDiffReport = onCall(
         userId,
         userEmail,
         sovereignScore: reportData.sovereignScore,
-        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        generatedAt: FieldValue.serverTimestamp(),
         sha256Seal: seal,
       });
 
@@ -75,7 +76,7 @@ export const generateDiffReport = onCall(
         event: 'PDF_GENERATED',
         userId,
         reportId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: FieldValue.serverTimestamp(),
       });
 
       logger.info('PDF metadata stored', { reportId });
@@ -143,7 +144,7 @@ export const recalculateSovereignScore = onDocumentWritten(
       await db.collection('users').doc(userId).update({
         sovereignScore: Math.round(sovereignScore),
         sovereignTier: tier,
-        lastScoreUpdate: admin.firestore.FieldValue.serverTimestamp(),
+        lastScoreUpdate: FieldValue.serverTimestamp(),
       });
 
       logger.info('Score updated', { userId, score: sovereignScore });
@@ -169,7 +170,7 @@ export const generatePasskeyChallenge = onCall(
       await db.collection('sessions').doc(request.auth.uid).set(
         {
           passkeyChallenge: challenge,
-          challengeExpiresAt: admin.firestore.FieldValue.serverTimestamp(),
+          challengeExpiresAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );
