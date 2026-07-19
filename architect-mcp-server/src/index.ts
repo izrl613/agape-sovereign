@@ -70,19 +70,33 @@ async function ollamaChat(
     },
   };
 
-  const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Ollama error ${res.status}: ${err}`);
+  try {
+    const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Ollama error ${res.status}: ${err}`);
+    }
+
+    const data = (await res.json()) as OllamaChatResponse;
+    return data.message.content;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Ollama request timed out after 120s");
+    }
+    throw err;
   }
-
-  const data = (await res.json()) as OllamaChatResponse;
-  return data.message.content;
 }
 
 async function ollamaHealthCheck(): Promise<boolean> {
