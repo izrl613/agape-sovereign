@@ -363,7 +363,6 @@ app.get("/sse", async (req, res) => {
   });
 
   const mcpServer = createMcpServer();
-  await transport.start();
   await mcpServer.connect(transport);
 });
 
