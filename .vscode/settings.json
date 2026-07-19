@@ -17,13 +17,11 @@
     "${workspaceFolder}/.venv/lib/python3.9/site-packages"
   ],
   "files.autoSave": "onFocusChange",
-  "git.statusLimit": 0,
   "git.suggestSmartCommit": false,
   "go.toolsManagement.autoUpdate": true,
   "npm.packageManager": "npm",
   "npm.scriptRunner": "npm",
   "git.enabled": true,
-  "git.path": "/usr/bin/git",
   "git.defaultCloneDirectory": "${workspaceFolder}",
   "terminal.integrated.env.osx": {
     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
