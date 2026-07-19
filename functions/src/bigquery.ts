@@ -1,13 +1,13 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { BigQuery } from "@google-cloud/bigquery";
-import { logger } from "firebase-functions/v2";
+import {onCall, HttpsError} from "firebase-functions/v2/https";
+import {BigQuery} from "@google-cloud/bigquery";
+import {logger} from "firebase-functions/v2";
 
 // Initialize BigQuery client
 const bigquery = new BigQuery();
 
 /**
  * Example Firebase Callable Function to fetch data from BigQuery
- * 
+ *
  * Replace `your_dataset.your_table` with your actual dataset and table name.
  */
 export const fetchAnalyticsData = onCall(async (request) => {
@@ -30,7 +30,7 @@ export const fetchAnalyticsData = onCall(async (request) => {
     const options = {
       query: query,
       // Location must match that of the dataset(s) referenced in the query.
-      location: 'US',
+      location: "US",
     };
 
     // Run the query as a job
@@ -46,6 +46,9 @@ export const fetchAnalyticsData = onCall(async (request) => {
     };
   } catch (error) {
     logger.error("Error querying BigQuery:", error);
-    throw new HttpsError("internal", "An error occurred while fetching analytics data.");
+    throw new HttpsError(
+      "internal",
+      "An error occurred while fetching analytics data."
+    );
   }
 });

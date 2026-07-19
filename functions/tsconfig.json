@@ -9,15 +9,10 @@
     "rootDir": "src",
     "sourceMap": true,
     "strict": true,
-    "skipLibCheck": true,
     "target": "es2017"
   },
   "compileOnSave": true,
   "include": [
     "src"
-  ],
-  "exclude": [
-    "src/bigquery.ts",
-    "src/policyGenerator.ts"
   ]
 }
