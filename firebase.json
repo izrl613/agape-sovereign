@@ -57,9 +57,6 @@
       ],
       "source": "agape-sovereign"
     }
-  "remoteconfig": {
-    "template": "remoteconfig.template.json"
-  },
   "extensions": {},
   "auth": {
     "providers": {

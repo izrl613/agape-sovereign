@@ -1,6 +1,8 @@
 import { onRequest } from "firebase-functions/https";
 import { logger } from "firebase-functions";
-import * as admin from "firebase-admin";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import express, { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import {
@@ -11,11 +13,12 @@ import {
 } from "@simplewebauthn/server";
 
 // Admin is initialized once in index.ts; guard against re-init
-if (!admin.apps.length) {
-  admin.initializeApp();
+if (!getApps().length) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
+const auth = getAuth();
 const RP_NAME = "Agape Sovereign";
 // Firebase Hosting and Cloudflare terminate TLS before invoking this function.
 // Do not derive WebAuthn values from proxy headers: the browser must validate
@@ -37,7 +40,7 @@ async function requireRegisteredUser(req: Request, email: string): Promise<{ uid
     throw new Error("Authentication is required to register a passkey.");
   }
 
-  const decoded = await admin.auth().verifyIdToken(authorization.slice("Bearer ".length));
+  const decoded = await auth.verifyIdToken(authorization.slice("Bearer ".length));
   if (!decoded.email || decoded.email.toLowerCase() !== email.toLowerCase()) {
     throw new Error("The passkey email must match the signed-in account.");
   }
@@ -55,7 +58,7 @@ router.post("/register-options", async (req: Request, res: Response) => {
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
-      await userRef.set({ email: userEmail, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+      await userRef.set({ email: userEmail, createdAt: FieldValue.serverTimestamp() });
     }
     const credsSnap = await userRef.collection("passkeyCredentials").get();
     const excludeCredentials = credsSnap.docs.map((doc) => ({
@@ -127,9 +130,9 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
           credentialID: Buffer.from(credential.id).toString("base64url"),
           counter: credential.counter,
           transports: body.response?.transports || [],
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
         });
-      const customToken = await admin.auth().createCustomToken(userId);
+      const customToken = await auth.createCustomToken(userId);
       res.json({ verified: true, token: customToken });
     } else {
       res.status(400).json({ verified: false, error: "Verification failed" });
@@ -220,7 +223,7 @@ router.post("/verify-login", async (req: Request, res: Response) => {
 
     if (verification.verified) {
       await credDoc.ref.update({ counter: verification.authenticationInfo.newCounter });
-      const customToken = await admin.auth().createCustomToken(userId);
+      const customToken = await auth.createCustomToken(userId);
       res.json({ verified: true, token: customToken });
     } else {
       res.status(400).json({ verified: false, error: "Authentication failed" });

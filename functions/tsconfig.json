@@ -17,7 +17,6 @@
     "src"
   ],
   "exclude": [
-    "src/genkit-sample.ts",
     "src/bigquery.ts",
     "src/policyGenerator.ts"
   ]
