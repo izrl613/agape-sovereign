@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "frontend/dist",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,45 +8,8 @@
     ],
     "rewrites": [
       {
-        "source": "/api/auth/**",
-        "function": "authApi"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "**/*.html",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "/sw.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          },
-          {
-            "key": "Service-Worker-Allowed",
-            "value": "/"
-          }
-        ]
       }
     ]
   },
@@ -57,11 +20,7 @@
     "indexes": "firestore.indexes.json"
   },
   "storage": {
-    "rules": "storage.rules",
-    "bucket": "agape-sovereign.firebasestorage.app"
-  },
-  "database": {
-    "rules": "database.rules.json"
+    "rules": "storage.rules"
   },
   "functions": [
     {
@@ -93,72 +52,11 @@
         "*.local"
       ],
       "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "source": "agape-sovereign"
     }
-  ],
-  "apphosting": [
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions",
-        "gemma-chat-public",
-        "google-cloud-sdk",
-        "architect-ai",
-        "architectai",
-        "frontend",
-        "backend",
-        "dist",
-        "public",
-        "docs",
-        ".github",
-        ".vscode",
-        ".agents",
-        ".firebase",
-        "scripts",
-        "dataconnect",
-        ".DS_Store",
-        "*.mp4",
-        "*.zip",
-        "*.tar",
-        "*.tar.gz"
-      ],
-      "alwaysDeployFromSource": true
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    }
-  ],
-  "dataconnect": {
-    "source": "dataconnect"
-  },
   "remoteconfig": {
     "template": "remoteconfig.template.json"
   },
@@ -189,9 +87,6 @@
     "storage": {
       "port": 9199
     },
-    "database": {
-      "port": 9000
-    },
     "pubsub": {
       "port": 8085
     },
@@ -200,15 +95,6 @@
     },
     "tasks": {
       "port": 9499
-    },
-    "dataconnect": {
-      "dataDir": "dataconnect/.dataconnect/pgliteData",
-      "port": 9399
-    },
-    "apphosting": {
-      "port": 5002,
-      "rootDirectory": "./",
-      "startCommand": "npm run dev"
     },
     "ui": {
       "enabled": true
