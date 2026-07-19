@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, Eye, Cpu, Globe, ArrowRight, CheckCircle, Fingerprint, Loader2 } from 'lucide-react';
@@ -51,10 +51,48 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const GoogleSignInButton = ({ onClick, loading, style }: any) => (
+  <motion.button
+    whileHover={{ scale: 1.02, boxShadow: '0 4px 12px rgba(66,133,244,0.4)' }}
+    whileTap={{ scale: 0.98 }}
+    onClick={onClick}
+    disabled={loading}
+    style={{
+      backgroundColor: '#4285F4',
+      color: '#fff',
+      border: 'none',
+      borderRadius: 4,
+      padding: '2px 8px 2px 2px',
+      fontFamily: 'Roboto, Arial, sans-serif',
+      fontWeight: 500,
+      fontSize: 14,
+      cursor: loading ? 'wait' : 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: 12,
+      boxShadow: '0 2px 4px 0 rgba(0,0,0,0.25)',
+      transition: 'background-color 0.2s, box-shadow 0.2s',
+      ...style,
+    }}
+  >
+    <div style={{ background: '#fff', borderRadius: '2px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {loading ? <Loader2 size={18} color="#4285F4" style={{ animation: 'spin 1s linear infinite' }} /> : <GoogleIcon />}
+    </div>
+    <span style={{ paddingRight: 8, letterSpacing: '0.2px' }}>{loading ? 'Signing in…' : 'Sign in with Google'}</span>
+  </motion.button>
+);
+
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div
@@ -141,32 +179,14 @@ export const LandingPage = () => {
           >
             <Fingerprint size={14} /> PASSKEY
           </button>
-          <button
+          <GoogleSignInButton
             onClick={async () => {
               setGoogleLoading(true);
               try { await login(); }
               catch { setGoogleLoading(false); navigate('/login'); }
             }}
-            disabled={googleLoading}
-            style={{
-              background: `linear-gradient(135deg, ${NEON_MAGENTA}, ${NEON_BLUE})`,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '10px 20px',
-              fontWeight: 700,
-              fontSize: 13,
-              letterSpacing: '0.08em',
-              cursor: googleLoading ? 'wait' : 'pointer',
-              boxShadow: `0 0 16px rgba(0,212,255,0.25)`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-            }}
-          >
-            {googleLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <GoogleIcon />}
-            SIGN IN
-          </button>
+            loading={googleLoading}
+          />
         </div>
       </nav>
 
@@ -237,37 +257,15 @@ export const LandingPage = () => {
           {/* ── Auth CTA panel ── */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 380, margin: '0 auto' }}>
             {/* Sign in with Google */}
-            <motion.button
-              whileHover={{ scale: 1.02, borderColor: 'rgba(66,133,244,0.55)' }}
-              whileTap={{ scale: 0.98 }}
+            <GoogleSignInButton
               onClick={async () => {
                 setGoogleLoading(true);
                 try { await login(); }
                 catch { setGoogleLoading(false); navigate('/login'); }
               }}
-              disabled={googleLoading}
-              style={{
-                width: '100%',
-                padding: '15px 28px',
-                background: 'rgba(66,133,244,0.1)',
-                border: '1px solid rgba(66,133,244,0.3)',
-                borderRadius: 12,
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 14,
-                letterSpacing: '0.06em',
-                cursor: googleLoading ? 'wait' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                boxShadow: '0 0 20px rgba(66,133,244,0.12)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {googleLoading ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <GoogleIcon />}
-              {googleLoading ? 'Signing in…' : 'Sign in with Google'}
-            </motion.button>
+              loading={googleLoading}
+              style={{ width: '100%' }}
+            />
 
             {/* Login with Passkey */}
             <motion.button
@@ -452,33 +450,14 @@ export const LandingPage = () => {
           Sovereign identity protection starts now. No data is stored unencrypted.
         </p>
         <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <motion.button
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          <GoogleSignInButton
             onClick={async () => {
               setGoogleLoading(true);
               try { await login(); }
               catch { setGoogleLoading(false); navigate('/login'); }
             }}
-            disabled={googleLoading}
-            style={{
-              background: `linear-gradient(135deg, ${NEON_MAGENTA}, ${NEON_BLUE})`,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 12,
-              padding: '16px 36px',
-              fontWeight: 800,
-              fontSize: 14,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              boxShadow: `0 0 28px rgba(0,212,255,0.3)`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            {googleLoading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <GoogleIcon />}
-            {googleLoading ? 'SIGNING IN…' : 'SIGN IN WITH GOOGLE'}
-          </motion.button>
+            loading={googleLoading}
+          />
           <motion.button
             whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/login')}
