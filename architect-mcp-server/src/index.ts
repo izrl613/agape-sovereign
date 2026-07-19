@@ -353,7 +353,7 @@ app.get("/health", async (_req, res) => {
 // MCP SSE + message endpoints — one session per connection
 const transports = new Map<string, SSEServerTransport>();
 
-app.get("/sse", (req, res) => {
+app.get("/sse", async (req, res) => {
   const sessionId = crypto.randomUUID();
   const transport = new SSEServerTransport(`/message?sessionId=${sessionId}`, res);
   transports.set(sessionId, transport);
@@ -363,7 +363,8 @@ app.get("/sse", (req, res) => {
   });
 
   const mcpServer = createMcpServer();
-  mcpServer.connect(transport).catch(console.error);
+  await transport.start();
+  await mcpServer.connect(transport);
 });
 
 app.post("/message", async (req, res) => {
