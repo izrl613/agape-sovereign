@@ -3,16 +3,17 @@
  * ARCHITECT AI — Cloud Functions (Firebase v2)
  * Agape Sovereign Enclave 2026
  * ============================================================
- * 
+ *
  * Deploy with: firebase deploy --only functions:default
  */
 
-import { onCall, HttpsError } from 'firebase-functions/https';
-import { onDocumentWritten } from 'firebase-functions/v2/firestore';
-import { onSchedule } from 'firebase-functions/v2/scheduler';
-import * as logger from 'firebase-functions/logger';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import {onCall, HttpsError} from "firebase-functions/https";
+import {onDocumentWritten} from "firebase-functions/v2/firestore";
+import {onSchedule} from "firebase-functions/v2/scheduler";
+import * as logger from "firebase-functions/logger";
+import {initializeApp, getApps} from "firebase-admin/app";
+import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import * as crypto from "crypto";
 
 // Initialize Firebase Admin
 if (!getApps().length) {
@@ -24,25 +25,25 @@ const db = getFirestore();
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
 export const generateDiffReport = onCall(
-  { region: 'us-east1', maxInstances: 5 },
+  {region: "us-east1", maxInstances: 5},
   async (request) => {
     if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
+      throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
     const userId = request.auth.uid;
-    const userEmail = request.auth.token.email || 'user@agape.nyc';
+    const userEmail = request.auth.token.email || "user@agape.nyc";
 
     try {
-      logger.info('PDF generation started', { userId });
+      logger.info("PDF generation started", {userId});
 
       // Fetch user profile
-      const userDoc = await db.collection('users').doc(userId).get();
+      const userDoc = await db.collection("users").doc(userId).get();
       if (!userDoc.exists) {
-        throw new Error('User not found');
+        throw new Error("User not found");
       }
 
-      const userData = userDoc.data() as any;
+      const userData = userDoc.data() as Record<string, unknown>;
       const reportId = `DIFF-${userId}-${Date.now()}`;
 
       // Create report metadata
@@ -51,19 +52,18 @@ export const generateDiffReport = onCall(
         userEmail,
         reportId,
         sovereignScore: userData.sovereignScore || 71,
-        tier: userData.sovereignTier || 'EXPOSURE_RISK',
+        tier: userData.sovereignTier || "EXPOSURE_RISK",
         generatedAt: new Date().toISOString(),
       };
 
       // Generate SHA-256 seal
-      const crypto = require('crypto');
       const seal = crypto
-        .createHash('sha256')
+        .createHash("sha256")
         .update(JSON.stringify(reportData))
-        .digest('hex');
+        .digest("hex");
 
       // Store in Firestore
-      await db.collection('diff_reports').doc(reportId).set({
+      await db.collection("diff_reports").doc(reportId).set({
         userId,
         userEmail,
         sovereignScore: reportData.sovereignScore,
@@ -72,14 +72,14 @@ export const generateDiffReport = onCall(
       });
 
       // Audit log
-      await db.collection('audit_logs').add({
-        event: 'PDF_GENERATED',
+      await db.collection("audit_logs").add({
+        event: "PDF_GENERATED",
         userId,
         reportId,
         timestamp: FieldValue.serverTimestamp(),
       });
 
-      logger.info('PDF metadata stored', { reportId });
+      logger.info("PDF metadata stored", {reportId});
 
       return {
         success: true,
@@ -88,8 +88,8 @@ export const generateDiffReport = onCall(
         sha256Seal: seal,
       };
     } catch (error) {
-      logger.error('PDF generation failed', { error });
-      throw new HttpsError('internal', 'Failed to generate report');
+      logger.error("PDF generation failed", {error});
+      throw new HttpsError("internal", "Failed to generate report");
     }
   }
 );
@@ -98,27 +98,28 @@ export const generateDiffReport = onCall(
 
 export const recalculateSovereignScore = onDocumentWritten(
   {
-    document: 'diff_scans/{scanId}/vectorResults/{vectorId}',
-    region: 'us-east1',
+    document: "diff_scans/{scanId}/vectorResults/{vectorId}",
+    region: "us-east1",
   },
   async (event) => {
-    const after = event.data?.after.data() as any;
-    const userId = after?.userId;
+    const snap = event.data?.after.data();
+    const after = snap as Record<string, unknown> | undefined;
+    const userId = after?.userId as string | undefined;
 
     if (!userId) return;
 
     try {
       // Calculate from all vectors
       const scans = await db
-        .collection('diff_scans')
-        .where('userId', '==', userId)
+        .collection("diff_scans")
+        .where("userId", "==", userId)
         .get();
 
       let totalNuked = 0;
       let totalKnoxed = 0;
 
       for (const scan of scans.docs) {
-        const vectors = await scan.ref.collection('vectorResults').get();
+        const vectors = await scan.ref.collection("vectorResults").get();
         vectors.forEach((v) => {
           const data = v.data();
           totalNuked += data.nukedCount || 0;
@@ -133,23 +134,23 @@ export const recalculateSovereignScore = onDocumentWritten(
       );
 
       const tier =
-        sovereignScore >= 85
-          ? 'KNOXED_SOVEREIGN'
-          : sovereignScore >= 65
-            ? 'PARTIALLY_SECURED'
-            : sovereignScore >= 40
-              ? 'EXPOSURE_RISK'
-              : 'CRITICALLY_NUKED';
+        sovereignScore >= 85 ?
+          "KNOXED_SOVEREIGN" :
+          sovereignScore >= 65 ?
+            "PARTIALLY_SECURED" :
+            sovereignScore >= 40 ?
+              "EXPOSURE_RISK" :
+              "CRITICALLY_NUKED";
 
-      await db.collection('users').doc(userId).update({
+      await db.collection("users").doc(userId).update({
         sovereignScore: Math.round(sovereignScore),
         sovereignTier: tier,
         lastScoreUpdate: FieldValue.serverTimestamp(),
       });
 
-      logger.info('Score updated', { userId, score: sovereignScore });
+      logger.info("Score updated", {userId, score: sovereignScore});
     } catch (error) {
-      logger.error('Recalculation failed', { error });
+      logger.error("Recalculation failed", {error});
     }
   }
 );
@@ -157,27 +158,26 @@ export const recalculateSovereignScore = onDocumentWritten(
 // ─── PASSKEY CHALLENGE ──────────────────────────────────────
 
 export const generatePasskeyChallenge = onCall(
-  { region: 'us-east1' },
+  {region: "us-east1"},
   async (request) => {
     if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
+      throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
-    const crypto = require('crypto');
-    const challenge = crypto.randomBytes(32).toString('base64');
+    const challenge = crypto.randomBytes(32).toString("base64");
 
     try {
-      await db.collection('sessions').doc(request.auth.uid).set(
+      await db.collection("sessions").doc(request.auth.uid).set(
         {
           passkeyChallenge: challenge,
           challengeExpiresAt: FieldValue.serverTimestamp(),
         },
-        { merge: true }
+        {merge: true}
       );
 
-      return { challenge };
+      return {challenge};
     } catch (error) {
-      throw new HttpsError('internal', 'Challenge generation failed');
+      throw new HttpsError("internal", "Challenge generation failed");
     }
   }
 );
@@ -185,13 +185,13 @@ export const generatePasskeyChallenge = onCall(
 // ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
 
 export const cleanupAuditLogs = onSchedule(
-  { region: 'us-east1', schedule: 'every 30 days' },
+  {region: "us-east1", schedule: "every 30 days"},
   async () => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const logs = await db
-        .collection('audit_logs')
-        .where('timestamp', '<', thirtyDaysAgo)
+        .collection("audit_logs")
+        .where("timestamp", "<", thirtyDaysAgo)
         .limit(100)
         .get();
 
@@ -203,9 +203,9 @@ export const cleanupAuditLogs = onSchedule(
       });
 
       if (deleted > 0) await batch.commit();
-      logger.info('Audit cleanup', { deleted });
+      logger.info("Audit cleanup", {deleted});
     } catch (error) {
-      logger.error('Cleanup failed', { error });
+      logger.error("Cleanup failed", {error});
     }
   }
 );
@@ -213,13 +213,13 @@ export const cleanupAuditLogs = onSchedule(
 // ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
 
 export const generateECRAOptOut = onCall(
-  { region: 'us-east1' },
+  {region: "us-east1"},
   async (request) => {
     if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
+      throw new HttpsError("unauthenticated", "Must be authenticated");
     }
 
-    const { userName, userEmail } = request.data;
+    const {userName, userEmail} = request.data;
 
     const template = `ECRA 2026 DATA SUBJECT REMOVAL REQUEST
 
@@ -229,11 +229,12 @@ Date: ${new Date().toISOString()}
 
 To Whom It May Concern:
 
-Pursuant to ECRA 2026 § 4.2, I request immediate deletion of all personal data held on file.
+Pursuant to ECRA 2026 § 4.2, I request immediate deletion of " +
+"all personal data held on file.
 
 Respectfully,
 ${userName}`;
 
-    return { optOutTemplate: template };
+    return {optOutTemplate: template};
   }
 );
