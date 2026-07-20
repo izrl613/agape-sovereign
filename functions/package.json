@@ -15,7 +15,7 @@
   },
   "main": "lib/index.js",
   "dependencies": {
-    "@google-cloud/bigquery": "^7.9.4",
+    "@google-cloud/bigquery": "^8.3.1",
     "@simplewebauthn/server": "^13.3.2",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
