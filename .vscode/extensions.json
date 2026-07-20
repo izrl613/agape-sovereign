@@ -1,5 +1,7 @@
 {
-  "recommendations": [],
+  "recommendations": [
+    "saoudrizwan.claude-dev"
+  ],
   "unwantedRecommendations": [
     "google.securecoder"
   ]
