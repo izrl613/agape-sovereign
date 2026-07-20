@@ -27,7 +27,6 @@ export interface SovereignPassport {
   status: 'SUCCESS' | 'FAILED';
   sha256Id: string;
   exportTimestamp: string;
-  mnemonicPhrase: string;
   publicFingerprint: string;
   manifestFile: string; // filename of the generated PDF manifest
   instructions: string;
@@ -51,58 +50,7 @@ export interface PassportManifest {
   instructions: string;
 }
 
-/**
- * BIP-39 inspired word list (subset of 256 words for a 12-word phrase).
- * Full BIP-39 list would be 2048 words. This is a deterministic demo subset.
- */
-const WORD_LIST = [
-  'abandon', 'ability', 'able', 'about', 'above', 'absent', 'absorb', 'abstract',
-  'absurd', 'abuse', 'access', 'accident', 'account', 'accuse', 'achieve', 'acid',
-  'acoustic', 'acquire', 'across', 'action', 'actor', 'actual', 'adapt', 'add',
-  'addict', 'address', 'adjust', 'admit', 'adult', 'advance', 'advice', 'aerobic',
-  'afford', 'afraid', 'again', 'age', 'agent', 'agree', 'ahead', 'aim',
-  'air', 'airport', 'aisle', 'alarm', 'album', 'alcohol', 'alert', 'alien',
-  'all', 'alley', 'allow', 'almost', 'alone', 'alpha', 'already', 'alter',
-  'always', 'amateur', 'amazing', 'among', 'amount', 'amused', 'analyst', 'anchor',
-  'ancient', 'anger', 'angle', 'angry', 'animal', 'ankle', 'announce', 'annual',
-  'another', 'antenna', 'antique', 'anxiety', 'apart', 'apology', 'appear', 'april',
-  'arcade', 'arctic', 'area', 'arena', 'argue', 'arm', 'armor', 'army',
-  'around', 'arrange', 'arrest', 'arrive', 'arrow', 'art', 'artefact', 'artist',
-  'artwork', 'ask', 'aspect', 'assault', 'asset', 'assist', 'assume', 'asthma',
-  'athlete', 'atom', 'attack', 'attend', 'attitude', 'attract', 'auction', 'audit',
-  'august', 'aunt', 'author', 'auto', 'autumn', 'average', 'avocado', 'avoid',
-  'awake', 'aware', 'away', 'awesome', 'awful', 'awkward', 'axis', 'baby',
-  'balance', 'bamboo', 'banana', 'banner', 'bar', 'barely', 'bargain', 'barrel',
-  'base', 'basic', 'basket', 'battle', 'beach', 'bean', 'beauty', 'because',
-  'become', 'beef', 'before', 'begin', 'behave', 'behind', 'believe', 'below',
-  'belt', 'bench', 'benefit', 'best', 'betray', 'better', 'between', 'beyond',
-  'bicycle', 'bid', 'bike', 'bind', 'biology', 'bird', 'birth', 'bitter',
-  'black', 'blade', 'blame', 'blanket', 'blast', 'bleak', 'bless', 'blind',
-  'blood', 'blossom', 'blouse', 'blue', 'blur', 'board', 'boat', 'body',
-  'bomb', 'bone', 'bonus', 'book', 'border', 'boring', 'borrow', 'boss',
-  'bottom', 'bounce', 'box', 'boy', 'bracket', 'brain', 'brand', 'brave',
-  'breeze', 'brick', 'bridge', 'brief', 'bright', 'bring', 'brisk', 'broad',
-  'broken', 'bronze', 'broom', 'brother', 'brown', 'brush', 'bubble', 'buddy',
-  'budget', 'buffalo', 'build', 'bulb', 'bulk', 'bullet', 'bundle', 'bunker',
-  'burden', 'burger', 'burst', 'bus', 'business', 'busy', 'butter', 'buyer',
-  'buzz', 'cabbage', 'cabin', 'cable', 'cactus', 'cage', 'cake', 'call',
-];
 
-/**
- * Generate a deterministic 12-word mnemonic from entropy bytes.
- * Using SHA-256 of (sha256Id + timestamp) as the entropy source.
- */
-async function generateMnemonic(sha256Id: string, timestamp: string): Promise<string> {
-  const entropy = await sha256(`${sha256Id}::mnemonic::${timestamp}`);
-  const words: string[] = [];
-  for (let i = 0; i < 12; i++) {
-    // Take 2 hex chars at a time = 1 byte = 0-255 index
-    const byte = parseInt(entropy.slice(i * 2, i * 2 + 2), 16);
-    const idx = byte % WORD_LIST.length;
-    words.push(WORD_LIST[idx]);
-  }
-  return words.join(' ');
-}
 
 /**
  * Check if the 2-year export limit has been exceeded for this identity hash.
@@ -154,7 +102,6 @@ export async function generateSovereignPassport(
       status: 'FAILED',
       sha256Id,
       exportTimestamp: new Date().toISOString(),
-      mnemonicPhrase: '',
       publicFingerprint: '',
       manifestFile: '',
       instructions: '',
@@ -169,7 +116,6 @@ export async function generateSovereignPassport(
       status: 'FAILED',
       sha256Id,
       exportTimestamp: new Date().toISOString(),
-      mnemonicPhrase: '',
       publicFingerprint: '',
       manifestFile: '',
       instructions: '',
@@ -180,7 +126,6 @@ export async function generateSovereignPassport(
   const exportTimestamp = new Date().toISOString();
 
   // 2. Generate cryptographic artifacts
-  const mnemonic = await generateMnemonic(sha256Id, exportTimestamp);
   const publicFingerprint = await generatePublicFingerprint(sha256Id, exportTimestamp);
 
   // 3. Build the MVIB manifest (proof, not raw PII)
@@ -199,13 +144,12 @@ export async function generateSovereignPassport(
     legalNotice:
       'This document constitutes the Minimum Viable Identity Blueprint (MVIB). ' +
       'Under no circumstances shall there be any record of data scraping through any method or means. ' +
-      'The bearer of the Mnemonic Phrase recovers this identity. Handle with absolute privacy.',
+      'Handle with absolute privacy.',
     instructions:
-      '1. Write your 12-word Mnemonic Phrase on paper — do NOT store digitally.\n' +
-      '2. Store in a physically secure location separate from this document.\n' +
-      '3. This passportManifest.json + Mnemonic Phrase together form your complete recovery kit.\n' +
-      '4. You have 2 years from first export to regenerate. After that, request an admin reset.\n' +
-      '5. Agape Sovereign — One Love.',
+      '1. Store this passportManifest.json in a physically secure location.\n' +
+      '2. Your SHA-256 Identity Anchor and Public Fingerprint are your cryptographic proof of sovereignty.\n' +
+      '3. You have 2 years from first export to regenerate. After that, request an admin reset.\n' +
+      '4. Agape Sovereign — One Love.',
   };
 
   const integrityHash = await generateIntegrityHash(manifestData);
@@ -234,12 +178,11 @@ export async function generateSovereignPassport(
     status: 'SUCCESS',
     sha256Id,
     exportTimestamp,
-    mnemonicPhrase: mnemonic,
     publicFingerprint,
     manifestFile: manifestFilename,
     instructions:
-      'CRITICAL: Write your Mnemonic Phrase on paper NOW. ' +
-      'This phrase is your sole recovery key — it will not be shown again.',
+      'Your Sovereign Passport Manifest has been downloaded. ' +
+      'Store it in a secure location. Your SHA-256 Identity Anchor is your cryptographic proof of sovereignty.',
   };
 }
 
