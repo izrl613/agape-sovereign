@@ -23,6 +23,7 @@
     {
       "codebase": "default",
       "disallowLegacyRuntimeConfig": true,
+      "serviceAccount": "cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
       "ignore": [
         "node_modules",
         ".git",

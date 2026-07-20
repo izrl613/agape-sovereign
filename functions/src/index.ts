@@ -8,7 +8,7 @@
 import {setGlobalOptions} from "firebase-functions";
 
 // Cost control: cap containers per function to limit runaway spend
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({maxInstances: 10});
 
 // Re-export all function submodules
 export * from "./auth";
