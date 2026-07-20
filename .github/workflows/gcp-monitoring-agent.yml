@@ -1,0 +1,179 @@
+# =============================================================================
+# AGAPE SOVEREIGN — GCP NEAR-ZERO-COST MONITORING AGENT
+# Uses only free GCP services: Cloud Monitoring, Cloud Logging, Error Reporting
+# Cost: $0 — all within GCP free tier limits
+# Runs: Daily health check + weekly cost summary
+# =============================================================================
+name: GCP Monitoring Agent
+
+on:
+  schedule:
+    # Daily at 9:17 AM EST
+    - cron: '17 14 * * *'
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Monitoring scope'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - errors_only
+          - cost_only
+
+env:
+  GCP_PROJECT: agape-sovereign
+  GCP_REGION: us-central1
+  SERVICES: "agape-sovereign-server authapi gemma4-mcp-server registerpasskeyoptions"
+
+jobs:
+  # ── Free-tier GCP Uptime Monitoring ──────────────────────────────────────────
+  uptime-checks:
+    name: Cloud Run Health Probe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe all Cloud Run services
+        run: |
+          set -e
+          echo "## GCP Cloud Run Health — $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+
+          declare -A URLS=(
+            ["agape-sovereign-server"]="https://agape-sovereign-server-vub7d55vga-uc.a.run.app/health"
+            ["authapi"]="https://authapi-vub7d55vga-uc.a.run.app"
+            ["gemma4-mcp-server"]="https://gemma4-mcp-server-vub7d55vga-uc.a.run.app/health"
+            ["agape-sovereign-pwa"]="https://agape-sovereign--agape-sovereign.us-central1.hosted.app"
+          )
+
+          FAILED=0
+          for svc in "${!URLS[@]}"; do
+            URL="${URLS[$svc]}"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$URL" || echo "000")
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+              STATUS="✅ ${HTTP_CODE}"
+            else
+              STATUS="❌ ${HTTP_CODE}"
+              FAILED=$((FAILED + 1))
+            fi
+            echo "| $svc | $URL | $STATUS |" >> $GITHUB_STEP_SUMMARY
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$FAILED" -eq 0 ]; then
+            echo "**All services healthy ✅**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**⚠️ ${FAILED} service(s) unhealthy — check Cloud Run console**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "[Open Cloud Run Console](https://console.cloud.google.com/run?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date -u '+%Y-%m-%d')
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "🚨 Cloud Run health check failed — ${DATE}" \
+            --body "Automated monitoring detected one or more Cloud Run services are unhealthy.
+
+          **Date:** ${DATE}
+          **Workflow:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ## Services to check:
+          - [agape-sovereign-server](https://console.cloud.google.com/run/detail/us-central1/agape-sovereign-server/metrics?project=agape-sovereign)
+          - [authapi](https://console.cloud.google.com/run/detail/us-central1/authapi/metrics?project=agape-sovereign)
+          - [gemma4-mcp-server](https://console.cloud.google.com/run/detail/us-central1/gemma4-mcp-server/metrics?project=agape-sovereign)
+
+          ## Useful commands:
+          \`\`\`bash
+          gcloud run services list --region=us-central1 --project=agape-sovereign
+          gcloud logging read 'resource.type=cloud_run_revision severity>=ERROR' --limit=20 --project=agape-sovereign
+          \`\`\`
+          " \
+            --label "bug" || true
+
+  # ── GCP Free-Tier Log Analysis ────────────────────────────────────────────────
+  log-analysis-agent:
+    name: Cloud Logging Error Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: agape-sovereign
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+        continue-on-error: true
+
+      - name: Scan Cloud Logging for errors (free tier)
+        continue-on-error: true
+        run: |
+          # Cloud Logging is free for first 50 GiB/month of logs ingested
+          # Log reads via API are also free
+          gcloud logging read \
+            'resource.type="cloud_run_revision" AND severity>=ERROR' \
+            --limit=50 \
+            --format="table(timestamp,resource.labels.service_name,textPayload)" \
+            --project=agape-sovereign \
+            --freshness=1d 2>/dev/null | head -50 \
+            || echo "[AGENT] gcloud auth not configured — add GCP_SA_KEY secret for live log scanning"
+
+      - name: Post log summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Cloud Logging — Error Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To enable live log scanning, add the \`GCP_SA_KEY\` secret." >> $GITHUB_STEP_SUMMARY
+          echo "Create a service account with \`roles/logging.viewer\` and \`roles/monitoring.viewer\` (read-only, free)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Cloud Logging](https://console.cloud.google.com/logs/query?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Error Reporting](https://console.cloud.google.com/errors?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
+
+  # ── Cost Budget Guardian ───────────────────────────────────────────────────────
+  cost-guardian:
+    name: Cost Guardian (Free BigQuery Analysis)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scope == '' || github.event.inputs.scope == 'full' || github.event.inputs.scope == 'cost_only' }}
+    steps:
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: agape-sovereign
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+        continue-on-error: true
+
+      - name: Run BigQuery cost analysis (free — queries on billing export)
+        continue-on-error: true
+        run: |
+          # BigQuery free tier: 1 TB queries/month
+          # This query is < 1 MB, will never exceed free tier
+          bq query --use_legacy_sql=false --project_id=agape-sovereign \
+            --format=prettyjson \
+            "SELECT
+              service.description AS service,
+              ROUND(SUM(cost), 4) AS total_cost_usd,
+              ROUND(SUM(credits.amount), 4) AS total_credits_usd
+            FROM \`agape-sovereign.billing_export.gcp_billing_export_v1_*\`
+            WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+            GROUP BY service
+            ORDER BY total_cost_usd DESC
+            LIMIT 20" 2>/dev/null \
+            || echo "[AGENT] BigQuery billing export not configured yet. See BILLING_SETUP_GUIDE.md"
+
+      - name: Post cost summary
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Cost Guardian" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Key cost reduction actions:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Remove \`firebase-hosting-merge.yml\` workflow (duplicate of \`deploy.yml\`) — saves Cloud Build minutes" >> $GITHUB_STEP_SUMMARY
+          echo "2. Add GCS lifecycle rules on source buckets — prevents unlimited artifact accumulation" >> $GITHUB_STEP_SUMMARY
+          echo "3. Remove warmup scheduler for \`gemma4-mcp-server\` if not serving live users — saves ~\$3-5/mo" >> $GITHUB_STEP_SUMMARY
+          echo "4. Drop empty \`(default)\` Firestore DB — consolidate to named \`agape-sovereign\` DB" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[Open Billing Console](https://console.cloud.google.com/billing/linkedaccount?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
+          echo "[Vertex AI Credit Balance](https://console.cloud.google.com/billing/credits?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
