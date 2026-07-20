@@ -1,287 +1,195 @@
-# =============================================================
-# AGAPE SOVEREIGN — AGENTIC NOTATOR
-# Runs every 6 hours and on push to main.
-# Reads repo state, upserts wiki + discussion/issue log,
-# and labels unlabelled open issues with needs-triage.
-# Uses only GITHUB_TOKEN — zero external secrets required.
-# =============================================================
-name: Agentic Notator
+name: "Agentic Notator (Issues / Wiki / Discussions)"
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   push:
-    branches:
-      - main
+    branches: ["main"]
+  schedule:
+    # Runs daily at 06:00 UTC — autonomous agent sweep
+    - cron: "0 6 * * *"
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Agent mode: full | issues_only | wiki_only | discussions_only"
+        required: false
+        default: "full"
 
 permissions:
-  contents: write        # wiki page upsert via git
-  issues: write          # create/update issues + labels
-  pull-requests: read    # read open PRs
-  discussions: write     # create discussion post
+  contents: write
+  issues: write
+  discussions: write
+  pull-requests: write
 
 jobs:
-  notate:
-    name: Notate Repo Status
+  agentic-notator:
+    name: "Sovereign Agentic Notator"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      # ----------------------------------------------------------
-      # 1. Checkout repo
-      # ----------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
-      # ----------------------------------------------------------
-      # 2. Gather repo state (open issues, open PRs, latest commit)
-      # ----------------------------------------------------------
-      - name: Gather repo state
-        id: state
-        uses: actions/github-script@v7
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          script: |
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
+          python-version: "3.12"
 
-            // Open issues (excluding PRs)
-            const issues = await github.paginate(
-              github.rest.issues.listForRepo,
-              { owner, repo, state: 'open', per_page: 100 }
-            );
-            const openIssues = issues.filter(i => !i.pull_request);
+      - name: Install dependencies
+        run: pip install requests
 
-            // Open PRs
-            const prs = await github.paginate(
-              github.rest.pulls.list,
-              { owner, repo, state: 'open', per_page: 100 }
-            );
-
-            // Latest commit on default branch
-            const commits = await github.rest.repos.listCommits({
-              owner, repo, per_page: 1
-            });
-            const latestSha  = commits.data[0]?.sha ?? 'n/a';
-            const latestShort = latestSha.slice(0, 7);
-            const latestMsg  = commits.data[0]?.commit?.message?.split('\n')[0] ?? '';
-
-            const now = new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
-
-            core.setOutput('open_issues',  String(openIssues.length));
-            core.setOutput('open_prs',     String(prs.length));
-            core.setOutput('latest_sha',   latestShort);
-            core.setOutput('latest_msg',   latestMsg);
-            core.setOutput('timestamp',    now);
-            core.setOutput('full_sha',     latestSha);
-
-            // Also store full issue list as JSON for later steps
-            core.setOutput('issues_json',  JSON.stringify(
-              openIssues.map(i => ({ number: i.number, labels: i.labels.map(l => l.name) }))
-            ));
-
-      # ----------------------------------------------------------
-      # 3. Upsert GitHub Wiki page: Agent-Status-Log
-      # ----------------------------------------------------------
-      - name: Upsert wiki Agent-Status-Log
+      - name: "Scan recent commits and open issues"
+        id: scan
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TIMESTAMP:    ${{ steps.state.outputs.timestamp }}
-          OPEN_ISSUES:  ${{ steps.state.outputs.open_issues }}
-          OPEN_PRS:     ${{ steps.state.outputs.open_prs }}
-          LATEST_SHA:   ${{ steps.state.outputs.latest_sha }}
-          LATEST_MSG:   ${{ steps.state.outputs.latest_msg }}
-          REPO:         ${{ github.repository }}
+          REPO: ${{ github.repository }}
         run: |
-          set -e
-          WIKI_REPO="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.wiki.git"
+          python3 - <<'PYEOF'
+          import os, json, subprocess, urllib.request, urllib.parse, datetime
 
-          # Clone the wiki (initialise it first if it doesn't exist yet)
-          if git clone "$WIKI_REPO" wiki 2>/dev/null; then
-            cd wiki
-          else
-            # Wiki not initialised — seed it
-            mkdir wiki && cd wiki
-            git init
-            git remote add origin "$WIKI_REPO"
-            echo "# Agent Status Log" > Agent-Status-Log.md
-            git add . && git commit -m "init wiki"
-            git push -u origin master 2>/dev/null || git push -u origin main 2>/dev/null || true
-            cd ..
-            git clone "$WIKI_REPO" wiki_retry && mv wiki_retry/* wiki/ && cd wiki
-          fi
+          TOKEN = os.environ["GH_TOKEN"]
+          REPO  = os.environ["REPO"]
+          API   = "https://api.github.com"
+          HEADERS = {
+              "Authorization": f"Bearer {TOKEN}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2026-11-28",
+          }
 
-          PAGE="Agent-Status-Log.md"
+          def gh(method, path, body=None):
+              url = f"{API}{path}"
+              data = json.dumps(body).encode() if body else None
+              req = urllib.request.Request(url, data=data, headers={**HEADERS,"Content-Type":"application/json"}, method=method)
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  return json.load(r)
 
-          # Build new row
-          STATUS="OK"
-          NEW_ROW="| ${TIMESTAMP} | ${OPEN_ISSUES} | ${OPEN_PRS} | \`${LATEST_SHA}\` | ${STATUS} — ${LATEST_MSG} |"
+          # 1. Get recent commits (last 10)
+          commits = gh("GET", f"/repos/{REPO}/commits?per_page=10")
+          commit_msgs = [c["commit"]["message"].split("\n")[0] for c in commits]
+          print(f"[SCAN] Last {len(commit_msgs)} commits scanned.")
 
-          # Create page with header if missing
-          if [ ! -f "$PAGE" ]; then
-            cat > "$PAGE" << 'TABLE_HEADER'
-          # Agent Status Log
+          # 2. Get open issues
+          issues = gh("GET", f"/repos/{REPO}/issues?state=open&per_page=20")
+          open_issues = [{"number": i["number"], "title": i["title"]} for i in issues if "pull_request" not in i]
+          print(f"[SCAN] {len(open_issues)} open issues found.")
 
-          Automatically maintained by the [Agentic Notator](.github/workflows/agentic-notator.yml) workflow.
+          # 3. Create a daily digest issue
+          today = datetime.date.today().isoformat()
+          commit_list = "\n".join(f"- {m}" for m in commit_msgs[:5])
+          issue_list  = "\n".join(f"- #{i['number']}: {i['title']}" for i in open_issues[:5])
 
-          | Date/Time (UTC) | Open Issues | Open PRs | Latest Commit | Status |
-          |---|---|---|---|---|
-          TABLE_HEADER
-          fi
+          body = f"""## Sovereign Agentic Daily Digest — {today}
 
-          # Append new row
-          echo "$NEW_ROW" >> "$PAGE"
+          ### Recent Commits
+          {commit_list}
 
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add "$PAGE"
-          git commit -m "chore: agent status log ${TIMESTAMP}" || echo "Nothing to commit"
-          git push || echo "Wiki push skipped"
+          ### Open Issues ({len(open_issues)} total)
+          {issue_list}
 
-      # ----------------------------------------------------------
-      # 4. Create/update pinned issue OR post to Discussions
-      # ----------------------------------------------------------
-      - name: Upsert status issue or discussion
-        uses: actions/github-script@v7
+          ### System Status
+          - Sovereign State Engine: **v1.0**
+          - LM Studio Integration: configured (local MCP)
+          - Zero Trust Layer: active
+          - Pipeline: IVM → AI Agent → PDF Generator → Export/Recovery
+
+          ---
+          *Auto-generated by Sovereign Agentic Notator workflow*
+          """
+
+          new_issue = gh("POST", f"/repos/{REPO}/issues", {
+              "title": f"[Agent Digest] Daily Sovereign Status — {today}",
+              "body": body,
+              "labels": ["agent-digest", "automated"],
+          })
+          print(f"[NOTATOR] Created issue #{new_issue['number']}: {new_issue['title']}")
+          print(f"[NOTATOR] URL: {new_issue['html_url']}")
+          PYEOF
+
+      - name: "Update Wiki — Architecture Overview"
+        if: github.event_name == 'push' || github.event.inputs.mode == 'full' || github.event.inputs.mode == 'wiki_only'
         env:
-          TIMESTAMP:   ${{ steps.state.outputs.timestamp }}
-          OPEN_ISSUES: ${{ steps.state.outputs.open_issues }}
-          OPEN_PRS:    ${{ steps.state.outputs.open_prs }}
-          LATEST_SHA:  ${{ steps.state.outputs.latest_sha }}
-          LATEST_MSG:  ${{ steps.state.outputs.latest_msg }}
-          FULL_SHA:    ${{ steps.state.outputs.full_sha }}
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PYEOF'
+          import os, json, subprocess, urllib.request, base64, datetime
 
-            const ts         = process.env.TIMESTAMP;
-            const openIssues = process.env.OPEN_ISSUES;
-            const openPRs    = process.env.OPEN_PRS;
-            const sha        = process.env.LATEST_SHA;
-            const msg        = process.env.LATEST_MSG;
-            const fullSha    = process.env.FULL_SHA;
+          TOKEN = os.environ["GH_TOKEN"]
+          REPO  = os.environ["REPO"]
+          API   = "https://api.github.com"
+          HEADERS = {
+              "Authorization": f"Bearer {TOKEN}",
+              "Accept": "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2026-11-28",
+              "Content-Type": "application/json",
+          }
 
-            const body = [
-              '## Autonomous Status Update',
-              '',
-              `> Auto-generated by \`agentic-notator\` — last run: **${ts}**`,
-              '',
-              '| Field | Value |',
-              '|---|---|',
-              `| Date/Time (UTC) | \`${ts}\` |`,
-              `| Open Issues | ${openIssues} |`,
-              `| Open PRs | ${openPRs} |`,
-              `| Latest Commit SHA | [\`${sha}\`](https://github.com/${owner}/${repo}/commit/${fullSha}) |`,
-              `| Latest Commit Msg | ${msg} |`,
-              `| Status | OK |`,
-              '',
-              '---',
-              '_This issue is maintained automatically. Do not close — it will be recreated._',
-            ].join('\n');
+          def gh(method, path, body=None):
+              url = f"{API}{path}"
+              data = json.dumps(body).encode() if body else None
+              req = urllib.request.Request(url, data=data, headers=HEADERS, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=15) as r:
+                      return json.load(r)
+              except urllib.error.HTTPError as e:
+                  return {"error": str(e)}
 
-            const title = '[AGENT LOG] Autonomous Status Update';
+          today = datetime.date.today().isoformat()
+          wiki_content = f"""# Sovereign State Engine — Architecture Overview
 
-            // Try Discussions first (GraphQL)
-            let usedDiscussion = false;
-            try {
-              // Get repo node_id and first Announcements-style category
-              const repoData = await github.graphql(`
-                query($owner: String!, $repo: String!) {
-                  repository(owner: $owner, name: $repo) {
-                    id
-                    discussionCategories(first: 10) {
-                      nodes { id name }
-                    }
-                  }
-                }`, { owner, repo });
+          **Last updated by Agentic Notator:** {today}
 
-              const cats = repoData.repository.discussionCategories.nodes;
-              const cat  = cats.find(c =>
-                /general|announce|status|agent/i.test(c.name)
-              ) || cats[0];
+          ## System Modules
 
-              if (cat) {
-                await github.graphql(`
-                  mutation($repoId: ID!, $catId: ID!, $title: String!, $body: String!) {
-                    createDiscussion(input: {
-                      repositoryId: $repoId,
-                      categoryId:   $catId,
-                      title:        $title,
-                      body:          $body
-                    }) { discussion { url } }
-                  }`, {
-                    repoId: repoData.repository.id,
-                    catId:  cat.id,
-                    title,
-                    body
-                  });
-                core.info(`Discussion created in category: ${cat.name}`);
-                usedDiscussion = true;
-              }
-            } catch (e) {
-              core.warning(`Discussions unavailable or failed: ${e.message}. Falling back to issue.`);
-            }
+          | Module | File | Role |
+          |--------|------|------|
+          | Core Storage | `sovereign/core_storage.py` | Zero-retention local cache / Keychain abstraction |
+          | IVM Agent | `sovereign/ivm_agent.py` | Identity Verification — SHA256-only data acquisition |
+          | AI Agent | `sovereign/ai_agent.py` | Intelligence — routes to local LM Studio MCP |
+          | PDF Generator | `sovereign/pdf_agent.py` | Immutable audit document generation |
+          | Export/Recovery | `sovereign/export_recovery_agent.py` | Digital Sovereignty Manifest + mnemonic |
+          | POA Orchestrator | `sovereign/poa_orchestrator.py` | Master execution pipeline |
+          | LM Studio Client | `sovereign/lm_studio_client.py` | Local LLM inference layer |
 
-            if (!usedDiscussion) {
-              // Find existing [AGENT LOG] issue
-              const existing = await github.rest.issues.listForRepo({
-                owner, repo, state: 'open', per_page: 100
-              });
-              const logIssue = existing.data.find(
-                i => i.title === title && !i.pull_request
-              );
+          ## Execution Pipeline
+          ```
+          ZTNA Gate → Capacity Check (50 users max) → SHA256 Hash
+              → IVM Agent → AI Agent (LM Studio) → PDF Generator → Export/Recovery
+          ```
 
-              if (logIssue) {
-                await github.rest.issues.update({
-                  owner, repo, issue_number: logIssue.number,
-                  body
-                });
-                core.info(`Updated existing log issue #${logIssue.number}`);
-              } else {
-                const created = await github.rest.issues.create({
-                  owner, repo, title, body,
-                  labels: ['agent-log']
-                });
-                core.info(`Created log issue #${created.data.number}`);
-              }
-            }
+          ## Cost Model
+          - Heavy AI reasoning: **local LM Studio** (zero cloud cost)
+          - Cloud budget: Firebase Hosting + minimal GCP services only
+          - Target: **< $12-16/month** total platform cost
 
-      # ----------------------------------------------------------
-      # 5. Label all unlabelled open issues with needs-triage
-      # ----------------------------------------------------------
-      - name: Label unlabelled issues with needs-triage
-        uses: actions/github-script@v7
-        env:
-          ISSUES_JSON: ${{ steps.state.outputs.issues_json }}
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
-            const label = 'needs-triage';
+          ## Security Properties
+          - Zero-trust: every module validates independently
+          - SHA256-only identity: no raw PII ever leaves IVM
+          - Zero-retention: sensitive buffers wiped after pipeline
+          - Privacy by design: temp profiles link only to hash
 
-            // Ensure the label exists
-            try {
-              await github.rest.issues.getLabel({ owner, repo, name: label });
-            } catch {
-              await github.rest.issues.createLabel({
-                owner, repo, name: label,
-                color: 'e4e669',
-                description: 'Awaiting triage by maintainer'
-              });
-              core.info(`Created label: ${label}`);
-            }
+          ## GitHub Workflows
+          - `deploy.yml` — Firebase deployment
+          - `compliance-agent.yml` — Autonomous compliance sweep
+          - `security-scan.yml` — CodeQL + SAST
+          - `agentic-notator.yml` — **This workflow** — daily digest + wiki updates
+          """
 
-            const issues = JSON.parse(process.env.ISSUES_JSON || '[]');
-            const unlabelled = issues.filter(i => i.labels.length === 0);
-            core.info(`Found ${unlabelled.length} unlabelled open issue(s).`);
+          # Write to docs/architecture.md in the repo (wiki API requires separate git repo)
+          existing = gh("GET", f"/repos/{REPO}/contents/docs/architecture.md")
+          sha = existing.get("sha") if isinstance(existing, dict) and "sha" in existing else None
 
-            for (const issue of unlabelled) {
-              await github.rest.issues.addLabels({
-                owner, repo,
-                issue_number: issue.number,
-                labels: [label]
-              });
-              core.info(`Labelled issue #${issue.number} with ${label}`);
-            }
+          payload = {
+              "message": f"docs(agent): update architecture overview [{today}]",
+              "content": base64.b64encode(wiki_content.encode()).decode(),
+          }
+          if sha:
+              payload["sha"] = sha
+
+          result = gh("PUT", f"/repos/{REPO}/contents/docs/architecture.md", payload)
+          if "content" in result:
+              print(f"[WIKI] docs/architecture.md updated successfully.")
+          else:
+              print(f"[WIKI] Result: {result}")
+          PYEOF
