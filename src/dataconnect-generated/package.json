@@ -1,0 +1,8 @@
+{
+  "name": "@dataconnect/generated",
+  "version": "0.1.0",
+  "description": "Generated Firebase Data Connect client SDK types",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true
+}

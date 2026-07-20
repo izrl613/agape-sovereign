@@ -60,7 +60,8 @@ jobs:
           def gh(method, path, body=None):
               url = f"{API}{path}"
               data = json.dumps(body).encode() if body else None
-              req = urllib.request.Request(url, data=data, headers={**HEADERS,"Content-Type":"application/json"}, method=method)
+              hdrs = {**HEADERS, "Content-Type": "application/json"} if data else HEADERS
+              req = urllib.request.Request(url, data=data, headers=hdrs, method=method)
               try:
                   with urllib.request.urlopen(req, timeout=15) as r:
                       return json.load(r)
