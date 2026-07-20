@@ -13,6 +13,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
+import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
+import { passkeyLockService } from '../services/passkeyLockService';
 
 import { dlpEngine, DlpScanResult, DlpViolation, subscribeDlpViolations, logDlpViolation } from '../services/dlpService';
 import { anonymizePii, detectPiiWithAi, PiiScanResult, AnonymizeTechnique, logPiiScan } from '../services/piiService';
@@ -36,6 +38,13 @@ const PANELS: Array<{ id: ShieldPanel; label: string; icon: string; color: strin
 export const ShieldModule: React.FC = () => {
   const { user } = useAuth();
   const [activePanel, setActivePanel] = useState<ShieldPanel>('overview');
+  const [isLocked, setIsLocked] = useState(passkeyLockService.getState().vaultLocked && passkeyLockService.getState().vaultEnabled);
+
+  useEffect(() => {
+    return passkeyLockService.subscribe(state => {
+      setIsLocked(state.vaultLocked && state.vaultEnabled);
+    });
+  }, []);
 
   const containerStyle: React.CSSProperties = {
     minHeight: '100vh',
@@ -46,8 +55,11 @@ export const ShieldModule: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      {/* Header */}
+    <div style={{ ...containerStyle, position: 'relative' }}>
+      <PasskeyLockOverlay zone="vault" />
+      
+      <div style={{ filter: isLocked ? 'blur(12px)' : 'none', transition: 'filter 0.3s ease', pointerEvents: isLocked ? 'none' : 'auto' }}>
+        {/* Header */}
       <div style={{ padding: '24px 24px 0', borderBottom: `1px solid ${NEON.blue}22` }}>
         <NeonText color={NEON.blue} size="1.4rem" style={{ letterSpacing: '0.15em' }}>
           ⬡ SOVEREIGN SHIELD PLATFORM
@@ -100,6 +112,7 @@ export const ShieldModule: React.FC = () => {
           {activePanel === 'airs'      && <AirsPanel />}
         </motion.div>
       </AnimatePresence>
+      </div>
     </div>
   );
 };
