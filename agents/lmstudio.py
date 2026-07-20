@@ -15,6 +15,11 @@ import urllib.request
 import urllib.error
 from typing import Any, Dict, List, Optional, Tuple
 
+# ── Architecture boundary: Vertex AI forbidden for this module ─────────────────
+from agents.boundary import assert_not_vertex  # noqa: E402
+assert_not_vertex("http://localhost:1234")   # self-check: always passes (localhost)
+assert_not_vertex("http://localhost:11434")  # self-check: always passes (localhost)
+
 # ── LM Studio ──────────────────────────────────────────────────────────────────
 _LMSTUDIO_BASE = "http://localhost:1234"
 _LMSTUDIO_MODELS_URL = f"{_LMSTUDIO_BASE}/v1/models"

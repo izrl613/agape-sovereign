@@ -10,7 +10,12 @@
  * Deployment modes:
  *   - Local dev:   localhost:3001 (LMStudio or Ollama running locally)
  *   - Cloud Run:   PORT env var (set by Cloud Run), OLLAMA_BASE_URL points to
- *                  a sidecar container or Vertex AI endpoint
+ *                  an Ollama sidecar container ONLY (e.g. gemma4:e4b on Cloud Run)
+ *
+ * ARCHITECTURE BOUNDARY (non-negotiable):
+ *   - ALL AI reasoning and encrypted SHA-256 user-data processing → local LMStudio / Ollama
+ *   - Vertex AI is ONLY permitted for document processing and PDF rendering
+ *   - DO NOT route Architect AI inference or user data to Vertex AI under any conditions
  *
  * Clients:
  *   - PWA  (sovereign.nyc)             — SSE transport via /api/mcp (Firebase Hosting → Cloud Run)
@@ -38,6 +43,27 @@ const OLLAMA_ENDPOINT = process.env.OLLAMA_BASE_URL || OLLAMA_BASE_URL;
 const LMSTUDIO_ENDPOINT = process.env.LMSTUDIO_URL ?? "http://localhost:1234";
 const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL ?? "qwen3.5-9b-sushi-coder-rl-mlx";
 const OLLAMA_MODEL   = process.env.ARCHITECT_MODEL || DEFAULT_MODEL;
+
+// ── ARCHITECTURE BOUNDARY GUARD ───────────────────────────────────────────────
+// Vertex AI is ONLY permitted for document processing and PDF rendering.
+// Architect AI and all encrypted SHA-256 user data MUST stay on local LMStudio / Ollama.
+const VERTEX_AI_PATTERNS = [
+  "aiplatform.googleapis.com",
+  "generativelanguage.googleapis.com",
+  "us-central1-aiplatform",
+  "vertexai",
+  "vertex.ai",
+];
+for (const pattern of VERTEX_AI_PATTERNS) {
+  if (OLLAMA_ENDPOINT.toLowerCase().includes(pattern) ||
+      LMSTUDIO_ENDPOINT.toLowerCase().includes(pattern)) {
+    throw new Error(
+      `[BOUNDARY VIOLATION] Architect AI endpoint must not route to Vertex AI.\n` +
+      `OLLAMA_BASE_URL="${OLLAMA_ENDPOINT}" LMSTUDIO_URL="${LMSTUDIO_ENDPOINT}"\n` +
+      `Vertex AI is only permitted for document processing and PDF rendering.`
+    );
+  }
+}
 
 // Resolved at startup by probeBackend()
 let ACTIVE_ENDPOINT: string = OLLAMA_ENDPOINT;
