@@ -1,0 +1,29 @@
+{
+  "name": "local-llm-pwa",
+  "version": "1.0.0",
+  "description": "Open-source PWA with local LLMs, VS Code backing, zero cloud dependencies",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "vscode-extension"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspaces",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build:vscode": "npm run compile --workspace=vscode-extension",
+    "install:all": "npm install && npm install --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
