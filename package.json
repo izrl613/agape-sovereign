@@ -51,7 +51,7 @@
     "@types/react": "latest",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "latest",
     "esbuild": "latest",
     "tsx": "^4.23.0",
