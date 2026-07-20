@@ -15,6 +15,8 @@ on:
         options:
           - preview
           - production
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC for budget check
 
 env:
   PROJECT_ID: agape-sovereign
@@ -218,14 +220,9 @@ jobs:
 
       - name: Run budget check script
         run: |
-          node scripts/budget-check.js
+          node scripts/budget-check.mjs
         env:
           BILLING_ACCOUNT_ID: ${{ secrets.BILLING_ACCOUNT_ID }}
           BUDGET_THRESHOLD_WARN: 5
           BUDGET_THRESHOLD_CRITICAL: 25
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-# ─── Scheduled Budget Check ─────────────────────────────────────────────────
-on:
-  schedule:
-    - cron: '0 6 * * *'  # Daily at 6 AM UTC
