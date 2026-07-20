@@ -18,12 +18,18 @@ Usage:
 import argparse
 import json
 import os
+import ssl
 import sys
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+# Unverified SSL context for Cloud Run health probes
+_CTX = ssl.create_default_context()
+_CTX.check_hostname = False
+_CTX.verify_mode = ssl.CERT_NONE
 
 # Use LM Studio for local synthesis
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -48,7 +54,7 @@ def probe_service(name: str, url: str, timeout: int = 10) -> Dict[str, Any]:
     try:
         req = urllib.request.Request(url, method="HEAD")
         req.add_header("User-Agent", "agape-sovereign-monitor/1.0")
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=_CTX) as resp:
             return {
                 "service": name,
                 "url": url,

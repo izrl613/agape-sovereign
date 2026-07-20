@@ -288,7 +288,7 @@ def build_pdf(data: Dict[str, Any], out_path: Path) -> Path:
         from reportlab.lib.enums import TA_CENTER, TA_LEFT
     except ImportError:
         subprocess.run([sys.executable, "-m", "pip", "install", "reportlab", "-q"])
-        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.pagesizes import letter, A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
         from reportlab.lib import colors
