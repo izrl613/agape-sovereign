@@ -1,25 +1,26 @@
 # Local LLM Configuration — agape-sovereign workspace
 #
-# PRIMARY FALLBACK MODEL: Ollama gemma4:e4b (local, no cloud, unlimited tokens)
+# PRIMARY FALLBACK MODEL: LM Studio qwen3.5-9b-sushi-coder-rl-mlx (local, no cloud, unlimited tokens)
 # When Antigravity IDE's default cloud models are exhausted or unavailable,
-# this workspace uses Ollama with gemma4:e4b exclusively.
+# this workspace uses LM Studio with qwen3.5-9b-sushi-coder-rl-mlx exclusively.
 #
 # Rules:
 # - If the default model (Claude Sonnet / Gemini) reports rate limits or token exhaustion,
-#   switch to Provider: Ollama, Model: gemma4:e4b
+#   switch to Provider: LM Studio, Model: qwen3.5-9b-sushi-coder-rl-mlx
 # - DO NOT fall back to any cloud-based unlimited-token provider (OpenRouter, OpenAI, etc.)
-# - Ollama endpoint: http://localhost:11434 (always local, no network egress)
-# - Keep model in memory: OLLAMA_KEEP_ALIVE=-1 (persistent across sessions)
-# - Context window: 8192 tokens (set via OLLAMA_NUM_CTX)
+# - DO NOT fall back to Ollama
+# - LM Studio endpoint: http://localhost:1234/v1 (always local, no network egress)
+# - Keep model in memory: LM Studio "Keep Alive" = -1 (persistent across sessions)
+# - Context window: 8192+ tokens (set via LM Studio config)
 #
 # Fallback order:
 #   1. Default Antigravity IDE model (cloud, limited tokens)
-#   2. Ollama gemma4:e4b (LOCAL ONLY — this is the hard stop; no further cloud fallback)
+#   2. LM Studio qwen3.5-9b-sushi-coder-rl-mlx (LOCAL ONLY — this is the hard stop; no further fallback)
 #
 # This policy is intentional: no cloud provider should receive unlimited token requests
 # without explicit user approval per session.
 
 ## Model Hierarchy
 - **Primary**: Antigravity IDE default (Claude Sonnet 4.6 / Gemini)
-- **Fallback**: `ollama:gemma4:e4b` via http://localhost:11434
-- **No cloud overflow**: If Ollama is unavailable, stop and notify user
+- **Fallback**: `lmstudio:qwen3.5-9b-sushi-coder-rl-mlx` via http://localhost:1234/v1
+- **No cloud overflow**: If LM Studio is unavailable, stop and notify user

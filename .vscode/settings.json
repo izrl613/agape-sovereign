@@ -34,5 +34,39 @@
 "terminal.integrated.tabs.defaultIcon": "github",
 "chat.promptFilesRecommendations": {
   
+},
+"ollama-view.model": "qwen3.5-9b-sushi-coder-rl-mlx",
+  "ollama-view.baseUrl": "http://localhost:11434",
+  "cline.providers": {
+    "lmstudio": {
+      "name": "LM Studio",
+      "baseUrl": "http://localhost:1234/v1",
+      "apiKey": "lm-studio",
+      "models": [
+        "qwen3.5-9b-sushi-coder-rl-mlx"
+      ]
+    }
+  },
+  "cline.defaultProvider": "lmstudio",
+  "cline.defaultModel": "qwen3.5-9b-sushi-coder-rl-mlx",
+  "continue.providers": [
+    {
+      "name": "lmstudio",
+      "model": "qwen3.5-9b-sushi-coder-rl-mlx",
+      "apiBase": "http://localhost:1234/v1",
+      "apiKey": "lm-studio",
+      "models": [
+        "qwen3.5-9b-sushi-coder-rl-mlx"
+      ]
+    }
+  ],
+  "continue.models": [
+    {
+      "title": "qwen3.5-9b-sushi-coder-rl-mlx (LM Studio)",
+      "provider": "lmstudio",
+      "model": "qwen3.5-9b-sushi-coder-rl-mlx",
+      "apiBase": "http://localhost:1234/v1"
+    }
+  ]
 }
 }

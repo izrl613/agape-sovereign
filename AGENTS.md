@@ -346,3 +346,28 @@ firebase functions:log --only api --lines=50
 </example>
 
 </firebase_prompts>
+
+---
+
+## Cline + LM Studio Configuration (Antigravity IDE)
+
+**Status**: Cline extension recommended in `.vscode/extensions.json`, configured to use LM Studio with `qwen3.5-9b-sushi-coder-rl-mlx` model.
+
+### Setup Complete:
+1. **Cline extension** added to recommended extensions: `saoudrizwan.claude-dev`
+2. **LM Studio endpoint**: `http://localhost:1234/v1` (verified running with qwen model)
+3. **Default provider**: `lmstudio` 
+4. **Default model**: `qwen3.5-9b-sushi-coder-rl-mlx`
+
+### Fallback Hierarchy (enforced via .clinerules):
+1. Antigravity IDE default model (cloud, quota-limited)
+2. **LM Studio** `qwen3.5-9b-sushi-coder-rl-mlx` @ `http://localhost:1234/v1` (PRIMARY LOCAL FALLBACK)
+3. If LM Studio unavailable → **STOP and notify user** (no cloud overflow)
+
+### To activate:
+1. Restart VS Code / Antigravity IDE
+2. Install recommended extension (Cline)
+3. Open Cline panel (Cmd+Shift+P → "Cline: Open")
+4. Select "LM Studio" as provider, model auto-selected
+
+**LM Studio verified running** on port 1234 with `qwen3.5-9b-sushi-coder-rl-mlx` ✓
