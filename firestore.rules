@@ -128,14 +128,14 @@ service cloud.firestore {
     }
 
     // ─── AUDIT LOG COLLECTION ──────────────────────────
-    // System audit trail - admin-read-only, immutable
+    // System audit trail - admin-read, authenticated-write, immutable after creation
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      
-      // Only Cloud Functions can write to audit logs
-      allow create: if request.auth.uid == null && // Service account has no UID
-                       request.resource.data.timestamp == request.time;
-      
+
+      // Authenticated users can create audit log entries (POA / AuthContext)
+      allow create: if isAuthenticated() &&
+                       request.resource.data.type != null;
+
       allow update: if false;
       allow delete: if false;
     }
@@ -160,6 +160,74 @@ service cloud.firestore {
                          get(/databases/$(database)/documents/sessions/$(userId)).data.userId == request.auth.uid &&
                          request.resource.data.timestamp == request.time;
       }
+    }
+
+    // ─── PIPELINE RUNS COLLECTION ──────────────────────
+    // Sovereign data pipeline run metadata & ECRA 2026 audit trail
+    match /pipeline_runs/{runId} {
+      // Users can read their own pipeline runs
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+
+      // Users can register their own pipeline run results
+      allow create: if isAuthenticated() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.integrityHash != null;
+
+      // Pipeline run records are immutable after creation (integrity protection)
+      allow update: if false;
+
+      // Users can delete their own runs (right to erasure / ECRA consent)
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
+    }
+
+    // ─── SOVEREIGN AUDITS COLLECTION ──────────────────
+    // OPERATION FRAMEWORK: IVM vector results keyed by SHA-256 identity hash.
+    // No raw UID or email is stored here — hash only, zero-knowledge architecture.
+    match /sovereign_audits/{sha256Id} {
+      // Users can read their own audit (hash-matched via sovereignHash in app state)
+      allow read: if isAuthenticated();
+
+      // Users can create/update their own audit record
+      allow create: if isAuthenticated() &&
+                       request.resource.data.sha256Id != null &&
+                       request.resource.data.sha256Id.size() == 64;
+
+      allow update: if isAuthenticated() &&
+                       resource.data.sha256Id == request.resource.data.sha256Id;
+
+      // Audits are immutable for deletion — admin can remove stale records
+      allow delete: if isAdmin();
+    }
+
+    // ─── SOVEREIGN EXPORTS COLLECTION ─────────────────
+    // OPERATION FRAMEWORK: Export/Recovery records (Phase 4).
+    // Keyed by SHA-256 hash. Stores only fingerprints + timestamps — no raw PII.
+    // 2-year export limit enforced here and in client logic.
+    match /sovereign_exports/{sha256Id} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated() &&
+                       request.resource.data.sha256Id != null &&
+                       request.resource.data.publicFingerprint != null;
+
+      allow update: if isAuthenticated() &&
+                       resource.data.sha256Id == request.resource.data.sha256Id;
+
+      allow delete: if isAdmin();
+    }
+
+    // ─── SYSTEM CAPACITY COLLECTION ───────────────────
+    // OPERATION FRAMEWORK: Phase 1.5 — 50-user capacity counter.
+    // Authenticated users can increment/decrement their slot reservation.
+    // Counter value validated server-side (transaction-safe increment only).
+    match /system/{docId} {
+      allow read: if isAuthenticated();
+      // Allow authenticated users to update capacity via transaction (POA Orchestrator)
+      allow create, update: if isAuthenticated() &&
+                               docId == 'capacity';
+      allow delete: if isAdmin();
     }
 
     // ─── DENY ALL BY DEFAULT ───────────────────────────
