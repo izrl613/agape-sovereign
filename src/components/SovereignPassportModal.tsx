@@ -5,16 +5,15 @@
  *
  * Displays the Digital Sovereign Passport export flow:
  * 1. Confirms audit report summary
- * 2. Generates BIP-39 mnemonic phrase
- * 3. Forces user acknowledgment before download
- * 4. Triggers manifest JSON download
- * 5. Shows SHA-256 identity fingerprint at all times (privacy guarantee)
+ * 2. Generates SHA-256 signed manifest
+ * 3. Triggers manifest JSON download
+ * 4. Shows SHA-256 identity fingerprint at all times (privacy guarantee)
  * ============================================================
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Download, Eye, EyeOff, Copy, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { Shield, Download, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
 import { useAuth } from '../AuthContext';
 import { runExportStage } from '../services/poaOrchestratorService';
@@ -28,16 +27,12 @@ interface Props {
   onClose: () => void;
 }
 
-type ExportStep = 'confirm' | 'generating' | 'mnemonic' | 'acknowledged' | 'complete' | 'error';
+type ExportStep = 'confirm' | 'generating' | 'complete' | 'error';
 
 export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }) => {
   const { sovereignHash } = useAuth();
   const [step, setStep] = useState<ExportStep>('confirm');
   const [passport, setPassport] = useState<SovereignPassport | null>(null);
-  const [manifest, setManifest] = useState<PassportManifest | null>(null);
-  const [mnemonicVisible, setMnemonicVisible] = useState(false);
-  const [acknowledged, setAcknowledged] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const score = auditReport.reportableData.sovereignAuditScore;
@@ -80,36 +75,23 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
           policyVersion: 'V1.3',
         },
         publicFingerprint: result.publicFingerprint,
-        integrityHash: result.publicFingerprint, // simplified for UI
+        integrityHash: result.publicFingerprint,
         legalNotice:
           'This document constitutes the Minimum Viable Identity Blueprint (MVIB). ' +
-          'Under no circumstances shall there be any record of data scraping through any method or means.',
+          'Under no circumstances shall there be any record of data scraping through any method or means. ' +
+          'Handle with absolute privacy.',
         instructions: result.instructions,
       };
 
       setPassport(result);
-      setManifest(fullManifest);
-      setStep('mnemonic');
+      // Trigger download immediately — no mnemonic gate
+      downloadManifest(result, fullManifest);
+      setStep('complete');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error during export.');
       setStep('error');
     }
   };
-
-  const handleCopyMnemonic = async () => {
-    if (!passport?.mnemonicPhrase) return;
-    await navigator.clipboard.writeText(passport.mnemonicPhrase);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-  };
-
-  const handleDownload = () => {
-    if (!passport || !manifest) return;
-    downloadManifest(passport, manifest);
-    setStep('complete');
-  };
-
-  const mnemonicWords = passport?.mnemonicPhrase?.split(' ') ?? [];
 
   return (
     <AnimatePresence>
@@ -149,7 +131,7 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
               <div>
                 <NeonText color={NEON.blue} size="1.2rem" weight={700}>Sovereign Digital Passport</NeonText>
                 <div style={{ color: NEON.textMuted, fontSize: '0.7rem', fontFamily: "'Share Tech Mono'" }}>
-                  AGAPE SOVEREIGN — EXPORT & RECOVERY
+                  AGAPE SOVEREIGN — EXPORT &amp; RECOVERY
                 </div>
               </div>
             </div>
@@ -205,14 +187,14 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
                 }}>
                   <AlertTriangle size={16} color={NEON.orange} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ color: NEON.text, fontSize: '0.75rem', lineHeight: 1.5 }}>
-                    A <strong>12-word Mnemonic Phrase</strong> will be generated. Write it on paper.
-                    It will <strong>not be stored</strong> by Agape Sovereign and cannot be recovered if lost.
-                    2-year export limit applies.
+                    A SHA-256 signed Identity Blueprint will be generated and downloaded immediately.
+                    A 2-year export limit applies per identity anchor.
                   </div>
                 </div>
 
                 <NeonButton color={NEON.blue} onClick={handleGeneratePassport} style={{ width: '100%' }}>
-                  Generate My Sovereign Passport
+                  <Download size={14} style={{ marginRight: 8, display: 'inline' }} />
+                  Generate &amp; Download Sovereign Passport
                 </NeonButton>
               </motion.div>
             )}
@@ -234,107 +216,8 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 <div style={{ color: NEON.text, fontSize: '0.9rem' }}>Generating Sovereign Passport...</div>
                 <div style={{ color: NEON.textMuted, fontSize: '0.7rem', marginTop: 8 }}>
-                  Executing cryptographic key derivation
+                  Computing SHA-256 integrity seals
                 </div>
-              </motion.div>
-            )}
-
-            {/* STEP: Mnemonic */}
-            {step === 'mnemonic' && passport && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <div style={{
-                  background: 'rgba(255,46,159,0.08)', border: `1px solid ${NEON.magenta}30`,
-                  borderRadius: 8, padding: '12px', marginBottom: 16,
-                  display: 'flex', gap: 10, alignItems: 'flex-start',
-                }}>
-                  <AlertTriangle size={16} color={NEON.magenta} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ color: NEON.text, fontSize: '0.75rem', lineHeight: 1.5 }}>
-                    <strong>CRITICAL:</strong> Write your Mnemonic Phrase on paper NOW.
-                    This is your ONLY recovery key. It is displayed once and never stored.
-                  </div>
-                </div>
-
-                {/* Mnemonic phrase grid */}
-                <div style={{
-                  background: 'rgba(0,0,0,0.4)', border: `1px solid ${NEON.blue}40`,
-                  borderRadius: 10, padding: '16px', marginBottom: 16, position: 'relative',
-                }}>
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    marginBottom: 12,
-                  }}>
-                    <div style={{ color: NEON.textMuted, fontSize: '0.65rem', fontFamily: "'Share Tech Mono'" }}>
-                      12-WORD RECOVERY PHRASE
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button
-                        onClick={() => setMnemonicVisible(!mnemonicVisible)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: NEON.textMuted }}
-                      >
-                        {mnemonicVisible ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                      <button
-                        onClick={handleCopyMnemonic}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#00FF88' : NEON.textMuted }}
-                      >
-                        {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {mnemonicVisible ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-                      {mnemonicWords.map((word, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            background: 'rgba(0,212,255,0.05)', borderRadius: 6,
-                            padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6,
-                          }}
-                        >
-                          <span style={{ color: NEON.textMuted, fontSize: '0.6rem', minWidth: 16 }}>{i + 1}.</span>
-                          <span style={{ color: NEON.blue, fontSize: '0.8rem', fontFamily: "'Share Tech Mono'" }}>{word}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{
-                      height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: NEON.textMuted, fontSize: '0.75rem', letterSpacing: '0.2em',
-                    }}>
-                      ● ● ● ● ● ● ● ● ● ● ● ●
-                    </div>
-                  )}
-                </div>
-
-                {/* Acknowledge checkbox */}
-                <label style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer',
-                  marginBottom: 16, padding: '10px 12px',
-                  background: 'rgba(255,255,255,0.02)', borderRadius: 8,
-                  border: acknowledged ? `1px solid ${NEON.blue}50` : '1px solid rgba(255,255,255,0.05)',
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={acknowledged}
-                    onChange={(e) => setAcknowledged(e.target.checked)}
-                    style={{ marginTop: 2, accentColor: NEON.blue }}
-                  />
-                  <div style={{ color: NEON.text, fontSize: '0.75rem', lineHeight: 1.5 }}>
-                    I have written my Mnemonic Phrase on paper and understand that Agape Sovereign
-                    does not store it. I accept sole responsibility for its safekeeping.
-                  </div>
-                </label>
-
-                <NeonButton
-                  color={acknowledged ? NEON.blue : NEON.textMuted}
-                  onClick={handleDownload}
-                  disabled={!acknowledged}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                >
-                  <Download size={16} />
-                  Download Passport Manifest
-                </NeonButton>
               </motion.div>
             )}
 
@@ -358,7 +241,7 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
                     background: 'rgba(0,212,255,0.05)', borderRadius: 8, textAlign: 'left',
                   }}>
                     <div style={{ color: NEON.textMuted, fontSize: '0.6rem', fontFamily: "'Share Tech Mono'", marginBottom: 4 }}>
-                      PUBLIC FINGERPRINT
+                      PUBLIC FINGERPRINT · SHA-256
                     </div>
                     <div style={{ color: NEON.blue, fontSize: '0.65rem', fontFamily: "'Share Tech Mono'", wordBreak: 'break-all' }}>
                       {formatHashDisplay(passport.publicFingerprint)}
