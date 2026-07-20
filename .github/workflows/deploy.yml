@@ -1,41 +1,231 @@
-name: Deploy to Firebase
+name: Deploy Agape Sovereign to Firebase
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+
+env:
+  PROJECT_ID: agape-sovereign
+  FIREBASE_PROJECT: agape-sovereign
+  NODE_VERSION: '24'
 
 jobs:
-  deploy:
+  # ─── Lint & Typecheck ──────────────────────────────────────────────────────
+  lint-and-typecheck:
+    name: Lint & Typecheck
     runs-on: ubuntu-latest
-    environment: production
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install Frontend Dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: npm ci --workspaces
 
-      - name: Build Frontend
-        run: npm run build
+      - name: Run lint
+        run: npm run lint --if-present
 
-      - name: Install Functions Dependencies
-        run: npm --prefix functions ci
+      - name: Run typecheck
+        run: npm run typecheck --if-present
 
-      - name: Build Functions
-        run: npm --prefix functions run build
+  # ─── Build ───────────────────────────────────────────────────────────────────
+  build:
+    name: Build All Workspaces
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN }}
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
 
-      - name: Deploy to Firebase
-        run: npx firebase-tools deploy --only hosting,functions,firestore
+      - name: Install dependencies
+        run: npm ci --workspaces
 
+      - name: Build frontend
+        run: npm run build --workspace=frontend
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ env.FIREBASE_PROJECT }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+
+      - name: Build functions
+        run: npm run build --workspace=functions
+
+      - name: Build backend
+        run: npm run build --workspace=backend
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            frontend/dist
+            functions/lib
+            backend/dist
+          retention-days: 1
+
+  # ─── Test ────────────────────────────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --workspaces
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Run unit tests
+        run: npm run test --if-present --workspaces
+
+      - name: Run integration tests
+        if: false  # Enable when integration tests exist
+        run: npm run test:integration --if-present
+
+  # ─── Deploy Preview ──────────────────────────────────────────────────────────
+  deploy-preview:
+    name: Deploy Preview Channel
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'pull_request' || github.event.inputs.environment == 'preview'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
+      - name: Deploy to Firebase Preview Channel
+        run: |
+          firebase hosting:channel:deploy "pr-${{ github.event.number }}" \
+            --project ${{ env.FIREBASE_PROJECT }} \
+            --expires 7d \
+            --json
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Comment PR with Preview URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: channels } = await github.rest.repos.listDeployments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              environment: 'preview',
+              per_page: 1
+            });
+            const url = channels[0]?.environment_url || 'https://agape-sovereign--pr-${{ github.event.number }}.web.app';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Preview Deployment Ready**\n\n🔗 **Preview URL:** ${url}\n\nThis preview expires in 7 days.`
+            });
+
+  # ─── Deploy Production ──────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
+      - name: Deploy to Firebase Production
+        run: |
+          firebase deploy \
+            --project ${{ env.FIREBASE_PROJECT }} \
+            --only hosting,functions,firestore,storage \
+            --json
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Deployment successful!"
+          echo "🌐 https://agape-sovereign.web.app"
+          echo "🔧 Functions: https://console.firebase.google.com/project/agape-sovereign/functions"
+          echo "🔥 Firestore: https://console.firebase.google.com/project/agape-sovereign/firestore"
+
+  # ─── Budget Monitoring ──────────────────────────────────────────────────────
+  budget-check:
+    name: Daily Budget Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run budget check script
+        run: |
+          node scripts/budget-check.js
+        env:
+          BILLING_ACCOUNT_ID: ${{ secrets.BILLING_ACCOUNT_ID }}
+          BUDGET_THRESHOLD_WARN: 5
+          BUDGET_THRESHOLD_CRITICAL: 25
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+# ─── Scheduled Budget Check ─────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC

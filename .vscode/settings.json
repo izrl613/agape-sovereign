@@ -26,5 +26,13 @@
   "terminal.integrated.env.osx": {
     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
-  "inlineChat.notebookAgent": true
+"inlineChat.notebookAgent": true,
+"accessibility.signals.chatResponseReceived": {
+    "sound": "on"
+},
+"terminal.integrated.tabs.defaultColor": "terminal.ansiMagenta",
+"terminal.integrated.tabs.defaultIcon": "github",
+"chat.promptFilesRecommendations": {
+  
+}
 }
