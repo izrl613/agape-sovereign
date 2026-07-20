@@ -36,7 +36,7 @@ export const chatFlow = ai.defineFlow(
       messages: [
         ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
         ...chatMessages.map(m => ({
-          role: m.role as 'user' | 'model',
+          role: m.role === 'assistant' ? 'model' : 'user',
           content: [{ text: m.content }],
         })),
       ],
@@ -80,12 +80,12 @@ export const streamChatFlow = ai.defineFlow(
     const systemMessage = messages.find(m => m.role === 'system');
     const chatMessages = messages.filter(m => m.role !== 'system');
 
-    const response = await ai.generateStream({
+    const { stream } = ai.generateStream({
       model: `ollama/${model}`,
       messages: [
         ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
         ...chatMessages.map(m => ({
-          role: m.role as 'user' | 'model',
+          role: m.role === 'assistant' ? 'model' : 'user',
           content: [{ text: m.content }],
         })),
       ],
@@ -95,7 +95,7 @@ export const streamChatFlow = ai.defineFlow(
       },
     });
 
-    return response.stream;
+    return stream;
   }
 );
 
@@ -112,14 +112,12 @@ export const listModelsFlow = ai.defineFlow(
   },
   async () => {
     try {
-      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
-      if (!ollamaPlugin) {
-        return [];
-      }
-      const models = await ollamaPlugin.listModels();
-      return models.map((m: any) => ({
+      const response = await fetch('http://localhost:11434/api/tags');
+      if (!response.ok) throw new Error('Failed to fetch models');
+      const data = await response.json();
+      return (data.models || []).map((m: any) => ({
         name: m.name,
-        type: m.type === 'chat' ? 'chat' : 'embed',
+        type: m.details?.format === 'gguf' ? 'chat' : 'chat',
         size: m.size ? `${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB` : undefined,
         modified: m.modified_at,
       }));
@@ -143,11 +141,12 @@ export const pullModelFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
-      if (!ollamaPlugin) {
-        return { success: false, message: 'Ollama plugin not available' };
-      }
-      await ollamaPlugin.pullModel(input.name);
+      const response = await fetch('http://localhost:11434/api/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: input.name, stream: false }),
+      });
+      if (!response.ok) throw new Error('Failed to pull model');
       return { success: true, message: `Model ${input.name} pulled successfully` };
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Failed to pull model' };
@@ -168,11 +167,12 @@ export const deleteModelFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
-      if (!ollamaPlugin) {
-        return { success: false, message: 'Ollama plugin not available' };
-      }
-      await ollamaPlugin.deleteModel(input.name);
+      const response = await fetch('http://localhost:11434/api/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: input.name }),
+      });
+      if (!response.ok) throw new Error('Failed to delete model');
       return { success: true, message: `Model ${input.name} deleted successfully` };
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : 'Failed to delete model' };
@@ -214,11 +214,11 @@ export const healthCheckFlow = ai.defineFlow(
     let modelCount = 0;
 
     try {
-      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
-      if (ollamaPlugin) {
-        const models = await ollamaPlugin.listModels();
+      const response = await fetch('http://localhost:11434/api/tags');
+      if (response.ok) {
+        const data = await response.json();
         ollamaHealthy = true;
-        modelCount = models.length;
+        modelCount = data.models?.length || 0;
       }
     } catch {
       ollamaHealthy = false;
