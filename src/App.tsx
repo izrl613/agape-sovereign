@@ -89,8 +89,9 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public landing page — no auth required — satisfies Google OAuth branding verification */}
+      {/* Public routes — no auth required */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
 
       {/* Public legal pages — no auth required */}
       <Route path="/privacy" element={<PrivacyPolicy />} />
