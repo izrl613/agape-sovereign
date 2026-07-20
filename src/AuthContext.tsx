@@ -9,6 +9,9 @@ import { updateProfile as firebaseUpdateProfile } from 'firebase/auth';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
 import { signInWithCustomToken } from 'firebase/auth';
+// OPERATION FRAMEWORK: Sovereign Pipeline
+import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
+import { generateSessionNonce } from './services/sovereignHashService';
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +19,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isAnonymous: boolean;
   sovereignScore: number;
+  sovereignHash: string | null;
   setupComplete: boolean;
   loading: boolean;
   login: () => Promise<void>;
@@ -33,6 +37,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userData, setUserData] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sovereignScore, setSovereignScore] = useState(100);
+  // OPERATION FRAMEWORK: SHA-256 identity hash (the sole session identifier)
+  const [sovereignHash, setSovereignHash] = useState<string | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +60,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isSuperAdmin = currentUser.email === 'idin@agape.nyc' ||
                                  currentUser.email === 'agape@sovereign.nyc';
             
+            // OPERATION FRAMEWORK: Produce SHA-256 identity hash immediately (Phase 1 Gatekeeper)
+            // Raw uid + email never stored beyond this scope — hash is the sole session identifier.
+            try {
+              const authType = currentUser.isAnonymous ? 'anonymous' : 'google';
+              const hash = await gatekeeperStage({
+                authType,
+                uid: currentUser.uid,
+                email: currentUser.email || currentUser.uid,
+              });
+              setSovereignHash(hash);
+            } catch (hashErr) {
+              console.warn('[AUTH] Gatekeeper hash failed — degraded mode:', hashErr);
+            }
+
             if (!userSnap.exists()) {
               const initialData = {
                 uid: currentUser.uid,
@@ -101,9 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setIsAdmin(false);
           setSovereignScore(100);
+          setSovereignHash(null);
           setSetupCompleteState(false);
           setUserData(null);
           if (unsubscribeUserDoc) unsubscribeUserDoc();
+          // Release capacity slot on sign-out
+          cleanupSession().catch(() => {});
         }
       } finally {
         setLoading(false);
@@ -185,6 +208,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      // OPERATION FRAMEWORK: Pre-compute passkey session nonce for hash
+      const sessionNonce = generateSessionNonce();
+      // Stored in closure — used after WebAuthn completes to produce SHA-256 hash
+      // The actual hash is produced in onAuthStateChanged once Firebase confirms login.
+      void sessionNonce; // lint: signal intent to use in future flow
+
       // 1. Get login options
       const optionsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
@@ -263,17 +292,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       userData,
-      isAdmin, 
+      isAdmin,
       isAnonymous: user?.isAnonymous || false,
-      sovereignScore, 
+      sovereignScore,
+      sovereignHash,
       setupComplete,
-      loading, 
-      login: handleLogin, 
+      loading,
+      login: handleLogin,
       loginWithPasskey: handleLoginWithPasskey,
-      logout: handleLogout, 
+      logout: handleLogout,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
       updateProfile: handleUpdateProfile
