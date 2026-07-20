@@ -1,0 +1,4 @@
+{
+  "error": "HTTP Error 403: Forbidden",
+  "detail": "{\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"Request had insufficient authentication scopes.\",\n    \"errors\": [\n      {\n        \"message\": \"Insufficient Permission\",\n        \"domain\": \"global\",\n        \"reason\": \"insufficientPermissions\"\n      }\n    ],\n    \"status\": \"PERMISSION_DENIED\",\n    \"details\": [\n      {\n        \"@type\": \"type.googleapis.com/google.rpc.ErrorInfo\",\n        \"reason\": \"ACCESS_TOKEN_SCOPE_INSUFFICIENT\",\n        \"domain\": \"googleapis.com\",\n        \"metadata\": {\n          \"method\": \"caribou.api.proto.MailboxService.SendMessage\",\n          \"service\": \"gmail.googleapis.com\"\n        }\n      }\n    ]\n  }\n}\n"
+}
