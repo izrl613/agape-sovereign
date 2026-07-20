@@ -2018,13 +2018,14 @@ lib/third_party/dotenv/variables.py
 lib/third_party/dotenv/version.py
 lib/third_party/dulwich/LICENSE
 lib/third_party/dulwich/__init__.py
+lib/third_party/dulwich/__main__.py
 lib/third_party/dulwich/archive.py
 lib/third_party/dulwich/bundle.py
 lib/third_party/dulwich/cli.py
 lib/third_party/dulwich/client.py
 lib/third_party/dulwich/config.py
+lib/third_party/dulwich/credentials.py
 lib/third_party/dulwich/diff_tree.py
-lib/third_party/dulwich/dulwich_test.py
 lib/third_party/dulwich/errors.py
 lib/third_party/dulwich/fastexport.py
 lib/third_party/dulwich/file.py
@@ -2050,6 +2051,7 @@ lib/third_party/dulwich/refs.py
 lib/third_party/dulwich/repo.py
 lib/third_party/dulwich/server.py
 lib/third_party/dulwich/stash.py
+lib/third_party/dulwich/submodule.py
 lib/third_party/dulwich/walk.py
 lib/third_party/dulwich/web.py
 lib/third_party/fancy_urllib/LICENSE
@@ -2660,6 +2662,8 @@ lib/third_party/httplib2/python3/httplib2/iri2uri.py
 lib/third_party/httplib2/python3/httplib2/socks.py
 lib/third_party/idna/LICENSE
 lib/third_party/idna/__init__.py
+lib/third_party/idna/__main__.py
+lib/third_party/idna/cli.py
 lib/third_party/idna/codec.py
 lib/third_party/idna/compat.py
 lib/third_party/idna/core.py

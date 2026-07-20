@@ -242,6 +242,8 @@ platform/bq/third_party/httplib2/python3/iri2uri.py
 platform/bq/third_party/httplib2/python3/socks.py
 platform/bq/third_party/idna/LICENSE
 platform/bq/third_party/idna/__init__.py
+platform/bq/third_party/idna/__main__.py
+platform/bq/third_party/idna/cli.py
 platform/bq/third_party/idna/codec.py
 platform/bq/third_party/idna/compat.py
 platform/bq/third_party/idna/core.py
