@@ -1,73 +1,29 @@
 {
-  "name": "architect-ai-agape-sovereign-enclave",
-  "type": "module",
+  "name": "local-llm-pwa",
+  "version": "1.0.0",
+  "description": "Open-source PWA with local LLMs, VS Code backing, zero cloud dependencies",
+  "private": true,
   "workspaces": [
     "frontend",
-    "backend"
+    "backend",
+    "vscode-extension"
   ],
   "scripts": {
-    "dev-frontend": "vite --host 127.0.0.1",
-    "dev-backend": "PORT=5002 WEBAUTHN_RP_ID=127.0.0.1 WEBAUTHN_ORIGIN=http://127.0.0.1:5173 tsx watch --env-file=.env.local server.ts",
-    "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
-    "typecheck": "tsc --noEmit",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --target=node20 --outfile=dist/server.js --format=esm --packages=external",
-    "start": "node dist/server.js"
-  },
-  "dependencies": {
-    "@dataconnect/admin-generated": "file:src/dataconnect-admin-generated",
-    "@dataconnect/generated": "file:src/dataconnect-generated",
-    "@google-cloud/bigquery": "^8.3.1",
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@simplewebauthn/browser": "^13.3.0",
-    "@simplewebauthn/server": "^13.3.0",
-    "@types/cookie-parser": "^1.4.10",
-    "@types/express": "^5.0.6",
-    "cookie-parser": "^1.4.7",
-    "crypto-browserify": "3.5.1",
-    "express": "^5.2.1",
-    "firebase": "^12.16.0",
-    "firebase-admin": "^14.2.0",
-    "firebase-functions": "^7.3.0",
-    "framer-motion": "latest",
-    "gh": "^2.8.9",
-    "jspdf": "^4.2.1",
-    "jspdf-autotable": "^5.0.8",
-    "lucide-react": "latest",
-    "npm": "^11.18.0",
-    "react": "latest",
-    "react-dom": "latest",
-    "react-is": "^19.2.7",
-    "react-markdown": "^10.1.0",
-    "react-router-dom": "latest",
-    "react-syntax-highlighter": "^16.1.1",
-    "recharts": "latest",
-    "remark-gfm": "^4.0.1",
-    "rolldown": "1.2.0",
-    "sonner": "latest",
-    "tailwindcss": "latest"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build": "npm run build --workspaces",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build:vscode": "npm run compile --workspace=vscode-extension",
+    "install:all": "npm install && npm install --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "^19.2.3",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "@vitejs/plugin-react": "^4.7.0",
-    "concurrently": "latest",
-    "esbuild": "latest",
-    "tsx": "^4.23.0",
-    "typescript": "latest",
-    "vite": "^6.4.3"
+    "concurrently": "^8.2.2"
   },
-  "allowScripts": {
-    "git@0.1.5": true,
-    "@firebase/util@1.15.1": true,
-    "protobufjs@6.11.6": true,
-    "protobufjs@7.6.5": true,
-    "protobufjs@6.11.3": true,
-    "core-js@3.49.0": true,
-    "esbuild@0.28.1": true,
-    "fsevents@2.3.3": true,
-    "@google/genai@2.11.0": true
+  "engines": {
+    "node": ">=20.0.0"
   }
 }
