@@ -33,7 +33,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "latest",
-    "npm": "^11.18.0",
+    "npm": "^12.0.1",
     "react": "latest",
     "react-dom": "latest",
     "react-is": "^19.2.7",
