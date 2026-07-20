@@ -12,7 +12,6 @@ export const chatFlow = ai.defineFlow(
       model: z.string().optional().default('llama3.2:3b'),
       temperature: z.number().min(0).max(2).optional().default(0.7),
       maxTokens: z.number().optional().default(2048),
-      stream: z.boolean().optional().default(true),
     }),
     outputSchema: z.object({
       message: z.object({
@@ -27,7 +26,7 @@ export const chatFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const { messages, model, temperature, maxTokens, stream } = input;
+    const { messages, model, temperature, maxTokens } = input;
 
     const systemMessage = messages.find(m => m.role === 'system');
     const chatMessages = messages.filter(m => m.role !== 'system');
@@ -35,9 +34,9 @@ export const chatFlow = ai.defineFlow(
     const response = await ai.generate({
       model: `ollama/${model}`,
       messages: [
-        ...(systemMessage ? [{ role: 'system' as const, content: systemMessage.content }] : []),
+        ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
         ...chatMessages.map(m => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role as 'user' | 'model',
           content: [{ text: m.content }],
         })),
       ],
@@ -45,20 +44,18 @@ export const chatFlow = ai.defineFlow(
         temperature,
         maxOutputTokens: maxTokens,
       },
-      stream,
     });
-
-    let fullContent = '';
-    for await (const chunk of response.stream) {
-      fullContent += chunk.text;
-    }
 
     return {
       message: {
         role: 'assistant' as const,
-        content: fullContent,
+        content: response.text,
       },
-      usage: response.usage,
+      usage: response.usage ? {
+        promptTokens: response.usage.inputTokens || 0,
+        completionTokens: response.usage.outputTokens || 0,
+        totalTokens: response.usage.totalTokens || 0,
+      } : undefined,
     };
   }
 );
@@ -83,12 +80,12 @@ export const streamChatFlow = ai.defineFlow(
     const systemMessage = messages.find(m => m.role === 'system');
     const chatMessages = messages.filter(m => m.role !== 'system');
 
-    const response = await ai.generate({
+    const response = await ai.generateStream({
       model: `ollama/${model}`,
       messages: [
-        ...(systemMessage ? [{ role: 'system' as const, content: systemMessage.content }] : []),
+        ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
         ...chatMessages.map(m => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role as 'user' | 'model',
           content: [{ text: m.content }],
         })),
       ],
@@ -96,7 +93,6 @@ export const streamChatFlow = ai.defineFlow(
         temperature,
         maxOutputTokens: maxTokens,
       },
-      stream: true,
     });
 
     return response.stream;
@@ -115,15 +111,15 @@ export const listModelsFlow = ai.defineFlow(
     })),
   },
   async () => {
-    const ollamaPlugin = ai.plugins.find(p => p.name === 'ollama');
-    if (!ollamaPlugin) {
-      return [];
-    }
     try {
+      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
+      if (!ollamaPlugin) {
+        return [];
+      }
       const models = await ollamaPlugin.listModels();
-      return models.map(m => ({
+      return models.map((m: any) => ({
         name: m.name,
-        type: m.type,
+        type: m.type === 'chat' ? 'chat' : 'embed',
         size: m.size ? `${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB` : undefined,
         modified: m.modified_at,
       }));
@@ -146,11 +142,11 @@ export const pullModelFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const ollamaPlugin = ai.plugins.find(p => p.name === 'ollama');
-    if (!ollamaPlugin) {
-      return { success: false, message: 'Ollama plugin not available' };
-    }
     try {
+      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
+      if (!ollamaPlugin) {
+        return { success: false, message: 'Ollama plugin not available' };
+      }
       await ollamaPlugin.pullModel(input.name);
       return { success: true, message: `Model ${input.name} pulled successfully` };
     } catch (error) {
@@ -171,11 +167,11 @@ export const deleteModelFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const ollamaPlugin = ai.plugins.find(p => p.name === 'ollama');
-    if (!ollamaPlugin) {
-      return { success: false, message: 'Ollama plugin not available' };
-    }
     try {
+      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
+      if (!ollamaPlugin) {
+        return { success: false, message: 'Ollama plugin not available' };
+      }
       await ollamaPlugin.deleteModel(input.name);
       return { success: true, message: `Model ${input.name} deleted successfully` };
     } catch (error) {
@@ -214,18 +210,18 @@ export const healthCheckFlow = ai.defineFlow(
     }),
   },
   async () => {
-    const ollamaPlugin = ai.plugins.find(p => p.name === 'ollama');
     let ollamaHealthy = false;
     let modelCount = 0;
 
-    if (ollamaPlugin) {
-      try {
+    try {
+      const ollamaPlugin = (ai as any).plugins?.find((p: any) => p.name === 'ollama');
+      if (ollamaPlugin) {
         const models = await ollamaPlugin.listModels();
         ollamaHealthy = true;
         modelCount = models.length;
-      } catch {
-        ollamaHealthy = false;
       }
+    } catch {
+      ollamaHealthy = false;
     }
 
     return {

@@ -8,12 +8,12 @@ export const ai = genkit({
       models: [
         { name: 'llama3.2:3b', type: 'chat' },
         { name: 'llama3.2:1b', type: 'chat' },
+        { name: 'gemma2:2b', type: 'chat' },
+        { name: 'phi3.5:3.8b', type: 'chat' },
+        { name: 'qwen2.5:3b', type: 'chat' },
         { name: 'nomic-embed-text', type: 'embed' },
-        { name: 'mxbai-embed-large', type: 'embed' },
       ],
       serverAddress: process.env.OLLAMA_HOST || 'http://localhost:11434',
     }),
   ],
-  logLevel: 'debug',
-  enableTracingAndMetrics: true,
 });
