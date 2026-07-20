@@ -37,7 +37,6 @@
       "source": "functions"
     }
   ],
-  "functions:buildServiceAccount": "cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
   "apphosting": {
     "backendId": "agape-sovereign",
     "rootDir": "/",
