@@ -1,83 +1,177 @@
 import React from 'react';
-import { NEON } from '../../constants';
+import { NEON, GRADIENT_BORDER } from '../../constants';
 
-export const NeonText: React.FC<{ children: React.ReactNode, color?: string, size?: string, weight?: number, className?: string }> = ({ 
-  children, color = NEON.blue, size = "1rem", weight = 700, className = "" 
-}) => (
-  <span 
-    className={`font-['Orbitron'] tracking-wider ${className}`}
-    style={{ color, fontSize: size, fontWeight: weight, textShadow: `0 0 10px ${color}66` }}
-  >
-    {children}
-  </span>
-);
+interface GlassCardProps {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}
 
-export const GlassCard: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void, style?: React.CSSProperties }> = ({ 
-  children, className = "", onClick, style = {} 
-}) => (
-  <div 
-    className={`neon-border rounded-xl relative backdrop-blur-xl ${className}`} 
-    onClick={onClick} 
-    style={{ background: NEON.bgCard, border: "1px solid rgba(0,212,255,0.15)", ...style }}
+export const GlassCard: React.FC<GlassCardProps> = ({ children, className = '', style = {} }) => (
+  <div
+    className={`relative rounded-2xl overflow-hidden ${className}`}
+    style={{
+      background: 'rgba(8, 18, 40, 0.85)',
+      backdropFilter: 'blur(20px)',
+      border: '1px solid rgba(0, 212, 255, 0.1)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+      ...style
+    }}
   >
     {children}
   </div>
 );
 
-export const NeonButton: React.FC<{ children: React.ReactNode, onClick?: () => void, color?: string, disabled?: boolean, size?: "sm" | "md" | "lg", className?: string, style?: React.CSSProperties }> = ({ 
-  children, onClick, color = NEON.blue, disabled = false, size = "md", className = "", style = {} 
+interface NeonTextProps {
+  children: React.ReactNode;
+  color?: string;
+  size?: string;
+  weight?: number;
+  className?: string;
+}
+
+export const NeonText: React.FC<NeonTextProps> = ({ 
+  children, 
+  color = NEON.blue, 
+  size = '1.5rem', 
+  weight = 900,
+  className = '' 
+}) => (
+  <span
+    className={`font-['Orbitron'] ${className}`}
+    style={{
+      fontSize: size,
+      fontWeight: weight,
+      color,
+      textShadow: `0 0 8px ${color}, 0 0 16px ${color}66, 0 0 24px ${color}33`,
+    }}
+  >
+    {children}
+  </span>
+);
+
+interface NeonButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  color?: string;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export const NeonButton: React.FC<NeonButtonProps> = ({ 
+  children, 
+  color = NEON.blue, 
+  size = 'md', 
+  className = '',
+  disabled,
+  ...props 
 }) => {
-  const pad = size === "sm" ? "px-4 py-2" : size === "lg" ? "px-8 py-3" : "px-6 py-2.5";
-  const fs = size === "sm" ? "text-xs" : size === "lg" ? "text-base" : "text-sm";
-  const bgOpacity = color === NEON.blue ? "rgba(0,212,255,0.1)" : color === NEON.magenta ? "rgba(255,46,159,0.1)" : "rgba(255,122,24,0.1)";
+  const padding = size === 'sm' ? 'py-2 px-4 text-sm' : size === 'lg' ? 'py-4 px-8 text-base' : 'py-3 px-6 text-sm';
   
   return (
-    <button 
-      className={`btn-neon neon-border rounded-lg font-['Orbitron'] font-semibold tracking-widest ${pad} ${fs} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
-      onClick={disabled ? undefined : onClick} 
-      disabled={disabled} 
-      style={{ background: bgOpacity, color, ...style }}
+    <button
+      className={`relative overflow-hidden font-semibold font-['Orbitron'] transition-all ${padding} ${className}`}
+      style={{
+        background: `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)`,
+        color: NEON.bg,
+        boxShadow: `0 0 20px ${color}66, 0 0 40px ${color}33`,
+        border: 'none',
+        ...(disabled && { opacity: 0.5, cursor: 'not-allowed' })
+      }}
+      disabled={disabled}
+      {...props}
     >
-      {children}
+      <span className="relative z-10">{children}</span>
+      <span 
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-500"
+        style={{ transform: 'skewX(-15deg)' }}
+      />
     </button>
   );
 };
 
-export const StatusBadge: React.FC<{ type: "NUKED" | "KNOXED" | "MONITORED" | "SCANNING" }> = ({ type }) => {
-  const cfg = {
-    NUKED: { color: NEON.magenta, bg: "rgba(255,46,159,0.12)", label: "🔥 NUKED" },
-    KNOXED: { color: NEON.blue, bg: "rgba(0,212,255,0.12)", label: "🛡️ KNOXED" },
-    MONITORED: { color: NEON.orange, bg: "rgba(255,122,24,0.12)", label: "👁️ MONITORED" },
-    SCANNING: { color: "#FFD700", bg: "rgba(255,215,0,0.12)", label: "⟳ SCANNING" },
-  };
-  const c = cfg[type] || cfg.MONITORED;
-  return (
-    <span 
-      className="px-3 py-1 rounded-full text-[0.7rem] font-bold font-['Orbitron'] border"
-      style={{ background: c.bg, color: c.color, borderColor: `${c.color}44` }}
-    >
-      {c.label}
-    </span>
-  );
-};
+export const NeonInput: React.FC<React.InputHTMLAttributes<HTMLInputElement> & { label?: string }> = ({
+  label,
+  className = '',
+  style = {},
+  ...props
+}) => (
+  <div className={className}>
+    {label && <label className="block text-xs font-['Share_Tech_Mono'] tracking-wide mb-1" style={{ color: NEON.textMuted }}>{label}</label>}
+    <input
+      {...props}
+      className={`w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm ${props.className || ''}`}
+      style={{
+        background: 'rgba(255,255,255,0.05)',
+        borderColor: 'rgba(255,255,255,0.1)',
+        color: NEON.text,
+        caretColor: NEON.blue,
+        ...style
+      }}
+    />
+  </div>
+);
 
-export const SovereignScore: React.FC<{ score: number }> = ({ score }) => {
-  const r = 52, cx = 64, cy = 64;
-  const circ = 2 * Math.PI * r;
-  const pct = score / 100;
-  const color = score > 75 ? NEON.blue : score > 50 ? NEON.orange : NEON.magenta;
-  
-  return (
-    <div className="text-center relative">
-      <svg width="128" height="128" className="score-ring" style={{ filter: `drop-shadow(0 0 12px ${color})` }}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="8"
-          strokeDasharray={`${pct * circ} ${circ}`} strokeDashoffset={circ * 0.25}
-          strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-        <text x={cx} y={cy - 6} textAnchor="middle" fill={color} className="font-['Orbitron'] text-2xl font-black">{score}</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fill={NEON.textMuted} className="font-['Rajdhani'] text-[9px] tracking-widest">SOVEREIGN</text>
-        <text x={cx} y={cy + 25} textAnchor="middle" fill={NEON.textMuted} className="font-['Rajdhani'] text-[9px] tracking-widest">SCORE</text>
-      </svg>
-    </div>
-  );
-};
+export const NeonSeparator: React.FC<{ className?: string }> = ({ className = '' }) => (
+  <div className={`h-[1px] rounded-sm ${className}`} style={{ background: GRADIENT_BORDER }} />
+);
+
+export const PulseRing: React.FC<{ color?: string; size?: number; className?: string }> = ({
+  color = NEON.blue,
+  size = 48,
+  className = ''
+}) => (
+  <div 
+    className={className} 
+    style={{ width: size, height: size }}
+  >
+    <div className="absolute inset-0 rounded-full" style={{ 
+      border: `2px solid ${color}`,
+      animation: 'pulse-ring 2s ease-out infinite',
+      opacity: 0.6
+    }} />
+    <div className="absolute inset-0 rounded-full" style={{ 
+      border: `2px solid ${color}`,
+      animation: 'pulse-ring 2s ease-out infinite 1s',
+      opacity: 0.3
+    }} />
+    <style jsx>{`
+      @keyframes pulse-ring {
+        0% { transform: scale(0.8); opacity: 0.6; }
+        100% { transform: scale(1.4); opacity: 0; }
+      }
+    `}</style>
+  </div>
+);
+
+export const GridBackground: React.FC<{ opacity?: number }> = ({ opacity = 0.1 }) => (
+  <div 
+    className="fixed inset-0 pointer-events-none"
+    style={{ 
+      backgroundImage: `linear-gradient(rgba(0,212,255,${opacity * 0.4}) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,${opacity * 0.4}) 1px, transparent 1px)`,
+      backgroundSize: "40px 40px",
+      animation: "grid-move 20s linear infinite"
+    }}
+  >
+    <style jsx>{`
+      @keyframes grid-move {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(40px, 40px); }
+      }
+    `}</style>
+  </div>
+);
+
+export const RadialGlow: React.FC<{ position: string; color?: string; size?: number; opacity?: number }> = ({ 
+  position, 
+  color = NEON.blue, 
+  size = 400,
+  opacity = 0.04 
+}) => (
+  <div 
+    className="fixed pointer-events-none"
+    style={{ 
+      position,
+      width: size, 
+      height: size,
+      background: `radial-gradient(circle, ${color}${Math.round(opacity * 255).toString(16).padStart(2, '0')} 0%, transparent 70%)`
+    }} 
+  />
+);

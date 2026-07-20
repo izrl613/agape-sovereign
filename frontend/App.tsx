@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { NEON, GRADIENT_BORDER } from './constants';
 import { GlobalStyles } from './components/GlobalStyles';
 import { AuthScreen } from './components/AuthScreen';
@@ -13,6 +14,21 @@ import { AdminPortal } from './components/AdminPortal';
 import { ProfilePanel } from './components/ProfilePanel';
 import { auth, onAuthStateChanged } from './lib/firebase';
 
+const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
+const TermsOfService = lazy(() => import('./components/TermsOfService').then(m => ({ default: m.TermsOfService })));
+const Contact = lazy(() => import('./components/Contact').then(m => ({ default: m.Contact })));
+
+const LoadingFallback = () => (
+  <div className="w-screen h-screen flex items-center justify-center" style={{ background: NEON.bg }}>
+    <div className="text-center">
+      <div className="w-12 h-12 rounded-full mx-auto mb-4" style={{ border: `3px solid rgba(0,212,255,0.2)`, borderTop: `3px solid ${NEON.blue}`, animation: "spinner 1s linear infinite" }} />
+      <div className="text-sm font-['Share_Tech_Mono']" style={{ color: NEON.text }}>LOADING...</div>
+    </div>
+    <style jsx>{`@keyframes spinner { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
 interface UserType {
   name: string;
   email: string;
@@ -22,7 +38,39 @@ interface UserType {
   knoxedCount?: number;
 }
 
-export default function App() {
+const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<UserType | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          name: firebaseUser.displayName || "Sovereign User",
+          email: firebaseUser.email || "user@agape.nyc",
+          provider: firebaseUser.providerData[0]?.providerId || "custom",
+          photoURL: firebaseUser.photoURL || ""
+        });
+      } else {
+        setUser(null);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (authLoading) {
+    return <LoadingFallback />;
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppShell: React.FC = () => {
   const [user, setUser] = useState<UserType | null>(null);
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -49,7 +97,7 @@ export default function App() {
   }, []);
 
   if (authLoading) {
-    return <div className="w-screen h-screen flex items-center justify-center bg-black"><div className="text-white">Loading...</div></div>;
+    return <LoadingFallback />;
   }
 
   if (!user) {
@@ -66,7 +114,6 @@ export default function App() {
       <>
         <GlobalStyles />
         <OnboardingSplash onComplete={(completedUser) => {
-          // You might want to update Firestore user record here
           setIsOnboarded(true);
         }} />
       </>
@@ -121,5 +168,42 @@ export default function App() {
       {showAdmin && <AdminPortal onClose={() => setShowAdmin(false)} />}
       {showProfile && <ProfilePanel user={user} onClose={() => setShowProfile(false)} />}
     </>
+  );
+};
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
+          {/* Public routes - no auth required */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/contact" element={<Contact />} />
+          
+          {/* Auth route - shows AuthScreen for unauthenticated */}
+          <Route path="/auth" element={
+            <>
+              <GlobalStyles />
+              <AuthScreen onAuth={(u) => {}} />
+            </>
+          } />
+          
+          {/* Private routes - require authentication */}
+          <Route path="/app/*" element={
+            <PrivateRoute>
+              <AppShell />
+            </PrivateRoute>
+          } />
+          
+          {/* Redirect /app to dashboard */}
+          <Route path="/app" element={<Navigate to="/app/dashboard" replace />} />
+          
+          {/* 404 fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
   );
 }

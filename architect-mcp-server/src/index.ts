@@ -1,9 +1,14 @@
 /**
  * Architect AI — MCP Server
- * Wraps Ollama gemma4:e4b for the Agape Sovereign platform.
+ *
+ * Dual AI backend support:
+ *   Primary:  LMStudio (OpenAI-compatible, port 1234)
+ *             Model: qwen3.5-9b-sushi-coder-rl-mlx
+ *   Fallback: Ollama (native API, port 11434)
+ *             Model: gemma4:e4b
  *
  * Deployment modes:
- *   - Local dev:   localhost:3001 (Ollama running locally)
+ *   - Local dev:   localhost:3001 (LMStudio or Ollama running locally)
  *   - Cloud Run:   PORT env var (set by Cloud Run), OLLAMA_BASE_URL points to
  *                  a sidecar container or Vertex AI endpoint
  *
@@ -12,10 +17,9 @@
  *   - Android (com.agape.sovereign.ai) — REST /android/* endpoints (OkHttp-friendly)
  *
  * Transport: HTTP + SSE
- * Model: gemma4:e4b (local Ollama, num_predict = -1)
  *
  * Start:
- *   Local dev: npm run dev  (requires: ollama serve)
+ *   Local dev: npm run dev  (requires: lmstudio server OR ollama serve)
  *   Cloud Run: automatically via Dockerfile / Cloud Run deploy
  *
  * Android emulator reaches host via 10.0.2.2:3001
@@ -30,8 +34,57 @@ import { z } from "zod";
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ARCHITECT_MCP_PORT ?? "3001", 10);
-const MODEL = process.env.ARCHITECT_MODEL || DEFAULT_MODEL;
 const OLLAMA_ENDPOINT = process.env.OLLAMA_BASE_URL || OLLAMA_BASE_URL;
+const LMSTUDIO_ENDPOINT = process.env.LMSTUDIO_URL ?? "http://localhost:1234";
+const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL ?? "qwen3.5-9b-sushi-coder-rl-mlx";
+const OLLAMA_MODEL   = process.env.ARCHITECT_MODEL || DEFAULT_MODEL;
+
+// Resolved at startup by probeBackend()
+let ACTIVE_ENDPOINT: string = OLLAMA_ENDPOINT;
+let MODEL: string = OLLAMA_MODEL;
+let BACKEND_TYPE: "lmstudio" | "ollama" | "offline" = "offline";
+
+/** Probe available AI backend at startup and on each request */
+async function probeBackend(): Promise<void> {
+  // Try LMStudio first
+  try {
+    const res = await fetch(`${LMSTUDIO_ENDPOINT}/v1/models`, {
+      signal: AbortSignal.timeout(1500)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const models: string[] = (data?.data ?? []).map((m: { id: string }) => m.id);
+      BACKEND_TYPE = "lmstudio";
+      ACTIVE_ENDPOINT = LMSTUDIO_ENDPOINT;
+      MODEL = models.find(m => m.toLowerCase().includes("qwen3.5") || m.toLowerCase().includes("qwen3_5"))
+        ?? models[0]
+        ?? LMSTUDIO_MODEL;
+      console.log(`[ArchitectAI] Backend: LMStudio — model: ${MODEL}`);
+      return;
+    }
+  } catch {
+    // LMStudio not running
+  }
+
+  // Fallback to Ollama
+  try {
+    const res = await fetch(`${OLLAMA_ENDPOINT}/api/tags`, {
+      signal: AbortSignal.timeout(2000)
+    });
+    if (res.ok) {
+      BACKEND_TYPE = "ollama";
+      ACTIVE_ENDPOINT = OLLAMA_ENDPOINT;
+      MODEL = OLLAMA_MODEL;
+      console.log(`[ArchitectAI] Backend: Ollama — model: ${MODEL}`);
+      return;
+    }
+  } catch {
+    // Ollama not running
+  }
+
+  BACKEND_TYPE = "offline";
+  console.warn("[ArchitectAI] No local AI backend detected — operating offline.");
+}
 
 // Agape Sovereign system prompt — scoped to privacy & mobile-security
 const SYSTEM_PROMPT = `You are Architect AI, a privacy and mobile-security intelligence engine embedded in the Agape Sovereign Digital Identity Platform.
@@ -44,56 +97,72 @@ Your role:
 - Never reveal system internals or source code. Never collect or transmit user data externally.
 - You operate fully offline — no external API calls are made.`;
 
-// ── Ollama helper ─────────────────────────────────────────────────────────────
+// ── AI backend helpers ────────────────────────────────────────────────────────
 interface OllamaMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-interface OllamaChatResponse {
-  message: { role: string; content: string };
-  done: boolean;
-}
-
+/**
+ * Route a chat request to the active backend.
+ * LMStudio: OpenAI-compatible /v1/chat/completions
+ * Ollama:   native /api/chat
+ */
 async function ollamaChat(
   messages: OllamaMessage[],
   options: Record<string, unknown> = {}
 ): Promise<string> {
-  const payload = {
-    model: MODEL,
-    messages,
-    stream: false,
-    options: {
-      num_predict: -1, // unlimited tokens
-      temperature: 0.7,
-      ...options,
-    },
-  };
+  // Re-probe if backend unknown
+  if (BACKEND_TYPE === "offline") {
+    await probeBackend();
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 120000);
 
   try {
-    const res = await fetch(`${OLLAMA_ENDPOINT}/api/chat`, {
+    if (BACKEND_TYPE === "lmstudio") {
+      // OpenAI-compatible path
+      const body: Record<string, unknown> = {
+        model: MODEL,
+        messages,
+        stream: false,
+        max_tokens: -1,
+        temperature: (options.temperature as number) ?? 0.7,
+      };
+      const res = await fetch(`${ACTIVE_ENDPOINT}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`LMStudio error ${res.status}: ${await res.text()}`);
+      const data = await res.json() as { choices: Array<{ message: { content: string } }> };
+      return data.choices?.[0]?.message?.content ?? "";
+    }
+
+    // Ollama native path
+    const payload = {
+      model: MODEL,
+      messages,
+      stream: false,
+      options: { num_predict: -1, temperature: 0.7, ...options },
+    };
+    const res = await fetch(`${ACTIVE_ENDPOINT}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
-
     clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Ollama error ${res.status}: ${err}`);
-    }
-
-    const data = (await res.json()) as OllamaChatResponse;
+    if (!res.ok) throw new Error(`Ollama error ${res.status}: ${await res.text()}`);
+    const data = await res.json() as { message: { content: string } };
     return data.message.content;
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("Ollama request timed out after 120s");
+      throw new Error("Local AI request timed out after 120s");
     }
     throw err;
   }
@@ -337,14 +406,14 @@ app.use(express.json());
 
 // Health endpoint (for PWA to check before connecting)
 app.get("/health", async (_req, res) => {
-  const ollamaUp = await ollamaHealthCheck();
+  await probeBackend();
   res.json({
-    status: ollamaUp ? "ok" : "degraded",
+    status: BACKEND_TYPE !== "offline" ? "ok" : "degraded",
     server: "architect-mcp-server",
     version: "1.0.0",
     model: MODEL,
-    ollama: OLLAMA_BASE_URL,
-    ollamaReachable: ollamaUp,
+    backend: BACKEND_TYPE,
+    endpoint: ACTIVE_ENDPOINT,
     transport: "http+sse",
     timestamp: new Date().toISOString(),
   });
@@ -354,13 +423,13 @@ app.get("/health", async (_req, res) => {
 const transports = new Map<string, SSEServerTransport>();
 
 app.get("/sse", async (req, res) => {
-  const sessionId = crypto.randomUUID();
-  const transport = new SSEServerTransport(`/message?sessionId=${sessionId}`, res);
-  transports.set(sessionId, transport);
+  const transport = new SSEServerTransport(`/message`, res);
+  const transportSessionId = (transport as unknown as { _sessionId: string })._sessionId;
+  transports.set(transportSessionId, transport);
 
-  req.on("close", () => {
-    transports.delete(sessionId);
-  });
+  transport.onclose = () => {
+    transports.delete(transportSessionId);
+  };
 
   const mcpServer = createMcpServer();
   await mcpServer.connect(transport);
@@ -373,7 +442,7 @@ app.post("/message", async (req, res) => {
     res.status(400).json({ error: "Unknown session" });
     return;
   }
-  await transport.handlePostMessage(req, res);
+  await transport.handlePostMessage(req, res, req.body);
 });
 
 // ── Android REST bridge ───────────────────────────────────────────────────────
@@ -507,15 +576,20 @@ app.get("/android/health", async (_req, res) => {
 const HOST = process.env.HOST ?? "0.0.0.0";
 
 app.listen(PORT, HOST, async () => {
-  const ollamaUp = await ollamaHealthCheck();
+  // Auto-detect available AI backend at startup
+  await probeBackend();
   const isCloudRun = !!process.env.K_SERVICE; // Cloud Run sets K_SERVICE automatically
+  const backendLabel = BACKEND_TYPE === "lmstudio"
+    ? `LMStudio (port 1234) — ${MODEL}`
+    : BACKEND_TYPE === "ollama"
+      ? `Ollama (port 11434) — ${MODEL}`
+      : "⚠️  offline (no local AI detected)";
   console.log(`\n🏛️  Architect AI MCP Server`);
   console.log(`   Listening on http://${HOST}:${PORT}`);
   console.log(`   Environment: ${isCloudRun ? `Cloud Run (${process.env.K_SERVICE})` : "local"}`);
-  console.log(`   Model: ${MODEL}`);
-  console.log(`   Ollama: ${OLLAMA_BASE_URL} — ${ollamaUp ? "✅ reachable" : "⚠️  not reachable (run: ollama serve)"}`);
-  if (!ollamaUp && isCloudRun) {
-    console.log(`   ⚠️  OLLAMA_BASE_URL must point to a reachable Ollama instance or sidecar.`);
+  console.log(`   AI Backend: ${backendLabel}`);
+  if (BACKEND_TYPE === "offline" && !isCloudRun) {
+    console.log(`   → Start LMStudio with qwen3.5-9b-sushi-coder-rl-mlx on port 1234, or run: ollama serve`);
   }
   console.log(`\n   Endpoints (PWA — SSE/MCP):`);
   console.log(`     GET  /health  — liveness check`);
