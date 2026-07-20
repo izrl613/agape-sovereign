@@ -1,0 +1,95 @@
+name: Daily Infrastructure Report — PDF + Email
+
+on:
+  schedule:
+    # 8:00 AM ET (UTC-4) = 12:00 UTC daily
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+    inputs:
+      recipient:
+        description: "Email recipient"
+        required: false
+        default: "agape@sovereign.nyc"
+
+jobs:
+  generate-and-email:
+    name: Generate PDF Report & Email
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+      id-token: write  # for Workload Identity auth with GCP
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --quiet \
+            reportlab \
+            google-auth \
+            google-auth-httplib2 \
+            google-api-python-client \
+            requests
+
+      - name: Authenticate to GCP
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: agape-sovereign
+
+      - name: Verify GCP auth
+        run: gcloud auth list && gcloud config list project
+
+      - name: Generate PDF Report
+        id: generate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 agents/daily_report_agent.py --no-email \
+            --out /tmp/agape-sovereign-daily-$(date +%Y-%m-%d).pdf
+          ls -lh /tmp/agape-sovereign-daily-*.pdf
+          echo "pdf_path=/tmp/agape-sovereign-daily-$(date +%Y-%m-%d).pdf" >> $GITHUB_OUTPUT
+
+      - name: Send Email via Gmail API
+        env:
+          GMAIL_RECIPIENT: ${{ github.event.inputs.recipient || 'agape@sovereign.nyc' }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+        run: |
+          python3 agents/send_daily_email.py \
+            "${{ steps.generate.outputs.pdf_path }}" \
+            "$GMAIL_RECIPIENT"
+
+      - name: Upload PDF as Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-${{ github.run_number }}
+          path: /tmp/agape-sovereign-daily-*.pdf
+          retention-days: 90
+
+      - name: Create Issue on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[ALERT] Daily report failed — ${new Date().toISOString().split('T')[0]}`,
+              body: `The daily Firebase/GCP PDF report workflow failed.\n\nRun: ${context.runId}\n\nPlease check the workflow logs.`,
+              labels: ['monitoring', 'automated']
+            });
