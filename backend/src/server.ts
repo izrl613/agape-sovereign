@@ -147,7 +147,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(Number(PORT), HOST, () => {
   console.log(`Local LLM Backend running on http://${HOST}:${PORT}`);
   console.log(`WebSocket server ready`);
   console.log(`Ollama: ${process.env.OLLAMA_HOST || 'http://localhost:11434'}`);
