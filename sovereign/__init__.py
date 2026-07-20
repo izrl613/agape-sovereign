@@ -1,0 +1,1 @@
+"""Sovereign State Engine — Agape Sovereign v1.0"""
