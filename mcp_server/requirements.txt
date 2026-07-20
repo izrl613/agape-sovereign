@@ -1,0 +1,9 @@
+# Architect AI MCP Server — Python dependencies
+# No cloud AI SDKs. No Vertex AI. No Gemini. Offline LLM only.
+
+# HTTP server uses only Python stdlib (http.server) — no extra deps required.
+# Optional: uncomment for production WSGI/ASGI deployments
+
+# gunicorn>=21.2.0       # production WSGI (alternative to stdlib HTTPServer)
+# uvicorn>=0.29.0        # production ASGI
+# fastapi>=0.111.0       # FastAPI (if migrating from stdlib HTTPServer)
