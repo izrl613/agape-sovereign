@@ -5,6 +5,8 @@ import { useScan } from '../ScanContext';
 import { NEON, NeonText, GlassCard, NeonButton, StatusBadge, Skeleton } from './UI';
 import { motion } from 'framer-motion';
 import { Download, Filter, ArrowUpDown, TrendingUp } from 'lucide-react';
+import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
+import { passkeyLockService } from '../services/passkeyLockService';
 import { 
   LineChart, 
   Line, 
@@ -117,6 +119,13 @@ export const Dashboard = () => {
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'NUKED' | 'KNOXED' | 'MONITORED'>('ALL');
   const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('DESC');
   const [scoreHistory, setScoreHistory] = useState<{ score: number, timestamp: string }[]>([]);
+  const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
+
+  useEffect(() => {
+    return passkeyLockService.subscribe(state => {
+      setIsLocked(state.identityLocked && state.identityEnabled);
+    });
+  }, []);
 
   const currentModuleLabel = useMemo(() => {
     if (!currentModule) return "";
@@ -214,8 +223,11 @@ export const Dashboard = () => {
   };
 
   return (
-    <div style={{ animation: "fade-in 0.4s ease" }}>
-      {/* Header row */}
+    <div style={{ position: 'relative' }}>
+      <PasskeyLockOverlay zone="identity" />
+      
+      <div style={{ animation: "fade-in 0.4s ease", filter: isLocked ? 'blur(12px)' : 'none', transition: 'filter 0.3s ease', pointerEvents: isLocked ? 'none' : 'auto' }}>
+        {/* Header row */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 24, marginBottom: 28 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Orbitron', monospace", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 6 }}>DIGITAL IDENTITY FEDERATED FOOTPRINT</div>
@@ -616,5 +628,6 @@ export const Dashboard = () => {
         </div>
       </div>
     </div>
+  </div>
   );
 };

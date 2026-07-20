@@ -9,6 +9,7 @@ import { uploadProfilePicture } from '../services/storageService';
 import { requestNotificationPermission } from '../services/messagingService';
 import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
+import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
 
 export const UserProfileSettings = () => {
   const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
@@ -20,6 +21,13 @@ export const UserProfileSettings = () => {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [reports, setReports] = useState<any[]>([]);
   const [loadingReports, setLoadingReports] = useState(true);
+  
+  // Passkey Lock State
+  const [lockState, setLockState] = useState<PasskeyLockState>(passkeyLockService.getState());
+
+  useEffect(() => {
+    return passkeyLockService.subscribe(setLockState);
+  }, []);
 
   const fetchReports = async () => {
     if (!user) return;
@@ -256,11 +264,105 @@ export const UserProfileSettings = () => {
             </form>
           </GlassCard>
 
+          {/* Identity Portal Passkey Hardening */}
+          <GlassCard className="p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <Shield className="w-5 h-5 text-[#00D4FF]" />
+              <h3 className="text-lg font-bold text-white tracking-tight">Identity Portal Passkey Hardening</h3>
+            </div>
+            
+            <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl mb-4">
+               <div className="flex items-center gap-3">
+                 <div className={`p-2 rounded-lg ${lockState.identityEnabled ? 'bg-green-500/10' : 'bg-slate-500/10'}`}>
+                   <Key className={`w-4 h-4 ${lockState.identityEnabled ? 'text-green-500' : 'text-slate-500'}`} />
+                 </div>
+                 <div>
+                   <div className="font-bold text-sm text-white">Identity Core Portal</div>
+                   <p className="text-[10px] text-slate-400">Require biometric passkey authentication to access the DIFF matrix.</p>
+                 </div>
+               </div>
+               <div className="flex items-center gap-4">
+                 {lockState.identityEnabled && (
+                   <button 
+                     onClick={() => passkeyLockService.lockZone('identity')}
+                     disabled={lockState.identityLocked}
+                     className={`px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold transition-all flex items-center gap-2
+                       ${lockState.identityLocked 
+                         ? 'bg-slate-500/20 text-slate-500 border border-slate-500/30 cursor-not-allowed' 
+                         : 'bg-[#FF2E9F]/10 text-[#FF2E9F] border border-[#FF2E9F]/30 hover:bg-[#FF2E9F]/20'
+                       }`}
+                   >
+                     <Lock className="w-3 h-3" />
+                     {lockState.identityLocked ? 'LOCKED' : 'LOCK'}
+                   </button>
+                 )}
+                 <button 
+                   onClick={() => passkeyLockService.setZoneEnabled('identity', !lockState.identityEnabled)}
+                   className={`px-4 py-1.5 rounded-lg font-mono text-[10px] font-bold transition-all
+                     ${lockState.identityEnabled 
+                       ? 'bg-green-500/20 text-green-500 border border-green-500/30 hover:bg-green-500/30' 
+                       : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+                     }`}
+                 >
+                   {lockState.identityEnabled ? 'ENABLED' : 'ACTIVATE'}
+                 </button>
+               </div>
+            </div>
+            {lockState.identityEnabled && (
+              <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 px-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                PROTECTED: Biometric verification required for access
+                {lockState.simulationMode && (
+                  <span className="ml-2 px-2 py-0.5 rounded bg-[#FF7A18]/20 text-[#FF7A18] border border-[#FF7A18]/30">SANDBOX</span>
+                )}
+              </div>
+            )}
+          </GlassCard>
+
           {/* Security Preferences */}
           <GlassCard className="p-8">
             <div className="flex items-center gap-3 mb-6">
               <Shield className="w-5 h-5 text-[#FF7A18]" />
               <h3 className="text-lg font-bold text-white tracking-tight">Security Enclaves</h3>
+            </div>
+
+            {/* Vault Shield Setting Row */}
+            <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl mb-4">
+               <div className="flex items-center gap-3">
+                 <div className={`p-2 rounded-lg ${lockState.vaultEnabled ? 'bg-green-500/10' : 'bg-slate-500/10'}`}>
+                   <Shield className={`w-4 h-4 ${lockState.vaultEnabled ? 'text-green-500' : 'text-slate-500'}`} />
+                 </div>
+                 <div>
+                   <div className="font-bold text-sm text-white">Secure Document Vault</div>
+                   <p className="text-[10px] text-slate-400">Hardware-bound passkey protection for sensitive documents.</p>
+                 </div>
+               </div>
+               <div className="flex items-center gap-4">
+                 {lockState.vaultEnabled && (
+                   <button 
+                     onClick={() => passkeyLockService.lockZone('vault')}
+                     disabled={lockState.vaultLocked}
+                     className={`px-3 py-1.5 rounded-lg font-mono text-[10px] font-bold transition-all flex items-center gap-2
+                       ${lockState.vaultLocked 
+                         ? 'bg-slate-500/20 text-slate-500 border border-slate-500/30 cursor-not-allowed' 
+                         : 'bg-[#FF2E9F]/10 text-[#FF2E9F] border border-[#FF2E9F]/30 hover:bg-[#FF2E9F]/20'
+                       }`}
+                   >
+                     <Lock className="w-3 h-3" />
+                     {lockState.vaultLocked ? 'LOCKED' : 'LOCK'}
+                   </button>
+                 )}
+                 <button 
+                   onClick={() => passkeyLockService.setZoneEnabled('vault', !lockState.vaultEnabled)}
+                   className={`px-4 py-1.5 rounded-lg font-mono text-[10px] font-bold transition-all
+                     ${lockState.vaultEnabled 
+                       ? 'bg-green-500/20 text-green-500 border border-green-500/30 hover:bg-green-500/30' 
+                       : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+                     }`}
+                 >
+                   {lockState.vaultEnabled ? 'ENABLED' : 'ACTIVATE'}
+                 </button>
+               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -274,7 +376,7 @@ export const UserProfileSettings = () => {
                   </div>
                   <div className="font-bold text-sm text-white">Passkey Management</div>
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed">Manage biometric and hardware security keys bound to your identity.</p>
+                <p className="text-xs text-slate-400 leading-relaxed">Register a new device biometric or hardware security key.</p>
               </div>
 
               <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
