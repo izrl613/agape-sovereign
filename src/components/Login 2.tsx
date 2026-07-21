@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
 import { EncryptedFooter } from './EncryptedFooter';
 import { motion } from 'framer-motion';
 import { Fingerprint } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const Login = () => {
-  const { login, loginWithPasskey } = useAuth();
+  const { user, login, loginWithPasskey, setupComplete } = useAuth();
+  const navigate = useNavigate();
   const [step, setStep] = useState<'landing' | 'creating'>('landing');
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && setupComplete) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, setupComplete, navigate]);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
