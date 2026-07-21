@@ -38,31 +38,18 @@
       "source": "functions"
     }
   ],
-  "apphosting": [
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "/",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ],
-      "alwaysDeployFromSource": true
-    },
-    {
-      "backendId": "agape-sovereign",
-      "rootDir": "",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "functions"
-      ]
-    }
-  ],
+  "apphosting": {
+    "backendId": "agape-sovereign",
+    "rootDir": "/",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ],
+    "alwaysDeployFromSource": true
+  },
   "auth": {
     "providers": {
       "anonymous": true,

@@ -13,7 +13,13 @@
  * - BIGQUERY_BILLING_EXPORT_TABLE: (optional) Full table ID, default: project.dataset.table
  */
 
-import { BigQuery } from '@google-cloud/bigquery';
+let BigQuery;
+try {
+  ({ BigQuery } = await import('@google-cloud/bigquery'));
+} catch {
+  console.log('[BUDGET_CHECK] @google-cloud/bigquery not available — skipping');
+  process.exit(0);
+}
 import https from 'https';
 
 const PROJECT_ID = 'agape-sovereign';

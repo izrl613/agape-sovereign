@@ -31,7 +31,7 @@ export class ModelPanel {
   }
 
   private getHtml(): string {
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Models</title></head><body><h1>Models</h1></body></html>`;
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Models</title></head><body><h1>Models</h1></body></html>';
   }
 
   private dispose() {

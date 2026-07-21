@@ -214,9 +214,9 @@ function parseSize(size: string): number {
   const value = parseFloat(match[1]);
   const unit = match[2].toUpperCase();
   switch (unit) {
-    case 'GB': return value * 1024 * 1024 * 1024;
-    case 'MB': return value * 1024 * 1024;
-    case 'KB': return value * 1024;
-    default: return 0;
+  case 'GB': return value * 1024 * 1024 * 1024;
+  case 'MB': return value * 1024 * 1024;
+  case 'KB': return value * 1024;
+  default: return 0;
   }
 }
