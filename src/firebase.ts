@@ -88,8 +88,8 @@ export const loginWithGoogle = async () => {
       if (firebaseError.code === 'auth/unauthorized-domain') {
         console.error("ACTION REQUIRED: This domain is not authorized in Firebase Console.");
         console.error("Please add these domains to Authentication > Settings > Authorized domains:");
-        console.error("- ais-dev-ilvqfi4xw3xzhljrld2glb-330671455515.us-east1.run.app");
-        console.error("- ais-pre-ilvqfi4xw3xzhljrld2glb-330671455515.us-east1.run.app");
+        console.error("- ais-dev-ilvqfi4xw3xzhljrld2glb-330671455515.us-central1.run.app");
+        console.error("- ais-pre-ilvqfi4xw3xzhljrld2glb-330671455515.us-central1.run.app");
       } else if (firebaseError.code === 'auth/internal-error') {
         console.error("This may be caused by third-party cookies being blocked in the iframe. Try opening the app in a new tab.");
       }
