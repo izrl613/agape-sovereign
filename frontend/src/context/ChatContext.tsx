@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { useGenkit } from './GenkitContext';
 import { useModels } from './ModelContext';
+import { api } from '../services/api';
 
 export interface Message {
   id: string;
@@ -54,7 +55,7 @@ function generateTitle(messages: Message[]): string {
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { ai, isInitialized } = useGenkit();
+  const { isInitialized } = useGenkit();
   const { models: availableModels } = useModels();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
@@ -145,8 +146,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     content: string,
     options?: { model?: string; systemPrompt?: string }
   ) => {
-    if (!ai || !isInitialized) {
-      throw new Error('Genkit not initialized');
+    if (!isInitialized) {
+      throw new Error('Backend not initialized');
     }
 
     const session = currentSession || createSession(options?.model);
@@ -168,14 +169,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const systemPrompt = options?.systemPrompt || 'You are a helpful AI assistant running locally.';
       const modelName = options?.model || session.model;
 
-      const response = await ai.generate({
-        model: `ollama/${modelName}`,
-        prompt: content,
-        system: systemPrompt,
-        config: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
-        },
+      const response = await api.chat({
+        message: content,
+        model: modelName,
+        systemPrompt,
       });
 
       const assistantMessage: Message = {
@@ -200,14 +197,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsStreaming(false);
     }
-  }, [ai, isInitialized, currentSession, createSession, updateSession]);
+  }, [isInitialized, currentSession, createSession, updateSession]);
 
   const streamMessage = useCallback(async (
     content: string,
     options?: { model?: string; systemPrompt?: string; onChunk?: (chunk: string) => void }
   ) => {
-    if (!ai || !isInitialized) {
-      throw new Error('Genkit not initialized');
+    if (!isInitialized) {
+      throw new Error('Backend not initialized');
     }
 
     abortControllerRef.current = new AbortController();
@@ -233,25 +230,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const systemPrompt = options?.systemPrompt || 'You are a helpful AI assistant running locally.';
       const modelName = options?.model || session.model;
 
-      const { stream } = await ai.generateStream({
-        model: `ollama/${modelName}`,
-        prompt: content,
-        system: systemPrompt,
-        config: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
+      const response = await api.chatStream(
+        {
+          message: content,
+          model: modelName,
+          systemPrompt,
         },
-      });
-
-      for await (const chunk of stream) {
-        if (abortControllerRef.current?.signal.aborted) break;
-        if (chunk.text) {
-          fullResponse += chunk.text;
-          options?.onChunk?.(chunk.text);
-        }
-      }
-
-      const finalResponse = await stream;
+        (chunk) => {
+          fullResponse += chunk;
+          options?.onChunk?.(chunk);
+        },
+        abortControllerRef.current?.signal
+      );
 
       const assistantMessage: Message = {
         id: assistantMessageId,
@@ -277,7 +267,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setIsStreaming(false);
       abortControllerRef.current = null;
     }
-  }, [ai, isInitialized, currentSession, createSession, updateSession]);
+  }, [isInitialized, currentSession, createSession, updateSession]);
 
   return (
     <ChatContext.Provider value={{

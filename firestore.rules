@@ -1,238 +1,58 @@
-// ============================================================
-// ARCHITECT AI — FIRESTORE SECURITY RULES
-// Agape Sovereign Enclave 2026
-// Zero-knowledge architecture: Users can only access their own data
-// Deploy with: firebase deploy --only firestore:rules
-// ============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ─── ADMIN ROLE FUNCTION ───────────────────────────
-    function isAdmin() {
-      return request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
+    // Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // ─── AUTHENTICATED CHECK ───────────────────────────
-    function isAuthenticated() {
+    // Reusable global security primitives
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    // ─── USER OWNERSHIP CHECK ──────────────────────────
-    function isUserOwner(userId) {
-      return request.auth.uid == userId;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // ─── RATE LIMITING HELPER ──────────────────────────
-    // Checks if at least 'windowSeconds' have passed since the last action
-    function withinRateLimit(field, windowSeconds) {
-      let lastAction = resource.data[field];
-      return lastAction == null ||
-             request.time > lastAction + duration.value(windowSeconds, 's');
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // ─── USERS COLLECTION ──────────────────────────────
-    // User profiles - strictly owned by the user
+    // Sovereign user accounts & private sandboxes
     match /users/{userId} {
-      // Read: User can read their own profile
-      allow read: if isUserOwner(userId);
-      
-      // Create: Users can create their own profile (only once)
-      allow create: if isAuthenticated() && 
-                       isUserOwner(userId) &&
-                       request.resource.data.uid == userId &&
-                       request.resource.data.email == request.auth.token.email;
-      
-      // Update: Users can update their own profile (rate-limited to once per day)
-      allow update: if isUserOwner(userId) &&
-                       withinRateLimit('lastProfileUpdate', 86400);
-      
-      // Delete: Users cannot delete their own profile; admin-only
-      allow delete: if isAdmin();
+      allow get, write: if isOwner(userId);
 
-      // ─── MONITORED EMAILS SUBCOLLECTION ────────────
-      match /monitoredEmails/{emailDoc} {
-        allow read: if isUserOwner(userId);
-        allow create: if isUserOwner(userId) &&
-                         request.resource.data.email != null &&
-                         request.resource.data.status == 'active';
-        allow update: if isUserOwner(userId);
-        allow delete: if isUserOwner(userId);
+      // Identity Sandbox Partition Modules Subcollection
+      match /modules/{moduleId} {
+        allow read, write: if isOwner(userId);
       }
 
-      // ─── PASSKEY DATA SUBCOLLECTION ────────────────
-      match /passkeyCredentials/{credentialId} {
-        allow read: if isUserOwner(userId);
-        allow create: if isUserOwner(userId) &&
-                         request.resource.data.publicKey != null &&
-                         request.resource.data.transports != null;
-        allow delete: if isUserOwner(userId);
-      }
-    }
-
-    // ─── DIFF SCANS COLLECTION ─────────────────────────
-    // DIFF scan results - user-restricted, immutable after creation
-    match /diff_scans/{scanId} {
-      allow read: if isAuthenticated() && 
-                     resource.data.userId == request.auth.uid;
-      
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.scanId == scanId &&
-                       request.resource.data.timestamp == request.time;
-      
-      // Scans are immutable (no updates after creation)
-      allow update: if false;
-      
-      // Users can delete their own scans after 90 days
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid &&
-                       request.time > resource.data.timestamp + duration.value(90, 'd');
-
-      // ─── VECTOR RESULTS SUBCOLLECTION ───────────────
-      match /vectorResults/{vectorId} {
-        allow read: if isAuthenticated() && 
-                       get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
-        
-        allow create: if isAuthenticated() && 
-                         get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
+      // Symmetrically ciphered password keychains
+      match /passwords/{passwordId} {
+        allow read, write: if isOwner(userId);
       }
 
-      // ─── FINDINGS SUBCOLLECTION ────────────────────
-      match /findings/{findingId} {
-        allow read: if isAuthenticated() && 
-                       get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
-        
-        allow create: if isAuthenticated() && 
-                         get(/databases/$(database)/documents/diff_scans/$(scanId)).data.userId == request.auth.uid;
-      }
-    }
-
-    // ─── DIFF REPORTS COLLECTION ──────────────────────
-    // Generated PDF reports - user-restricted, encrypted
-    match /diff_reports/{reportId} {
-      allow read: if isAuthenticated() && 
-                     resource.data.userId == request.auth.uid;
-      
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.sha256Digest != null;
-      
-      // Reports are immutable
-      allow update: if false;
-      
-      // Users can delete their reports after 2 years (retention policy)
-      allow delete: if isAuthenticated() && 
-                       resource.data.userId == request.auth.uid;
-    }
-
-    // ─── AUDIT LOG COLLECTION ──────────────────────────
-    // System audit trail - admin-read, authenticated-write, immutable after creation
-    match /audit_logs/{logId} {
-      allow read: if isAdmin();
-
-      // Authenticated users can create audit log entries (POA / AuthContext)
-      allow create: if isAuthenticated() &&
-                       request.resource.data.type != null;
-
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    // ─── SESSION TOKENS COLLECTION ────────────────────
-    // Temporary AI chat session tokens - user-restricted, auto-delete
-    match /sessions/{userId} {
-      allow read: if isAuthenticated() && isUserOwner(userId);
-      
-      allow create: if isAuthenticated() && 
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.expiresAt > request.time;
-      
-      allow delete: if isAuthenticated() && isUserOwner(userId);
-      
-      // Subcollection: Chat messages
+      // E2EE encrypted chats/messages logs
       match /messages/{messageId} {
-        allow read: if isAuthenticated() && 
-                       get(/databases/$(database)/documents/sessions/$(userId)).data.userId == request.auth.uid;
-        
-        allow create: if isAuthenticated() && 
-                         get(/databases/$(database)/documents/sessions/$(userId)).data.userId == request.auth.uid &&
-                         request.resource.data.timestamp == request.time;
+        allow read, write: if isOwner(userId);
       }
-    }
 
-    // ─── PIPELINE RUNS COLLECTION ──────────────────────
-    // Sovereign data pipeline run metadata & ECRA 2026 audit trail
-    match /pipeline_runs/{runId} {
-      // Users can read their own pipeline runs
-      allow read: if isAuthenticated() &&
-                     resource.data.userId == request.auth.uid;
+      // Sovereign Secure Document Vault
+      match /vault/{vaultId} {
+        allow read, write: if isOwner(userId);
+      }
 
-      // Users can register their own pipeline run results
-      allow create: if isAuthenticated() &&
-                       request.resource.data.userId == request.auth.uid &&
-                       request.resource.data.integrityHash != null;
+      // Intercepted trackers metrics log
+      match /trackers/{trackerId} {
+        allow read, write: if isOwner(userId);
+      }
 
-      // Pipeline run records are immutable after creation (integrity protection)
-      allow update: if false;
-
-      // Users can delete their own runs (right to erasure / ECRA consent)
-      allow delete: if isAuthenticated() &&
-                       resource.data.userId == request.auth.uid;
-    }
-
-    // ─── SOVEREIGN AUDITS COLLECTION ──────────────────
-    // OPERATION FRAMEWORK: IVM vector results keyed by SHA-256 identity hash.
-    // No raw UID or email is stored here — hash only, zero-knowledge architecture.
-    match /sovereign_audits/{sha256Id} {
-      // Users can read their own audit (hash-matched via sovereignHash in app state)
-      allow read: if isAuthenticated();
-
-      // Users can create/update their own audit record
-      allow create: if isAuthenticated() &&
-                       request.resource.data.sha256Id != null &&
-                       request.resource.data.sha256Id.size() == 64;
-
-      allow update: if isAuthenticated() &&
-                       resource.data.sha256Id == request.resource.data.sha256Id;
-
-      // Audits are immutable for deletion — admin can remove stale records
-      allow delete: if isAdmin();
-    }
-
-    // ─── SOVEREIGN EXPORTS COLLECTION ─────────────────
-    // OPERATION FRAMEWORK: Export/Recovery records (Phase 4).
-    // Keyed by SHA-256 hash. Stores only fingerprints + timestamps — no raw PII.
-    // 2-year export limit enforced here and in client logic.
-    match /sovereign_exports/{sha256Id} {
-      allow read: if isAuthenticated();
-
-      allow create: if isAuthenticated() &&
-                       request.resource.data.sha256Id != null &&
-                       request.resource.data.publicFingerprint != null;
-
-      allow update: if isAuthenticated() &&
-                       resource.data.sha256Id == request.resource.data.sha256Id;
-
-      allow delete: if isAdmin();
-    }
-
-    // ─── SYSTEM CAPACITY COLLECTION ───────────────────
-    // OPERATION FRAMEWORK: Phase 1.5 — 50-user capacity counter.
-    // Authenticated users can increment/decrement their slot reservation.
-    // Counter value validated server-side (transaction-safe increment only).
-    match /system/{docId} {
-      allow read: if isAuthenticated();
-      // Allow authenticated users to update capacity via transaction (POA Orchestrator)
-      allow create, update: if isAuthenticated() &&
-                               docId == 'capacity';
-      allow delete: if isAdmin();
-    }
-
-    // ─── DENY ALL BY DEFAULT ───────────────────────────
-    match /{document=**} {
-      allow read, write: if false;
+      // Dynamic Security Audit Logs
+      match /auditLogs/{logId} {
+        allow read, write: if isOwner(userId);
+      }
     }
   }
 }

@@ -31,7 +31,7 @@ export class OllamaService {
     if (!response.ok) {
       throw new Error(`Failed to list models: ${response.statusText}`);
     }
-    const data = await response.json();
+    const data = await response.json() as { models?: Model[] };
     return data.models || [];
   }
 
@@ -95,7 +95,7 @@ export class OllamaService {
       throw new Error(`Generation failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { response: string };
     return data.response;
   }
 
@@ -110,7 +110,7 @@ export class OllamaService {
       throw new Error(`Chat failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as { message: { content: string } };
     return data.message.content;
   }
 
@@ -127,7 +127,7 @@ export class OllamaService {
     try {
       const response = await fetch(`${this.baseUrl}/api/version`);
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { version?: string };
         return data.version || 'unknown';
       }
     } catch {

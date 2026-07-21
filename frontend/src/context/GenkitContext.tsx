@@ -1,39 +1,26 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { genkit, Genkit } from 'genkit';
-import { ollama } from 'genkitx-ollama';
+import { api, HealthResponse } from '../services/api';
 
 interface GenkitContextType {
-  ai: Genkit | null;
   isInitialized: boolean;
   error: Error | null;
-  initialize: (serverAddress?: string) => Promise<void>;
+  health: HealthResponse | null;
+  initialize: (backendUrl?: string) => Promise<void>;
 }
 
 const GenkitContext = createContext<GenkitContextType | undefined>(undefined);
 
 export function GenkitProvider({ children }: { children: ReactNode }) {
-  const [ai, setAi] = useState<Genkit | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
 
-  const initialize = useCallback(async (serverAddress = 'http://127.0.0.1:11434') => {
+  const initialize = useCallback(async (backendUrl = 'http://localhost:3000') => {
     try {
       setError(null);
-      const aiInstance = genkit({
-        plugins: [
-          ollama({
-            models: [
-              { name: 'llama3.2', type: 'chat' },
-              { name: 'llama3.2:1b', type: 'chat' },
-              { name: 'gemma2:2b', type: 'chat' },
-              { name: 'phi3:mini', type: 'chat' },
-              { name: 'qwen2.5:0.5b', type: 'chat' },
-            ],
-            serverAddress,
-          }),
-        ],
-      });
-      setAi(aiInstance);
+      api.setBaseUrl(backendUrl);
+      const healthData = await api.health();
+      setHealth(healthData);
       setIsInitialized(true);
     } catch (err) {
       setError(err as Error);
@@ -46,7 +33,7 @@ export function GenkitProvider({ children }: { children: ReactNode }) {
   }, [initialize]);
 
   return (
-    <GenkitContext.Provider value={{ ai, isInitialized, error, initialize }}>
+    <GenkitContext.Provider value={{ isInitialized, error, health, initialize }}>
       {children}
     </GenkitContext.Provider>
   );
