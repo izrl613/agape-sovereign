@@ -99,6 +99,32 @@ async function main() {
   check('dependabot-active', 'Dependabot keeps dependencies updated',
     depPRs.length >= 20, `${depPRs.length} dependency PRs created`);
 
+  // ── 11. OAuth Compliance (Google OAuth Branding Requirements) ──────────────
+  const fs = await import('fs');
+  const path = await import('path');
+
+  const landingTsx = fs.readFileSync(path.resolve('./frontend/components/LandingPage.tsx'), 'utf-8');
+  const html = fs.readFileSync(path.resolve('./index.html'), 'utf-8');
+
+  const oauthChecks = [
+    { name: 'privacy-nav', desc: 'Privacy Policy link in nav', pattern: 'href="/privacy".*Privacy Policy', file: landingTsx },
+    { name: 'terms-nav', desc: 'Terms of Service link in nav', pattern: 'href="/terms".*Terms of Service', file: landingTsx },
+    { name: 'privacy-footer', desc: 'Privacy Policy link in footer', pattern: 'COMPLIANCE.*href="/privacy"', file: landingTsx },
+    { name: 'terms-footer', desc: 'Terms of Service link in footer', pattern: 'COMPLIANCE.*href="/terms"', file: landingTsx },
+    { name: 'contact-nav', desc: 'Contact link in nav', pattern: 'href="/contact".*Contact(?!.*Enterprise)', file: landingTsx },
+    { name: 'contact-footer', desc: 'Contact link in footer (bottom bar)', pattern: 'href="/contact".*>Contact<', file: landingTsx },
+    { name: 'support-emails', desc: 'DPO/security/legal support emails in footer', pattern: 'dpo@agape\\.nyc.*security@sovereign\\.nyc.*legal@agape\\.nyc', file: landingTsx },
+    { name: 'structured-data', desc: 'JSON-LD structured data in index.html', pattern: '"@type":\\s*"WebApplication"', file: html },
+    { name: 'static-prerender-links', desc: 'Static pre-render Privacy/Terms links in index.html', pattern: 'static-prerender.*href="/privacy".*href="/terms"', file: html },
+  ];
+
+  let oauthPassed = 0;
+  for (const c of oauthChecks) {
+    const pass = new RegExp(c.pattern, 's').test(c.file);
+    if (pass) oauthPassed++;
+    check(`oauth-${c.name}`, c.desc, pass, pass ? 'present' : 'MISSING');
+  }
+
   // ── 10. Commit Activity ────────────────────────────────────────────────────
   const commits = await ghFetch(`/repos/${REPO}/commits?per_page=1`) || [];
   const commitCount = (await ghFetch(`/repos/${REPO}/commits?per_page=1&page=1`)).length > 0 ? '100+' : 'unknown';
