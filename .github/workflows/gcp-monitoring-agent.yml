@@ -70,6 +70,14 @@ jobs:
             echo "[Open Cloud Run Console](https://console.cloud.google.com/run?project=agape-sovereign)" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Firebase Deploy Readiness Validation
+        run: |
+          echo "## Firebase Deploy Readiness" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          node scripts/validate-firebase-deploy.mjs 2>&1 | grep -E "^(PASS|FAIL|Firebase)" >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Create issue on failure
         if: failure()
         env:

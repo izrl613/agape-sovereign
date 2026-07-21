@@ -249,6 +249,17 @@ jobs:
             --format="table(metadata.name,status.url,status.conditions[0].status)" 2>/dev/null \
             || echo "[AGENT] gcloud auth not configured in CI — skipping live GCP check"
 
+      - name: Firebase Deploy Readiness Validation
+        id: firebase-deploy-check
+        run: |
+          node scripts/validate-firebase-deploy.mjs 2>&1 || true
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Firebase Deploy Readiness" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          node scripts/validate-firebase-deploy.mjs 2>&1 | grep -E "^(PASS|FAIL|Firebase)" >> $GITHUB_STEP_SUMMARY || true
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
       - name: Post health summary as workflow annotation
         run: |
           DATE=$(date -u '+%Y-%m-%d %H:%M UTC')

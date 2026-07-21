@@ -224,7 +224,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     let fullResponse = '';
-    let assistantMessageId = generateId();
+    const assistantMessageId = generateId();
 
     try {
       const systemPrompt = options?.systemPrompt || 'You are a helpful AI assistant running locally.';

@@ -6,6 +6,7 @@
   "workspaces": [
     "frontend",
     "backend",
+    "functions",
     "vscode-extension"
   ],
   "scripts": {
@@ -18,10 +19,12 @@
     "build:vscode": "npm run compile --workspace=vscode-extension",
     "install:all": "npm install && npm install --workspaces",
     "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --if-present --workspaces",
     "test": "npm run test --workspaces"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=20.0.0"

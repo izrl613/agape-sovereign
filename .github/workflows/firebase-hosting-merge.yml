@@ -1,4 +1,5 @@
-# Firebase CLI auto-generated + patched for Vite 6 + workspace layout
+# Superseded by deploy.yml (Deploy Agape Sovereign to Firebase)
+# Kept for reference only — remove if unused for 30+ days
 name: Deploy to Firebase Hosting on merge
 on:
   push:
@@ -6,6 +7,7 @@ on:
       - main
 jobs:
   build_and_deploy:
+    if: false
     runs-on: ubuntu-latest
     env:
       VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}

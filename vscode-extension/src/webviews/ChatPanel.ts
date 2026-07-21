@@ -48,12 +48,12 @@ export class ChatPanel {
 
   private handleMessage(message: any) {
     switch (message.type) {
-      case 'sendMessage':
-        this.handleSendMessage(message.payload);
-        break;
-      case 'getModels':
-        this.sendModels();
-        break;
+    case 'sendMessage':
+      this.handleSendMessage(message.payload);
+      break;
+    case 'getModels':
+      this.sendModels();
+      break;
     }
   }
 
