@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  getRedirectResult,
   setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
@@ -30,6 +31,15 @@ export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const remoteConfig = getRemoteConfig(app);
 export const database = getDatabase(app);
+
+// Handle pending OAuth redirect result on app boot
+getRedirectResult(auth).then((result) => {
+  if (result) {
+    console.log('[FIREBASE] OAuth redirect completed for:', result.user?.email);
+  }
+}).catch((error) => {
+  console.warn('[FIREBASE] OAuth redirect result error:', error?.code || error?.message || error);
+});
 
 // Test Firestore connection on boot
 async function testConnection() {
