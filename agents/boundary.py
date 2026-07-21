@@ -17,7 +17,7 @@ _VERTEX_AI_PATTERNS = [
     "aiplatform.googleapis.com",
     "generativelanguage.googleapis.com",
     "us-central1-aiplatform",
-    "us-east1-aiplatform",
+    "us-central1-aiplatform",
     "vertexai",
     "vertex.ai",
     "predict.googleapis.com",
