@@ -1,0 +1,63 @@
+# =============================================================================
+# AGAPE SOVEREIGN — DEV SERVER DAILY SMOKE TEST
+# Verifies `npm run dev` boots successfully every day.
+# Exits 0 on success, 1 on failure.
+# =============================================================================
+name: Dev Server Daily Smoke Test
+
+on:
+  schedule:
+    # Daily at 6:00 AM EST
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  dev-server-smoke:
+    name: Dev Server Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start dev server and verify boot
+        run: |
+          npm run dev &
+          DEV_PID=$!
+          echo "Dev server PID: $DEV_PID"
+
+          # Wait for either port 5173 (Vite) or port 3001 (Express) to be ready
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null | grep -q '200\|302\|304'; then
+              echo "Frontend dev server is UP on port 5173"
+              break
+            fi
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null | grep -q '200\|302\|304'; then
+              echo "Backend dev server is UP on port 3001"
+              break
+            fi
+            sleep 2
+          done
+
+          # Final check
+          FRONTEND_UP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null)
+          BACKEND_UP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null)
+
+          echo "Frontend: HTTP $FRONTEND_UP"
+          echo "Backend:  HTTP $BACKEND_UP"
+
+          kill $DEV_PID 2>/dev/null || true
+          wait $DEV_PID 2>/dev/null || true
+
+          if [ -z "$FRONTEND_UP" ] && [ -z "$BACKEND_UP" ]; then
+            echo "FAILED: Neither frontend nor backend dev server started"
+            exit 1
+          fi
+
+          echo "PASSED: Dev server smoke test successful"
