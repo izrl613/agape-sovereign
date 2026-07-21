@@ -82,6 +82,27 @@
 | Jul 17, 2026 | `izrl613/main` private repo created (credit preservation + architecture docs) |
 | Jul 19, 2026 | GCP near-zero cost observability stack configured |
 | Jul 19, 2026 | Projects/Timeline sync agent deployed |
+| Jul 20, 2026 | Sovereign data pipeline v1 complete — 9-agent pipeline (ExtractionEngine → Extraction → DataMapper → Validator → Synthesis → Audit → Reporting → PDF → SovereignExport) |
+| Jul 20, 2026 | LM Studio integration — `qwen3.5-9b-sushi-coder-rl-mlx` as primary local LLM |
+| Jul 20, 2026 | Pipeline run #5738d7fb — 166K chars extracted from 92-page Operation Framework PDF |
+| Jul 20, 2026 | Vertex AI boundary enforcement — `agents/boundary.py` restricts Vertex to doc/pdf only |
+| Jul 20, 2026 | Architect AI MCP server — `gemma4:e2b` offline LLM on Cloud Run |
+| Jul 20, 2026 | GCP monitoring agent + daily PDF report generation |
+| Jul 20, 2026 | Agentic workflows deployed: `agentic-sovereign-updater` (6h), `agentic-notator` (daily), `compliance-agent` (weekly) |
+| Jul 20, 2026 | Timeline sync workflow — `timeline-sync.yml` |
+| Jul 20, 2026 | Biometric passkey integration for vault/identity zones |
+| Jul 20, 2026 | BIP-39 mnemonic stripped, SHA-256 integrity seals kept |
+| Jul 20, 2026 | GCP credit preservation plan ($1,000 → extend to 2027-01-26) |
+| Jul 20, 2026 | Daily GCP budget monitoring script (Slack alerting) |
+| Jul 20, 2026 | 25+ Dependabot PRs processed (security patches across workspaces) |
+| Jul 21, 2026 | 🔥 **10 Firebase deploy failure root causes resolved** — eslint configs, apphosting, workspaces, deps, duplicate workflows |
+| Jul 21, 2026 | `scripts/validate-firebase-deploy.mjs` — autonomous agentic validation |
+| Jul 21, 2026 | Firebase deploy validation integrated into all 3 agentic workflows (every 6h/daily/weekly) |
+| Jul 21, 2026 | `scripts/validate-repo-health.mjs` — validates ALL GitHub services (Issues/Wiki/Actions/Projects/Discussions) |
+| Jul 21, 2026 | `CHANGELOG.md` — full journey changelog spanning Phase 0 → Phase 4 |
+| Jul 21, 2026 | GitHub Releases v1.0.0 + v2.0.0-alpha published |
+| Jul 21, 2026 | Wiki populated with Journey page (auto-synced from CHANGELOG.md) |
+| Jul 21, 2026 | NotebookLM-ready Colab notebook + YouTube video script outline |
 
 **Status:** 🔄 Active
 
