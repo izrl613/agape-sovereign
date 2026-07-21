@@ -100,7 +100,22 @@ jobs:
           echo -e "$ISSUES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # ---- 5. Firebase Deploy Readiness Check ----
+      # ---- 5. Repo Health Check (all GitHub services) ----
+      - name: GitHub Repository Health Validation
+        id: repo_health_check
+        run: |
+          RESULTS=$(node scripts/validate-repo-health.mjs 2>&1)
+          echo "$RESULTS"
+          ISSUES=""
+          if echo "$RESULTS" | grep -q "FAIL"; then
+            FAIL_COUNT=$(echo "$RESULTS" | grep -c "FAIL" || true)
+            ISSUES="\n- MEDIUM: ${FAIL_COUNT} repo health checks failing — run \`node scripts/validate-repo-health.mjs\` locally"
+          fi
+          echo "repo_health_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 6. Firebase Deploy Readiness Check ----
       - name: Firebase Deploy Readiness Validation
         id: firebase_deploy_check
         run: |
@@ -125,6 +140,7 @@ jobs:
           ALL_ISSUES="$ALL_ISSUES${{ steps.rules_check.outputs.rules_issues }}"
           ALL_ISSUES="$ALL_ISSUES${{ steps.docs_check.outputs.docs_issues }}"
           ALL_ISSUES="$ALL_ISSUES${{ steps.pii_check.outputs.pii_issues }}"
+          ALL_ISSUES="$ALL_ISSUES${{ steps.repo_health_check.outputs.repo_health_issues }}"
           ALL_ISSUES="$ALL_ISSUES${{ steps.firebase_deploy_check.outputs.firebase_deploy_issues }}"
           
           ALL_ISSUES=$(echo "$ALL_ISSUES" | sed '/^$/d' | sed '/^-/!d')
@@ -162,4 +178,5 @@ jobs:
           echo "| Firestore rules | ${{ steps.rules_check.conclusion == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Docs completeness | ${{ steps.docs_check.conclusion == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| PII logging | ${{ steps.pii_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repo health (GitHub services) | ${{ steps.repo_health_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase deploy readiness | ${{ steps.firebase_deploy_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY

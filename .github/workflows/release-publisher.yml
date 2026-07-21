@@ -1,0 +1,83 @@
+# =============================================================================
+# AGAPE SOVEREIGN — RELEASE PUBLISHER
+# Creates GitHub Releases from .github/releases/*.md files when tags match.
+# Trigger: git tag v1.0.0 && git push --tags
+# =============================================================================
+name: Release Publisher
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find release notes
+        id: find_notes
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          FILE=".github/releases/${TAG}.md"
+          if [ -f "$FILE" ]; then
+            echo "file=$FILE" >> $GITHUB_OUTPUT
+            echo "Found release notes: $FILE"
+          else
+            # Try with version prefix stripping
+            FILE=".github/releases/${TAG#v}.md"
+            if [ -f "$FILE" ]; then
+              echo "file=$FILE" >> $GITHUB_OUTPUT
+              echo "Found release notes: $FILE"
+            else
+              echo "file=" >> $GITHUB_OUTPUT
+              echo "No release notes file found for $TAG"
+            fi
+          fi
+
+      - name: Check if prerelease
+        id: check_prerelease
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if echo "$TAG" | grep -qiE '(alpha|beta|rc|preview)'; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          NOTES_FILE="${{ steps.find_notes.outputs.file }}"
+
+          if [ -n "$NOTES_FILE" ]; then
+            # Strip frontmatter (between --- markers)
+            BODY=$(python3 -c "
+import re
+with open('$NOTES_FILE') as f:
+    content = f.read()
+# Remove frontmatter
+content = re.sub(r'^---\n.*?\n---\n', '', content, flags=re.DOTALL)
+print(content.strip())
+")
+            gh release create "$TAG" \
+              --title "Agape Sovereign $TAG" \
+              --notes "$BODY" \
+              --prerelease=${{ steps.check_prerelease.outputs.is_prerelease }}
+          else:
+            gh release create "$TAG" \
+              --title "Agape Sovereign $TAG" \
+              --generate-notes
+          fi
+
+      - name: Notify
+        run: |
+          echo "✅ Release ${{ github.ref_name }} created!"
+          echo "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
