@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-import { z } from 'genkit';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { useGenkit } from './GenkitContext';
-import { useModel } from './ModelContext';
+import { useModels } from './ModelContext';
 
 export interface Message {
   id: string;
@@ -56,12 +55,14 @@ function generateTitle(messages: Message[]): string {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { ai, isInitialized } = useGenkit();
-  const { selectedModel } = useModel();
+  const { models: availableModels } = useModels();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const selectedModel = availableModels[0]?.name || 'llama3.2:3b';
 
   // Load sessions from localStorage
   useEffect(() => {
@@ -100,7 +101,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       id: generateId(),
       title: 'New Chat',
       messages: [],
-      model: model || selectedModel || 'llama3.2',
+      model: model || selectedModel,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -232,7 +233,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const systemPrompt = options?.systemPrompt || 'You are a helpful AI assistant running locally.';
       const modelName = options?.model || session.model;
 
-      const stream = await ai.generateStream({
+      const { stream } = await ai.generateStream({
         model: `ollama/${modelName}`,
         prompt: content,
         system: systemPrompt,
@@ -242,13 +243,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      for await (const chunk of stream.stream) {
+      for await (const chunk of stream) {
         if (abortControllerRef.current?.signal.aborted) break;
         if (chunk.text) {
           fullResponse += chunk.text;
           options?.onChunk?.(chunk.text);
         }
       }
+
+      const finalResponse = await stream;
 
       const assistantMessage: Message = {
         id: assistantMessageId,
@@ -257,7 +260,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         timestamp: new Date(),
         model: modelName,
         metadata: {
-          finishReason: (await stream.output).finishReason,
+          finishReason: 'stop',
         },
       };
 

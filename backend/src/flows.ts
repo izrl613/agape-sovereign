@@ -1,6 +1,25 @@
 import { z } from 'genkit';
 import { ai } from './genkit.js';
 
+interface OllamaModel {
+  name: string;
+  size?: number;
+  modified_at?: string;
+}
+
+interface OllamaTagsResponse {
+  models?: OllamaModel[];
+}
+
+type MessageRole = 'user' | 'assistant' | 'system';
+type GenkitRole = 'user' | 'system' | 'model' | 'tool';
+
+function toGenkitRole(role: MessageRole): GenkitRole {
+  if (role === 'assistant') return 'model';
+  if (role === 'system') return 'system';
+  return 'user';
+}
+
 export const chatFlow = ai.defineFlow(
   {
     name: 'chatFlow',
@@ -33,13 +52,11 @@ export const chatFlow = ai.defineFlow(
 
     const response = await ai.generate({
       model: `ollama/${model}`,
-      messages: [
-        ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
-        ...chatMessages.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          content: [{ text: m.content }],
-        })),
-      ],
+      system: systemMessage?.content,
+      messages: chatMessages.map(m => ({
+        role: toGenkitRole(m.role),
+        content: [{ text: m.content }],
+      })),
       config: {
         temperature,
         maxOutputTokens: maxTokens,
@@ -80,15 +97,13 @@ export const streamChatFlow = ai.defineFlow(
     const systemMessage = messages.find(m => m.role === 'system');
     const chatMessages = messages.filter(m => m.role !== 'system');
 
-    const { stream } = ai.generateStream({
+    const { stream } = await ai.generateStream({
       model: `ollama/${model}`,
-      messages: [
-        ...(systemMessage ? [{ role: 'system', content: systemMessage.content }] : []),
-        ...chatMessages.map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          content: [{ text: m.content }],
-        })),
-      ],
+      system: systemMessage?.content,
+      messages: chatMessages.map(m => ({
+        role: toGenkitRole(m.role),
+        content: [{ text: m.content }],
+      })),
       config: {
         temperature,
         maxOutputTokens: maxTokens,
@@ -112,12 +127,12 @@ export const listModelsFlow = ai.defineFlow(
   },
   async () => {
     try {
-      const response = await fetch('http://localhost:11434/api/tags');
+      const response = await fetch(`${process.env.OLLAMA_HOST || 'http://localhost:11434'}/api/tags`);
       if (!response.ok) throw new Error('Failed to fetch models');
-      const data = await response.json();
-      return (data.models || []).map((m: any) => ({
+      const data = await response.json() as OllamaTagsResponse;
+      return (data.models || []).map((m: OllamaModel): { name: string; type: 'chat' | 'embed'; size?: string; modified?: string } => ({
         name: m.name,
-        type: m.details?.format === 'gguf' ? 'chat' : 'chat',
+        type: m.name.includes('embed') ? 'embed' : 'chat',
         size: m.size ? `${(m.size / 1024 / 1024 / 1024).toFixed(1)}GB` : undefined,
         modified: m.modified_at,
       }));
@@ -141,7 +156,7 @@ export const pullModelFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const response = await fetch('http://localhost:11434/api/pull', {
+      const response = await fetch(`${process.env.OLLAMA_HOST || 'http://localhost:11434'}/api/pull`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: input.name, stream: false }),
@@ -192,9 +207,14 @@ export const embedFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const embedder = ai.embedder(`ollama/${input.model}`);
-    const result = await embedder(input.texts);
-    return { embeddings: result.embeddings };
+    const response = await fetch(`${process.env.OLLAMA_HOST || 'http://localhost:11434'}/api/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: input.model, prompt: input.texts[0] }),
+    });
+    if (!response.ok) throw new Error('Failed to generate embeddings');
+    const data = await response.json() as { embedding: number[] };
+    return { embeddings: [data.embedding] };
   }
 );
 
@@ -216,7 +236,7 @@ export const healthCheckFlow = ai.defineFlow(
     try {
       const response = await fetch('http://localhost:11434/api/tags');
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json() as { models?: Array<{ name: string }> };
         ollamaHealthy = true;
         modelCount = data.models?.length || 0;
       }
@@ -224,8 +244,10 @@ export const healthCheckFlow = ai.defineFlow(
       ollamaHealthy = false;
     }
 
+    const status: 'healthy' | 'degraded' | 'unhealthy' = ollamaHealthy ? 'healthy' : 'unhealthy';
+
     return {
-      status: ollamaHealthy ? 'healthy' : 'unhealthy',
+      status,
       ollama: ollamaHealthy,
       models: modelCount,
       timestamp: new Date().toISOString(),

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { genkit, Genkit, z } from 'genkit';
+import { genkit, Genkit } from 'genkit';
 import { ollama } from 'genkitx-ollama';
 
 interface GenkitContextType {
@@ -28,7 +28,6 @@ export function GenkitProvider({ children }: { children: ReactNode }) {
               { name: 'gemma2:2b', type: 'chat' },
               { name: 'phi3:mini', type: 'chat' },
               { name: 'qwen2.5:0.5b', type: 'chat' },
-              { name: 'nomic-embed-text', type: 'embed' },
             ],
             serverAddress,
           }),

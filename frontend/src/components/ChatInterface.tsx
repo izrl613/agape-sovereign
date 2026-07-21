@@ -224,7 +224,6 @@ function ChatInput({
 export function ChatInterface() {
   const {
     currentSession,
-    messages,
     isStreaming,
     error,
     sendMessage,
@@ -245,6 +244,7 @@ export function ChatInterface() {
   const [editContent, setEditContent] = useState('');
 
   const modelNames = availableModels.map(m => m.name);
+  const messages = currentSession?.messages || [];
 
   const handleSend = useCallback(async (content: string) => {
     if (!currentSession) {
