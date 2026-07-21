@@ -8,7 +8,7 @@ import { clsx } from 'clsx';
 interface MessageProps {
   message: {
     id: string;
-    role: 'user' | 'assistant' | 'system';
+    role: 'user' | 'assistant' | 'system' | 'tool';
     content: string;
     timestamp: Date;
     model?: string;
@@ -248,7 +248,7 @@ export function ChatInterface() {
 
   const handleSend = useCallback(async (content: string) => {
     if (!currentSession) {
-      const session = await createSession({ model: selectedModel, systemPrompt });
+      const session = await createSession(selectedModel);
       selectSession(session.id);
     }
     await streamMessage(content);

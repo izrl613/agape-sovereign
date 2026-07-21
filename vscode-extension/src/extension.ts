@@ -5,27 +5,32 @@ import { spawn, ChildProcess } from 'child_process';
 import { ChatPanel } from './webviews/ChatPanel';
 import { ModelPanel } from './webviews/ModelPanel';
 import { BackendPanel } from './webviews/BackendPanel';
+import { OllamaService } from './services/OllamaService';
 
 let backendProcess: ChildProcess | null = null;
+let ollamaService: OllamaService | null = null;
 const outputChannel = vscode.window.createOutputChannel('Local LLM PWA');
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Local LLM PWA extension activated');
 
+  const config = vscode.workspace.getConfiguration('local-llm-pwa');
+  const ollamaUrl = config.get('ollamaUrl', 'http://localhost:11434');
+  ollamaService = new OllamaService(ollamaUrl);
+
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand('local-llm-pwa.startBackend', startBackend),
     vscode.commands.registerCommand('local-llm-pwa.stopBackend', stopBackend),
-    vscode.commands.registerCommand('local-llm-pwa.openChat', () => ChatPanel.createOrShow(context.extensionUri)),
-    vscode.commands.registerCommand('local-llm-pwa.openModels', () => ModelPanel.createOrShow(context.extensionUri)),
-    vscode.commands.registerCommand('local-llm-pwa.openBackend', () => BackendPanel.createOrShow(context.extensionUri)),
+    vscode.commands.registerCommand('local-llm-pwa.openChat', () => ChatPanel.createOrShow(context.extensionUri, ollamaService!)),
+    vscode.commands.registerCommand('local-llm-pwa.openModels', () => ModelPanel.createOrShow(context.extensionUri, ollamaService!)),
+    vscode.commands.registerCommand('local-llm-pwa.openBackend', () => BackendPanel.createOrShow(context.extensionUri, ollamaService!)),
     vscode.commands.registerCommand('local-llm-pwa.pullModel', pullModel),
     vscode.commands.registerCommand('local-llm-pwa.deleteModel', deleteModel),
     vscode.commands.registerCommand('local-llm-pwa.refreshModels', refreshModels)
   );
 
   // Auto-start backend if configured
-  const config = vscode.workspace.getConfiguration('local-llm-pwa');
   if (config.get('autoStartBackend', true)) {
     startBackend();
   }
