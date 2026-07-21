@@ -25,7 +25,7 @@ const db = getFirestore();
 // ─── GENERATE DIFF PDF REPORT ───────────────────────────────
 
 export const generateDiffReport = onCall(
-  {region: "us-east1", maxInstances: 5},
+  {region: "us-central1", maxInstances: 5},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -99,7 +99,7 @@ export const generateDiffReport = onCall(
 export const recalculateSovereignScore = onDocumentWritten(
   {
     document: "diff_scans/{scanId}/vectorResults/{vectorId}",
-    region: "us-east1",
+    region: "us-central1",
   },
   async (event) => {
     const snap = event.data?.after.data();
@@ -158,7 +158,7 @@ export const recalculateSovereignScore = onDocumentWritten(
 // ─── PASSKEY CHALLENGE ──────────────────────────────────────
 
 export const generatePasskeyChallenge = onCall(
-  {region: "us-east1"},
+  {region: "us-central1"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");
@@ -185,7 +185,7 @@ export const generatePasskeyChallenge = onCall(
 // ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
 
 export const cleanupAuditLogs = onSchedule(
-  {region: "us-east1", schedule: "every 30 days"},
+  {region: "us-central1", schedule: "every 30 days"},
   async () => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -213,7 +213,7 @@ export const cleanupAuditLogs = onSchedule(
 // ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
 
 export const generateECRAOptOut = onCall(
-  {region: "us-east1"},
+  {region: "us-central1"},
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Must be authenticated");

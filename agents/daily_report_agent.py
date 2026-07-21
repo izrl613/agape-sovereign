@@ -172,7 +172,7 @@ def collect_all(gcloud: str) -> Dict[str, Any]:
 
     # 2. Cloud Functions
     fn_raw = gcloud_json(gcloud, "functions", "list",
-                          "--regions=us-central1,us-east1")
+                          "--regions=us-central1")
     fn_results = []
     if fn_raw:
         for fn in fn_raw:
