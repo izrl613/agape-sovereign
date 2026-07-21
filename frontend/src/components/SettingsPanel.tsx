@@ -1,4 +1,4 @@
-import { Settings, Cpu, Database, Globe, Moon, Sun, Monitor, Download, Trash2, Info, Key, Shield, Bell, Palette, Layout, Terminal, GitBranch, RefreshCw } from 'lucide-react';
+import { Settings, Cpu, Database, Globe, Moon, Sun, Monitor, Download, Trash2, Info, Key, Shield, Bell, Palette, Layout, Terminal, GitBranch, RefreshCw, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 

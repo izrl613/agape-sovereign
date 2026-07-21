@@ -1,15 +1,14 @@
+import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { Menu, Settings, Bot, MessageSquare, ChevronLeft, ChevronRight, X, Sun, Moon, Monitor } from 'lucide-react';
 import { useUI } from './context/UIContext';
-import { useModels } from './context/ModelContext';
 import { ChatInterface } from './components/ChatInterface';
 import { ModelManager } from './components/ModelManager';
 import { SettingsPanel } from './components/SettingsPanel';
 
 function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { currentView, setCurrentView, sidebarOpen, setSidebarOpen } = useUI();
-  const { models, sessions } = { models: [], sessions: [] }; // Will be populated by context
 
   const navItems = [
     { id: 'chat', label: 'Chat', icon: MessageSquare },
@@ -31,7 +30,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
           return (
             <button
               key={item.id}
-              onClick={() => { setCurrentView(item.id as any); setSidebarOpen(false); }}
+              onClick={() => { setCurrentView(item.id as 'chat' | 'models'); setSidebarOpen(false); }}
               className={clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left',
                 isActive
