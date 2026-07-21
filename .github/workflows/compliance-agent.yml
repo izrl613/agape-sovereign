@@ -115,7 +115,43 @@ jobs:
           echo -e "$ISSUES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # ---- 6. Firebase Deploy Readiness Check ----
+      # ---- 6. OAuth Compliance Check (Google OAuth Branding) ----
+      - name: OAuth Branding Compliance Audit
+        id: oauth_check
+        run: |
+          ISSUES=""
+          
+          # Check Privacy Policy in nav
+          if ! grep -q 'href="/privacy"' frontend/components/LandingPage.tsx; then
+            ISSUES="$ISSUES\n- HIGH: Missing Privacy Policy link in LandingPage.tsx nav"
+          fi
+          
+          # Check Terms of Service in nav
+          if ! grep -q 'href="/terms"' frontend/components/LandingPage.tsx; then
+            ISSUES="$ISSUES\n- HIGH: Missing Terms of Service link in LandingPage.tsx nav"
+          fi
+          
+          # Check support emails (DPO, Security, Legal)
+          if ! grep -q 'dpo@agape.nyc' frontend/components/LandingPage.tsx; then
+            ISSUES="$ISSUES\n- HIGH: Missing DPO email (dpo@agape.nyc) in footer"
+          fi
+          if ! grep -q 'security@sovereign.nyc' frontend/components/LandingPage.tsx; then
+            ISSUES="$ISSUES\n- HIGH: Missing Security email (security@sovereign.nyc) in footer"
+          fi
+          if ! grep -q 'legal@agape.nyc' frontend/components/LandingPage.tsx; then
+            ISSUES="$ISSUES\n- HIGH: Missing Legal email (legal@agape.nyc) in footer"
+          fi
+          
+          # Check structured data in index.html
+          if ! grep -q '"@type":.*"WebApplication"' index.html; then
+            ISSUES="$ISSUES\n- MEDIUM: Missing structured data in index.html (Google OAuth verification)"
+          fi
+          
+          echo "oauth_issues<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # ---- 7. Firebase Deploy Readiness Check ----
       - name: Firebase Deploy Readiness Validation
         id: firebase_deploy_check
         run: |
@@ -129,7 +165,7 @@ jobs:
           echo -e "$ISSUES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # ---- 6. Create GitHub Issues for findings ----
+      # ---- 8. Create GitHub Issues for findings ----
       - name: Create compliance issues for findings
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,6 +178,7 @@ jobs:
           ALL_ISSUES="$ALL_ISSUES${{ steps.pii_check.outputs.pii_issues }}"
           ALL_ISSUES="$ALL_ISSUES${{ steps.repo_health_check.outputs.repo_health_issues }}"
           ALL_ISSUES="$ALL_ISSUES${{ steps.firebase_deploy_check.outputs.firebase_deploy_issues }}"
+          ALL_ISSUES="$ALL_ISSUES${{ steps.oauth_check.outputs.oauth_issues }}"
           
           ALL_ISSUES=$(echo "$ALL_ISSUES" | sed '/^$/d' | sed '/^-/!d')
           
@@ -162,7 +199,7 @@ jobs:
               --label "compliance,security" 2>/dev/null || true
           fi
 
-      # ---- 7. Summary ----
+      # ---- 9. Summary ----
       - name: Compliance agent summary
         if: always()
         run: |
@@ -180,3 +217,4 @@ jobs:
           echo "| PII logging | ${{ steps.pii_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Repo health (GitHub services) | ${{ steps.repo_health_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Firebase deploy readiness | ${{ steps.firebase_deploy_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| OAuth branding compliance | ${{ steps.oauth_check.conclusion == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
