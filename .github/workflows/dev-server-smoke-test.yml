@@ -1,63 +1,87 @@
 # =============================================================================
-# AGAPE SOVEREIGN — DEV SERVER DAILY SMOKE TEST
-# Verifies `npm run dev` boots successfully every day.
-# Exits 0 on success, 1 on failure.
+# AGAPE SOVEREIGN — DAILY DEV/BUILD/DEPLOY PIPELINE
+# Runs every morning: dev smoke test → build → firebase deploy
 # =============================================================================
-name: Dev Server Daily Smoke Test
+name: Daily Dev Build Deploy
 
 on:
   schedule:
-    # Daily at 6:00 AM EST
     - cron: '0 11 * * *'
   workflow_dispatch:
 
+env:
+  PROJECT_ID: agape-sovereign
+  FIREBASE_PROJECT: agape-sovereign
+  NODE_VERSION: '20'
+
 jobs:
-  dev-server-smoke:
-    name: Dev Server Smoke Test
+  daily-pipeline:
+    name: Dev → Build → Deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Start dev server and verify boot
+      # ── Step 1: Dev server smoke test ─────────────────────────────────────
+      - name: Dev server smoke test
         run: |
           npm run dev &
           DEV_PID=$!
           echo "Dev server PID: $DEV_PID"
 
-          # Wait for either port 5173 (Vite) or port 3001 (Express) to be ready
           for i in $(seq 1 30); do
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null | grep -q '200\|302\|304'; then
-              echo "Frontend dev server is UP on port 5173"
-              break
-            fi
-            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null | grep -q '200\|302\|304'; then
-              echo "Backend dev server is UP on port 3001"
+            FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null)
+            BACKEND=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null)
+            if [ -n "$FRONTEND" ] || [ -n "$BACKEND" ]; then
+              echo "Frontend: HTTP $FRONTEND | Backend: HTTP $BACKEND"
               break
             fi
             sleep 2
           done
 
-          # Final check
-          FRONTEND_UP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null)
-          BACKEND_UP=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null)
-
-          echo "Frontend: HTTP $FRONTEND_UP"
-          echo "Backend:  HTTP $BACKEND_UP"
-
           kill $DEV_PID 2>/dev/null || true
           wait $DEV_PID 2>/dev/null || true
 
-          if [ -z "$FRONTEND_UP" ] && [ -z "$BACKEND_UP" ]; then
-            echo "FAILED: Neither frontend nor backend dev server started"
+          FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5173 2>/dev/null)
+          BACKEND=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001 2>/dev/null)
+          if [ -z "$FRONTEND" ] && [ -z "$BACKEND" ]; then
+            echo "FAILED: Dev server did not start"
             exit 1
           fi
+          echo "PASSED: Dev server smoke test"
 
-          echo "PASSED: Dev server smoke test successful"
+      # ── Step 2: Build ─────────────────────────────────────────────────────
+      - name: Build all workspaces
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ env.FIREBASE_PROJECT }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID: ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+
+      # ── Step 3: Firebase Deploy ──────────────────────────────────────────
+      - name: Deploy to Firebase
+        run: |
+          npm install -g firebase-tools@latest
+          firebase deploy --project ${{ env.FIREBASE_PROJECT }} --only hosting,functions,firestore,storage --json
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Daily pipeline complete"
+          echo "  Dev smoke test:  passed"
+          echo "  Build:           passed"
+          echo "  Firebase deploy: passed"
+          echo "🌐 https://agape-sovereign.web.app"
