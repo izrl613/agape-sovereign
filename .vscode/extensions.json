@@ -3,6 +3,8 @@
     "saoudrizwan.claude-dev"
   ],
   "unwantedRecommendations": [
-    "google.securecoder"
+    "google.securecoder",
+    "saoudrizwan.cline-nightly",
+    "rooveterinaryinc.roo-cline"
   ]
 }
