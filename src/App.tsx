@@ -76,10 +76,10 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 import { SplashEntry } from './components/SplashEntry';
-import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ContactPage } from './components/ContactPage';
+import { OfflinePage } from './components/OfflinePage';
 
 const AppRoutes = () => {
   const { user, setupComplete, setSetupComplete } = useAuth();
@@ -95,6 +95,7 @@ const AppRoutes = () => {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/offline" element={<OfflinePage />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
