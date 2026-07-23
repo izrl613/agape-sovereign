@@ -167,6 +167,7 @@ class PasskeyLockServiceImpl {
       // We call the server to get a fresh challenge, then assert with the browser.
       const optionsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reauth: true }),
       });
