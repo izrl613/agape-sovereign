@@ -322,13 +322,19 @@ export const LandingPage = () => {
           borderTop: '1px solid rgba(0,212,255,0.08)',
           borderBottom: '1px solid rgba(0,212,255,0.08)',
           background: 'rgba(0,212,255,0.03)',
-          padding: '32px 48px',
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 64,
-          flexWrap: 'wrap',
         }}
       >
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: '0 auto',
+            padding: '32px 48px',
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 64,
+            flexWrap: 'wrap',
+          }}
+        >
         {[
           { value: '16', label: 'Identity Vectors' },
           { value: '5', label: 'Shield Pillars' },
@@ -353,6 +359,7 @@ export const LandingPage = () => {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Features */}

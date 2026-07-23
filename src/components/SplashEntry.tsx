@@ -188,12 +188,16 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF2E9F] to-[#00D4FF] flex items-center justify-center shadow-[0_0_20px_rgba(0,212,255,0.3)]">
-                  <Shield className="text-white w-6 h-6" />
+                <div style={{ filter: 'drop-shadow(0 0 8px #00D4FF)', flexShrink: 0 }}>
+                  <svg viewBox="0 0 40 40" width={36} height={36}>
+                    <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke="#00D4FF" strokeWidth="1.5" />
+                    <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke="#FF2E9F" strokeWidth="1" opacity="0.7" />
+                    <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill="#FF6B00" fillOpacity="0.8" stroke="#FF6B00" strokeWidth="0.5" />
+                  </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold tracking-wider text-white font-display">ARCHITECT AI</h2>
-                  <p className="text-[10px] text-[#00D4FF] font-mono tracking-[0.2em] uppercase">DIFF Initialization Sequence</p>
+                  <h2 className="text-xl font-bold tracking-wider text-white font-display">Agape Sovereign AI</h2>
+                  <p className="text-[10px] text-[#00D4FF] font-mono tracking-[0.2em] uppercase">DIGITAL IDENTITY DEFENSE</p>
                 </div>
               </div>
               <div className="text-right">
