@@ -1,19 +1,20 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, GlassCard, NeonButton, StatusBadge, Skeleton } from './UI';
-import { motion } from 'framer-motion';
-import { Download, Filter, ArrowUpDown, TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Download, Filter, ArrowUpDown, TrendingUp, Copy, Check, Download as DlIcon } from 'lucide-react';
 import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
 import { passkeyLockService } from '../services/passkeyLockService';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { IdentityTokenCompact } from './IdentityTokenBadge';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
   Area
@@ -225,14 +226,16 @@ export const Dashboard = () => {
   return (
     <div style={{ position: 'relative' }}>
       <PasskeyLockOverlay zone="identity" />
-      
+
       <div style={{ animation: "fade-in 0.4s ease", filter: isLocked ? 'blur(12px)' : 'none', transition: 'filter 0.3s ease', pointerEvents: isLocked ? 'none' : 'auto' }}>
         {/* Header row */}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 24, marginBottom: 28 }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 24, marginBottom: 28, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: "'Orbitron', monospace", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 6 }}>DIGITAL IDENTITY FEDERATED FOOTPRINT</div>
           <NeonText color={NEON.blue} size="1.5rem" weight={900}>IDENTITY COMMAND CENTER</NeonText>
-          <div style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: 4 }}>16-Layer identity vector analysis · Real-time threat intelligence for {user?.email}</div>
+          <div style={{ color: NEON.textMuted, fontSize: '0.78rem', marginTop: 4, marginBottom: 10 }}>16-Layer identity vector analysis · Real-time sovereign protection</div>
+          {/* Identity Token Compact Badge */}
+          <IdentityTokenCompact />
           
           <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -427,21 +430,29 @@ export const Dashboard = () => {
                 </GlassCard>
               ))
             ) : (
-              modules.map((m) => {
+              modules.map((m, idx) => {
                 const sev = m.severity;
                 const sevColor = sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
                 return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: idx * 0.04, ease: 'easeOut' }}
+                    whileHover={{ y: -3, boxShadow: `0 8px 28px ${sevColor}22` }}
+                    style={{ cursor: 'pointer', borderRadius: 14 }}
+                    onClick={() => navigate(m.to)}
+                  >
                   <GlassCard 
-                    key={m.id} 
                     className="module-card" 
                     style={{ 
-                      padding: "14px", 
-                      cursor: "pointer",
+                      padding: "14px",
                       display: "flex",
                       flexDirection: "column",
-                      justifyContent: "space-between"
+                      justifyContent: "space-between",
+                      border: `1px solid ${sevColor}18`,
+                      height: '100%',
                     }}
-                    onClick={() => navigate(m.to)}
                   >
                     <div style={{ display: "flex", gap: 12, alignItems: 'center', marginBottom: 12 }}>
                       <div style={{ 
@@ -514,6 +525,7 @@ export const Dashboard = () => {
                       </div>
                     </div>
                   </GlassCard>
+                  </motion.div>
                 );
               })
             )}

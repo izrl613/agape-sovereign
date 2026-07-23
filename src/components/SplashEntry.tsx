@@ -252,28 +252,54 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-10 flex items-center justify-between">
-              <div className="flex gap-1">
-                {MODULE_STEPS.map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={`h-1 rounded-full transition-all duration-500 ${i <= step ? 'w-6 bg-[#00D4FF]' : 'w-2 bg-white/10'}`} 
-                  />
-                ))}
+            {/* ── Progress Bar ── */}
+            <div style={{ marginTop: 28 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: 'rgba(226,232,240,0.4)', letterSpacing: '0.12em' }}>
+                  INITIALIZATION PROGRESS
+                </span>
+                <span style={{ fontFamily: "'Orbitron'", fontSize: '0.65rem', color: '#00D4FF', fontWeight: 700 }}>
+                  {Math.round(((step) / (MODULE_STEPS.length - 1)) * 100)}%
+                </span>
               </div>
-              
-              <button
-                disabled={step < MODULE_STEPS.length - 1 && !data[currentStep.id]}
-                onClick={handleNext}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
-                  (step === MODULE_STEPS.length - 1 || data[currentStep.id]) 
-                    ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105' 
-                    : 'bg-white/5 text-white/20 cursor-not-allowed'
-                }`}
-              >
-                {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', marginBottom: 16 }}>
+                <motion.div
+                  style={{
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18)',
+                    borderRadius: 2,
+                  }}
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${((step) / (MODULE_STEPS.length - 1)) * 100}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleNext}
+                  disabled={currentStep.id !== 'final' && !data[currentStep.id]}
+                  style={{ opacity: currentStep.id === 'final' || !data[currentStep.id] ? 0.3 : 0.7 }}
+                  className="text-[10px] font-mono text-slate-400 hover:text-white transition-colors"
+                  title="Skip this step (optional fields only)"
+                >
+                  {currentStep.id !== 'final' && !data[currentStep.id] ? 'SKIP →' : ''}
+                </button>
+
+                <button
+                  disabled={step < MODULE_STEPS.length - 1 && !data[currentStep.id]}
+                  onClick={handleNext}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
+                    (step === MODULE_STEPS.length - 1 || data[currentStep.id])
+                      ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105'
+                      : 'bg-white/5 text-white/20 cursor-not-allowed'
+                  }`}
+                >
+                  {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
