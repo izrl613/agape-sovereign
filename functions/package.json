@@ -22,7 +22,7 @@
     "express": "^4.22.2",
     "firebase-admin": "^13.10.0",
     "firebase-functions": "^7.3.0",
-    "jspdf": "^2.5.2"
+    "jspdf": "^4.2.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
