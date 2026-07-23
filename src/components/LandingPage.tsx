@@ -89,9 +89,7 @@ export const LandingPage = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true });
-    }
+    // Removed automatic redirect so the landing page is always visible
   }, [user, navigate]);
 
   return (
@@ -160,33 +158,54 @@ export const LandingPage = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'rgba(0,212,255,0.07)',
-              color: NEON_BLUE,
-              border: `1px solid rgba(0,212,255,0.25)`,
-              borderRadius: 10,
-              padding: '9px 18px',
-              fontWeight: 700,
-              fontSize: 12,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-            }}
-          >
-            <Fingerprint size={14} /> PASSKEY
-          </button>
-          <GoogleSignInButton
-            onClick={async () => {
-              setGoogleLoading(true);
-              try { await login(); }
-              catch { setGoogleLoading(false); navigate('/login'); }
-            }}
-            loading={googleLoading}
-          />
+          {user ? (
+            <button
+              onClick={() => navigate('/dashboard')}
+              style={{
+                background: 'rgba(0,212,255,0.07)',
+                color: NEON_BLUE,
+                border: `1px solid rgba(0,212,255,0.25)`,
+                borderRadius: 10,
+                padding: '9px 18px',
+                fontWeight: 700,
+                fontSize: 12,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+              }}
+            >
+              GO TO DASHBOARD
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'rgba(0,212,255,0.07)',
+                  color: NEON_BLUE,
+                  border: `1px solid rgba(0,212,255,0.25)`,
+                  borderRadius: 10,
+                  padding: '9px 18px',
+                  fontWeight: 700,
+                  fontSize: 12,
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                }}
+              >
+                <Fingerprint size={14} /> PASSKEY
+              </button>
+              <GoogleSignInButton
+                onClick={async () => {
+                  setGoogleLoading(true);
+                  try { await login(); }
+                  catch { setGoogleLoading(false); navigate('/login'); }
+                }}
+                loading={googleLoading}
+              />
+            </>
+          )}
         </div>
       </nav>
 
@@ -256,43 +275,72 @@ export const LandingPage = () => {
 
           {/* ── Auth CTA panel ── */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, maxWidth: 380, margin: '0 auto' }}>
-            {/* Sign in with Google */}
-            <GoogleSignInButton
-              onClick={async () => {
-                setGoogleLoading(true);
-                try { await login(); }
-                catch { setGoogleLoading(false); navigate('/login'); }
-              }}
-              loading={googleLoading}
-              style={{ width: '100%' }}
-            />
+            {user ? (
+              <motion.button
+                whileHover={{ scale: 1.02, borderColor: 'rgba(0,212,255,0.4)' }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/dashboard')}
+                style={{
+                  width: '100%',
+                  padding: '15px 28px',
+                  background: 'rgba(0,212,255,0.05)',
+                  border: `1px solid rgba(0,212,255,0.2)`,
+                  borderRadius: 12,
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  letterSpacing: '0.06em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 10,
+                  transition: 'all 0.2s',
+                }}
+              >
+                Go to Dashboard
+              </motion.button>
+            ) : (
+              <>
+                {/* Sign in with Google */}
+                <GoogleSignInButton
+                  onClick={async () => {
+                    setGoogleLoading(true);
+                    try { await login(); }
+                    catch { setGoogleLoading(false); navigate('/login'); }
+                  }}
+                  loading={googleLoading}
+                  style={{ width: '100%' }}
+                />
 
-            {/* Login with Passkey */}
-            <motion.button
-              whileHover={{ scale: 1.02, borderColor: 'rgba(0,212,255,0.4)' }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/login')}
-              style={{
-                width: '100%',
-                padding: '15px 28px',
-                background: 'rgba(0,212,255,0.05)',
-                border: `1px solid rgba(0,212,255,0.2)`,
-                borderRadius: 12,
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 14,
-                letterSpacing: '0.06em',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 10,
-                transition: 'all 0.2s',
-              }}
-            >
-              <Fingerprint size={18} color={NEON_BLUE} style={{ flexShrink: 0 }} />
-              Login with Passkey
-            </motion.button>
+                {/* Login with Passkey */}
+                <motion.button
+                  whileHover={{ scale: 1.02, borderColor: 'rgba(0,212,255,0.4)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/login')}
+                  style={{
+                    width: '100%',
+                    padding: '15px 28px',
+                    background: 'rgba(0,212,255,0.05)',
+                    border: `1px solid rgba(0,212,255,0.2)`,
+                    borderRadius: 12,
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    letterSpacing: '0.06em',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <Fingerprint size={18} color={NEON_BLUE} style={{ flexShrink: 0 }} />
+                  Login with Passkey
+                </motion.button>
+              </>
+            )}
 
             <a
               href="#features"
@@ -457,34 +505,59 @@ export const LandingPage = () => {
           Sovereign identity protection starts now. No data is stored unencrypted.
         </p>
         <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <GoogleSignInButton
-            onClick={async () => {
-              setGoogleLoading(true);
-              try { await login(); }
-              catch { setGoogleLoading(false); navigate('/login'); }
-            }}
-            loading={googleLoading}
-          />
-          <motion.button
-            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'rgba(0,212,255,0.06)',
-              color: '#fff',
-              border: `1px solid rgba(0,212,255,0.25)`,
-              borderRadius: 12,
-              padding: '16px 28px',
-              fontWeight: 700,
-              fontSize: 14,
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <Fingerprint size={16} color={NEON_BLUE} /> USE PASSKEY
-          </motion.button>
+          {user ? (
+            <motion.button
+              whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+              onClick={() => navigate('/dashboard')}
+              style={{
+                background: 'rgba(0,212,255,0.06)',
+                color: '#fff',
+                border: `1px solid rgba(0,212,255,0.25)`,
+                borderRadius: 12,
+                padding: '16px 28px',
+                fontWeight: 700,
+                fontSize: 14,
+                letterSpacing: '0.1em',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              GO TO DASHBOARD
+            </motion.button>
+          ) : (
+            <>
+              <GoogleSignInButton
+                onClick={async () => {
+                  setGoogleLoading(true);
+                  try { await login(); }
+                  catch { setGoogleLoading(false); navigate('/login'); }
+                }}
+                loading={googleLoading}
+              />
+              <motion.button
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                onClick={() => navigate('/login')}
+                style={{
+                  background: 'rgba(0,212,255,0.06)',
+                  color: '#fff',
+                  border: `1px solid rgba(0,212,255,0.25)`,
+                  borderRadius: 12,
+                  padding: '16px 28px',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <Fingerprint size={16} color={NEON_BLUE} /> USE PASSKEY
+              </motion.button>
+            </>
+          )}
         </div>
       </section>
 

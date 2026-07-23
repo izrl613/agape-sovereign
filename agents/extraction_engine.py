@@ -35,6 +35,10 @@ class ExtractionEngine:
     """
 
     def extract(self, source_path: str) -> ExtractedDocument:
+        # Check if source_path is actually inline text
+        if "\n" in source_path or source_path.strip().startswith(("#", "##", "###", "-", "*", "1.", "2.", "3.")):
+            return self._extract_text(source_path, method="inline", is_inline=True)
+
         path = Path(source_path)
         if not path.exists():
             raise FileNotFoundError(f"ExtractionEngine: file not found: {source_path}")
@@ -60,10 +64,13 @@ class ExtractionEngine:
             return self._extract_text(path, method="pdf_raw_fallback")
 
         pages: List[str] = []
-        with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text() or ""
-                pages.append(text)
+        try:
+            with pdfplumber.open(path) as pdf:
+                for page in pdf.pages:
+                    text = page.extract_text() or ""
+                    pages.append(text)
+        except Exception:
+            return self._extract_text(path, method="pdf_raw_fallback")
 
         full_text = "\n\n".join(pages)
         return ExtractedDocument(
@@ -78,15 +85,20 @@ class ExtractionEngine:
     # Plain-text / Markdown extraction
     # ──────────────────────────────────────────────────────────────────
 
-    def _extract_text(self, path: str, method: str = "text") -> ExtractedDocument:
-        try:
-            raw = Path(path).read_text(encoding="utf-8", errors="replace")
-        except Exception:
-            raw = ""
+    def _extract_text(self, path: str, method: str = "text", is_inline: bool = False) -> ExtractedDocument:
+        if is_inline:
+            raw = path
+            source = "inline-text"
+        else:
+            try:
+                raw = Path(path).read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                raw = ""
+            source = path
 
         paragraphs = [p.strip() for p in raw.split("\n\n") if p.strip()]
         return ExtractedDocument(
-            source_path=path,
+            source_path=source,
             pages=paragraphs,
             full_text=raw,
             page_count=len(paragraphs),
