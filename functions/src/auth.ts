@@ -89,6 +89,7 @@ router.post("/register-options", async (req: Request, res: Response) => {
       userName: userEmail,
       userDisplayName: userEmail,
       attestationType: "none",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       excludeCredentials: excludeCredentials as any,
       authenticatorSelection: {
         residentKey: "preferred",
@@ -209,6 +210,7 @@ router.post("/login-options", async (req: Request, res: Response) => {
 
     const options = await generateAuthenticationOptions({
       rpID: RP_ID,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       allowCredentials: allowCredentials as any,
       userVerification: "preferred",
     });
@@ -260,7 +262,10 @@ router.post("/verify-login", async (req: Request, res: Response) => {
       res.status(400).json({error: "Credential not found"}); return;
     }
 
-    const credData = credDoc.data()!;
+    const credData = credDoc.data();
+    if (!credData) {
+      res.status(400).json({error: "Credential data empty"}); return;
+    }
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,

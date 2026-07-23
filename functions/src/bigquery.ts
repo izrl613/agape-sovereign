@@ -28,7 +28,11 @@ export const fetchAnalyticsData = onCall(async (request) => {
         SUM(usage.amount) AS usage_quantity,
         usage.unit
       FROM \`${billingExportTable.value()}\`
-      WHERE DATE(usage_start_time, "America/New_York") >= DATE_SUB(CURRENT_DATE("America/New_York"), INTERVAL 30 DAY)
+      WHERE DATE(usage_start_time, "America/New_York") >=
+        DATE_SUB(
+          CURRENT_DATE("America/New_York"),
+          INTERVAL 30 DAY
+        )
         AND project.id = 'agape-sovereign'
       GROUP BY usage_date, service, sku, usage.unit
       ORDER BY usage_date DESC, total_cost_usd DESC
