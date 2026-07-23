@@ -3,11 +3,11 @@
  * ============================================================
  * OPERATION FRAMEWORK — Phase 1.5: Capacity & License Gate
  *
- * Architecture: GCP BeyondCorp Enterprise / Identity-Aware Proxy (IAP)
- * This gate fires AFTER successful identity hashing but BEFORE
- * any heavy internal module calls (IVM, Architect AI).
+ * Architecture: GCP Free-Tier Identity-Aware Proxy (IAP) + Firebase Auth
+ * Zero-Cost Constraint: Uses Google Cloud's free-tier IAP context headers &
+ * client WebAuthn passkeys (no paid Chrome Enterprise Premium licenses).
  *
- * Flow: GCP IAP → Auth(A/B) → [Capacity & Policy Check] → Dashboard
+ * Flow: GCP Free IAP → Auth(A/B) → [Capacity Check] → Dashboard
  * ============================================================
  */
 
@@ -21,7 +21,8 @@ import {
 } from 'firebase/firestore';
 
 const CAPACITY_DOC = 'system/capacity';
-const MAX_USERS = 10000; // GCP BeyondCorp Enterprise scalable capacity limit
+const MAX_USERS = 10000; // Free-tier scalable capacity
+
 
 
 export interface CapacityState {
