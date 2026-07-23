@@ -1,20 +1,58 @@
 {
   "name": "agape-sovereign",
   "version": "1.0.0",
-  "description": "Firebase backend for Agape Sovereign",
+  "description": "Agape Sovereign Application and Firebase Platform",
   "private": true,
+  "type": "module",
   "workspaces": [
     "functions"
   ],
   "scripts": {
-    "build": "npm run build --workspace=functions",
+    "dev": "vite",
+    "build": "vite build && npm run build --workspace=functions",
+    "build:frontend": "vite build",
+    "build:functions": "npm run build --workspace=functions",
     "deploy": "firebase deploy",
     "lint": "npm run lint --workspace=functions",
-    "typecheck": "npm run typecheck --if-present --workspace=functions",
+    "typecheck": "tsc --noEmit && npm run typecheck --if-present --workspace=functions",
     "logs": "firebase functions:log"
   },
+  "dependencies": {
+    "@google/genai": "latest",
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.0",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.5.0",
+    "firebase": "^11.4.0",
+    "firebase-admin": "^13.1.0",
+    "framer-motion": "^12.4.7",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^5.0.2",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.0.1",
+    "react-router-dom": "^7.1.5",
+    "react-syntax-highlighter": "^15.6.1",
+    "recharts": "^2.15.1",
+    "remark-gfm": "^4.0.0",
+    "sonner": "^2.0.1",
+    "tailwindcss": "^4.0.6"
+  },
   "devDependencies": {
-    "typescript": "^5.3.3"
+    "@tailwindcss/vite": "^4.0.6",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
   },
   "engines": {
     "node": ">=20.0.0"

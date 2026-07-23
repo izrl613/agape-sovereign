@@ -13,8 +13,8 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </div>
 );
 
-const P = ({ children }: { children: React.ReactNode }) => (
-  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: '0 0 12px' }}>{children}</p>
+const P = ({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) => (
+  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: '0 0 12px', ...style }}>{children}</p>
 );
 
 export const ContactPage = () => (

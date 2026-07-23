@@ -76,6 +76,7 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 import { SplashEntry } from './components/SplashEntry';
+import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ContactPage } from './components/ContactPage';
