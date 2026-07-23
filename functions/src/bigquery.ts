@@ -1,17 +1,16 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {BigQuery} from "@google-cloud/bigquery";
-import {logger} from "firebase-functions/v2";
+import {defineString} from "firebase-functions/params";
+import {logger} from "firebase-functions";
 
-// Initialize BigQuery client
 const bigquery = new BigQuery();
 
-/**
- * Example Firebase Callable Function to fetch data from BigQuery
- *
- * Replace `your_dataset.your_table` with your actual dataset and table name.
- */
+const billingExportTable = defineString("BILLING_EXPORT_TABLE", {
+  default: "agape-sovereign.billing_export.gcp_billing_export_v1",
+  description: "BigQuery billing export table ID",
+});
+
 export const fetchAnalyticsData = onCall(async (request) => {
-  // Check if user is authenticated (Optional based on your security needs)
   if (!request.auth) {
     throw new HttpsError(
       "unauthenticated",
@@ -20,25 +19,23 @@ export const fetchAnalyticsData = onCall(async (request) => {
   }
 
   try {
-    // Example query: Fetch top 10 rows from a dataset
     const query = `
-      SELECT *
-      FROM \`agape-sovereign.your_dataset.your_table\`
-      LIMIT 10
+      SELECT
+        DATE(usage_start_time, "America/New_York") AS usage_date,
+        service.description AS service,
+        sku.description AS sku,
+        SUM(cost) AS total_cost_usd,
+        SUM(usage.amount) AS usage_quantity,
+        usage.unit
+      FROM \`${billingExportTable.value()}\`
+      WHERE DATE(usage_start_time, "America/New_York") >= DATE_SUB(CURRENT_DATE("America/New_York"), INTERVAL 30 DAY)
+        AND project.id = 'agape-sovereign'
+      GROUP BY usage_date, service, sku, usage.unit
+      ORDER BY usage_date DESC, total_cost_usd DESC
+      LIMIT 50
     `;
 
-    const options = {
-      query: query,
-      // Location must match that of the dataset(s) referenced in the query.
-      location: "US",
-    };
-
-    // Run the query as a job
-    const [job] = await bigquery.createQueryJob(options);
-    logger.info(`BigQuery Job ${job.id} started.`);
-
-    // Wait for the query to finish
-    const [rows] = await job.getQueryResults();
+    const [rows] = await bigquery.query({query, location: "US"});
 
     return {
       status: "success",
