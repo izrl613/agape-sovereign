@@ -1,9 +1,0 @@
-requests<=2.34.2,>=2.34.2
-rsa>=4.7; python_version >= '3.5'
-rsa<=4.0; python_version < '3.5'
-simplejson==3.6.5
-argparse==1.2.1
-httpretty>=0.9.6
-paramiko>=5.0.0
-PyYAML>=3.10
-six
