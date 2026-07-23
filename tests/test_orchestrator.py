@@ -62,7 +62,7 @@ Example: Alice Smith, 2026-07-15, $5,000,000, and OAuth 2.0.
             agent = OrchestratorAgent(output_dir=output_dir)
             result = agent.run("# Sovereign Workflow\nThe plan covers PDF extraction and audit review.\n")
 
-            self.assertEqual([step["name"] for step in result["agents"]], ["extraction", "synthesis", "audit", "reporting"])
+            self.assertEqual([step["name"] for step in result["agents"]], ["extraction_engine", "extraction", "data_mapper", "data_mapper_dict", "validator", "synthesis", "audit", "reporting", "pdf_generation"])
             self.assertTrue(all(step["status"] == "completed" for step in result["agents"]))
 
     def test_writes_execution_summary(self):
