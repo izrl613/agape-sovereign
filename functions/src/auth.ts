@@ -5,6 +5,7 @@ import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -29,8 +30,53 @@ const COOKIE_SECRET =
   process.env.PASSKEY_COOKIE_SECRET || "sovereign-secret-key";
 
 const authApp = express();
+authApp.use(cors({origin: true, credentials: true}));
 authApp.use(express.json());
 authApp.use(cookieParser(COOKIE_SECRET));
+
+/**
+ * Resolves expectedOrigin and rpId dynamically for local and prod environments.
+ * @param {Request} req Express request.
+ * @return {{expectedOrigin: string, rpId: string}} Resolved WebAuthn config.
+ */
+function getWebAuthnConfig(req: Request): {
+  expectedOrigin: string;
+  rpId: string;
+} {
+  const originHeader = req.get("origin") || req.get("referer");
+  let origin = EXPECTED_ORIGIN;
+  let rpId = RP_ID;
+
+  if (originHeader) {
+    try {
+      const url = new URL(originHeader);
+      if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+        origin = url.origin;
+        rpId = url.hostname;
+      }
+    } catch {
+      // Keep default configuration
+    }
+  }
+
+  return {expectedOrigin: origin, rpId};
+}
+
+/**
+ * Sets the signed __session cookie with production-appropriate flags.
+ * @param {Response} res Express response.
+ * @param {object} sessionData Session data payload.
+ */
+function setSessionCookie(res: Response, sessionData: object): void {
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie("__session", JSON.stringify(sessionData), {
+    httpOnly: true,
+    secure: isProd,
+    signed: true,
+    maxAge: 60_000,
+    sameSite: isProd ? "none" : "lax",
+  });
+}
 
 // Router used at both / (direct URL) and /api/auth (Hosting rewrite)
 const router = express.Router(); // eslint-disable-line new-cap
@@ -82,9 +128,10 @@ router.post("/register-options", async (req: Request, res: Response) => {
       transports: doc.data().transports,
     }));
 
+    const {rpId} = getWebAuthnConfig(req);
     const options = await generateRegistrationOptions({
       rpName: RP_NAME,
-      rpID: RP_ID,
+      rpID: rpId,
       userID: new TextEncoder().encode(userId),
       userName: userEmail,
       userDisplayName: userEmail,
@@ -98,18 +145,11 @@ router.post("/register-options", async (req: Request, res: Response) => {
       },
     });
 
-    const isProd = process.env.NODE_ENV === "production";
     const sessionData = {
       registrationChallenge: options.challenge,
       authUserId: userId,
     };
-    res.cookie("__session", JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: isProd,
-      signed: true,
-      maxAge: 60_000,
-      sameSite: "lax",
-    });
+    setSessionCookie(res, sessionData);
     res.json(options);
   } catch (error) {
     logger.error("Register Options Error:", error);
@@ -146,11 +186,12 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
       res.status(400).json({error: "Challenge expired or missing"}); return;
     }
 
+    const {expectedOrigin, rpId} = getWebAuthnConfig(req);
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: EXPECTED_ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin,
+      expectedRPID: rpId,
     });
 
     if (verification.verified && verification.registrationInfo) {
@@ -208,25 +249,19 @@ router.post("/login-options", async (req: Request, res: Response) => {
       transports: doc.data().transports,
     }));
 
+    const {rpId} = getWebAuthnConfig(req);
     const options = await generateAuthenticationOptions({
-      rpID: RP_ID,
+      rpID: rpId,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       allowCredentials: allowCredentials as any,
       userVerification: "preferred",
     });
 
-    const isProd = process.env.NODE_ENV === "production";
     const sessionData = {
       authenticationChallenge: options.challenge,
       authUserId: userId,
     };
-    res.cookie("__session", JSON.stringify(sessionData), {
-      httpOnly: true,
-      secure: isProd,
-      signed: true,
-      maxAge: 60_000,
-      sameSite: "lax",
-    });
+    setSessionCookie(res, sessionData);
     res.json(options);
   } catch (error) {
     logger.error("Login Options Error:", error);
@@ -266,11 +301,12 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     if (!credData) {
       res.status(400).json({error: "Credential data empty"}); return;
     }
+    const {expectedOrigin, rpId} = getWebAuthnConfig(req);
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin: EXPECTED_ORIGIN,
-      expectedRPID: RP_ID,
+      expectedOrigin,
+      expectedRPID: rpId,
       credential: {
         id: credData.credentialID,
         publicKey: Buffer.from(credData.publicKey, "base64url"),

@@ -114,6 +114,7 @@ export const AdminPortal = () => {
           
           const optionsRes = await fetch('/api/auth/login-options', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: userEmail }),
           });
@@ -130,6 +131,7 @@ export const AdminPortal = () => {
           
           const verifyRes = await fetch('/api/auth/verify-login', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assertionResponse),
           });
