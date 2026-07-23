@@ -147,16 +147,16 @@ export const Login = () => {
         >
           <div style={{ width: 80, height: 80, margin: '0 auto 16px', position: 'relative' }}>
             <svg viewBox="0 0 80 80" style={{ width: '100%', filter: `drop-shadow(0 0 12px ${NEON_BLUE})` }}>
-              <polygon points="40,5 75,25 75,55 40,75 5,55 5,25" fill="none" stroke={NEON_BLUE} strokeWidth="1.5" />
-              <polygon points="40,15 65,28 65,52 40,65 15,52 15,28" fill="none" stroke={NEON_MAGENTA} strokeWidth="1" opacity="0.6" />
-              <text x="40" y="46" textAnchor="middle" fill={NEON_BLUE} fontFamily="Orbitron" fontSize="16" fontWeight="900">AI</text>
+              <polygon points="40,4 76,24 76,56 40,76 4,56 4,24" fill="none" stroke={NEON_BLUE} strokeWidth="1.5" />
+              <polygon points="40,16 66,29 66,51 40,64 14,51 14,29" fill="none" stroke={NEON_MAGENTA} strokeWidth="1" opacity="0.7" />
+              <polygon points="40,28 52,36 52,44 40,52 28,44 28,36" fill={NEON_ORANGE} fillOpacity="0.8" stroke={NEON_ORANGE} strokeWidth="0.5" />
             </svg>
           </div>
-          <div style={{ fontWeight: 900, fontSize: '1.5rem', letterSpacing: '0.06em', color: NEON_BLUE, textShadow: `0 0 20px ${NEON_BLUE}88` }}>
-            ARCHITECT AI
+          <div style={{ fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.12em', color: '#fff' }}>
+            Agape Sovereign AI
           </div>
-          <div style={{ color: NEON_MUTED, fontSize: '0.7rem', fontFamily: "'Share Tech Mono'", marginTop: 4, letterSpacing: '0.15em' }}>
-            AGAPE SOVEREIGN ENCLAVE 2026
+          <div style={{ color: NEON_BLUE, fontSize: '0.6rem', fontFamily: "'Share Tech Mono'", marginTop: 4, letterSpacing: '0.2em', opacity: 0.8 }}>
+            DIGITAL IDENTITY DEFENSE
           </div>
         </motion.div>
 
