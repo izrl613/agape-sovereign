@@ -3,11 +3,11 @@
  * ============================================================
  * OPERATION FRAMEWORK — Phase 1.5: Capacity & License Gate
  *
- * Critical constraint: 50-user hard limit (Cloudflare ZTNA tier).
+ * Architecture: GCP BeyondCorp Enterprise / Identity-Aware Proxy (IAP)
  * This gate fires AFTER successful identity hashing but BEFORE
  * any heavy internal module calls (IVM, Architect AI).
  *
- * Flow: ZTPolicy → Auth(A/B) → [Capacity Check] → Dashboard
+ * Flow: GCP IAP → Auth(A/B) → [Capacity & Policy Check] → Dashboard
  * ============================================================
  */
 
@@ -21,7 +21,8 @@ import {
 } from 'firebase/firestore';
 
 const CAPACITY_DOC = 'system/capacity';
-const MAX_USERS = 50;
+const MAX_USERS = 10000; // GCP BeyondCorp Enterprise scalable capacity limit
+
 
 export interface CapacityState {
   activeUsers: number;
