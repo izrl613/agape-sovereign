@@ -4,18 +4,15 @@
   "description": "Agape Sovereign Application and Firebase Platform",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "functions"
-  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:all": "vite build && npm run build --workspace=functions",
+    "build:all": "vite build && npm run build --prefix functions",
     "build:frontend": "vite build",
-    "build:functions": "npm run build --workspace=functions",
+    "build:functions": "npm run build --prefix functions",
     "deploy": "firebase deploy",
-    "lint": "npm run lint --workspace=functions",
-    "typecheck": "tsc --noEmit && npm run typecheck --if-present --workspace=functions",
+    "lint": "npm run lint --prefix functions",
+    "typecheck": "tsc --noEmit && npm run typecheck --if-present --prefix functions",
     "logs": "firebase functions:log"
   },
   "dependencies": {
