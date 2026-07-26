@@ -21,7 +21,7 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const auth = getAuth();
-const errors = new ErrorReporting({reportMode: 'always'});
+const errors = new ErrorReporting({reportMode: "always"});
 const RP_NAME = "Agape Sovereign";
 // Firebase Hosting and Cloudflare terminate TLS before invoking this function.
 // Do not derive WebAuthn values from proxy headers: the browser must validate
