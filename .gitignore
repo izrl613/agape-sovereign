@@ -31,3 +31,4 @@ package 2.json
 # Firebase / functions build output
 functions/lib/
 functions/node_modules/
+recaptcha-key.json
