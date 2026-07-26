@@ -3,6 +3,7 @@ import {logger} from "firebase-functions";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
+import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -35,6 +36,22 @@ const authApp = express();
 authApp.use(cors({origin: true, credentials: true}));
 authApp.use(express.json());
 authApp.use(cookieParser(COOKIE_SECRET));
+
+// Firebase App Check verification
+authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
+  if (process.env.RECAPTCHA_ENABLED !== "true") return next();
+  const appCheckToken = req.header("X-Firebase-AppCheck");
+  if (!appCheckToken) {
+    res.status(401).json({error: "Missing App Check token"});
+    return;
+  }
+  try {
+    await getAppCheck().verifyToken(appCheckToken);
+    next();
+  } catch {
+    res.status(401).json({error: "Invalid App Check token"});
+  }
+});
 
 /**
  * Resolves expectedOrigin and rpId dynamically for local and prod environments.
