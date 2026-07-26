@@ -26,3 +26,11 @@ env:
     value: gemma4:e4b
     availability:
       - RUNTIME
+  - variable: RECAPTCHA_SITE_KEY
+    value: 6LfA-2YtAAAAAFJ0lIMk0HpgWxT2Yw1Ky16ixK3G
+    availability:
+      - RUNTIME
+  - variable: RECAPTCHA_ENABLED
+    value: "true"
+    availability:
+      - RUNTIME
