@@ -6,6 +6,7 @@ import {getAuth} from "firebase-admin/auth";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import {ErrorReporting} from "@google-cloud/error-reporting";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -20,6 +21,7 @@ if (!getApps().length) {
 
 const db = getFirestore();
 const auth = getAuth();
+const errors = new ErrorReporting();
 const RP_NAME = "Agape Sovereign";
 // Firebase Hosting and Cloudflare terminate TLS before invoking this function.
 // Do not derive WebAuthn values from proxy headers: the browser must validate
@@ -80,6 +82,11 @@ function setSessionCookie(res: Response, sessionData: object): void {
 
 // Router used at both / (direct URL) and /api/auth (Hosting rewrite)
 const router = express.Router(); // eslint-disable-line new-cap
+
+// Health check endpoint
+router.get("/", (req: Request, res: Response) => {
+  res.json({status: "ok"});
+});
 
 /**
  * Verifies the requesting user is authenticated and owns the given email.
@@ -153,6 +160,7 @@ router.post("/register-options", async (req: Request, res: Response) => {
     res.json(options);
   } catch (error) {
     logger.error("Register Options Error:", error);
+    errors.report(error as Error);
     const message = error instanceof Error ? error.message : "";
     if (
       message === "Authentication is required to register a passkey." ||
@@ -212,6 +220,7 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
     }
   } catch (error) {
     logger.error("Verify Registration Error:", error);
+    errors.report(error as Error);
     res.status(500).json({error: "Internal Server Error"});
   }
 });
@@ -265,6 +274,7 @@ router.post("/login-options", async (req: Request, res: Response) => {
     res.json(options);
   } catch (error) {
     logger.error("Login Options Error:", error);
+    errors.report(error as Error);
     res.status(500).json({error: "Internal Server Error"});
   }
 });
@@ -326,6 +336,7 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     }
   } catch (error) {
     logger.error("Verify Login Error:", error);
+    errors.report(error as Error);
     res.status(500).json({error: "Internal Server Error"});
   }
 });

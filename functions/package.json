@@ -16,6 +16,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "@google-cloud/bigquery": "^7.9.0",
+    "@google-cloud/error-reporting": "^3.0.6",
     "@simplewebauthn/server": "^13.3.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
