@@ -1,0 +1,33 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wiki/**'
+  workflow_dispatch: {}
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Push wiki/ contents to GitHub wiki
+        run: |
+          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki-repo
+          cp wiki/*.md wiki-repo/
+          cd wiki-repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "Sync wiki from main repo [skip ci]"
+            git push
+            echo "Wiki published successfully."
+          fi
