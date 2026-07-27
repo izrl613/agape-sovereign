@@ -32,7 +32,7 @@
     }
   }
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind is compiled via Vite/PostCSS — CDN removed (not for production) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -237,14 +237,9 @@
       });
     }
   </script>
-  <script src="https://www.gstatic.com/firebasejs/8.0/firebase.js"></script>
-  <script>
-    var config = {
-      apiKey: "AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g",
-      authDomain: "agape-sovereign.firebaseapp.com",
-    };
-    firebase.initializeApp(config);
-  </script>
+  <!-- Firebase is initialized via the modular SDK in src/firebase.ts
+       (v11 via npm) — the legacy v8 compat CDN script is removed to
+       silence the "development build" warning and avoid double initialisation. -->
 </body>
 
 </html>

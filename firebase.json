@@ -54,16 +54,6 @@
     ],
     "alwaysDeployFromSource": true
   },
-  "auth": {
-    "providers": {
-      "anonymous": true,
-      "emailPassword": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "Agape Sovereign AI",
-        "supportEmail": "idin@agape.nyc"
-      }
-    }
-  },
   "storage": {
     "rules": "storage.rules",
     "bucket": "agape-sovereign.firebasestorage.app"
