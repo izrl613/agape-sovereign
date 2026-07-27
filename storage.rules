@@ -14,7 +14,8 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
+      return request.auth.token.email_verified == true &&
+             request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
     }
 
     function isUserOwner(userId) {

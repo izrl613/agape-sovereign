@@ -16,6 +16,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isTrustedAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc'];
+    }
+
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -23,13 +29,30 @@ service cloud.firestore {
     // System-level capacity tracking (aggregate counters — no PII stored)
     // Authenticated users can read capacity state and transactionally
     // reserve / release a slot via capacityService.ts.
-    match /system/{document} {
-      allow read, write: if isSignedIn();
+    match /system/capacity {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() &&
+        request.resource.data.keys().hasOnly([
+          'activeUsers', 'lastReservedAt', 'lastReservedBy'
+        ]) &&
+        request.resource.data.activeUsers is int &&
+        request.resource.data.activeUsers >= 0 &&
+        request.resource.data.activeUsers <= 10000 &&
+        request.resource.data.lastReservedBy is string &&
+        request.resource.data.lastReservedBy.size() <= 128;
     }
 
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
-      allow get, write: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        (request.resource.data.role == 'user' || isTrustedAdmin());
+      allow update: if isOwner(userId) &&
+        resource.data.uid == userId &&
+        request.resource.data.uid == userId &&
+        (request.resource.data.role == resource.data.role || isTrustedAdmin());
+      allow delete: if isOwner(userId);
 
       // Identity Sandbox Partition Modules Subcollection
       match /modules/{moduleId} {

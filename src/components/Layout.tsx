@@ -915,7 +915,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         let activeData: Record<string, string> = {};
         let hashes: Record<string, string> = {};
         
-        if (user.uid === 'emergency-bypass-admin-999') {
+        if (false) {
           const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
           if (localActive) {
             const parsed = JSON.parse(localActive);

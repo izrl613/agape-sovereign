@@ -60,27 +60,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   useEffect(() => {
     if (!user) return;
 
-    if (user.uid === 'emergency-bypass-admin-999') {
-      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-      if (localActive) {
-        try {
-          const parsed = JSON.parse(localActive);
-          const encVal = parsed.data?.[moduleId] || "";
-          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
-          setStoredHash(hash);
-          if (encVal) {
-            decryptClientSide(encVal, user.uid).then(dec => {
-              setDecryptedValue(dec);
-              setParameterValue(dec);
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      return;
-    }
-
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
@@ -118,24 +97,16 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const encrypted = await encryptClientSide(parameterValue, user.uid);
 
       // Save to Firestore
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
-        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
-        await setDoc(docRef, {
-          data: {
-            [moduleId]: encrypted
-          },
-          hashes: {
-            [`${moduleId}Hash`]: newHash
-          },
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
+      const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+      await setDoc(docRef, {
+        data: {
+          [moduleId]: encrypted
+        },
+        hashes: {
+          [`${moduleId}Hash`]: newHash
+        },
+        updatedAt: serverTimestamp()
+      }, { merge: true });
 
       // Determine security status heuristically
       let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
@@ -204,7 +175,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       }
 
       // Save scan finding to diff_scans
-      if (user.uid === 'emergency-bypass-admin-999') {
+      if (false) {
         const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
         const filtered = localFindings.filter((f: any) => f.module !== moduleId);
         filtered.push({
