@@ -6,9 +6,11 @@ Execution order: ZTNA Gate → Capacity Check → IVM → AI Agent → PDF Gener
 Routes AI inference to local LM Studio (http://localhost:1234) — near zero cloud cost.
 """
 import hashlib
+import json
 import secrets
 import argparse
 from datetime import datetime
+from pathlib import Path
 
 from sovereign.core_storage import CoreStorageManager
 from sovereign.ivm_agent import IVMAgent
@@ -22,8 +24,11 @@ MAX_CAPACITY = 50  # ZTNA user limit per Operation Framework specification
 class POAOrchestrator:
     """Master Orchestrator — coordinates all sub-agents in sequence."""
 
-    def __init__(self):
+    def __init__(self, output_dir: str | None = None):
         self._storage = CoreStorageManager()
+        self._output_dir = Path(output_dir) if output_dir else None
+        if self._output_dir:
+            self._output_dir.mkdir(parents=True, exist_ok=True)
         self._current_users = 0  # In production: query live session store
         print("[SYSTEM START] Initializing Sovereign State Engine v1.0.")
         print("-> [ZERO TRUST POLICY ENGINE] Performing mTLS and Device Posture validation... PASS.")
@@ -61,17 +66,34 @@ class POAOrchestrator:
             # ── Step 3: PDF Generator ─────────────────────────────────────────
             pdf_gen = PDFGenerationAgent()
             pdf_bytes = pdf_gen.execute(structured_report)
+            pdf_path = None
+            if pdf_bytes and self._output_dir:
+                pdf_path = self._output_dir / f"identity_audit_{sha256_id[:12]}.pdf"
+                pdf_path.write_bytes(pdf_bytes)
+                print(f"-> [PDF] Audit report saved: {pdf_path}")
 
             # ── Step 4: Export & Recovery ─────────────────────────────────────
             export = ExportRecoveryAgent()
             sovereignty_manifest = export.execute(sha256_id)
+            manifest_path = None
+            if sovereignty_manifest and self._output_dir:
+                manifest_path = self._output_dir / f"sovereignty_manifest_{sha256_id[:12]}.json"
+                safe_manifest = {
+                    k: v for k, v in sovereignty_manifest.items()
+                    if k != "mnemonic_phrase"
+                }
+                manifest_path.write_text(json.dumps(safe_manifest, indent=2), encoding="utf-8")
+                print(f"-> [EXPORT] Manifest saved: {manifest_path}")
 
             result = {
                 "status": "SUCCESS",
                 "sha256_id": sha256_id,
                 "composite_score": structured_report.get("composite_score"),
                 "pdf_generated": pdf_bytes is not None,
+                "pdf_path": str(pdf_path) if pdf_path else None,
+                "manifest_path": str(manifest_path) if manifest_path else None,
                 "manifest_seal": sovereignty_manifest.get("manifest_seal") if sovereignty_manifest else None,
+                "mnemonic_phrase": sovereignty_manifest.get("mnemonic_phrase") if sovereignty_manifest else None,
             }
             print(f"\n[POA SUCCESS] Full pipeline completed. Score: {result['composite_score']}/100")
 
@@ -95,8 +117,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sovereign State Engine")
     parser.add_argument("--auth-type", default="Google", help="Authentication pathway")
     parser.add_argument("--user-id", default=None, help="Optional user identifier")
+    parser.add_argument("--output-dir", default="./workspace_outputs/sovereign_engine", help="Directory for PDF and manifest artifacts")
     args = parser.parse_args()
 
-    orchestrator = POAOrchestrator()
+    orchestrator = POAOrchestrator(output_dir=args.output_dir)
     result = orchestrator.run(auth_type=args.auth_type, user_identifier=args.user_id)
     print(f"\n[FINAL STATUS] {result}")
