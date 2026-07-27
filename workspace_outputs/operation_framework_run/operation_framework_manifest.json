@@ -1,0 +1,81 @@
+{
+  "run_id": "8fc595b5",
+  "started_at": "2026-07-27T17:14:17.860937+00:00",
+  "source_pdf": "/Users/aarondavid/Documents/agape-sovereign/OPERATION FRAMEWORK.PDF",
+  "output_dir": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run",
+  "phases": {
+    "document_pipeline": {
+      "phase": "document_pipeline",
+      "status": "completed",
+      "run_id": "2176b35b",
+      "source": "/Users/aarondavid/Documents/agape-sovereign/OPERATION FRAMEWORK.PDF",
+      "output_dir": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run/document_pipeline_2176b35b",
+      "model": "qwen3.5-9b-sushi-coder-rl-mlx",
+      "elapsed_s": 95.49,
+      "agents": [
+        {
+          "name": "extraction_engine",
+          "status": "completed",
+          "details": "extraction_engine agent completed"
+        },
+        {
+          "name": "extraction",
+          "status": "completed",
+          "details": "extraction agent completed"
+        },
+        {
+          "name": "data_mapper",
+          "status": "completed",
+          "details": "data_mapper agent completed"
+        },
+        {
+          "name": "data_mapper_dict",
+          "status": "completed",
+          "details": "data_mapper_dict agent completed"
+        },
+        {
+          "name": "validator",
+          "status": "completed",
+          "details": "validator agent completed"
+        },
+        {
+          "name": "synthesis",
+          "status": "completed",
+          "details": "synthesis agent completed"
+        },
+        {
+          "name": "audit",
+          "status": "completed",
+          "details": "audit agent completed"
+        },
+        {
+          "name": "reporting",
+          "status": "completed",
+          "details": "reporting agent completed"
+        },
+        {
+          "name": "pdf_generation",
+          "status": "completed",
+          "details": "pdf_generation agent completed"
+        }
+      ],
+      "pdf_report": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run/document_pipeline_2176b35b/sovereign_report_d9ddeb6c.pdf",
+      "plan_summary": "LM Studio"
+    },
+    "sovereign_engine": {
+      "phase": "sovereign_state_engine",
+      "status": "SUCCESS",
+      "elapsed_s": 15.08,
+      "output_dir": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run/sovereign_engine",
+      "sha256_id": "35a0f2b6cc4a366bba2f534c808690d754054eb936fe36f2fb1816f39f1f8cd6",
+      "composite_score": 55.0,
+      "pdf_generated": true,
+      "pdf_path": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run/sovereign_engine/identity_audit_35a0f2b6cc4a.pdf",
+      "manifest_path": "/Users/aarondavid/Documents/agape-sovereign/workspace_outputs/operation_framework_run/sovereign_engine/sovereignty_manifest_35a0f2b6cc4a.json",
+      "manifest_seal": "f71b4999c52764e0b57d1577bc2d39e25b4679d38423adb35dc8a4b5678a9c37"
+    }
+  },
+  "elapsed_s": 110.68,
+  "completed_at": "2026-07-27T17:16:08.546369+00:00",
+  "status": "SUCCESS"
+}

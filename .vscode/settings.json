@@ -67,5 +67,8 @@
       "model": "qwen3.5-9b-sushi-coder-rl-mlx",
       "apiBase": "http://localhost:1234/v1"
     }
-  ]
+  ],
+  "banditStealth.agent.autoApproveEdits": true,
+  "banditStealth.ollamaModel": "Kunj0195/qwen3.5-coder:latest",
+  "banditStealth.debug.emitPlanJson": true
 }

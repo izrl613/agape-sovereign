@@ -1,0 +1,13 @@
+{
+  "manifest": {
+    "target_hash": "35a0f2b6cc4a366bba2f534c808690d754054eb936fe36f2fb1816f39f1f8cd6",
+    "timestamp": "2026-07-27",
+    "public_fingerprint": "cdaf3ebc418d4ce9ea7aff855ec5e6bc6adec686bf576f12d9cbb098064ffcdc",
+    "mnemonic_hash": "6c9f1299745748b19f804fa12cbd6e7b0e9fd718908ec2fa20d49e9ceaa896f1",
+    "recovery_expires": "2028-07-27",
+    "manifest_version": "1.0",
+    "sovereignty_declaration": "This manifest proves exclusive ownership of the above identity hash. No third party can revoke this claim."
+  },
+  "manifest_seal": "f71b4999c52764e0b57d1577bc2d39e25b4679d38423adb35dc8a4b5678a9c37",
+  "public_key": "6a01e8cd13945f198e2779547fa35e6c22c58d2b189d1ed91dfbc48c35849e04"
+}
