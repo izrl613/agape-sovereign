@@ -12,6 +12,8 @@ import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/c
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
+import { getStoredJson, setStoredJson } from '../utils/storage';
+import { countScanStatuses } from '../utils/scanMetrics';
 
 interface ModuleProps {
   title: string;
@@ -44,9 +46,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const [showSplash, setShowSplash] = useState(true);
 
   const findings = allFindings.filter(f => f.module === moduleId);
-  const nuked = findings.filter(f => f.status === 'NUKED').length;
-  const knoxed = findings.filter(f => f.status === 'KNOXED').length;
-  const monitored = findings.filter(f => f.status === 'MONITORED').length;
+  const { nuked, knoxed, monitored } = countScanStatuses(findings);
   
   // Dynamic Sovereign Score for this module
   let severity = 100;
@@ -61,22 +61,18 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     if (!user) return;
 
     if (user.uid === 'emergency-bypass-admin-999') {
-      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-      if (localActive) {
-        try {
-          const parsed = JSON.parse(localActive);
-          const encVal = parsed.data?.[moduleId] || "";
-          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
-          setStoredHash(hash);
-          if (encVal) {
-            decryptClientSide(encVal, user.uid).then(dec => {
-              setDecryptedValue(dec);
-              setParameterValue(dec);
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
+      const parsed = getStoredJson<{ data?: Record<string, string>; hashes?: Record<string, string> }>(
+        `module_data_active_${user.uid}`,
+        {},
+      );
+      const encVal = parsed.data?.[moduleId] || "";
+      const hash = parsed.hashes?.[moduleId + "Hash"] || "";
+      setStoredHash(hash);
+      if (encVal) {
+        decryptClientSide(encVal, user.uid).then(dec => {
+          setDecryptedValue(dec);
+          setParameterValue(dec);
+        }).catch(console.error);
       }
       return;
     }
@@ -119,11 +115,13 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
       // Save to Firestore
       if (user.uid === 'emergency-bypass-admin-999') {
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
+        const parsed = getStoredJson<{ data: Record<string, string>; hashes: Record<string, string> }>(
+          `module_data_active_${user.uid}`,
+          { data: {}, hashes: {} },
+        );
         parsed.data[moduleId] = encrypted;
         parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
+        setStoredJson(`module_data_active_${user.uid}`, parsed);
       } else {
         const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
         await setDoc(docRef, {
@@ -205,8 +203,11 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
       // Save scan finding to diff_scans
       if (user.uid === 'emergency-bypass-admin-999') {
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
+        const localFindings = getStoredJson<Array<{ status: string; module: string; [key: string]: unknown }>>(
+          `scan_findings_${user.uid}`,
+          [],
+        );
+        const filtered = localFindings.filter(f => f.module !== moduleId);
         filtered.push({
           id: `local-${moduleId}-${Date.now()}`,
           userId: user.uid,
@@ -216,15 +217,17 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           timestamp: new Date().toISOString(),
           details: detailsText
         });
-        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
+        setStoredJson(`scan_findings_${user.uid}`, filtered);
 
         // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
+        const { nuked: nukedCount, knoxed: knoxedCount, monitored: monitoredCount } =
+          countScanStatuses(filtered);
         const newScore = Math.max(45, 100 - (nukedCount * 15));
 
-        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
+        const history = getStoredJson<Array<Record<string, unknown>>>(
+          `score_history_${user.uid}`,
+          [],
+        );
         history.push({
           userId: user.uid,
           score: newScore,
@@ -234,7 +237,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           monitoredCount,
           findings: filtered
         });
-        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
+        setStoredJson(`score_history_${user.uid}`, history);
       } else {
         const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
         const snap = await getDocs(q);
@@ -260,10 +263,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
         // Recalculate Sovereign Score
         const allScansSnap = await getDocs(query(collection(db, 'diff_scans'), where('userId', '==', user.uid)));
-        const allScans = allScansSnap.docs.map(d => d.data());
-        const nukedCount = allScans.filter(f => f.status === 'NUKED').length;
-        const knoxedCount = allScans.filter(f => f.status === 'KNOXED').length;
-        const monitoredCount = allScans.filter(f => f.status === 'MONITORED').length;
+        const allScans = allScansSnap.docs.map(d => d.data() as { status: string });
+        const { nuked: nukedCount, knoxed: knoxedCount, monitored: monitoredCount } =
+          countScanStatuses(allScans);
         
         const newScore = Math.max(45, 100 - (nukedCount * 15));
         await updateDoc(doc(db, 'users', user.uid), { sovereignScore: newScore });

@@ -19,6 +19,8 @@ import { updateFindingStatus, recalculateSovereignScore, ScanFinding, generateSu
 import { logAIChatMessage, logUserEvent } from '../services/analyticsService';
 import { getFeatureFlag } from '../services/remoteConfigService';
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
+import { getStoredJson, setStoredJson } from '../utils/storage';
+import { countScanStatuses } from '../utils/scanMetrics';
 
 interface Message {
   id: string;
@@ -47,9 +49,7 @@ export const ArchitectAI = () => {
   const [notifiedThreats, setNotifiedThreats] = useState<Set<string>>(new Set());
   
   const stats = {
-    nuked: findings.filter(f => f.status === 'NUKED').length,
-    knoxed: findings.filter(f => f.status === 'KNOXED').length,
-    monitored: findings.filter(f => f.status === 'MONITORED').length,
+    ...countScanStatuses(findings),
   };
 
   const getDefaultMessage = (): Message => ({
@@ -130,20 +130,11 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     const loadHistory = async () => {
       // Handle emergency bypass user with local storage
       if (user.uid === 'emergency-bypass-admin-999') {
-        const localHistory = localStorage.getItem(`chat_history_${user.uid}`);
-        if (localHistory) {
-          try {
-            const parsed = JSON.parse(localHistory);
-            setMessages(parsed.map((m: any) => ({
-              ...m,
-              timestamp: new Date(m.timestamp)
-            })));
-          } catch (e) {
-            setMessages([getDefaultMessage()]);
-          }
-        } else {
-          setMessages([getDefaultMessage()]);
-        }
+        const parsed = getStoredJson<Message[] | null>(`chat_history_${user.uid}`, null);
+        setMessages(parsed?.map(message => ({
+          ...message,
+          timestamp: new Date(message.timestamp),
+        })) || [getDefaultMessage()]);
         setIsHistoryLoaded(true);
         return;
       }
@@ -191,7 +182,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
 
     // Handle emergency bypass user with local storage
     if (user.uid === 'emergency-bypass-admin-999') {
-      localStorage.setItem(`chat_history_${user.uid}`, JSON.stringify(currentMessages));
+      setStoredJson(`chat_history_${user.uid}`, currentMessages);
       return;
     }
 

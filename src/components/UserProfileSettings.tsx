@@ -10,6 +10,7 @@ import { requestNotificationPermission } from '../services/messagingService';
 import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
+import { getStoredJson } from '../utils/storage';
 
 export const UserProfileSettings = () => {
   const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
@@ -35,8 +36,7 @@ export const UserProfileSettings = () => {
     try {
       if (user.uid === 'emergency-bypass-admin-999') {
         const localKey = `reports_history_${user.uid}`;
-        const existing = localStorage.getItem(localKey);
-        const list = existing ? JSON.parse(existing) : [];
+        const list = getStoredJson<Array<Record<string, unknown>>>(localKey, []);
         const formatted = list.map((item: any) => ({
           ...item,
           id: item.reportId,

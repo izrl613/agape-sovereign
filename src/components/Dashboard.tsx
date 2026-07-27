@@ -22,6 +22,7 @@ import {
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import { countScanStatuses } from '../utils/scanMetrics';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01", to: "/dashboard/email"      },
@@ -156,10 +157,7 @@ export const Dashboard = () => {
   }, [user]);
 
   const stats = useMemo(() => {
-    const nuked = findings.filter(f => f.status === 'NUKED').length;
-    const knoxed = findings.filter(f => f.status === 'KNOXED').length;
-    const monitored = findings.filter(f => f.status === 'MONITORED').length;
-    return { nuked, knoxed, monitored };
+    return countScanStatuses(findings);
   }, [findings]);
 
   const recentFindings = useMemo(() => {
@@ -180,9 +178,7 @@ export const Dashboard = () => {
   const modules = useMemo(() => {
     return MODULE_CONFIG.map(config => {
       const moduleFindings = findings.filter(f => f.module === config.id);
-      const nuked = moduleFindings.filter(f => f.status === 'NUKED').length;
-      const knoxed = moduleFindings.filter(f => f.status === 'KNOXED').length;
-      const monitored = moduleFindings.filter(f => f.status === 'MONITORED').length;
+      const { nuked, knoxed, monitored } = countScanStatuses(moduleFindings);
       
       // Calculate severity for this module
       let severity = 100;

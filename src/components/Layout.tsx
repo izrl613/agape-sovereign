@@ -12,6 +12,8 @@ import { compileIdentityAuditReport } from '../services/pdfService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EncryptedFooter } from './EncryptedFooter';
+import { getStoredJson } from '../utils/storage';
+import { countScanStatuses } from '../utils/scanMetrics';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DocumentSealModal — SHA-256 Non-Repudiation Stamp for Privacy / Terms
@@ -471,9 +473,7 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
         {DIFF_MODULES.map((m) => {
           const isActive = (location.pathname === m.to && m.to !== '/') || (location.pathname.startsWith(m.to) && m.to !== '/');
           const moduleFindings = findings.filter(f => f.module === m.id);
-          const nuked = moduleFindings.filter(f => f.status === 'NUKED').length;
-          const knoxed = moduleFindings.filter(f => f.status === 'KNOXED').length;
-          const monitored = moduleFindings.filter(f => f.status === 'MONITORED').length;
+          const { nuked, knoxed, monitored } = countScanStatuses(moduleFindings);
 
           let sev = 100;
           if (moduleFindings.length > 0) {
@@ -916,12 +916,12 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         let hashes: Record<string, string> = {};
         
         if (user.uid === 'emergency-bypass-admin-999') {
-          const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-          if (localActive) {
-            const parsed = JSON.parse(localActive);
-            activeData = parsed.data || {};
-            hashes = parsed.hashes || {};
-          }
+          const parsed = getStoredJson<{ data?: Record<string, string>; hashes?: Record<string, string> }>(
+            `module_data_active_${user.uid}`,
+            {},
+          );
+          activeData = parsed.data || {};
+          hashes = parsed.hashes || {};
         } else {
           const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
           const docSnap = await getDoc(docRef);
