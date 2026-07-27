@@ -312,9 +312,6 @@ export const UserProfileSettings = () => {
               <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 px-2">
                 <span className="w-2 h-2 rounded-full bg-green-500" />
                 PROTECTED: Biometric verification required for access
-                {lockState.simulationMode && (
-                  <span className="ml-2 px-2 py-0.5 rounded bg-[#FF7A18]/20 text-[#FF7A18] border border-[#FF7A18]/30">SANDBOX</span>
-                )}
               </div>
             )}
           </GlassCard>

@@ -224,7 +224,7 @@ const StatusBadge = ({ type }: any) => {
   );
 };
 
-// ─── BASE DIFF SCHEMA (Definitions only, no mock data) ─────────────
+// ─── BASE DIFF SCHEMA (Definitions only) ─────────────
 const BASE_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01" },
   { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02" },

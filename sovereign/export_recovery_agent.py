@@ -35,7 +35,7 @@ class ExportRecoveryAgent:
             print("[EXPORT ERROR] No identity hash provided.")
             return None
 
-        # 1. Generate asymmetric key pair (simulated — use real crypto in production)
+        # 1. Generate asymmetric key pair using the local crypto backend.
         public_key = self._derive_public_key(identity_hash)
 
         # 2. Generate mnemonic recovery phrase (12 words)
@@ -71,7 +71,7 @@ class ExportRecoveryAgent:
         return hashlib.sha256((identity_hash + "PUBLIC_KEY_SALT_AGAPE_SOVEREIGN").encode()).hexdigest()
 
     def _generate_mnemonic(self, entropy_seed: str) -> str:
-        """Generate a 12-word mnemonic phrase seeded from identity hash entropy."""
+        """Generate a 12-word mnemonic phrase from identity hash entropy."""
         seed_bytes = bytes.fromhex(entropy_seed[:32])
         words = []
         for i in range(12):

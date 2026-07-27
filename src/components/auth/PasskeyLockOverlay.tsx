@@ -6,7 +6,6 @@
  *
  * PWA-native replacement for Android VaultLockOverlay / IdentityLockOverlay:
  *   - Uses WebAuthn biometric prompt (Touch ID / Face ID / Windows Hello)
- *   - Sandbox mode bypass for headless/CI environments
  *   - Neon glassmorphism design matching Agape Sovereign aesthetic
  */
 
@@ -65,14 +64,6 @@ export const PasskeyLockOverlay: React.FC<PasskeyLockOverlayProps> = ({ zone }) 
     } else {
       setStatus('error');
       setErrorMsg('Verification failed or was cancelled. Try again.');
-    }
-  };
-
-  const handleSimulationBypass = async () => {
-    setStatus('verifying');
-    const result = await passkeyLockService.requestPasskeyUnlock(zone);
-    if (result.success) {
-      setStatus('unlocked');
     }
   };
 
@@ -244,59 +235,6 @@ export const PasskeyLockOverlay: React.FC<PasskeyLockOverlayProps> = ({ zone }) 
                 <Fingerprint size={16} />
                 RETRY
               </motion.button>
-            </div>
-          )}
-
-          {/* Simulation mode badge + bypass */}
-          {lockState.simulationMode && (
-            <div style={{
-              marginTop: 24,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 10,
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '4px 12px',
-                background: 'rgba(255,122,24,0.1)',
-                border: '1px solid rgba(255,122,24,0.3)',
-                borderRadius: 6,
-              }}>
-                <AlertTriangle size={12} color={NEON.orange} />
-                <span style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: '0.6rem',
-                  color: NEON.orange,
-                  letterSpacing: '0.1em',
-                  fontWeight: 700,
-                }}>
-                  ⚠ SANDBOX MODE — NO PLATFORM AUTHENTICATOR
-                </span>
-              </div>
-              {(status === 'locked' || status === 'error') && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSimulationBypass}
-                  style={{
-                    padding: '8px 18px',
-                    borderRadius: 8,
-                    border: `1px solid ${NEON.orange}44`,
-                    background: 'rgba(255,122,24,0.08)',
-                    color: NEON.orange,
-                    fontFamily: "'Orbitron', monospace",
-                    fontSize: '0.65rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  BYPASS GATE (SANDBOX)
-                </motion.button>
-              )}
             </div>
           )}
 

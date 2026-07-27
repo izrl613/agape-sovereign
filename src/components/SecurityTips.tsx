@@ -23,7 +23,7 @@ const TIPS = [
     description: 'Limit the amount of personal information you share online. The less data exists about you, the smaller your attack surface.',
     actionable: [
       'Use alias email addresses for signups (e.g., SimpleLogin or Apple Hide My Email).',
-      'Provide fake or minimal information for non-essential services.',
+      'Provide minimal information for non-essential services.',
       'Regularly review and delete old accounts you no longer use.'
     ],
     color: NEON.magenta

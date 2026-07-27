@@ -25,9 +25,9 @@ const HashTicker = ({ hash, active }: { hash: string | null; active: boolean }) 
     // Glitch-scramble then settle
     let tick = 0;
     frameRef.current = setInterval(() => {
-      const fakeLen = 64;
+      const scrambledLength = 64;
       setDisplay(
-        Array.from({ length: fakeLen }, (_, i) =>
+        Array.from({ length: scrambledLength }, (_, i) =>
           hash && tick > 20 && i < tick - 20 ? hash[i] : chars[Math.floor(Math.random() * chars.length)]
         ).join('')
       );

@@ -69,8 +69,8 @@ export const EncryptedFooter: React.FC<EncryptedFooterProps> = ({
     let tick = 0;
     const scramble = setInterval(() => {
       if (!mounted) return;
-      const fake = `AGP-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
-      setSeal(fake);
+      const scrambledSeal = `AGP-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}-${Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")}`;
+      setSeal(scrambledSeal);
       tick++;
       if (tick > 8) clearInterval(scramble);
     }, 60);

@@ -335,12 +335,10 @@ const RISK_COLOR: Record<string, string> = {
 
 const IdentityPanel: React.FC<{ userId: string }> = ({ userId }) => {
   const [identities, setIdentities] = useState<IdentityRecord[]>([]);
-  const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeIdentityRisks(userId, recs => {
       setIdentities(recs);
-      setSeeded(true);
     });
     return unsub;
   }, [userId]);
