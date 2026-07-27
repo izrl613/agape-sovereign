@@ -17,6 +17,20 @@
       }
     ]
   },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "anonymous": false,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Agape Sovereign AI",
+        "supportEmail": "agape@sovereign.nyc",
+        "authorizedRedirectUris": [
+          "https://sovereign.nyc/__/auth/handler",
+          "http://localhost/__/auth/handler"
+        ]
+      }
+    }
+  },
   "firestore": {
     "database": "agape-sovereign",
     "location": "nam7",

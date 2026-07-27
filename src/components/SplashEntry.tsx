@@ -63,7 +63,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
         encryptedDataRecord[stepConfig.id] = encrypted;
         hashesRecord[`${stepConfig.id}Hash`] = hash;
 
-        // 2. Generate custom initial findings in diff_scans for each module
+        // 2. Record live initialization state for each module
         const scanRef = doc(collection(db, "diff_scans"));
         
         let initialFinding: {
@@ -82,36 +82,11 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
           details: `Zero-knowledge profile encryption activated. Integrity seal: ${hash}`
         };
 
-        // Create interesting mock findings based on user input
         if (rawValue) {
-          if (stepConfig.id === 'email' && (rawValue.includes('leak') || rawValue.includes('pwned') || rawValue.length % 2 === 0)) {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Breached credentials in public paste dumps`,
-              status: "NUKED" as const,
-              timestamp: new Date(),
-              details: `Primary email '${rawValue}' was found in historical credential stuffing logs. Action required: rotate credentials and bind passkey.`
-            };
-          } else if (stepConfig.id === 'password' && rawValue.length < 8) {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Weak entropy credential pattern`,
-              status: "NUKED" as const,
-              timestamp: new Date(),
-              details: `The password credentials provided have low entropy. Strongly advise upgrading to WebAuthn Level 3 Universal Passkey.`
-            };
-          } else if (stepConfig.id === 'broker') {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Public listings on Spokeo & Acxiom`,
-              status: "MONITORED" as const,
-              timestamp: new Date(),
-              details: `Identity profile associated with your query is actively listed by 4 primary data brokers. Erasure engine primed.`
-            };
-          }
+          initialFinding = {
+            ...initialFinding,
+            details: `Live user input captured and encrypted for ${stepConfig.id}. Integrity seal: ${hash}`,
+          };
         }
 
         batch.set(scanRef, {
@@ -315,4 +290,3 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
     </div>
   );
 };
-

@@ -5,12 +5,12 @@
  *
  * Web-native replacement for Android CredentialManager/CredentialHelper:
  *   - Uses navigator.credentials.get() via WebAuthn API
- *   - Simulation mode for headless/CI environments
+ *   - Honest failure when WebAuthn is unavailable
  *   - Persists toggle state to localStorage
  *   - Lock state resets on page refresh (zones start locked if enabled)
  */
 
-import { isPlatformAuthenticatorAvailable, isWebAuthnSupported } from '../lib/webauthn';
+import { isWebAuthnSupported } from '../lib/webauthn';
 import { startAuthentication } from '@simplewebauthn/browser';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -62,8 +62,6 @@ function persistToggles(vaultEnabled: boolean, identityEnabled: boolean): void {
 class PasskeyLockServiceImpl {
   private state: PasskeyLockState;
   private listeners: Set<Listener> = new Set();
-  private simulationDetected: boolean | null = null;
-
   constructor() {
     const toggles = loadPersistedToggles();
     this.state = {
@@ -75,31 +73,6 @@ class PasskeyLockServiceImpl {
       simulationMode: false,
     };
 
-    // Async detection of simulation mode
-    this.detectSimulationMode();
-  }
-
-  // ─── Simulation Detection ─────────────────────────────────────────────────
-
-  private async detectSimulationMode(): Promise<void> {
-    if (!isWebAuthnSupported()) {
-      this.simulationDetected = true;
-      this.updateState({ simulationMode: true });
-      console.info('[PASSKEY-LOCK] Simulation mode: WebAuthn not supported');
-      return;
-    }
-
-    try {
-      const available = await isPlatformAuthenticatorAvailable();
-      this.simulationDetected = !available;
-      this.updateState({ simulationMode: !available });
-      if (!available) {
-        console.info('[PASSKEY-LOCK] Simulation mode: No platform authenticator detected');
-      }
-    } catch {
-      this.simulationDetected = true;
-      this.updateState({ simulationMode: true });
-    }
   }
 
   // ─── State Management ─────────────────────────────────────────────────────
@@ -148,18 +121,11 @@ class PasskeyLockServiceImpl {
 
   /**
    * Request passkey unlock via WebAuthn assertion.
-   * In simulation mode, bypasses the biometric gate.
    */
   async requestPasskeyUnlock(zone: LockZone): Promise<{ success: boolean; simulated: boolean }> {
-    // Simulation mode bypass
-    if (this.state.simulationMode) {
-      console.info(`[PASSKEY-SIM] Simulated unlock for zone: ${zone}`);
-      if (zone === 'vault') {
-        this.updateState({ vaultLocked: false });
-      } else {
-        this.updateState({ identityLocked: false });
-      }
-      return { success: true, simulated: true };
+    if (!isWebAuthnSupported()) {
+      console.warn('[PASSKEY-LOCK] WebAuthn is not supported on this device.');
+      return { success: false, simulated: false };
     }
 
     try {
@@ -173,11 +139,8 @@ class PasskeyLockServiceImpl {
       });
 
       if (!optionsRes.ok) {
-        // If server is unavailable, fall back to simulation
-        console.warn('[PASSKEY-LOCK] Server unavailable for challenge — falling back to simulation');
-        if (zone === 'vault') this.updateState({ vaultLocked: false });
-        else this.updateState({ identityLocked: false });
-        return { success: true, simulated: true };
+        console.warn('[PASSKEY-LOCK] Server unavailable for challenge.');
+        return { success: false, simulated: false };
       }
 
       const options = await optionsRes.json();
