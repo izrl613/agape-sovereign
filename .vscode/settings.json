@@ -70,5 +70,7 @@
   ],
   "banditStealth.agent.autoApproveEdits": true,
   "banditStealth.ollamaModel": "Kunj0195/qwen3.5-coder:latest",
-  "banditStealth.debug.emitPlanJson": true
+  "banditStealth.debug.emitPlanJson": true,
+  "banditStealth.ollamaBaseUrl": "http://localhost:11434",
+  "banditStealth.model": "bandit-logic"
 }
