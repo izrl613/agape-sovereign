@@ -20,6 +20,13 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    // System-level capacity tracking (aggregate counters — no PII stored)
+    // Authenticated users can read capacity state and transactionally
+    // reserve / release a slot via capacityService.ts.
+    match /system/{document} {
+      allow read, write: if isSignedIn();
+    }
+
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
       allow get, write: if isOwner(userId);
