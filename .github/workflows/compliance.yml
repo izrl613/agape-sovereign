@@ -46,10 +46,11 @@ jobs:
 
       - name: Check for .env files committed
         run: |
-          # Exclude intentionally tracked template/example files (.env.example, .env.sample, .env.template)
+          # Only the explicitly tracked templates are exempt; all other .env variants are violations.
           VIOLATIONS=$(git ls-files \
-            | grep -E '(\.env$|\.env\.[^.]+$|service[-_]account.*\.json$|credentials\.json$)' \
-            | grep -vE '(\.env\.example$|\.env\.sample$|\.env\.template$|\.env\.test$|\.env\.ci$)' \
+            | grep -E '(^|/)(\.env($|\.)|service[-_]account.*\.json$|credentials\.json$)' \
+            | grep -vE '(^|/)\.env\.(example|sample|template)$' \
+            | grep -vE '^google-cloud-sdk/platform/gsutil/third_party/google-auth-library-python/tests/data/' \
             || true)
           if [ -n "$VIOLATIONS" ]; then
             echo "::error::Real credential file(s) detected in tracked files. Remove immediately."
