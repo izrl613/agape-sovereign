@@ -46,7 +46,7 @@ async function testConnection() {
   // Wait a bit to allow auth to initialize
   setTimeout(async () => {
     try {
-      // Only test if we're not in a mock/bypass state and have a potential user
+      // Only test if we have a potential user and a live Firestore connection
       // or if we just want to verify the config is valid.
       // We use getDocFromServer to force a network request.
       await getDocFromServer(doc(db, 'test', 'connection'));

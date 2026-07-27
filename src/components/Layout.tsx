@@ -62,10 +62,10 @@ const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onC
     // Glitch animate while computing
     let tick = 0;
     glitchRef.current = setInterval(() => {
-      const fake = Array.from({ length: 64 }, () =>
+      const scrambled = Array.from({ length: 64 }, () =>
         chars[Math.floor(Math.random() * chars.length)]
       ).join('');
-      if (mounted) setDisplayHash(fake);
+      if (mounted) setDisplayHash(scrambled);
       tick++;
       if (tick > 14) clearInterval(glitchRef.current!);
     }, 55);
@@ -1388,4 +1388,3 @@ export const Layout = () => {
     </div>
   );
 };
-

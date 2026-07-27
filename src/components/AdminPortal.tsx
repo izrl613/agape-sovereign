@@ -144,11 +144,11 @@ export const AdminPortal = () => {
             throw new Error("Challenge signature verification failed.");
           }
         } catch (err: any) {
-          console.warn("WebAuthn endpoints failed, invoking secure local biometric fallback:", err);
-          
-          setVerificationError(err?.message || 'Passkey verification failed.');
-          setTerminalLogs(prev => [...prev, `[ERR] ${err?.message || 'Passkey verification failed.'}`]);
-        }
+        console.warn("WebAuthn endpoints failed:", err);
+
+        setVerificationError(err?.message || 'Passkey verification failed.');
+        setTerminalLogs(prev => [...prev, `[ERR] ${err?.message || 'Passkey verification failed.'}`]);
+      }
       }
     } catch (e: any) {
       console.error(e);

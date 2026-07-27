@@ -67,7 +67,7 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const glitchRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Start glitch animation then settle on the real (or placeholder) hash
+  // Start glitch animation then settle on the computed hash
   useEffect(() => {
     let tick = 0;
     glitchRef.current = setInterval(() => {

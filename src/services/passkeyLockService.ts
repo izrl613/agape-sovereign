@@ -20,7 +20,6 @@ export interface PasskeyLockState {
   identityLocked: boolean;
   vaultEnabled: boolean;
   identityEnabled: boolean;
-  simulationMode: boolean;
 }
 
 export type LockZone = 'vault' | 'identity';
@@ -70,7 +69,6 @@ class PasskeyLockServiceImpl {
       identityLocked: toggles.identityEnabled,
       vaultEnabled: toggles.vaultEnabled,
       identityEnabled: toggles.identityEnabled,
-      simulationMode: false,
     };
 
   }
@@ -122,10 +120,10 @@ class PasskeyLockServiceImpl {
   /**
    * Request passkey unlock via WebAuthn assertion.
    */
-  async requestPasskeyUnlock(zone: LockZone): Promise<{ success: boolean; simulated: boolean }> {
+  async requestPasskeyUnlock(zone: LockZone): Promise<{ success: boolean }> {
     if (!isWebAuthnSupported()) {
       console.warn('[PASSKEY-LOCK] WebAuthn is not supported on this device.');
-      return { success: false, simulated: false };
+      return { success: false };
     }
 
     try {
@@ -140,7 +138,7 @@ class PasskeyLockServiceImpl {
 
       if (!optionsRes.ok) {
         console.warn('[PASSKEY-LOCK] Server unavailable for challenge.');
-        return { success: false, simulated: false };
+        return { success: false };
       }
 
       const options = await optionsRes.json();
@@ -153,14 +151,14 @@ class PasskeyLockServiceImpl {
       } else {
         this.updateState({ identityLocked: false });
       }
-      return { success: true, simulated: false };
+      return { success: true };
     } catch (error: any) {
       if (error?.name === 'NotAllowedError') {
         console.info('[PASSKEY-LOCK] User cancelled biometric prompt');
       } else {
         console.error('[PASSKEY-LOCK] Unlock failed:', error);
       }
-      return { success: false, simulated: false };
+      return { success: false };
     }
   }
 }
