@@ -612,10 +612,11 @@ const Header = () => {
   useEffect(() => {
     const checkHealth = async () => {
       setBackendStatus('checking');
-      const status = await checkBackendHealth();
-      if (status) {
+      try {
+        await checkBackendHealth();
         setBackendStatus('online');
-      } else {
+      } catch (error) {
+        console.error("Backend health check failed:", error);
         setBackendStatus('offline');
         toast.error("Backend services are unreachable. Some features may be limited.", {
           duration: 5000,
