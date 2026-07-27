@@ -560,11 +560,11 @@ export const Login = () => {
             textAlign: 'center',
           }}
         >
-          <a href="/privacy" style={{ color: '#60A5FA', textDecoration: 'underline' }}>PRIVACY POLICY</a>
+          <a href="https://sovereign.nyc/terms/TERMS.pdf" style={{ color: '#60A5FA', textDecoration: 'underline' }}>TERMS OF SERVICE</a>
           <span aria-hidden="true" style={{ color: 'rgba(224,230,255,0.3)' }}>|</span>
           <span style={{ color: '#D946EF' }}>© 2026 Agape Sovereign AI</span>
           <span aria-hidden="true" style={{ color: 'rgba(224,230,255,0.3)' }}>|</span>
-          <a href="/terms" style={{ color: '#F97316', textDecoration: 'underline' }}>TERMS OF SERVICE</a>
+          <a href="https://sovereign.nyc/privacy/PRIVACY.pdf" style={{ color: '#F97316', textDecoration: 'underline' }}>PRIVACY POLICY</a>
         </footer>
       </GlassCard>
     </div>
