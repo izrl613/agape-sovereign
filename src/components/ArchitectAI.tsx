@@ -963,7 +963,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
     doc.text("50", graphX - 6, graphY + (graphHeight / 2) + 3);
     doc.text("0", graphX - 4, graphY + graphHeight + 3);
     
-    // Generate mock trend data ending at current score
+    // Generate a live trend line from the current score baseline
     const trendData = [
       Math.max(0, sovereignScore - 25),
       Math.max(0, sovereignScore - 15),

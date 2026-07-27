@@ -18,7 +18,7 @@ import { passkeyLockService } from '../services/passkeyLockService';
 
 import { dlpEngine, DlpScanResult, DlpViolation, subscribeDlpViolations, logDlpViolation } from '../services/dlpService';
 import { anonymizePii, detectPiiWithAi, PiiScanResult, AnonymizeTechnique, logPiiScan } from '../services/piiService';
-import { subscribeIdentityRisks, remediateIdentity, IdentityRecord, DEMO_IDENTITIES, saveIdentityRisk } from '../services/identityRiskService';
+import { subscribeIdentityRisks, remediateIdentity, IdentityRecord } from '../services/identityRiskService';
 
 // ── Panel type ─────────────────────────────────────────────────────────────────
 
@@ -345,15 +345,6 @@ const IdentityPanel: React.FC<{ userId: string }> = ({ userId }) => {
     return unsub;
   }, [userId]);
 
-  // Seed demo data on first load if Firestore is empty
-  useEffect(() => {
-    if (seeded && identities.length === 0) {
-      DEMO_IDENTITIES.forEach(d => {
-        saveIdentityRisk({ ...d, userId, timestamp: new Date() });
-      });
-    }
-  }, [seeded, identities.length, userId]);
-
   const remediate = async (id: string) => {
     if (!id) return;
     await remediateIdentity(id);
@@ -386,7 +377,7 @@ const IdentityPanel: React.FC<{ userId: string }> = ({ userId }) => {
 
       {/* Identity List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {(identities.length > 0 ? identities : DEMO_IDENTITIES.map((d, i) => ({ ...d, id: `demo-${i}`, userId, timestamp: new Date() }))).map((identity, i) => (
+        {identities.map((identity, i) => (
           <GlassCard key={identity.id ?? i} style={{ padding: '12px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: `${RISK_COLOR[identity.riskLevel] ?? NEON.blue}18`, border: `1px solid ${RISK_COLOR[identity.riskLevel] ?? NEON.blue}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1rem' }}>
