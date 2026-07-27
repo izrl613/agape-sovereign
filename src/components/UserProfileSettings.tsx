@@ -33,7 +33,7 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      if (user.uid === 'emergency-bypass-admin-999') {
+      if (false) {
         const localKey = `reports_history_${user.uid}`;
         const existing = localStorage.getItem(localKey);
         const list = existing ? JSON.parse(existing) : [];

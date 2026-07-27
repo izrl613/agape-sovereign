@@ -412,7 +412,11 @@ async function startServer() {
   console.log(`BOOT: Configured port is ${PORT}`);
   app.set("trust proxy", 1);
   app.use(express.json({ limit: process?.env?.API_PAYLOAD_MAX_SIZE || "7mb" }));
-  app.use(cookieParser("sovereign-secret-key"));
+  const cookieSecret = process.env.PASSKEY_COOKIE_SECRET;
+  if (!cookieSecret) {
+    throw new Error("PASSKEY_COOKIE_SECRET must be configured");
+  }
+  app.use(cookieParser(cookieSecret));
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
   });

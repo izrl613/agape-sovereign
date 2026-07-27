@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import cookieParser from "cookie-parser";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from "./src/config/aiModel.js";
@@ -15,6 +16,7 @@ if (!getApps().length) {
 }
 console.log("BOOT: Obtaining Firestore reference...");
 const db = getFirestore();
+const adminAuth = getAuth();
 console.log("BOOT: Firestore reference obtained.");
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,16 +31,43 @@ async function startServer() {
   console.log(`BOOT: Configured port is ${PORT}`);
 
   app.set('trust proxy', 1);
-  app.use(express.json({limit: process?.env?.API_PAYLOAD_MAX_SIZE || "7mb"}));
-  app.use(cookieParser("sovereign-secret-key")); 
+  app.use(express.json({limit: process?.env?.API_PAYLOAD_MAX_SIZE || "256kb"}));
+  const cookieSecret = process.env.PASSKEY_COOKIE_SECRET;
+  if (!cookieSecret) {
+    throw new Error("PASSKEY_COOKIE_SECRET must be configured");
+  }
+  app.use(cookieParser(cookieSecret));
+
+  const requireFirebaseUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authorization = req.get("authorization");
+    if (!authorization?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    try {
+      await adminAuth.verifyIdToken(authorization.slice("Bearer ".length));
+      next();
+    } catch {
+      res.status(401).json({ error: "Invalid authentication token" });
+    }
+  };
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  app.use(["/api/architect", "/api/erasure/initiate"], requireFirebaseUser);
+
   app.post("/api/architect", async (req, res) => {
     try {
       const { message, history = [] } = req.body;
+      if (!message || typeof message !== "string" || message.length > 16_000 ||
+          !Array.isArray(history) || history.length > 50 ||
+          history.some((entry) => !entry || typeof entry !== "object" ||
+            typeof entry.content !== "string" && typeof entry.parts?.[0]?.text !== "string")) {
+        res.status(400).json({ error: "Invalid message or conversation history" });
+        return;
+      }
       const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,6 +95,12 @@ async function startServer() {
   app.post("/api/erasure/initiate", async (req, res) => {
     try {
       const { brokerName, userEmail, userName, userState } = req.body;
+      if ([brokerName, userEmail, userName, userState].some(
+        (value) => typeof value !== "string" || value.length === 0 || value.length > 500
+      )) {
+        res.status(400).json({ error: "Invalid erasure request fields" });
+        return;
+      }
       const prompt = `You are an automated privacy agent representing ${userName}. Generate a legally binding data deletion request under CCPA, GDPR, and FCRA regulations addressed to the data broker "${brokerName}".
       Return ONLY a JSON object with this exact format, nothing else:
       {

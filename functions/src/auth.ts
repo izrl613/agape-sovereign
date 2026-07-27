@@ -29,13 +29,42 @@ const RP_NAME = "Agape Sovereign";
 // the public origin that it actually loaded.
 const RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
 const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
-const COOKIE_SECRET =
-  process.env.PASSKEY_COOKIE_SECRET || "sovereign-secret-key";
+const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET;
+if (!COOKIE_SECRET) {
+  throw new Error("PASSKEY_COOKIE_SECRET must be configured");
+}
 
 const authApp = express();
-authApp.use(cors({origin: true, credentials: true}));
+const allowedOrigins = new Set(
+  (process.env.AUTH_ALLOWED_ORIGINS ||
+    "https://sovereign.nyc,https://www.sovereign.nyc,http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+authApp.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error("Origin is not allowed"));
+  },
+  credentials: true,
+}));
 authApp.use(express.json());
 authApp.use(cookieParser(COOKIE_SECRET));
+
+/**
+ * Validates an email address before it is used in auth lookups.
+ * @param {unknown} value Candidate email value.
+ * @return {boolean} Whether the value is a bounded email string.
+ */
+function isValidEmail(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 320 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 // Firebase App Check verification
 authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
@@ -132,7 +161,7 @@ async function requireRegisteredUser(
 router.post("/register-options", async (req: Request, res: Response) => {
   try {
     const {email} = req.body;
-    if (!email) {
+    if (!isValidEmail(email)) {
       res.status(400).json({error: "Missing user email"}); return;
     }
 
@@ -246,7 +275,7 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
 router.post("/login-options", async (req: Request, res: Response) => {
   try {
     const {email} = req.body;
-    if (!email) {
+    if (!isValidEmail(email)) {
       res.status(400).json({error: "Missing email"}); return;
     }
 

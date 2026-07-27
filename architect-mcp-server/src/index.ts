@@ -36,6 +36,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DEFAULT_MODEL, OLLAMA_BASE_URL } from "./config.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { z } from "zod";
+import crypto from "node:crypto";
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.ARCHITECT_MCP_PORT ?? "3001", 10);
@@ -43,6 +44,30 @@ const OLLAMA_ENDPOINT = process.env.OLLAMA_BASE_URL || OLLAMA_BASE_URL;
 const LMSTUDIO_ENDPOINT = process.env.LMSTUDIO_URL ?? "http://localhost:1234";
 const LMSTUDIO_MODEL = process.env.LMSTUDIO_MODEL ?? "qwen3.5-9b-sushi-coder-rl-mlx";
 const OLLAMA_MODEL   = process.env.ARCHITECT_MODEL || DEFAULT_MODEL;
+const MCP_API_KEY = process.env.MCP_API_KEY;
+const isProduction = process.env.NODE_ENV === "production";
+
+function requireApiKey(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+): void {
+  if (!isProduction && !MCP_API_KEY) {
+    next();
+    return;
+  }
+  if (!MCP_API_KEY) {
+    res.status(503).json({ error: "MCP_API_KEY is not configured" });
+    return;
+  }
+  const provided = req.get("authorization")?.replace(/^Bearer\s+/, "");
+  if (!provided || provided.length !== MCP_API_KEY.length ||
+      !crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(MCP_API_KEY))) {
+    res.status(401).json({ error: "Authentication required" });
+    return;
+  }
+  next();
+}
 
 // ── ARCHITECTURE BOUNDARY GUARD ───────────────────────────────────────────────
 // Vertex AI is ONLY permitted for document processing and PDF rendering.
@@ -428,7 +453,7 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "256kb" }));
 
 // Health endpoint (for PWA to check before connecting)
 app.get("/health", async (_req, res) => {
@@ -448,7 +473,7 @@ app.get("/health", async (_req, res) => {
 // MCP SSE + message endpoints — one session per connection
 const transports = new Map<string, SSEServerTransport>();
 
-app.get("/sse", async (req, res) => {
+app.get("/sse", requireApiKey, async (req, res) => {
   const transport = new SSEServerTransport(`/message`, res);
   const transportSessionId = (transport as unknown as { _sessionId: string })._sessionId;
   transports.set(transportSessionId, transport);
@@ -461,7 +486,7 @@ app.get("/sse", async (req, res) => {
   await mcpServer.connect(transport);
 });
 
-app.post("/message", async (req, res) => {
+app.post("/message", requireApiKey, async (req, res) => {
   const sessionId = req.query.sessionId as string;
   const transport = transports.get(sessionId);
   if (!transport) {
@@ -485,7 +510,7 @@ app.post("/message", async (req, res) => {
  * Body: { question: string, context?: string }
  * Response: { answer: string }
  */
-app.post("/android/ask", async (req, res) => {
+app.post("/android/ask", requireApiKey, async (req, res) => {
   const { question, context } = req.body as {
     question?: string;
     context?: string;
@@ -493,6 +518,10 @@ app.post("/android/ask", async (req, res) => {
 
   if (!question) {
     res.status(400).json({ error: "question is required" });
+    return;
+  }
+  if (question.length > 16_000 || (context && context.length > 16_000)) {
+    res.status(413).json({ error: "question or context is too large" });
     return;
   }
 
@@ -516,7 +545,7 @@ app.post("/android/ask", async (req, res) => {
  * Body: { vector_id: string, vector_name: string, raw_data: string, sovereign_score?: number }
  * Response: { analysis: string }
  */
-app.post("/android/analyze_vector", async (req, res) => {
+app.post("/android/analyze_vector", requireApiKey, async (req, res) => {
   const { vector_id, vector_name, raw_data, sovereign_score } = req.body as {
     vector_id?: string;
     vector_name?: string;
@@ -526,6 +555,12 @@ app.post("/android/analyze_vector", async (req, res) => {
 
   if (!vector_id || !vector_name || !raw_data) {
     res.status(400).json({ error: "vector_id, vector_name, and raw_data are required" });
+    return;
+  }
+  if (vector_id.length > 128 || vector_name.length > 256 || raw_data.length > 32_000 ||
+      (sovereign_score !== undefined && (!Number.isFinite(sovereign_score) ||
+        sovereign_score < 0 || sovereign_score > 100))) {
+    res.status(413).json({ error: "vector analysis input is invalid or too large" });
     return;
   }
 
@@ -550,7 +585,7 @@ app.post("/android/analyze_vector", async (req, res) => {
  * Body: { finding: string, severity: "CRITICAL"|"HIGH"|"MEDIUM"|"LOW", affected_vectors: string[] }
  * Response: { recommendation: string }
  */
-app.post("/android/audit_recommendation", async (req, res) => {
+app.post("/android/audit_recommendation", requireApiKey, async (req, res) => {
   const { finding, severity, affected_vectors } = req.body as {
     finding?: string;
     severity?: string;
@@ -559,6 +594,11 @@ app.post("/android/audit_recommendation", async (req, res) => {
 
   if (!finding || !severity || !affected_vectors) {
     res.status(400).json({ error: "finding, severity, and affected_vectors are required" });
+    return;
+  }
+  if (finding.length > 16_000 || !["CRITICAL", "HIGH", "MEDIUM", "LOW"].includes(severity) ||
+      affected_vectors.length > 32 || affected_vectors.some((vector) => typeof vector !== "string" || vector.length > 128)) {
+    res.status(400).json({ error: "audit recommendation input is invalid or too large" });
     return;
   }
 

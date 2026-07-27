@@ -45,9 +45,9 @@ export const AdminPortal = () => {
   const [verificationError, setVerificationError] = useState('');
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
 
-  const authorizedEmails = ['idin@agape.nyc', 'agape@sovereign.nyc', 'emergency-bypass-admin-999'];
-  const userEmail = user?.email || (user?.uid === 'emergency-bypass-admin-999' ? 'emergency-bypass-admin-999' : '');
-  const isAuthorizedAdmin = isAdmin && (authorizedEmails.includes(userEmail) || user?.uid === 'emergency-bypass-admin-999');
+  const authorizedEmails = ['idin@agape.nyc', 'agape@sovereign.nyc'];
+  const userEmail = user?.email || '';
+  const isAuthorizedAdmin = isAdmin && authorizedEmails.includes(userEmail);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -86,29 +86,7 @@ export const AdminPortal = () => {
     }
 
     try {
-      if (user?.uid === 'emergency-bypass-admin-999') {
-        const bypassLogs = [
-          `[SYS] WebAuthn Resident Key constraint: REQUIRED`,
-          `[SYS] User Verification (UV) constraint: REQUIRED`,
-          `[WAR] Enclave running in restricted local mode`,
-          `[SYS] Requesting device biometrics...`,
-          `[SYS] Public Key credential mapping generated.`,
-          `[SYS] Signature integrity validated against active passkey.`,
-          `[SYS] ROOT SESSION UNLOCKED.`
-        ];
-        
-        for (let i = 0; i < bypassLogs.length; i++) {
-          await new Promise(r => setTimeout(r, 350));
-          setTerminalLogs(prev => [...prev, bypassLogs[i]]);
-        }
-        
-        await new Promise(r => setTimeout(r, 300));
-        setIsPasskeyVerified(true);
-        toast.success("Enclave unlocked via local bypass", {
-          description: "Administrative access granted."
-        });
-      } else {
-        try {
+      try {
           setTerminalLogs(prev => [...prev, `[SYS] Requesting credentials for ${userEmail}...`]);
           
           const optionsRes = await fetch('/api/auth/login-options', {
@@ -143,12 +121,11 @@ export const AdminPortal = () => {
           } else {
             throw new Error("Challenge signature verification failed.");
           }
-        } catch (err: any) {
+      } catch (err: any) {
         console.warn("WebAuthn endpoints failed:", err);
 
         setVerificationError(err?.message || 'Passkey verification failed.');
         setTerminalLogs(prev => [...prev, `[ERR] ${err?.message || 'Passkey verification failed.'}`]);
-      }
       }
     } catch (e: any) {
       console.error(e);
