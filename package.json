@@ -26,7 +26,7 @@
     "express": "^4.22.2",
     "express-rate-limit": "^7.5.0",
     "firebase": "^11.4.0",
-    "firebase-admin": "^13.1.0",
+    "firebase-admin": "^14.2.0",
     "framer-motion": "^12.4.7",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^5.0.2",
