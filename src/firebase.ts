@@ -9,9 +9,12 @@ import {
   getRedirectResult,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
+  inMemoryPersistence,
   onAuthStateChanged,
   User
 } from 'firebase/auth';
+import { isPrivateBrowsing } from './utils/incognitoDetector';
 import { getFirestore, getDocFromServer, doc } from 'firebase/firestore';
 import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics';
 import { getStorage } from 'firebase/storage';
@@ -83,28 +86,76 @@ appleProvider.setCustomParameters({
   usePopup: 'true'
 });
 
+/**
+ * loginWithGoogle — Incognito-bypass auth
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Strategy:
+ *   1. Detect private browsing mode and set appropriate persistence.
+ *   2. Always attempt signInWithPopup first — it doesn't require third-party
+ *      cookies and works reliably in Chrome/Edge/Safari/Firefox incognito.
+ *   3. If the popup is explicitly blocked by the browser (auth/popup-blocked),
+ *      fall through to signInWithRedirect as a last resort.
+ *   4. In private mode, use browserSessionPersistence so the session lives
+ *      for the tab session only (no localStorage writes that may be blocked).
+ */
 export const loginWithGoogle = async () => {
   try {
-    // A top-level redirect works in browsers that block Firebase's
-    // cross-origin popup helper. Firebase restores the signed-in user after
-    // returning to this app, which AuthContext observes normally.
-    await signInWithRedirect(auth, googleProvider);
-    return null;
+    // ── Step 1: Configure persistence for the environment ──────────────────
+    const isPrivate = await isPrivateBrowsing();
+    if (isPrivate) {
+      // Session-only persistence: survives page refresh but not tab close.
+      // Avoids localStorage writes that Safari/Firefox block in private mode.
+      try {
+        await setPersistence(auth, browserSessionPersistence);
+        console.info('[AUTH] Private mode detected — using sessionStorage persistence.');
+      } catch {
+        // Absolute fallback: in-memory (won't survive reload but won't throw)
+        await setPersistence(auth, inMemoryPersistence);
+        console.warn('[AUTH] sessionStorage blocked — falling back to inMemoryPersistence.');
+      }
+    } else {
+      // Normal mode: persist across browser restarts
+      await setPersistence(auth, browserLocalPersistence);
+    }
+
+    // ── Step 2: Popup-first (works in incognito, no third-party cookie req) ─
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+
   } catch (error: unknown) {
-    console.error("Error signing in with Google:", error);
-    
-    if (error instanceof Error && 'code' in error) {
-      const firebaseError = error as { code: string };
-      if (firebaseError.code === 'auth/unauthorized-domain') {
-        console.error("ACTION REQUIRED: This domain is not authorized in Firebase Console.");
-        console.error("Please add these domains to Authentication > Settings > Authorized domains:");
-        console.error("- ais-dev-ilvqfi4xw3xzhljrld2glb-330671455515.us-central1.run.app");
-        console.error("- ais-pre-ilvqfi4xw3xzhljrld2glb-330671455515.us-central1.run.app");
-      } else if (firebaseError.code === 'auth/internal-error') {
-        console.error("This may be caused by third-party cookies being blocked in the iframe. Try opening the app in a new tab.");
+    const code = (error instanceof Error && 'code' in error)
+      ? (error as { code: string }).code
+      : '';
+
+    // ── Step 3: Popup was blocked by the browser — fall back to redirect ──
+    if (code === 'auth/popup-blocked') {
+      console.warn('[AUTH] Popup blocked — falling back to signInWithRedirect.');
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return null;
+      } catch (redirectError) {
+        console.error('[AUTH] Redirect fallback also failed:', redirectError);
+        throw redirectError;
       }
     }
-    
+
+    // ── Step 4: User cancelled (popup closed) — let callers handle it ─────
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      const cancelled = new Error('Sign-in popup was closed. Please try again.');
+      (cancelled as any).code = code;
+      throw cancelled;
+    }
+
+    // ── Step 5: Domain not authorised ──────────────────────────────────────
+    if (code === 'auth/unauthorized-domain') {
+      console.error('[AUTH] Domain not authorized in Firebase Console. Add to Authentication > Authorized domains.');
+    }
+
+    if (code === 'auth/internal-error') {
+      console.error('[AUTH] Internal error — may be caused by third-party cookie restrictions in an iframe.');
+    }
+
+    console.error('[AUTH] Google sign-in error:', error);
     throw error;
   }
 };
