@@ -12,6 +12,9 @@ firebase-debug.log
 firebase-debug.*.log
 .firebase/
 .env
+__pycache__/
+*.pyc
+mcp_server/__pycache__/
 
 # --- Repo hygiene fix (2026-07-10) ---
 # GCP CLI SDK must never be vendored into the repo

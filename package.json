@@ -31,15 +31,14 @@
     "firebase-admin": "^13.1.0",
     "firebase-tools": "^15.24.0",
     "framer-motion": "^12.4.7",
-    "gcloud": "^0.37.2",
+    "gh": "^2.8.9",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
-    "npm": "^12.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
-    "react-router-dom": "^7.1.5",
+    "react-router-dom": "^7.18.1",
     "react-syntax-highlighter": "^15.6.1",
     "recharts": "^2.15.1",
     "remark-gfm": "^4.0.0",
@@ -59,5 +58,15 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "allowScripts": {
+    "@firebase/util@1.12.1": true,
+    "@google/genai@2.13.0": true,
+    "core-js@3.49.0": true,
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.3": true,
+    "grpc@0.14.1": true,
+    "protobufjs@7.6.5": true,
+    "re2@1.26.1": true
   }
 }

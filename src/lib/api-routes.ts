@@ -3,11 +3,15 @@
 // Agape Sovereign Enclave 2026
 // ============================================================
 
-// pages/api/auth/login.ts
 import { NextRequest, NextResponse } from "next/server";
 import { signInWithPopup, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { functions } from "@/lib/firebase";
+import { httpsCallable } from "firebase/functions";
 
+// pages/api/auth/login.ts
 export async function POST(req: NextRequest) {
   try {
     const { provider } = await req.json();
@@ -37,18 +41,22 @@ export async function POST(req: NextRequest) {
 }
 
 // pages/api/user/profile.ts
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
+    // Validate JWT token here in production
+    const userId = token; // TODO: Replace with actual JWT validation
+    
+    if (!userId || userId.length > 128) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
 
@@ -65,11 +73,18 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
+    // Validate JWT token here in production
+    const userId = token; // TODO: Replace with actual JWT validation
+    
+    if (!userId || userId.length > 128) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
     const updates = await req.json();
 
     const userRef = doc(db, "users", userId);
@@ -82,14 +97,10 @@ export async function PUT(req: NextRequest) {
 }
 
 // pages/api/diff/scan.ts
-import { NextRequest, NextResponse } from "next/server";
-import { functions } from "@/lib/firebase";
-import { httpsCallable } from "firebase/functions";
-
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -106,16 +117,27 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
+    // Validate JWT token here in production
+    const userId = token; // TODO: Replace with actual JWT validation
+    
+    if (!userId || userId.length > 128) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
+
     const { searchParams } = new URL(req.url);
     const scanId = searchParams.get("scanId");
 
+    if (!scanId || scanId.length > 128) {
+      return NextResponse.json({ error: "Invalid scan ID" }, { status: 400 });
+    }
+
     // Query Firestore for scan
-    const scanRef = doc(db, "diff_scans", scanId || "");
+    const scanRef = doc(db, "diff_scans", scanId);
     const scanSnap = await getDoc(scanRef);
 
     if (!scanSnap.exists() || scanSnap.data().userId !== userId) {
@@ -129,18 +151,18 @@ export async function GET(req: NextRequest) {
 }
 
 // pages/api/report/generate.ts
-import { NextRequest, NextResponse } from "next/server";
-import { functions } from "@/lib/firebase";
-import { httpsCallable } from "firebase/functions";
-
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { scanId } = await req.json();
+
+    if (!scanId || scanId.length > 128) {
+      return NextResponse.json({ error: "Invalid scan ID" }, { status: 400 });
+    }
 
     // Call Cloud Function
     const generateDIFFReport = httpsCallable(functions, "generateDIFFReport");
@@ -153,14 +175,22 @@ export async function POST(req: NextRequest) {
 }
 
 // pages/api/report/list.ts
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = authHeader.split(" ")[1];
+    const token = authHeader.split(" ")[1];
+    // Validate JWT token here in production
+    const userId = token; // TODO: Replace with actual JWT validation
+    
+    if (!userId || userId.length > 128) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
+    }
 
     // Query Firestore for user's reports
     const reportsQuery = query(
@@ -183,14 +213,12 @@ export async function GET(req: NextRequest) {
 }
 
 // pages/api/ai/chat.ts
-import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from "../../src/config/aiModel.js";
-
 
 export async function POST(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

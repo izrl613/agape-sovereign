@@ -29,8 +29,8 @@ const RP_NAME = "Agape Sovereign";
 // the public origin that it actually loaded.
 const RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
 const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
-const COOKIE_SECRET =
-  process.env.PASSKEY_COOKIE_SECRET || "sovereign-secret-key";
+const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
+  process.env.COOKIE_SECRET || "sovereign-secret-key";
 
 const authApp = express();
 authApp.use(cors({origin: true, credentials: true}));
