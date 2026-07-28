@@ -3,12 +3,16 @@
   "terminal.integrated.profiles.osx": {
     "bash": {
       "path": "/bin/bash",
-      "args": ["-l"],
+      "args": [
+        "-l"
+      ],
       "icon": "terminal-bash"
     },
     "zsh": {
       "path": "/bin/zsh",
-      "args": ["-l"]
+      "args": [
+        "-l"
+      ]
     }
   },
   "terminal.integrated.shellIntegration.enabled": true,
@@ -26,16 +30,14 @@
   "terminal.integrated.env.osx": {
     "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
   },
-"inlineChat.notebookAgent": true,
-"accessibility.signals.chatResponseReceived": {
+  "inlineChat.notebookAgent": true,
+  "accessibility.signals.chatResponseReceived": {
     "sound": "on"
-},
-"terminal.integrated.tabs.defaultColor": "terminal.ansiMagenta",
-"terminal.integrated.tabs.defaultIcon": "github",
-"chat.promptFilesRecommendations": {
-  
-},
-"ollama-view.model": "qwen3.5-9b-sushi-coder-rl-mlx",
+  },
+  "terminal.integrated.tabs.defaultColor": "terminal.ansiMagenta",
+  "terminal.integrated.tabs.defaultIcon": "github",
+  "chat.promptFilesRecommendations": {},
+  "ollama-view.model": "qwen3.5-9b-sushi-coder-rl-mlx",
   "ollama-view.baseUrl": "http://localhost:11434",
   "cline.providers": {
     "lmstudio": {
@@ -72,5 +74,6 @@
   "banditStealth.ollamaModel": "Kunj0195/qwen3.5-coder:latest",
   "banditStealth.debug.emitPlanJson": true,
   "banditStealth.ollamaBaseUrl": "http://localhost:11434",
-  "banditStealth.model": "bandit-logic"
+  "banditStealth.model": "bandit-logic",
+  "git.autofetch": true
 }
