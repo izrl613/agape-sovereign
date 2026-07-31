@@ -340,6 +340,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAnonymous: user?.isAnonymous || false,
       sovereignScore,
       sovereignHash,
+      authType,
       setupComplete,
       loading,
       login: handleLogin,
