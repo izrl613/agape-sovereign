@@ -4,10 +4,12 @@ import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, GlassCard, NeonButton, StatusBadge, Skeleton } from './UI';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Filter, ArrowUpDown, TrendingUp, Copy, Check, Download as DlIcon } from 'lucide-react';
+import { Download, Filter, ArrowUpDown, TrendingUp, Copy, Check, Download as DlIcon, Shield } from 'lucide-react';
 import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
 import { passkeyLockService } from '../services/passkeyLockService';
 import { IdentityTokenCompact } from './IdentityTokenBadge';
+import { SovereignPassportModal } from './SovereignPassportModal';
+import type { AuditReport } from '../services/architectAIAgentService';
 import {
   LineChart,
   Line,
@@ -42,6 +44,65 @@ const MODULE_CONFIG = [
   { id: "erasure",    icon: "⌫", label: "Sovereign Erasure Engine",     vector: "V-16", to: "/dashboard/erasure"    },
   { id: "shield",     icon: "⬡", label: "Shield Platform Suite",        vector: "V-17", to: "/dashboard/shield"     },
 ];
+
+/**
+ * Build a minimal AuditReport from Dashboard findings + sovereign score.
+ * This allows the SovereignPassportModal to be triggered from the Dashboard
+ * even when the full POA flow (IVM → Architect AI) hasn't been run.
+ */
+function buildAuditReportFromFindings(
+  findings: { module: string; status: "NUKED" | "KNOXED" | "MONITORED"; finding: string; details: string }[],
+  sovereignScore: number,
+  sovereignHash: string,
+): AuditReport {
+  const nuked = findings.filter(f => f.status === 'NUKED');
+  const knoxed = findings.filter(f => f.status === 'KNOXED');
+  const monitored = findings.filter(f => f.status === 'MONITORED');
+
+  const totalRiskScore = nuked.length * 20 + monitored.length * 5;
+  const riskLevel: AuditReport['reportableData']['financialRisk']['riskLevel'] =
+    totalRiskScore > 80 ? 'CRITICAL' : totalRiskScore > 50 ? 'HIGH' : totalRiskScore > 20 ? 'MEDIUM' : 'LOW';
+
+  const highValueAlerts = nuked.map(f => `[${f.module.toUpperCase()}] ${f.finding}`);
+
+  const activeModules = new Set(findings.map(f => f.module)).size;
+  const stabilityScore = activeModules > 0 ? Math.round((knoxed.length / findings.length) * 100) : 100;
+
+  const moduleBreakdown: Record<string, { score: number; riskLevel: string; summary: string }> = {};
+  for (const module of new Set(findings.map(f => f.module))) {
+    const moduleFindings = findings.filter(f => f.module === module);
+    const moduleKnoxed = moduleFindings.filter(f => f.status === 'KNOXED').length;
+    const moduleScore = Math.round((moduleKnoxed / moduleFindings.length) * 100);
+    moduleBreakdown[module] = {
+      score: moduleScore,
+      riskLevel: moduleScore > 80 ? 'LOW' : moduleScore > 50 ? 'MEDIUM' : 'HIGH',
+      summary: `${moduleKnoxed}/${moduleFindings.length} vectors secured`,
+    };
+  }
+
+  return {
+    status: 'SUCCESS',
+    sha256Id: sovereignHash,
+    auditTimestamp: new Date().toISOString(),
+    systemPolicy: 'GDPR-Compliant V1.3',
+    llmModel: 'dashboard-rule-based',
+    llmConfidence: 'MEDIUM',
+    reportableData: {
+      financialRisk: {
+        totalRiskScore,
+        highValueAlerts,
+        riskLevel,
+      },
+      stabilityIndex: {
+        activeModules,
+        criticalFindings: nuked.length,
+        stabilityScore,
+      },
+      sovereignAuditScore: sovereignScore,
+      moduleBreakdown,
+    },
+  };
+}
 
 const SovereignScore = ({ score }: { score: number }) => {
   const r = 52, cx = 64, cy = 64;
@@ -113,7 +174,7 @@ const ModuleScoreRing = ({ score, size = 42 }: { score: number, size?: number })
 };
 
 export const Dashboard = () => {
-  const { user, sovereignScore } = useAuth();
+  const { user, sovereignScore, sovereignHash } = useAuth();
   const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
 
@@ -121,6 +182,8 @@ export const Dashboard = () => {
   const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('DESC');
   const [scoreHistory, setScoreHistory] = useState<{ score: number, timestamp: string }[]>([]);
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
+  const [showPassportModal, setShowPassportModal] = useState(false);
+  const [activeAuditReport, setActiveAuditReport] = useState<AuditReport | null>(null);
 
   useEffect(() => {
     return passkeyLockService.subscribe(state => {
@@ -194,6 +257,15 @@ export const Dashboard = () => {
       return { ...config, nuked, knoxed, monitored, severity };
     });
   }, [findings]);
+
+  const handleExportPassport = () => {
+    if (!sovereignHash) {
+      return;
+    }
+    const report = buildAuditReportFromFindings(findings, sovereignScore, sovereignHash);
+    setActiveAuditReport(report);
+    setShowPassportModal(true);
+  };
 
   const exportToCSV = () => {
     if (findings.length === 0) return;
@@ -292,6 +364,15 @@ export const Dashboard = () => {
               style={{ padding: "12px 24px", display: 'flex', alignItems: 'center', gap: 8 }}
             >
               <Download size={16} /> EXPORT CSV
+            </NeonButton>
+            
+            <NeonButton 
+              onClick={handleExportPassport}
+              disabled={isScanning || !sovereignHash}
+              color={NEON.magenta}
+              style={{ padding: "12px 24px", display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              <Shield size={16} /> EXPORT PASSPORT
             </NeonButton>
             
             <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.85rem" }}>
@@ -639,7 +720,14 @@ export const Dashboard = () => {
           </GlassCard>
         </div>
       </div>
+      </div>
+
+      {showPassportModal && activeAuditReport && (
+        <SovereignPassportModal
+          auditReport={activeAuditReport}
+          onClose={() => setShowPassportModal(false)}
+        />
+      )}
     </div>
-  </div>
   );
 };

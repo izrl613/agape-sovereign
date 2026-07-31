@@ -20,6 +20,7 @@ interface AuthContextType {
   isAnonymous: boolean;
   sovereignScore: number;
   sovereignHash: string | null;
+  authType: 'google' | 'passkey' | 'anonymous' | null;
   setupComplete: boolean;
   loading: boolean;
   login: () => Promise<void>;
@@ -39,6 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sovereignScore, setSovereignScore] = useState(100);
   // OPERATION FRAMEWORK: SHA-256 identity hash (the sole session identifier)
   const [sovereignHash, setSovereignHash] = useState<string | null>(null);
+  const [authType, setAuthType] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (currentUser) {
           // Initialize Remote Config for the user
           initializeRemoteConfig();
-          
+           
           const userRef = doc(db, 'users', currentUser.uid);
           
           try {
@@ -60,16 +62,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const isSuperAdmin = currentUser.email === 'idin@agape.nyc' ||
                                  currentUser.email === 'agape@sovereign.nyc';
             
+            // Determine authType early — passkey detection via sessionStorage flag
+            const isPasskeyLogin = sessionStorage.getItem('sovereign_passkey_auth') === 'true';
+            const sessionNonce = sessionStorage.getItem('sovereign_passkey_nonce') || undefined;
+            const credentialId = sessionStorage.getItem('sovereign_passkey_credential') || undefined;
+
+            let resolvedAuthType: 'google' | 'passkey' | 'anonymous' = 'google';
+            if (currentUser.isAnonymous) {
+              resolvedAuthType = 'anonymous';
+            } else if (isPasskeyLogin && credentialId && sessionNonce) {
+              resolvedAuthType = 'passkey';
+            }
+            setAuthType(resolvedAuthType);
+
             // OPERATION FRAMEWORK: Produce SHA-256 identity hash immediately (Phase 1 Gatekeeper)
             // Raw uid + email never stored beyond this scope — hash is the sole session identifier.
             try {
-              const authType = currentUser.isAnonymous ? 'anonymous' : 'google';
               const hash = await gatekeeperStage({
-                authType,
+                authType: resolvedAuthType,
                 uid: currentUser.uid,
                 email: currentUser.email || currentUser.uid,
+                credentialId,
+                sessionNonce,
               });
               setSovereignHash(hash);
+
+              // Clean up passkey session artifacts after hash is computed
+              if (isPasskeyLogin) {
+                sessionStorage.removeItem('sovereign_passkey_auth');
+                sessionStorage.removeItem('sovereign_passkey_nonce');
+                sessionStorage.removeItem('sovereign_passkey_credential');
+              }
             } catch (hashErr) {
               console.warn('[AUTH] Gatekeeper hash failed — degraded mode:', hashErr);
             }
@@ -83,6 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: serverTimestamp(),
                 sovereignScore: 100,
                 setupComplete: false,
+                authType: resolvedAuthType,
                 notificationsEnabled: false
               };
               try {
@@ -111,6 +135,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSovereignScore(data.sovereignScore || 100);
                 setIsAdmin(data.role === 'admin' || isSuperAdmin);
                 setSetupCompleteState(data.setupComplete || false);
+                if (data.authType) setAuthType(data.authType);
               }
             }, (error) => {
               handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
@@ -122,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdmin(false);
           setSovereignScore(100);
           setSovereignHash(null);
+          setAuthType(null);
           setSetupCompleteState(false);
           setUserData(null);
           if (unsubscribeUserDoc) unsubscribeUserDoc();
@@ -212,9 +238,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // OPERATION FRAMEWORK: Pre-compute passkey session nonce for hash
       const sessionNonce = generateSessionNonce();
-      // Stored in closure — used after WebAuthn completes to produce SHA-256 hash
-      // The actual hash is produced in onAuthStateChanged once Firebase confirms login.
-      void sessionNonce; // lint: signal intent to use in future flow
+      // Store in sessionStorage so onAuthStateChanged can retrieve it after
+      // signInWithCustomToken fires the auth state change callback.
+      sessionStorage.setItem('sovereign_passkey_auth', 'true');
+      sessionStorage.setItem('sovereign_passkey_nonce', sessionNonce);
+      sessionStorage.setItem('sovereign_passkey_email', email);
 
       // 1. Get login options
       const optionsRes = await fetch('/api/auth/login-options', {
@@ -232,6 +260,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Start authentication (v13 API requires optionsJSON wrapper)
       const assertionResponse = await startAuthentication({ optionsJSON: options });
+
+      // Store credential ID for hash computation in onAuthStateChanged
+      const credentialId = assertionResponse.id || assertionResponse.rawId;
+      sessionStorage.setItem('sovereign_passkey_credential', credentialId);
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-login', {
@@ -251,6 +283,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error: any) {
       console.error('WebAuthn Login Error:', error);
+      // Clean up sessionStorage on failure so stale state doesn't persist
+      sessionStorage.removeItem('sovereign_passkey_auth');
+      sessionStorage.removeItem('sovereign_passkey_nonce');
+      sessionStorage.removeItem('sovereign_passkey_credential');
+      sessionStorage.removeItem('sovereign_passkey_email');
       if (error.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
       } else {
