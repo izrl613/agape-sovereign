@@ -27,6 +27,11 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // System capacity document — authenticated users may check/reserve slots
+    match /system/capacity {
+      allow read, write: if isSignedIn();
+    }
+
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
       allow get, write: if isOwner(userId);
