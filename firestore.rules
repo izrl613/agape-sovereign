@@ -24,7 +24,7 @@ service cloud.firestore {
     // Authenticated users can read capacity state and transactionally
     // reserve / release a slot via capacityService.ts.
     match /system/{document} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && isValidId(document);
     }
 
     // System capacity document — authenticated users may check/reserve slots
@@ -38,36 +38,36 @@ service cloud.firestore {
 
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
-      allow get, write: if isOwner(userId);
+      allow get, write: if isOwner(userId) && isValidId(userId);
 
       // Identity Sandbox Partition Modules Subcollection
       match /modules/{moduleId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(moduleId);
       }
 
       // Symmetrically ciphered password keychains
       match /passwords/{passwordId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(passwordId);
       }
 
       // E2EE encrypted chats/messages logs
       match /messages/{messageId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(messageId);
       }
 
       // Sovereign Secure Document Vault
       match /vault/{vaultId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(vaultId);
       }
 
       // Intercepted trackers metrics log
       match /trackers/{trackerId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(trackerId);
       }
 
       // Dynamic Security Audit Logs
       match /auditLogs/{logId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) && isValidId(logId);
       }
     }
   }
