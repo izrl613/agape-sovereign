@@ -1004,7 +1004,16 @@ const ArchitectAIView = ({ user, diffModules, isCloudMode }: { user: any, diffMo
   const renderMsg = (text: string) => {
     return text.split('\n').map((line: string, i: number) => {
       if (line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{ fontWeight: 700, color: NEON.blue, margin: "4px 0" }}>{line.replace(/\*\*/g, '')}</div>;
-      if (line.includes('**')) return <div key={i} style={{ margin: "2px 0" }} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, `<strong style="color:${NEON.blue}">$1</strong>`) }} />;
+      if (line.includes('**')) {
+        const parts = line.split('**');
+        return (
+          <div key={i} style={{ margin: "2px 0" }}>
+            {parts.map((part, index) => 
+              index % 2 === 1 ? <strong key={index} style={{ color: NEON.blue }}>{part}</strong> : <span key={index}>{part}</span>
+            )}
+          </div>
+        );
+      }
       if (line.startsWith('🔥') || line.startsWith('🛡️') || line.startsWith('⚠️')) return <div key={i} style={{ margin: "4px 0", color: NEON.text }}>{line}</div>;
       return <div key={i} style={{ margin: "1px 0" }}>{line}</div>;
     });
