@@ -29,7 +29,11 @@ service cloud.firestore {
 
     // System capacity document — authenticated users may check/reserve slots
     match /system/capacity {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() 
+                   && request.resource.data.keys().hasOnly(['slots'])
+                   && request.resource.data.slots is number
+                   && request.resource.data.slots >= 0;
     }
 
     // Sovereign user accounts & private sandboxes
