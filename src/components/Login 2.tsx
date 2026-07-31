@@ -157,6 +157,24 @@ export const Login = () => {
     }
   }, [step, sovereignHash]);
 
+  // Safety timeout: if the gatekeeper hash doesn't materialize within 10s,
+  // reset to landing with an error so the user isn't stuck forever.
+  useEffect(() => {
+    if (step !== 'hashing') return;
+
+    const timer = setTimeout(() => {
+      if (!sovereignHash) {
+        setError('Identity hash timed out. The backend may be unreachable. Please try again.');
+        setStep('landing');
+        setInitMsgIdx(0);
+        setIsLoadingGoogle(false);
+        setIsLoadingPasskey(false);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [step, sovereignHash]);
+
   const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
   const formatError = (err: unknown): string => {
