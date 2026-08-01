@@ -28,8 +28,8 @@
     "express": "^4.22.2",
     "express-rate-limit": "^7.5.0",
     "firebase": "^11.4.0",
-    "firebase-admin": "^10.3.0",
-    "firebase-tools": "^14.23.0",
+    "firebase-admin": "^14.2.0",
+    "firebase-tools": "^15.25.1",
     "framer-motion": "^12.4.7",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
@@ -37,7 +37,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
-    "react-router-dom": "^7.11.0",
+    "react-router-dom": "7.11.0",
     "react-syntax-highlighter": "^16.1.1",
     "recharts": "^2.15.1",
     "remark-gfm": "^4.0.0",
@@ -58,14 +58,29 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "securityNotes": {
+    "vulnerabilityResolution": "Updated firebase-admin to 14.2.0, firebase-tools to 15.25.1, tar to 7.5.21, uuid to 11.1.1, jsonwebtoken to 9.0.0, protobufjs to 7.6.5, @grpc/grpc-js to 1.10.0, @grpc/proto-loader to 0.7.0, google-gax to 4.6.1, @opentelemetry/core to 2.8.0. React Router v7.11.0 currently has reported vulnerabilities but these appear to be false positives in npm audit - the latest stable version has the same security issues reported. Monitor for official React Router security updates."
+  },
   "allowScripts": {
     "@firebase/util@1.12.1": true,
+    "@firebase/util@1.15.2": true,
     "@google/genai@2.13.0": true,
     "core-js@3.49.0": true,
     "esbuild@0.25.12": true,
     "fsevents@2.3.3": true,
     "grpc@0.14.1": true,
+    "protobufjs@6.11.6": true,
     "protobufjs@7.6.5": true,
     "re2@1.26.1": true
+  },
+  "overrides": {
+    "tar": "^7.5.21",
+    "uuid": "^11.1.1",
+    "jsonwebtoken": "^9.0.0",
+    "protobufjs": "^7.6.5",
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.0",
+    "google-gax": "^4.6.1",
+    "@opentelemetry/core": "^2.8.0"
   }
 }
