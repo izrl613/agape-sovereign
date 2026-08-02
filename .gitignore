@@ -35,3 +35,8 @@ package 2.json
 functions/lib/
 functions/node_modules/
 recaptcha-key.json
+
+# Simulation and test outputs
+workspace_outputs/
+tests/
+scripts/venv
