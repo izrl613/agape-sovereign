@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
-  OAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -79,13 +78,6 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-export const appleProvider = new OAuthProvider('apple.com');
-appleProvider.addScope('email');
-appleProvider.addScope('name');
-appleProvider.setCustomParameters({
-  usePopup: 'true'
-});
-
 /**
  * loginWithGoogle — Incognito-bypass auth
  * ─────────────────────────────────────────────────────────────────────────────
@@ -156,16 +148,6 @@ export const loginWithGoogle = async () => {
     }
 
     console.error('[AUTH] Google sign-in error:', error);
-    throw error;
-  }
-};
-
-export const loginWithApple = async () => {
-  try {
-    const result = await signInWithPopup(auth, appleProvider);
-    return result.user;
-  } catch (error: unknown) {
-    console.error("Error signing in with Apple:", error);
     throw error;
   }
 };

@@ -4,7 +4,7 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
-import { signInWithPopup, GoogleAuthProvider, OAuthProvider } from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
@@ -21,10 +21,6 @@ export async function POST(req: NextRequest) {
       authProvider = new GoogleAuthProvider();
       authProvider.addScope("email");
       authProvider.addScope("profile");
-    } else if (provider === "apple") {
-      authProvider = new OAuthProvider("apple.com");
-      authProvider.addScope("email");
-      authProvider.addScope("name");
     } else {
       return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
     }

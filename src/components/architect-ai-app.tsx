@@ -261,7 +261,7 @@ export function ArchitectAIApp({ user }: any) {
               AUTHENTICATION REQUIRED
             </NeonText>
             <p style={{ marginTop: 16, color: NEON.textMuted }}>
-              Please sign in with Google or Apple account to access Architect AI.
+              Please sign in with Google account to access Architect AI.
             </p>
           </GlassCard>
         )}
