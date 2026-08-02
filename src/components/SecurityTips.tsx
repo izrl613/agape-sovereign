@@ -35,7 +35,7 @@ const TIPS = [
     description: 'Data brokers aggregate your PII from public records and social media. Proactive removal is the only way to NUKED these profiles.',
     actionable: [
       'Submit opt-out requests to major brokers like Spokeo, Whitepages, and Intelius.',
-      'Use alias email addresses and dummy data for services that do not require verification.',
+      'Use alias email addresses for services that do not require verification.',
       'NUKED your digital presence from people-search sites using ECRA-compliant templates.'
     ],
     color: '#00D4FF'
