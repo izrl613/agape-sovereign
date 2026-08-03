@@ -8,7 +8,8 @@
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": "22"
@@ -21,21 +22,21 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^4.22.2",
-    "firebase-admin": "^13.10.0",
-    "firebase-functions": "^7.3.0",
-    "jspdf": "^2.5.2"
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^6.4.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/node": "^22.13.4",
     "@typescript-eslint/eslint-plugin": "^5.12.0",
     "@typescript-eslint/parser": "^5.12.0",
     "eslint": "^8.9.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.25.4",
     "firebase-functions-test": "^3.4.1",
-    "typescript": "^6.0.0"
+    "typescript": "^5.7.3"
   },
   "private": true
 }

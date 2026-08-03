@@ -81,7 +81,6 @@
     "protobufjs": "^7.6.5",
     "@grpc/grpc-js": "^1.10.0",
     "@grpc/proto-loader": "^0.7.0",
-    "google-gax": "^4.6.1",
     "@opentelemetry/core": "^2.8.0"
   }
 }
