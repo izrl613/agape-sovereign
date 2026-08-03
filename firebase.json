@@ -17,31 +17,16 @@
       }
     ]
   },
-  "auth": {
-    "providers": {
-      "emailPassword": true,
-      "anonymous": false,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "Agape Sovereign AI",
-        "supportEmail": "agape@sovereign.nyc",
-        "authorizedRedirectUris": [
-          "https://sovereign.nyc/__/auth/handler",
-          "http://localhost/__/auth/handler"
-        ]
-      }
-    }
-  },
   "firestore": {
     "database": "agape-sovereign",
-    "location": "nam7",
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
   "functions": [
     {
+      "source": "functions",
       "codebase": "default",
       "disallowLegacyRuntimeConfig": true,
-      "serviceAccount": "cloudbuild-sa@agape-sovereign.iam.gserviceaccount.com",
       "ignore": [
         "node_modules",
         ".git",
@@ -52,8 +37,7 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
-      ],
-      "source": "functions"
+      ]
     }
   ],
   "apphosting": {
