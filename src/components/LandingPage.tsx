@@ -174,19 +174,12 @@ const AnimatedStat = ({ value, label }: { value: string; label: string }) => {
 // ── Main component ─────────────────────────────────────────────
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { user } = useAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
-    setAuthError(null);
-    setGoogleLoading(true);
-    try {
-      await login();
-    } catch {
-      setGoogleLoading(false);
-      navigate('/login');
-    }
+  const handleGoogleSignIn = () => {
+    navigate('/login');
   };
 
   // Scroll-restoration for hash links
