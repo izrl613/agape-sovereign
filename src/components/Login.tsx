@@ -168,9 +168,24 @@ export const Login = () => {
 
   const formatError = (err: unknown): string => {
     const msg = err instanceof Error ? err.message : String(err);
+    const code = err && typeof err === 'object' && 'code' in err
+      ? String((err as { code?: string }).code || '')
+      : '';
     if (msg.startsWith('{')) return 'A server error occurred. Please try again.';
-    if (msg.startsWith('Firebase:')) return 'Authentication service error. Try refreshing the page.';
-    if (msg.includes('popup-closed')) return 'Sign-in popup was closed. Please try again.';
+    if (code === 'auth/popup-closed-by-user' || msg.includes('popup was closed')) {
+      return 'Sign-in popup was closed. Please try again.';
+    }
+    if (code === 'auth/unauthorized-domain' || msg.includes('not authorized')) {
+      return 'This site is not on the Firebase authorized domain list.';
+    }
+    if (code === 'auth/operation-not-allowed') {
+      return 'Google Sign-In is not enabled for this project.';
+    }
+    if (msg.startsWith('Firebase:')) {
+      return msg.replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\s*\.?$/, '').trim() ||
+        'Authentication service error. Try refreshing the page.';
+    }
+    if (msg.includes('No passkey') || msg.includes('No account found')) return msg;
     return msg;
   };
 
@@ -179,6 +194,7 @@ export const Login = () => {
     setScanning(true);
     try {
       await login();
+      // Redirect fallback navigates away; if we are still here, session is ready.
       setStep('creating');
     } catch (err: unknown) {
       setScanning(false);

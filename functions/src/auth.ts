@@ -14,6 +14,11 @@ import {
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
 } from "@simplewebauthn/server";
+import type {
+  AuthenticatorTransportFuture,
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+} from "@simplewebauthn/server";
 
 // Admin is initialized once in index.ts; guard against re-init
 if (!getApps().length) {
@@ -24,20 +29,62 @@ const db = getFirestore();
 const auth = getAuth();
 const errors = new ErrorReporting({reportMode: "always"});
 const RP_NAME = "Agape Sovereign";
-// Firebase Hosting and Cloudflare terminate TLS before invoking this function.
-// Do not derive WebAuthn values from proxy headers: the browser must validate
-// the public origin that it actually loaded.
-const RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
-const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
+
+/** Primary production RP (custom domain). */
+const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
+const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
+
+/**
+ * Origins allowed for WebAuthn ceremony verification.
+ * RP ID is derived per-origin so passkeys work on custom domain AND Firebase Hosting.
+ */
+const EXTRA_ORIGINS = (process.env.WEBAUTHN_EXTRA_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const BUILTIN_ORIGINS = [
+  DEFAULT_ORIGIN,
+  "https://www.sovereign.nyc",
+  "https://agape-sovereign.web.app",
+  "https://agape-sovereign.firebaseapp.com",
+  "http://localhost:5173",
+  "http://localhost:5000",
+  "http://localhost:5002",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5000",
+];
+
+const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
+
 const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
-  process.env.COOKIE_SECRET || "sovereign-secret-key";
+  process.env.COOKIE_SECRET ||
+  "sovereign-secret-key";
 
 const authApp = express();
-authApp.use(cors({origin: true, credentials: true}));
-authApp.use(express.json());
+
+const corsOrigins = ALLOWED_ORIGINS.filter((o) => o.startsWith("http"));
+authApp.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser / same-origin proxy calls with no Origin header
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    if (corsOrigins.includes(origin) || origin.endsWith(".web.app") ||
+      origin.endsWith(".firebaseapp.com") || origin.includes("localhost") ||
+      origin.includes("127.0.0.1")) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  credentials: true,
+}));
+authApp.use(express.json({limit: "256kb"}));
 authApp.use(cookieParser(COOKIE_SECRET));
 
-// Firebase App Check verification
+// Firebase App Check verification (opt-in via env)
 authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
   if (process.env.RECAPTCHA_ENABLED !== "true") return next();
   const appCheckToken = req.header("X-Firebase-AppCheck");
@@ -54,55 +101,151 @@ authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
 });
 
 /**
- * Resolves expectedOrigin and rpId dynamically for local and prod environments.
+ * Normalize email for stable Firestore lookups.
+ * @param {string} email Raw email.
+ * @return {string} Lowercased trimmed email.
+ */
+function normalizeEmail(email: string): string {
+  return String(email || "").trim().toLowerCase();
+}
+
+/**
+ * Map a browser origin to the WebAuthn RP ID that must match the page hostname.
+ * @param {string} origin Fully-qualified origin.
+ * @return {string} RP ID.
+ */
+function rpIdForOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname;
+    if (host === "localhost" || host === "127.0.0.1") return host;
+    if (host === "www.sovereign.nyc") return "sovereign.nyc";
+    return host;
+  } catch {
+    return DEFAULT_RP_ID;
+  }
+}
+
+/**
+ * Resolve expectedOrigin + rpId from the request Origin/Referer.
+ * Firebase Hosting and Cloudflare terminate TLS before the function runs.
  * @param {Request} req Express request.
- * @return {{expectedOrigin: string, rpId: string}} Resolved WebAuthn config.
+ * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
 function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
   rpId: string;
+  allowedOrigins: string[];
 } {
-  const originHeader = req.get("origin") || req.get("referer");
-  let origin = EXPECTED_ORIGIN;
-  let rpId = RP_ID;
+  const originHeader = req.get("origin") || "";
+  const referer = req.get("referer") || "";
+  let candidate = originHeader;
 
-  if (originHeader) {
+  if (!candidate && referer) {
     try {
-      const url = new URL(originHeader);
-      if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-        origin = url.origin;
-        rpId = url.hostname;
-      }
+      candidate = new URL(referer).origin;
     } catch {
-      // Keep default configuration
+      candidate = "";
     }
   }
 
-  return {expectedOrigin: origin, rpId};
+  if (candidate) {
+    try {
+      const url = new URL(candidate);
+      const origin = url.origin;
+      const host = url.hostname;
+      const allowed =
+        ALLOWED_ORIGINS.includes(origin) ||
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host.endsWith(".web.app") ||
+        host.endsWith(".firebaseapp.com") ||
+        host === "sovereign.nyc" ||
+        host === "www.sovereign.nyc";
+
+      if (allowed) {
+        return {
+          expectedOrigin: origin,
+          rpId: rpIdForOrigin(origin),
+          allowedOrigins: [origin],
+        };
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  return {
+    expectedOrigin: DEFAULT_ORIGIN,
+    rpId: DEFAULT_RP_ID,
+    allowedOrigins: [DEFAULT_ORIGIN, ...ALLOWED_ORIGINS],
+  };
 }
 
 /**
- * Sets the signed __session cookie with production-appropriate flags.
+ * Sets the signed __session cookie (challenge + user binding).
+ * Hosting rewrite is same-site to the page origin, so SameSite=Lax works in prod.
  * @param {Response} res Express response.
  * @param {object} sessionData Session data payload.
  */
 function setSessionCookie(res: Response, sessionData: object): void {
-  const isProd = process.env.NODE_ENV === "production";
+  // Cloud Functions often omit NODE_ENV=production; treat GCP as secure.
+  const isSecure = process.env.NODE_ENV === "production" ||
+    process.env.K_SERVICE !== undefined ||
+    process.env.FUNCTION_TARGET !== undefined;
+
   res.cookie("__session", JSON.stringify(sessionData), {
     httpOnly: true,
-    secure: isProd,
+    secure: isSecure,
     signed: true,
-    maxAge: 60_000,
-    sameSite: isProd ? "none" : "lax",
+    maxAge: 5 * 60_000,
+    sameSite: "lax",
+    path: "/",
   });
+}
+
+/**
+ * Read challenge session from signed cookie (with unsigned fallback).
+ * @param {Request} req Express request.
+ * @return {Record<string, unknown> | null} Parsed session or null.
+ */
+function readSession(req: Request): Record<string, unknown> | null {
+  const raw = req.signedCookies?.["__session"] ?? req.cookies?.["__session"];
+  if (!raw) return null;
+  if (typeof raw === "object" && raw !== null) {
+    return raw as Record<string, unknown>;
+  }
+  try {
+    return JSON.parse(String(raw)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Encode WebAuthn credential id for Firestore doc keys.
+ * simplewebauthn v13 exposes credential.id as a base64url string.
+ * @param {string | Uint8Array} id Credential id.
+ * @return {string} base64url id.
+ */
+function encodeCredentialId(id: string | Uint8Array): string {
+  if (typeof id === "string") return id;
+  return Buffer.from(id).toString("base64url");
 }
 
 // Router used at both / (direct URL) and /api/auth (Hosting rewrite)
 const router = express.Router(); // eslint-disable-line new-cap
 
 // Health check endpoint
-router.get("/", (req: Request, res: Response) => {
-  res.json({status: "ok"});
+router.get("/", (_req: Request, res: Response) => {
+  res.json({
+    status: "ok",
+    service: "authApi",
+    webauthn: {
+      defaultRpId: DEFAULT_RP_ID,
+      defaultOrigin: DEFAULT_ORIGIN,
+      allowedOriginCount: ALLOWED_ORIGINS.length,
+    },
+  });
 });
 
 /**
@@ -121,19 +264,22 @@ async function requireRegisteredUser(
 
   const token = authorization.slice("Bearer ".length);
   const decoded = await auth.verifyIdToken(token);
-  if (!decoded.email || decoded.email.toLowerCase() !== email.toLowerCase()) {
+  const tokenEmail = normalizeEmail(decoded.email || "");
+  const want = normalizeEmail(email);
+  if (!tokenEmail || tokenEmail !== want) {
     throw new Error("The passkey email must match the signed-in account.");
   }
 
-  return {uid: decoded.uid, email: decoded.email};
+  return {uid: decoded.uid, email: tokenEmail};
 }
 
-// POST /register-options (also at /api/auth/register-options via rewrite)
+// POST /register-options
 router.post("/register-options", async (req: Request, res: Response) => {
   try {
-    const {email} = req.body;
+    const email = normalizeEmail(req.body?.email || "");
     if (!email) {
-      res.status(400).json({error: "Missing user email"}); return;
+      res.status(400).json({error: "Missing user email"});
+      return;
     }
 
     const {uid: userId, email: userEmail} =
@@ -142,15 +288,21 @@ router.post("/register-options", async (req: Request, res: Response) => {
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
       await userRef.set({
-        email: userEmail, createdAt: FieldValue.serverTimestamp(),
+        email: userEmail,
+        createdAt: FieldValue.serverTimestamp(),
       });
+    } else if (normalizeEmail(userDoc.data()?.email || "") !== userEmail) {
+      await userRef.set({email: userEmail}, {merge: true});
     }
+
     const credsSnap = await userRef.collection("passkeyCredentials").get();
-    const excludeCredentials = credsSnap.docs.map((doc) => ({
-      id: doc.id,
-      type: "public-key" as const,
-      transports: doc.data().transports,
-    }));
+    const excludeCredentials = credsSnap.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: data.credentialID || docSnap.id,
+        transports: data.transports as AuthenticatorTransportFuture[] | undefined,
+      };
+    });
 
     const {rpId} = getWebAuthnConfig(req);
     const options = await generateRegistrationOptions({
@@ -160,20 +312,20 @@ router.post("/register-options", async (req: Request, res: Response) => {
       userName: userEmail,
       userDisplayName: userEmail,
       attestationType: "none",
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      excludeCredentials: excludeCredentials as any,
+      excludeCredentials,
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",
-        authenticatorAttachment: "platform",
+        // Omit authenticatorAttachment so platform + roaming authenticators both work
       },
     });
 
-    const sessionData = {
+    setSessionCookie(res, {
       registrationChallenge: options.challenge,
       authUserId: userId,
-    };
-    setSessionCookie(res, sessionData);
+      rpId,
+      expectedOrigin: getWebAuthnConfig(req).expectedOrigin,
+    });
     res.json(options);
   } catch (error) {
     logger.error("Register Options Error:", error);
@@ -193,68 +345,103 @@ router.post("/register-options", async (req: Request, res: Response) => {
 // POST /verify-registration
 router.post("/verify-registration", async (req: Request, res: Response) => {
   try {
-    const {body} = req;
-    const sessionCookie = req.signedCookies["__session"];
-    if (!sessionCookie) {
-      res.status(400).json({error: "Challenge expired or missing"}); return;
-    }
-    let sessionData;
-    try {
-      sessionData = JSON.parse(sessionCookie);
-    } catch (e) {
-      res.status(400).json({error: "Invalid session cookie format"});
+    const body = req.body as RegistrationResponseJSON & {
+      userId?: string;
+      email?: string;
+    };
+    const sessionData = readSession(req);
+    if (!sessionData) {
+      res.status(400).json({error: "Challenge expired or missing. Retry passkey setup."});
       return;
     }
-    const expectedChallenge = sessionData.registrationChallenge;
-    const userId = sessionData.authUserId;
+
+    const expectedChallenge = sessionData.registrationChallenge as string | undefined;
+    const userId = (sessionData.authUserId as string | undefined) || body.userId;
     if (!expectedChallenge || !userId) {
-      res.status(400).json({error: "Challenge expired or missing"}); return;
+      res.status(400).json({error: "Challenge expired or missing. Retry passkey setup."});
+      return;
     }
 
-    const {expectedOrigin, rpId} = getWebAuthnConfig(req);
+    const cfg = getWebAuthnConfig(req);
+    const expectedOrigin = (sessionData.expectedOrigin as string) || cfg.expectedOrigin;
+    const rpId = (sessionData.rpId as string) || cfg.rpId;
+
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin,
-      expectedRPID: rpId,
+      expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
+      expectedRPID: [rpId, DEFAULT_RP_ID],
     });
 
     if (verification.verified && verification.registrationInfo) {
       const {credential} = verification.registrationInfo;
+      const credentialId = encodeCredentialId(credential.id);
+      const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
+
       await db.collection("users").doc(userId).collection("passkeyCredentials")
-        .doc(Buffer.from(credential.id).toString("base64url"))
+        .doc(credentialId)
         .set({
-          publicKey: Buffer.from(credential.publicKey).toString("base64url"),
-          credentialID: Buffer.from(credential.id).toString("base64url"),
+          publicKey: publicKeyB64,
+          credentialID: credentialId,
           counter: credential.counter,
-          transports: body.response?.transports || [],
+          transports: body.response?.transports || credential.transports || [],
+          rpId,
           createdAt: FieldValue.serverTimestamp(),
-        });
-      const customToken = await auth.createCustomToken(userId);
-      res.json({verified: true, token: customToken});
+        }, {merge: true});
+
+      // Keep user email normalized for login-options lookup
+      if (body.email) {
+        await db.collection("users").doc(userId).set({
+          email: normalizeEmail(body.email),
+          hasPasskey: true,
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+      } else {
+        await db.collection("users").doc(userId).set({
+          hasPasskey: true,
+          updatedAt: FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+
+      const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
+      res.clearCookie("__session", {path: "/"});
+      res.json({verified: true, token: customToken, credentialId});
     } else {
       res.status(400).json({verified: false, error: "Verification failed"});
     }
   } catch (error) {
     logger.error("Verify Registration Error:", error);
     errors.report(error as Error);
-    res.status(500).json({error: "Internal Server Error"});
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    res.status(500).json({error: message.includes("Unexpected") ? message : "Internal Server Error"});
   }
 });
 
 // POST /login-options
 router.post("/login-options", async (req: Request, res: Response) => {
   try {
-    const {email} = req.body;
+    const email = normalizeEmail(req.body?.email || "");
     if (!email) {
-      res.status(400).json({error: "Missing email"}); return;
+      res.status(400).json({error: "Missing email"});
+      return;
     }
 
-    const userSnap = await db.collection("users")
+    // Case-insensitive email match (stored emails may be mixed-case)
+    let userSnap = await db.collection("users")
       .where("email", "==", email).limit(1).get();
+
+    if (userSnap.empty) {
+      // Fallback: try original casing from body
+      const raw = String(req.body?.email || "").trim();
+      if (raw && raw !== email) {
+        userSnap = await db.collection("users")
+          .where("email", "==", raw).limit(1).get();
+      }
+    }
+
     if (userSnap.empty) {
       res.status(404).json({
-        error: "No passkey registered for this email. Sign in with Google.",
+        error: "No account found for this email. Sign in with Google first, then bind a passkey.",
       });
       return;
     }
@@ -264,30 +451,32 @@ router.post("/login-options", async (req: Request, res: Response) => {
     const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
     if (credsSnap.empty) {
       res.status(404).json({
-        error: "No passkey registered for this email. Sign in with Google.",
+        error: "No passkey registered for this email. Sign in with Google, then set up a passkey.",
       });
       return;
     }
 
-    const allowCredentials = credsSnap.docs.map((doc) => ({
-      id: doc.id,
-      type: "public-key" as const,
-      transports: doc.data().transports,
-    }));
+    const allowCredentials = credsSnap.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: (data.credentialID || docSnap.id) as string,
+        transports: data.transports as AuthenticatorTransportFuture[] | undefined,
+      };
+    });
 
-    const {rpId} = getWebAuthnConfig(req);
+    const {rpId, expectedOrigin} = getWebAuthnConfig(req);
     const options = await generateAuthenticationOptions({
       rpID: rpId,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      allowCredentials: allowCredentials as any,
+      allowCredentials,
       userVerification: "preferred",
     });
 
-    const sessionData = {
+    setSessionCookie(res, {
       authenticationChallenge: options.challenge,
       authUserId: userId,
-    };
-    setSessionCookie(res, sessionData);
+      rpId,
+      expectedOrigin,
+    });
     res.json(options);
   } catch (error) {
     logger.error("Login Options Error:", error);
@@ -299,45 +488,49 @@ router.post("/login-options", async (req: Request, res: Response) => {
 // POST /verify-login
 router.post("/verify-login", async (req: Request, res: Response) => {
   try {
-    const {body} = req;
-    const sessionCookie = req.signedCookies["__session"];
-    if (!sessionCookie) {
-      res.status(400).json({error: "Challenge expired or missing"}); return;
-    }
-    let sessionData;
-    try {
-      sessionData = JSON.parse(sessionCookie);
-    } catch (e) {
-      res.status(400).json({error: "Invalid session cookie format"});
+    const body = req.body as AuthenticationResponseJSON;
+    const sessionData = readSession(req);
+    if (!sessionData) {
+      res.status(400).json({error: "Challenge expired or missing. Retry passkey sign-in."});
       return;
     }
-    const expectedChallenge = sessionData.authenticationChallenge;
-    const userId = sessionData.authUserId;
+
+    const expectedChallenge = sessionData.authenticationChallenge as string | undefined;
+    const userId = sessionData.authUserId as string | undefined;
     if (!expectedChallenge || !userId) {
-      res.status(400).json({error: "Challenge expired or missing"}); return;
+      res.status(400).json({error: "Challenge expired or missing. Retry passkey sign-in."});
+      return;
     }
 
-    const credentialId = body.id;
+    const credentialId = encodeCredentialId(body.id);
     const credDoc = await db.collection("users").doc(userId)
       .collection("passkeyCredentials").doc(credentialId).get();
     if (!credDoc.exists) {
-      res.status(400).json({error: "Credential not found"}); return;
+      res.status(400).json({error: "Credential not found for this account."});
+      return;
     }
 
     const credData = credDoc.data();
-    if (!credData) {
-      res.status(400).json({error: "Credential data empty"}); return;
+    if (!credData?.publicKey) {
+      res.status(400).json({error: "Credential data empty"});
+      return;
     }
-    const {expectedOrigin, rpId} = getWebAuthnConfig(req);
+
+    const cfg = getWebAuthnConfig(req);
+    const expectedOrigin = (sessionData.expectedOrigin as string) || cfg.expectedOrigin;
+    const rpId = (sessionData.rpId as string) ||
+      (credData.rpId as string) ||
+      cfg.rpId;
+
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge,
-      expectedOrigin,
-      expectedRPID: rpId,
+      expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
+      expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
       credential: {
-        id: credData.credentialID,
+        id: (credData.credentialID || credentialId) as string,
         publicKey: Buffer.from(credData.publicKey, "base64url"),
-        counter: credData.counter,
+        counter: typeof credData.counter === "number" ? credData.counter : 0,
         transports: credData.transports,
       },
     });
@@ -345,16 +538,21 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     if (verification.verified) {
       await credDoc.ref.update({
         counter: verification.authenticationInfo.newCounter,
+        lastUsedAt: FieldValue.serverTimestamp(),
       });
-      const customToken = await auth.createCustomToken(userId);
-      res.json({verified: true, token: customToken});
+      const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
+      res.clearCookie("__session", {path: "/"});
+      res.json({verified: true, token: customToken, credentialId});
     } else {
       res.status(400).json({verified: false, error: "Authentication failed"});
     }
   } catch (error) {
     logger.error("Verify Login Error:", error);
     errors.report(error as Error);
-    res.status(500).json({error: "Internal Server Error"});
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    res.status(500).json({
+      error: message.length < 200 ? message : "Internal Server Error",
+    });
   }
 });
 
@@ -367,6 +565,7 @@ export const authApi = onRequest(
     region: "us-central1",
     timeoutSeconds: 30,
     memory: "256MiB",
+    invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
     secrets: ["PASSKEY_COOKIE_SECRET"],
