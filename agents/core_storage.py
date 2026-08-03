@@ -87,8 +87,10 @@ class CoreStorageManager:
                 record = json.loads(path.read_text(encoding="utf-8"))
                 self._memory[key] = record.get("data")
                 return self._memory[key]
-            except Exception:
-                pass
+            except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    f"Failed to read persisted session state '{key}' from {path}"
+                ) from exc
         return None
 
     def list_keys(self) -> List[str]:
@@ -148,9 +150,15 @@ class CoreStorageManager:
             return []
         lines = ledger_path.read_text(encoding="utf-8").splitlines()
         parsed = []
-        for line in lines[-limit:]:
+        recent_lines = lines[-limit:]
+        first_line_number = max(1, len(lines) - len(recent_lines) + 1)
+        for line_number, line in enumerate(
+            recent_lines, start=first_line_number
+        ):
             try:
                 parsed.append(json.loads(line))
-            except Exception:
-                pass
+            except (json.JSONDecodeError, TypeError) as exc:
+                raise RuntimeError(
+                    f"Invalid pipeline run ledger entry at line {line_number}: {ledger_path}"
+                ) from exc
         return parsed
