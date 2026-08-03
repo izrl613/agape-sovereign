@@ -95,6 +95,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             } catch (hashErr) {
               console.warn('[AUTH] Gatekeeper hash failed — degraded mode:', hashErr);
+              // Never leave UI stuck on "hashing": fall back to Google identity hash inputs
+              try {
+                const fallback = await gatekeeperStage({
+                  authType: 'google',
+                  uid: currentUser.uid,
+                  email: currentUser.email || currentUser.uid,
+                });
+                setSovereignHash(fallback);
+              } catch {
+                // Last resort stable marker so Login timeouts do not fire forever
+                setSovereignHash(`degraded_${currentUser.uid}`);
+              }
             }
 
             if (!userSnap.exists()) {
@@ -166,7 +178,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const handleLogin = async () => {
-    await loginWithGoogle();
+    const userOrNull = await loginWithGoogle();
+    // Redirect flow leaves the page; no further client work until return.
+    if (userOrNull === null) {
+      return;
+    }
   };
 
   const handleLogout = async () => {
@@ -179,14 +195,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error('You must be logged in to bind a passkey.');
       return;
     }
-    
+
     try {
+      if (!window.PublicKeyCredential) {
+        throw new Error('This browser does not support passkeys (WebAuthn).');
+      }
       if (!currentUser.email) {
         throw new Error('Your Google account must provide an email address before you can register a passkey.');
       }
-      const idToken = await currentUser.getIdToken();
+      const idToken = await currentUser.getIdToken(/* forceRefresh */ true);
 
-      // 1. Get registration options from server
+      // 1. Get registration options from server (same-origin Hosting rewrite → authApi)
       const optionsRes = await fetch('/api/auth/register-options', {
         method: 'POST',
         credentials: 'include',
@@ -196,43 +215,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
         body: JSON.stringify({ email: currentUser.email }),
       });
-      
-      if (!optionsRes.ok) throw new Error('Failed to fetch registration options');
-      const options = await optionsRes.json();
 
-      // 2. Start registration with the browser (v13 API requires optionsJSON wrapper)
-      const attestationResponse = await startRegistration({ optionsJSON: options });
+      const optionsBody = await optionsRes.json().catch(() => ({}));
+      if (!optionsRes.ok) {
+        throw new Error(optionsBody.error || `Failed to fetch registration options (${optionsRes.status})`);
+      }
+      if (!optionsBody.challenge || !optionsBody.rp) {
+        throw new Error('Invalid registration options from server.');
+      }
+
+      // 2. Start registration with the browser (simplewebauthn v13+)
+      const attestationResponse = await startRegistration({ optionsJSON: optionsBody });
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-registration', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid, email: currentUser.email }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          ...attestationResponse,
+          userId: currentUser.uid,
+          email: currentUser.email,
+        }),
       });
-      const { verified } = await verifyRes.json();
+      const verifyBody = await verifyRes.json().catch(() => ({}));
 
-      if (verified) {
+      if (verifyRes.ok && verifyBody.verified) {
         toast.success('Universal Passkey bound to this device successfully.');
         logEvent(AuditLogType.SECURITY_EVENT, 'Passkey bound to device', currentUser.uid, currentUser.email || undefined);
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          await updateDoc(userRef, { hasPasskey: true, authType: 'passkey' });
+        } catch {
+          // non-fatal
+        }
       } else {
-        throw new Error('Verification failed');
+        throw new Error(verifyBody.error || 'Passkey verification failed');
       }
     } catch (error: any) {
       console.error('WebAuthn Error:', error);
-      if (error.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError' || /cancel/i.test(String(error?.message || ''))) {
         toast.error('Passkey registration cancelled by user.');
+      } else if (error?.name === 'InvalidStateError') {
+        toast.error('A passkey already exists for this authenticator.');
       } else {
-        toast.error(`WebAuthn Error: ${error.message || 'Unknown error'}`);
+        toast.error(`WebAuthn Error: ${error?.message || 'Unknown error'}`);
       }
       throw error;
     }
   };
 
   const handleLoginWithPasskey = async (email: string) => {
-    if (!email) {
+    const normalized = (email || '').trim().toLowerCase();
+    if (!normalized) {
       toast.error('Please enter your email to login with passkey.');
-      return;
+      throw new Error('Please enter your email to login with passkey.');
+    }
+
+    if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
+      const err = new Error('This browser does not support passkeys (WebAuthn).');
+      toast.error(err.message);
+      throw err;
     }
 
     try {
@@ -242,28 +288,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // signInWithCustomToken fires the auth state change callback.
       sessionStorage.setItem('sovereign_passkey_auth', 'true');
       sessionStorage.setItem('sovereign_passkey_nonce', sessionNonce);
-      sessionStorage.setItem('sovereign_passkey_email', email);
+      sessionStorage.setItem('sovereign_passkey_email', normalized);
 
-      // 1. Get login options
+      // 1. Get login options (same-origin → Hosting rewrite → authApi)
       const optionsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalized }),
       });
 
+      const optionsBody = await optionsRes.json().catch(() => ({}));
       if (!optionsRes.ok) {
-        const errData = await optionsRes.json();
-        throw new Error(errData.error || 'Failed to fetch login options');
+        throw new Error(optionsBody.error || `Failed to fetch login options (${optionsRes.status})`);
       }
-      const options = await optionsRes.json();
+      if (!optionsBody.challenge) {
+        throw new Error('Invalid authentication options from server.');
+      }
 
-      // 2. Start authentication (v13 API requires optionsJSON wrapper)
-      const assertionResponse = await startAuthentication({ optionsJSON: options });
+      // 2. Start authentication (simplewebauthn v13+)
+      const assertionResponse = await startAuthentication({ optionsJSON: optionsBody });
 
       // Store credential ID for hash computation in onAuthStateChanged
       const credentialId = assertionResponse.id || assertionResponse.rawId;
-      sessionStorage.setItem('sovereign_passkey_credential', credentialId);
+      sessionStorage.setItem('sovereign_passkey_credential', String(credentialId));
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-login', {
@@ -273,13 +321,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify(assertionResponse),
       });
 
-      const { verified, token, error } = await verifyRes.json();
+      const verifyBody = await verifyRes.json().catch(() => ({}));
+      const { verified, token, error } = verifyBody;
 
-      if (verified && token) {
+      if (verifyRes.ok && verified && token) {
         await signInWithCustomToken(auth, token);
         toast.success('Authenticated successfully with Passkey.');
       } else {
-        throw new Error(error || 'Verification failed');
+        throw new Error(error || verifyBody.error || 'Passkey verification failed');
       }
     } catch (error: any) {
       console.error('WebAuthn Login Error:', error);
@@ -288,10 +337,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('sovereign_passkey_nonce');
       sessionStorage.removeItem('sovereign_passkey_credential');
       sessionStorage.removeItem('sovereign_passkey_email');
-      if (error.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
       } else {
-        toast.error(`Passkey Error: ${error.message || 'Unknown error'}`);
+        toast.error(`Passkey Error: ${error?.message || 'Unknown error'}`);
       }
       throw error;
     }
