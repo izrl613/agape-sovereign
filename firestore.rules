@@ -69,6 +69,14 @@ service cloud.firestore {
       match /auditLogs/{logId} {
         allow read, write: if isOwner(userId) && isValidId(logId);
       }
+
+      // WebAuthn passkey credentials (written by Admin SDK in Cloud Functions).
+      // Client-side: owner can read their own credentials (e.g., to list registered
+      // devices). Writes stay server-only — the admin SDK bypasses these rules.
+      match /passkeyCredentials/{credentialId} {
+        allow read: if isOwner(userId) && isValidId(credentialId);
+        allow write: if false; // Admin SDK only
+      }
     }
   }
 }

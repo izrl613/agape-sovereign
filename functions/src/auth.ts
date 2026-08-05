@@ -418,8 +418,39 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
 });
 
 // POST /login-options
+//
+// Supports two modes:
+//  1. Email-based  — body: { email: "user@example.com" }
+//     Looks up the user by email and returns options with allowCredentials populated.
+//  2. Resident-key / reauth — body: { reauth: true }  (no email required)
+//     Returns discoverable-credential options (empty allowCredentials) so the
+//     authenticator can select the appropriate resident key automatically.
 router.post("/login-options", async (req: Request, res: Response) => {
   try {
+    const {rpId, expectedOrigin} = getWebAuthnConfig(req);
+
+    // ── Mode 2: resident-key / reauth flow ───────────────────────────────────
+    if (req.body?.reauth === true && !req.body?.email) {
+      const options = await generateAuthenticationOptions({
+        rpID: rpId,
+        allowCredentials: [], // discoverable — authenticator selects the key
+        userVerification: "required",
+      });
+
+      // We don't know the userId yet; it will be resolved during verify-login
+      // via the userHandle returned by the authenticator.
+      setSessionCookie(res, {
+        authenticationChallenge: options.challenge,
+        authUserId: null,
+        rpId,
+        expectedOrigin,
+        residentKey: true,
+      });
+      res.json(options);
+      return;
+    }
+
+    // ── Mode 1: email-based flow ──────────────────────────────────────────────
     const email = normalizeEmail(req.body?.email || "");
     if (!email) {
       res.status(400).json({error: "Missing email"});
@@ -464,7 +495,6 @@ router.post("/login-options", async (req: Request, res: Response) => {
       };
     });
 
-    const {rpId, expectedOrigin} = getWebAuthnConfig(req);
     const options = await generateAuthenticationOptions({
       rpID: rpId,
       allowCredentials,
@@ -496,13 +526,40 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     }
 
     const expectedChallenge = sessionData.authenticationChallenge as string | undefined;
-    const userId = sessionData.authUserId as string | undefined;
-    if (!expectedChallenge || !userId) {
+    if (!expectedChallenge) {
       res.status(400).json({error: "Challenge expired or missing. Retry passkey sign-in."});
       return;
     }
 
     const credentialId = encodeCredentialId(body.id);
+
+    // Resolve userId — for resident-key/reauth flows authUserId may be null.
+    // In that case, derive the uid from the userHandle returned by the authenticator.
+    let userId = sessionData.authUserId as string | undefined | null;
+    if (!userId) {
+      // userHandle is the base64url-encoded uid set during registration
+      const userHandle = (body.response as any)?.userHandle;
+      if (userHandle) {
+        try {
+          userId = Buffer.from(userHandle, "base64url").toString("utf-8");
+        } catch {
+          userId = userHandle;
+        }
+      }
+    }
+    if (!userId) {
+      // Last resort: scan for the credential across users
+      const globalQuery = await db.collectionGroup("passkeyCredentials")
+        .where("credentialID", "==", credentialId).limit(1).get();
+      if (!globalQuery.empty) {
+        // Parent doc is the user doc
+        userId = globalQuery.docs[0].ref.parent.parent?.id;
+      }
+    }
+    if (!userId) {
+      res.status(400).json({error: "Could not resolve user for this credential."});
+      return;
+    }
     const credDoc = await db.collection("users").doc(userId)
       .collection("passkeyCredentials").doc(credentialId).get();
     if (!credDoc.exists) {
