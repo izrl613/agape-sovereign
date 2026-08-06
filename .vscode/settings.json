@@ -75,5 +75,15 @@
   "banditStealth.debug.emitPlanJson": true,
   "banditStealth.ollamaBaseUrl": "http://localhost:11434",
   "banditStealth.model": "bandit-logic",
-  "git.autofetch": true
+  "git.autofetch": true,
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#007acc",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#005999",
+    "titleBar.inactiveForeground": "#cccccc",
+    "statusBar.background": "#007acc",
+    "statusBar.foreground": "#ffffff",
+    "statusBar.noFolderBackground": "#007acc",
+    "statusBar.debuggingBackground": "#005999"
+  }
 }
