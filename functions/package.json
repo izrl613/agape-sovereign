@@ -40,7 +40,8 @@
   },
   "overrides": {
     "brace-expansion": "^2.0.1",
-    "ts-deepmerge": "^8.0.0"
+    "ts-deepmerge": "^8.0.0",
+    "firebase-admin": "^13.10.0"
   },
   "private": true
 }
