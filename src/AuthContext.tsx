@@ -23,15 +23,54 @@ interface AuthContextType {
   authType: 'google' | 'passkey' | 'anonymous' | null;
   setupComplete: boolean;
   loading: boolean;
+  demoMode: boolean;
   login: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
+  setDemoUser: () => void;
+  clearDemoUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const DEMO_SESSION_KEY = 'sovereign_demo_mode';
+const DEMO_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface DemoSession {
+  active: boolean;
+  expiresAt: number;
+}
+
+function readDemoSession(): DemoSession | null {
+  try {
+    const raw = sessionStorage.getItem(DEMO_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoSession;
+  } catch {
+    return null;
+  }
+}
+
+function writeDemoSession() {
+  sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({
+    active: true,
+    expiresAt: Date.now() + DEMO_TTL_MS,
+  }));
+}
+
+function clearDemoSession() {
+  sessionStorage.removeItem(DEMO_SESSION_KEY);
+}
+
+const DEMO_USER_OBJECT = {
+  uid: 'demo-user',
+  email: 'demo@sovereign.nyc',
+  displayName: 'Demo Explorer',
+  isAnonymous: true,
+} as unknown as User;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -43,6 +82,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authType, setAuthType] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+
+  // Restore demo session on mount (handles page refresh within TTL)
+  useEffect(() => {
+    const session = readDemoSession();
+    if (session?.active && session.expiresAt > Date.now()) {
+      setDemoMode(true);
+      setUser(DEMO_USER_OBJECT);
+      setSetupCompleteState(true);
+      setLoading(false);
+    } else if (session) {
+      clearDemoSession();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;
@@ -381,6 +435,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleSetDemoUser = () => {
+    writeDemoSession();
+    setDemoMode(true);
+    setUser(DEMO_USER_OBJECT);
+    setSetupCompleteState(true);
+    setLoading(false);
+  };
+
+  const handleClearDemoUser = () => {
+    clearDemoSession();
+    setDemoMode(false);
+    setUser(null);
+    setUserData(null);
+    setSetupCompleteState(false);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -392,12 +462,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       authType,
       setupComplete,
       loading,
+      demoMode,
       login: handleLogin,
       loginWithPasskey: handleLoginWithPasskey,
       logout: handleLogout,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
-      updateProfile: handleUpdateProfile
+      updateProfile: handleUpdateProfile,
+      setDemoUser: handleSetDemoUser,
+      clearDemoUser: handleClearDemoUser,
     }}>
       {children}
     </AuthContext.Provider>

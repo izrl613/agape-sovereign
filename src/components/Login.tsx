@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Fingerprint, ArrowLeft, Shield, EyeOff } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { isPrivateBrowsing } from '../utils/incognitoDetector';
+import { DemoBypassButton } from './auth/DemoBypassButton';
 
 // ── Brand palette ──────────────────────────────────────────────
 const C = {
@@ -496,6 +497,9 @@ export const Login = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Demo bypass — only visible in demo mode */}
+                <DemoBypassButton />
 
                 {/* OAuth-required links */}
                 <div style={{
