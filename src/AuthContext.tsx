@@ -12,6 +12,7 @@ import { signInWithCustomToken } from 'firebase/auth';
 // OPERATION FRAMEWORK: Sovereign Pipeline
 import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
 import { generateSessionNonce } from './services/sovereignHashService';
+import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
 
 interface AuthContextType {
   user: User | null;
@@ -83,13 +84,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
+  // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
+  // without being recreated every time demoMode changes.
+  const demoModeRef = React.useRef(false);
+  React.useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
 
   // Restore demo session on mount (handles page refresh within TTL)
   useEffect(() => {
     const session = readDemoSession();
     if (session?.active && session.expiresAt > Date.now()) {
+      demoModeRef.current = true;
       setDemoMode(true);
       setUser(DEMO_USER_OBJECT);
+      setUserData(DEMO_USER_DATA);
+      setSovereignScore(DEMO_SOVEREIGN_SCORE);
       setSetupCompleteState(true);
       setLoading(false);
     } else if (session) {
@@ -103,6 +111,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       try {
+        // Don't evict an active demo session when Firebase confirms no real auth.
+        // demoMode is read from the ref below so the closure always sees current value.
+        if (!currentUser && demoModeRef.current) {
+          setLoading(false);
+          return;
+        }
+
         setUser(currentUser);
         if (currentUser) {
           // Initialize Remote Config for the user
@@ -438,7 +453,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSetDemoUser = () => {
     writeDemoSession();
     setDemoMode(true);
+    demoModeRef.current = true;
     setUser(DEMO_USER_OBJECT);
+    setUserData(DEMO_USER_DATA);
+    setSovereignScore(DEMO_SOVEREIGN_SCORE);
     setSetupCompleteState(true);
     setLoading(false);
   };

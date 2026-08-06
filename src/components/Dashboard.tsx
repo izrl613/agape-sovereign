@@ -24,6 +24,7 @@ import {
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import { DEMO_SCORE_HISTORY } from '../data/demoData';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01", to: "/dashboard/email"      },
@@ -174,7 +175,7 @@ const ModuleScoreRing = ({ score, size = 42 }: { score: number, size?: number })
 };
 
 export const Dashboard = () => {
-  const { user, sovereignScore, sovereignHash } = useAuth();
+  const { user, sovereignScore, sovereignHash, demoMode } = useAuth();
   const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
 
@@ -197,6 +198,12 @@ export const Dashboard = () => {
   }, [currentModule]);
 
   useEffect(() => {
+    // Demo mode: use pre-populated score history, no Firestore query needed
+    if (demoMode) {
+      setScoreHistory(DEMO_SCORE_HISTORY);
+      return;
+    }
+
     if (!user) return;
 
     const q = query(
@@ -216,7 +223,7 @@ export const Dashboard = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, demoMode]);
 
   const stats = useMemo(() => {
     const nuked = findings.filter(f => f.status === 'NUKED').length;

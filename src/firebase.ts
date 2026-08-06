@@ -94,9 +94,31 @@ export const messaging = typeof window !== 'undefined'
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-});
+
+/**
+ * Build Google OAuth custom parameters.
+ * - prompt: 'select_account' for first-time users (no cached hint)
+ * - prompt: 'none' is avoided — it silently fails when no session exists.
+ * - login_hint: skip the account picker for returning users whose email is
+ *   stored in localStorage from a prior successful sign-in.
+ */
+function buildGoogleProviderParams(): Record<string, string> {
+  const params: Record<string, string> = { prompt: 'select_account' };
+  try {
+    const hint = localStorage.getItem('sovereign_login_hint');
+    if (hint) {
+      params.login_hint = hint;
+      // When a hint is present the account chooser is redundant — suppress it
+      // so returning users land directly in the consent/grant screen.
+      delete params.prompt;
+    }
+  } catch {
+    // localStorage unavailable (private browsing, storage partitioning)
+  }
+  return params;
+}
+
+googleProvider.setCustomParameters(buildGoogleProviderParams());
 
 function authErrorCode(error: unknown): string {
   if (error && typeof error === 'object' && 'code' in error) {
@@ -154,6 +176,16 @@ export const loginWithGoogle = async () => {
     }
 
     const result = await signInWithPopup(auth, googleProvider);
+    // Persist email as login_hint so the next sign-in can skip the account picker
+    try {
+      if (result.user.email) {
+        localStorage.setItem('sovereign_login_hint', result.user.email);
+        // Refresh custom params for any subsequent provider use in this session
+        googleProvider.setCustomParameters({ login_hint: result.user.email });
+      }
+    } catch {
+      // Non-fatal — localStorage may be blocked in private mode
+    }
     return result.user;
   } catch (error: unknown) {
     const code = authErrorCode(error);
@@ -186,6 +218,8 @@ export const loginWithGoogle = async () => {
 export const logout = async () => {
   try {
     await signOut(auth);
+    // Clear the login_hint so a different account can be chosen next time
+    try { localStorage.removeItem('sovereign_login_hint'); } catch { /* ignore */ }
   } catch (error) {
     console.error('Error signing out', error);
     throw error;
