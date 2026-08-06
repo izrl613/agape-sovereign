@@ -214,10 +214,15 @@ function readSession(req: Request): Record<string, unknown> | null {
   if (typeof raw === "object" && raw !== null) {
     return raw as Record<string, unknown>;
   }
+  const str = String(raw);
   try {
-    return JSON.parse(String(raw)) as Record<string, unknown>;
+    return JSON.parse(str) as Record<string, unknown>;
   } catch {
-    return null;
+    try {
+      return JSON.parse(decodeURIComponent(str)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 }
 
