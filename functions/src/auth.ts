@@ -538,6 +538,7 @@ router.post("/verify-login", async (req: Request, res: Response) => {
     let userId = sessionData.authUserId as string | undefined | null;
     if (!userId) {
       // userHandle is the base64url-encoded uid set during registration
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const userHandle = (body.response as any)?.userHandle;
       if (userHandle) {
         try {

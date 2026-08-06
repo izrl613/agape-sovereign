@@ -40,18 +40,6 @@
       ]
     }
   ],
-  "apphosting": {
-    "backendId": "agape-sovereign",
-    "rootDir": "/",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
-    ],
-    "alwaysDeployFromSource": true
-  },
   "storage": {
     "rules": "storage.rules",
     "bucket": "agape-sovereign.firebasestorage.app"

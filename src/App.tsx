@@ -40,7 +40,7 @@ import {
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, demoMode } = useAuth();
   
   if (loading) {
     return (
@@ -50,7 +50,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  if (!user) {
+  if (!user && !demoMode) {
     return <Navigate to="/login" replace />;
   }
 
@@ -83,7 +83,7 @@ import { ContactPage } from './components/ContactPage';
 import { OfflinePage } from './components/OfflinePage';
 
 const AppRoutes = () => {
-  const { user, setupComplete, setSetupComplete } = useAuth();
+  const { user, setupComplete, setSetupComplete, demoMode } = useAuth();
 
   if (user && !setupComplete) {
     return <SplashEntry onComplete={() => setSetupComplete(true)} />;
@@ -99,7 +99,7 @@ const AppRoutes = () => {
       <Route path="/offline" element={<OfflinePage />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={(user || demoMode) ? <Navigate to="/dashboard" replace /> : <Login />} />
 
       {/* Protected app — all authenticated routes live under /dashboard */}
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
@@ -141,6 +141,7 @@ const AppRoutes = () => {
 
 import { Toaster } from 'sonner';
 import { PasskeySetupPrompt } from './components/auth/PasskeySetupPrompt';
+import { DemoBanner } from './components/auth/DemoBanner';
 
 export default function App() {
   return (
@@ -148,6 +149,7 @@ export default function App() {
       <AuthProvider>
         <ScanProvider>
           <BrowserRouter>
+            <DemoBanner />
             <AppRoutes />
             <Toaster position="top-right" theme="dark" richColors closeButton />
             {/* Passkey onboarding: appears once after first Google login on capable devices */}
