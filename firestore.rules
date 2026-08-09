@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net: Default Deny All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable global security primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // System-level capacity tracking (aggregate counters — no PII stored)
+    // Authenticated users can read capacity state and transactionally
+    // reserve / release a slot via capacityService.ts.
+    match /system/{document} {
+      allow read, write: if isSignedIn() && isValidId(document);
+    }
+
+    // System capacity document — authenticated users may check/reserve slots
+    match /system/capacity {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() 
+                   && request.resource.data.keys().hasOnly(['slots'])
+                   && request.resource.data.slots is number
+                   && request.resource.data.slots >= 0;
+    }
+
+    // Sovereign user accounts & private sandboxes
+    match /users/{userId} {
+      allow get, write: if isOwner(userId) && isValidId(userId);
+
+      // Identity Sandbox Partition Modules Subcollection
+      match /modules/{moduleId} {
+        allow read, write: if isOwner(userId) && isValidId(moduleId);
+      }
+
+      // Symmetrically ciphered password keychains
+      match /passwords/{passwordId} {
+        allow read, write: if isOwner(userId) && isValidId(passwordId);
+      }
+
+      // E2EE encrypted chats/messages logs
+      match /messages/{messageId} {
+        allow read, write: if isOwner(userId) && isValidId(messageId);
+      }
+
+      // Sovereign Secure Document Vault
+      match /vault/{vaultId} {
+        allow read, write: if isOwner(userId) && isValidId(vaultId);
+      }
+
+      // Intercepted trackers metrics log
+      match /trackers/{trackerId} {
+        allow read, write: if isOwner(userId) && isValidId(trackerId);
+      }
+
+      // Dynamic Security Audit Logs
+      match /auditLogs/{logId} {
+        allow read, write: if isOwner(userId) && isValidId(logId);
+      }
+
+      // WebAuthn passkey credentials (written by Admin SDK in Cloud Functions).
+      // Client-side: owner can read their own credentials (e.g., to list registered
+      // devices). Writes stay server-only — the admin SDK bypasses these rules.
+      match /passkeyCredentials/{credentialId} {
+        allow read: if isOwner(userId) && isValidId(credentialId);
+        allow write: if false; // Admin SDK only
+      }
+    }
+  }
+}

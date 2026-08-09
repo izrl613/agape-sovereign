@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "agape-sovereign",
+    "sovereign-nyc": "agape-sovereign"
+  }
+}

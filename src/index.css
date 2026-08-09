@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Rajdhani", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Orbitron", sans-serif;
+  --font-mono: "Share Tech Mono", monospace;
+}
+
+:root {
+  --neon-magenta: #FF2E9F;
+  --neon-blue: #00D4FF;
+  --neon-orange: #FF7A18;
+  --bg-dark: #0B1020;
+  --glass-bg: rgba(11, 16, 32, 0.7);
+  --glass-border: rgba(0, 212, 255, 0.1);
+}
+
+body {
+  background: var(--bg-dark);
+  color: #E2E8F0;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Futuristic Scanline Effect */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.1) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.03),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.03)
+  );
+  background-size: 100% 4px, 3px 100%;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.15;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neon-blue);
+  border-radius: 2px;
+}
+
+@keyframes pulse-neon {
+  0%, 100% { border-color: var(--neon-blue); box-shadow: 0 0 5px var(--neon-blue); }
+  33% { border-color: var(--neon-magenta); box-shadow: 0 0 5px var(--neon-magenta); }
+  66% { border-color: var(--neon-orange); box-shadow: 0 0 5px var(--neon-orange); }
+}
+
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+.neon-wrap {
+  position: relative;
+  z-index: 0;
+}
+
+.neon-wrap::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -1px;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--neon-magenta), var(--neon-blue), var(--neon-orange), var(--neon-magenta));
+  background-size: 300% 300%;
+  animation: rotate-gradient 6s linear infinite;
+  -webkit-mask: 
+     linear-gradient(#fff 0 0) content-box, 
+     linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+
+.neon-text-glow {
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+}
+
+.nuked-glow {
+  box-shadow: 0 0 15px rgba(255, 46, 159, 0.3);
+  border: 1px solid var(--neon-magenta) !important;
+}
+
+.knoxed-glow {
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+  border: 1px solid var(--neon-blue) !important;
+}
+
+/* Custom Scroll Area */
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-blue) transparent;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background-color: var(--neon-blue);
+  border-radius: 10px;
+}
+
+/* PWA Mobile & Standalone Overrides */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* iOS Safe Areas & Touch Feedback */
+.safe-padding {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+button:active, .module-card:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+

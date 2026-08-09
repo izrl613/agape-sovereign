@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "Sovereign User Profile",
+      "description": "The primary identity profile for the digital sovereignty platform.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "email": { "type": "string", "description": "The verified email address of the user." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "The RBAC role of the user." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile creation timestamp." },
+        "sovereignScore": { "type": "number", "description": "The calculated digital sovereignty score (0-100)." }
+      },
+      "required": ["uid", "email", "role", "createdAt", "sovereignScore"]
+    },
+    "ScanFinding": {
+      "title": "DIFF Scan Finding",
+      "description": "A specific security exposure or hardening result from a DIFF scan.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner of the finding." },
+        "module": { "type": "string", "description": "The architectural module scanned (e.g., email, darkweb)." },
+        "finding": { "type": "string", "description": "Summary title of the finding." },
+        "status": { "type": "string", "enum": ["NUKED", "KNOXED", "MONITORED"], "description": "The severity status." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the scan was performed." },
+        "details": { "type": "string", "description": "Detailed technical analysis and remediation steps." }
+      },
+      "required": ["userId", "module", "finding", "status", "timestamp", "details"]
+    },
+    "ScoreHistory": {
+      "title": "Sovereign Score History",
+      "description": "Historical record of sovereign scores for trend analysis.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner of the record." },
+        "score": { "type": "number", "description": "The score at this point in time." },
+        "nukedCount": { "type": "number", "description": "Number of NUKED exposures." },
+        "knoxedCount": { "type": "number", "description": "Number of KNOXED protections." },
+        "monitoredCount": { "type": "number", "description": "Number of MONITORED vectors." },
+        "findings": { "type": "array", "description": "Snapshot of findings for this record." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "History record timestamp." }
+      },
+      "required": ["userId", "score", "nukedCount", "knoxedCount", "monitoredCount", "timestamp"]
+    },
+    "AuditLog": {
+      "title": "System Audit Log",
+      "description": "Security-critical event logs for system monitoring.",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "description": "Type of event logged." },
+        "action": { "type": "string", "description": "Human-readable description of the action." },
+        "userId": { "type": "string", "description": "UID of the actor." },
+        "userEmail": { "type": "string", "description": "Email of the actor." },
+        "metadata": { "type": "object", "description": "Structured event metadata." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Event timestamp." }
+      },
+      "required": ["type", "action", "timestamp"]
+    },
+    "AIFeedback": {
+      "title": "AI Response Feedback",
+      "description": "User feedback on AI response helpfulness.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user." },
+        "messageId": { "type": "string", "description": "ID of the message being rated." },
+        "feedback": { "type": "string", "enum": ["up", "down"], "description": "The rating." },
+        "messageText": { "type": "string", "description": "The text of the AI response." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Feedback timestamp." }
+      },
+      "required": ["userId", "messageId", "feedback", "timestamp"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles indexed by UID."
+    },
+    "diff_scans/{scanId}": {
+      "schema": "ScanFinding",
+      "description": "Granular scan findings for all users."
+    },
+    "score_history/{historyId}": {
+      "schema": "ScoreHistory",
+      "description": "Historical score data points."
+    },
+    "audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Security audit trails."
+    },
+    "ai_feedback/{feedbackId}": {
+      "schema": "AIFeedback",
+      "description": "Global user feedback on AI responses for model improvement."
+    }
+  }
+}

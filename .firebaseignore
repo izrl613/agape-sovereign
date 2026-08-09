@@ -1,0 +1,33 @@
+# Firebase ignore file - prevents large/irrelevant files from App Hosting source uploads
+node_modules/
+.git/
+firebase-debug.log
+firebase-debug.*.log
+
+# Large subprojects not needed for App Hosting
+gemma-chat-public/
+google-cloud-sdk/
+architect-ai/
+architectai/
+frontend/
+backend/
+functions/
+dist/
+public/
+docs/
+scripts/
+dataconnect/
+
+# Dev/tooling
+.github/
+.vscode/
+.agents/
+.firebase/
+.DS_Store
+
+# Build artifacts & binaries
+*.mp4
+*.zip
+*.tar
+*.tar.gz
+*.log
