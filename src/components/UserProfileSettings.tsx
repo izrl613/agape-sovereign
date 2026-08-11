@@ -33,11 +33,9 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      setReports(formatted);
-    } else {
-        const reportsRef = collection(db, 'users', user.uid, 'reports');
-        const q = query(reportsRef, orderBy('generatedAt', 'desc'));
-        const querySnapshot = await getDocs(q);
+      const reportsRef = collection(db, 'users', user.uid, 'reports');
+      const q = query(reportsRef, orderBy('generatedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
         const list = querySnapshot.docs.map(doc => {
           const data = doc.data();
           return {

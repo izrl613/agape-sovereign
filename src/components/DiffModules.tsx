@@ -430,7 +430,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
               </div>
             </div>
           </div>
-          </div>
 
           <div className="flex justify-end">
             <NeonButton 

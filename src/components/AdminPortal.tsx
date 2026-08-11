@@ -129,11 +129,6 @@ export const AdminPortal = () => {
       console.warn("WebAuthn endpoints failed:", err);
       setVerificationError(err?.message || 'Passkey verification failed.');
       setTerminalLogs(prev => [...prev, `[ERR] ${err?.message || 'Passkey verification failed.'}`]);
-    }
-  } catch (e: any) {
-      console.error(e);
-      setVerificationError(e.message || 'Passkey assertion failed.');
-      setTerminalLogs(prev => [...prev, `[ERR] Assertion failed: ${e.message || 'Unknown'}`]);
     } finally {
       setIsVerifying(false);
     }

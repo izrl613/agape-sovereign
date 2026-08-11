@@ -479,7 +479,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     
     setIsLoading(true);
     try {
-      const success = await updateFindingStatus(findingId, 'KNOXED');
+      const success = await updateFindingStatus(findingId, user.uid, 'KNOXED');
       if (success) {
         await recalculateSovereignScore(user.uid);
         toast.success("VECTOR HARDENED", {
