@@ -132,11 +132,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid scan ID" }, { status: 400 });
     }
 
-    // Query Firestore for scan
-    const scanRef = doc(db, "diff_scans", scanId);
+    // Query Firestore for scan (owner-scoped subcollection path)
+    const scanRef = doc(db, "users", userId, "diff_scans", scanId);
     const scanSnap = await getDoc(scanRef);
 
-    if (!scanSnap.exists() || scanSnap.data().userId !== userId) {
+    if (!scanSnap.exists()) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }
 
