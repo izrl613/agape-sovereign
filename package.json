@@ -82,6 +82,7 @@
     "@grpc/grpc-js": "^1.10.0",
     "@grpc/proto-loader": "^0.7.0",
     "@opentelemetry/core": "^2.8.0",
-    "brace-expansion": "^2.0.1"
+    "brace-expansion": "^2.0.1",
+    "enhanced-resolve": "5.17.1"
   }
 }
