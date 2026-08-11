@@ -45,6 +45,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) && isValidId(moduleId);
       }
 
+      // Active module data
+      match /module_data/{document} {
+        allow read, write: if isOwner(userId);
+      }
+
       // Symmetrically ciphered password keychains
       match /passwords/{passwordId} {
         allow read, write: if isOwner(userId) && isValidId(passwordId);
@@ -77,6 +82,16 @@ service cloud.firestore {
         allow read: if isOwner(userId) && isValidId(credentialId);
         allow write: if false; // Admin SDK only
       }
+    }
+
+    // DIFF Scans collection
+    match /diff_scans/{docId} {
+      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Score history collection
+    match /score_history/{docId} {
+      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
   }
 }

@@ -13,6 +13,8 @@ import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/c
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 interface ModuleProps {
   title: string;
@@ -294,6 +296,39 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     }
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(22);
+    doc.setTextColor(0, 212, 255);
+    doc.text(`Agape Sovereign AI`, 14, 20);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(50, 50, 50);
+    doc.text(`Sector: ${vector} - ${title}`, 14, 30);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Integrity Seal: ${storedHash || 'UNSEALED'}`, 14, 38);
+
+    doc.setFontSize(16);
+    doc.setTextColor(20, 20, 20);
+    doc.text("Intelligence Findings", 14, 52);
+
+    const tableData = findings.map(f => [f.status, f.finding, f.details]);
+
+    // @ts-ignore
+    doc.autoTable({
+      startY: 58,
+      head: [['Status', 'Finding', 'Details']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 212, 255] },
+      styles: { cellPadding: 4, fontSize: 9 },
+    });
+
+    doc.save(`sovereign-report-${moduleId}.pdf`);
+  };
+
   const displayFindings = findings.length > 0 ? findings.map(f => ({
     type: f.status,
     label: f.finding,
@@ -328,9 +363,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       <div style={{ animation: "fade-in 0.3s ease" }}>
       {/* Integrity Tag */}
       <div className="flex justify-between items-center mb-6">
-        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
-          <Lock className="w-3 h-3 text-[#00D4FF]" />
-          <span className="text-[10px] font-mono text-[#00D4FF] tracking-tighter truncate max-w-[320px]">
+        <div className="px-4 py-2 bg-[#040914] border border-[#00D4FF]/30 rounded-lg flex items-center gap-3 shadow-[0_0_15px_rgba(0,212,255,0.15)]">
+          <Lock className="w-4 h-4 text-[#00D4FF]" />
+          <span className="text-xs font-mono text-[#00D4FF] tracking-widest truncate max-w-[320px]">
             {storedHash ? `SHA256:${storedHash}` : "AWAITING CRYPTOGRAPHIC SEAL"}
           </span>
         </div>
@@ -340,30 +375,30 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-        <span style={{ color: sevColor, fontSize: "2rem", filter: `drop-shadow(0 0 8px ${sevColor})` }}>{icon}</span>
+        <span style={{ color: sevColor, fontSize: "2.5rem", filter: `drop-shadow(0 0 12px ${sevColor}80)` }}>{icon}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.15em" }}>{vector} · DIFF VECTOR</div>
-          <NeonText color={sevColor} size="1.2rem" weight={700}>{title}</NeonText>
-          <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>{description}</p>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: NEON.orange, letterSpacing: "0.2em", fontWeight: 700 }}>{vector} · DIFF VECTOR</div>
+          <NeonText color={sevColor} size="1.4rem" weight={700} style={{ letterSpacing: '-0.02em', marginTop: 2 }}>{title}</NeonText>
+          <p style={{ color: NEON.textMuted, fontSize: "0.85rem", marginTop: "6px", fontFamily: "'Inter', sans-serif", lineHeight: 1.5 }}>{description}</p>
           {pillar && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
               <span style={{
-                fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", fontWeight: 700,
-                color: NEON.magenta, border: `1px solid ${NEON.magenta}44`,
-                background: `${NEON.magenta}18`, borderRadius: 4,
-                padding: "2px 6px", letterSpacing: "0.08em"
+                fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", fontWeight: 700,
+                color: NEON.magenta, border: `1px solid ${NEON.magenta}40`,
+                background: `${NEON.magenta}10`, borderRadius: 6,
+                padding: "3px 8px", letterSpacing: "0.05em"
               }}>{pillar.toUpperCase()}</span>
               {techniques?.map((t, i) => (
                 <span key={i} style={{
-                  fontFamily: "'Share Tech Mono'", fontSize: "0.55rem", color: NEON.blue,
-                  border: `1px solid ${NEON.blue}33`, background: `${NEON.blue}10`,
-                  borderRadius: 4, padding: "2px 5px"
-                }}>▸ {t}</span>
+                  fontFamily: "'Inter', sans-serif", fontSize: "0.6rem", color: NEON.textMuted,
+                  border: `1px solid rgba(255,255,255,0.1)`, background: `rgba(255,255,255,0.02)`,
+                  borderRadius: 6, padding: "3px 8px"
+                }}>{t}</span>
               ))}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
           <NeonButton 
             size="sm" 
             color={NEON.blue} 
@@ -373,89 +408,90 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             {isScanning ? "SCANNING..." : (scanLabel || "RE-SCAN VECTOR")}
           </NeonButton>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'Orbitron'", fontSize: "2rem", fontWeight: 900, color: sevColor, textShadow: `0 0 20px ${sevColor}` }}>{severity}%</div>
-            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted }}>SOVEREIGN SCORE</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "2.5rem", fontWeight: 800, color: sevColor, textShadow: `0 0 20px ${sevColor}80`, lineHeight: 1 }}>{severity}%</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: NEON.textMuted, letterSpacing: '0.1em', fontWeight: 600, marginTop: 4 }}>SOVEREIGN SCORE</div>
           </div>
         </div>
       </div>
 
       {/* Score bar */}
-      <GlassCard style={{ padding: "16px", marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }} className="flex justify-between">
-          <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.65rem", color: NEON.textMuted }}>SECURITY POSTURE</span>
-          <span style={{ fontFamily: "'Orbitron'", fontSize: "0.65rem", color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
+      <GlassCard style={{ padding: "20px", marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }} className="flex justify-between">
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: NEON.textMuted, letterSpacing: '0.05em' }}>SECURITY POSTURE</span>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", fontWeight: 700, color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
         </div>
-        <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${severity}%`, background: `linear-gradient(90deg, ${NEON.magenta}, ${sevColor})`, borderRadius: 3, boxShadow: `0 0 10px ${sevColor}`, transition: "width 1.5s ease" }} />
+        <div style={{ height: 8, background: "rgba(255,255,255,0.03)", borderRadius: 4, overflow: "hidden", border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ height: "100%", width: `${severity}%`, background: `linear-gradient(90deg, ${NEON.magenta}, ${sevColor})`, borderRadius: 4, boxShadow: `0 0 15px ${sevColor}`, transition: "width 1.5s cubic-bezier(0.4, 0, 0.2, 1)" }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, gap: 12 }}>
-          {[{ l: "NUKED", v: nuked, c: NEON.magenta }, { l: "KNOXED", v: knoxed, c: NEON.blue }, { l: "MONITORED", v: monitored, c: NEON.orange }].map(s => (
-            <div key={s.l} style={{ flex: 1, textAlign: "center", background: `rgba(${s.c === NEON.magenta ? "255,46,159" : s.c === NEON.blue ? "0,212,255" : "255,122,24"},0.08)`, borderRadius: 8, padding: "10px 0", border: `1px solid ${s.c}22` }}>
-              <div style={{ fontFamily: "'Orbitron'", fontSize: "1.4rem", fontWeight: 900, color: s.c }}>{s.v}</div>
-              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, letterSpacing: "0.1em" }}>{s.l}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, gap: 16 }}>
+          {[{ l: "CRITICAL", v: nuked, c: NEON.error }, { l: "SECURE", v: knoxed, c: NEON.success }, { l: "MONITORED", v: monitored, c: NEON.warning }].map(s => (
+            <div key={s.l} style={{ flex: 1, textAlign: "center", background: `rgba(255,255,255,0.02)`, borderRadius: 12, padding: "12px 0", border: `1px solid ${s.c}30` }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.5rem", fontWeight: 700, color: s.c }}>{s.v}</div>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", fontWeight: 600, color: NEON.textMuted, letterSpacing: "0.1em", marginTop: 2 }}>{s.l}</div>
             </div>
           ))}
         </div>
       </GlassCard>
 
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
-      <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
+      <GlassCard className="p-8 mb-8 relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
             <Cpu className="w-5 h-5 text-[#00D4FF]" />
-            <h4 className="text-sm font-bold text-white tracking-widest font-mono">ACTIVE SOVEREIGN ENCLAVE PARAMETERS</h4>
+            <h4 className="text-sm font-semibold text-white tracking-widest font-sans uppercase">Active Sovereign Enclave Parameters</h4>
           </div>
 
-          <div className="space-y-4 mb-6">
-            <div className="p-4 bg-black/40 rounded-xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-6 mb-8">
+            <div className="p-5 bg-[#040914] rounded-xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-inner">
               <div>
-                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Decrypted Parameter Value</div>
+                <div className="text-[10px] text-slate-500 font-sans font-semibold tracking-widest uppercase">Decrypted Parameter Value</div>
                 {isDecrypting ? (
-                  <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-1">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     DECRYPTING CLIENT-SIDE (AES-GCM-256)...
                   </div>
                 ) : (
-                  <div className="font-mono text-sm text-white mt-1 break-all flex items-center gap-2">
+                  <div className="font-mono text-[15px] text-white mt-2 break-all flex items-center gap-3 font-semibold">
                     <span>
                       {decryptedValue 
                         ? (showValue ? decryptedValue : '••••••••••••••••••••••••••••') 
-                        : <span className="text-slate-600 font-sans italic">No parameter value registered</span>
+                        : <span className="text-slate-600 font-sans italic font-normal">No parameter value registered</span>
                       }
                     </span>
                     {decryptedValue && (
                       <button 
                         onClick={() => setShowValue(!showValue)}
-                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                        className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-white border-none bg-transparent cursor-pointer transition-colors"
                       >
-                        {showValue ? <EyeOff size={14} /> : <Eye size={14} />}
+                        {showValue ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     )}
                   </div>
                 )}
               </div>
-              <div>
-                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
-                <div className="text-xs text-[#00D4FF] font-mono mt-1 flex items-center gap-1.5 md:justify-end">
-                  <Shield size={12} />
+              <div className="md:border-l md:border-white/10 md:pl-6">
+                <div className="text-[10px] text-slate-500 font-sans font-semibold tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
+                <div className="text-xs text-[#10B981] font-mono mt-2 flex items-center gap-2 md:justify-end">
+                  <Shield size={14} />
                   100% Client-Crypted
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-sans font-semibold text-[#00D4FF] tracking-wider uppercase">Update Vector Value</label>
               <div className="relative group">
                 <input 
                   type={moduleId === 'password' ? 'password' : 'text'}
                   value={parameterValue}
                   onChange={(e) => setParameterValue(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
+                  className="w-full bg-[#040914] border-2 border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-[#00D4FF] transition-all font-mono text-base placeholder:text-slate-600 shadow-inner"
                   placeholder={`Enter parameter input for ${title}...`}
                   disabled={isSaving}
                 />
               </div>
             </div>
+          </div>
           </div>
 
           <div className="flex justify-end">
