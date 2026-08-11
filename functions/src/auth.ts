@@ -287,17 +287,43 @@ router.post("/register-options", async (req: Request, res: Response) => {
       return;
     }
 
-    const {uid: userId, email: userEmail} =
-      await requireRegisteredUser(req, email);
+    let userId: string;
+    let userEmail: string;
+
+    // Check if request carries a Firebase Auth ID token (post-login binding)
+    const authorization = req.get("authorization");
+    if (authorization?.startsWith("Bearer ")) {
+      const user = await requireRegisteredUser(req, email);
+      userId = user.uid;
+      userEmail = user.email;
+    } else {
+      // Direct registration on login page: resolve existing user by email or generate a new deterministic user ID
+      const usersSnap = await db.collection("users").where("email", "==", email).limit(1).get();
+      if (!usersSnap.empty) {
+        userId = usersSnap.docs[0].id;
+        userEmail = email;
+      } else {
+        // Create new user record placeholder
+        const newDocRef = db.collection("users").doc();
+        userId = newDocRef.id;
+        userEmail = email;
+        await newDocRef.set({
+          email: userEmail,
+          createdAt: FieldValue.serverTimestamp(),
+          authType: "passkey",
+          hasPasskey: false,
+        });
+      }
+    }
+
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
       await userRef.set({
         email: userEmail,
         createdAt: FieldValue.serverTimestamp(),
+        authType: "passkey",
       });
-    } else if (normalizeEmail(userDoc.data()?.email || "") !== userEmail) {
-      await userRef.set({email: userEmail}, {merge: true});
     }
 
     const credsSnap = await userRef.collection("passkeyCredentials").get();
@@ -321,7 +347,6 @@ router.post("/register-options", async (req: Request, res: Response) => {
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",
-        // Omit authenticatorAttachment so platform + roaming authenticators both work
       },
     });
 
