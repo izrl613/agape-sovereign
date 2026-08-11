@@ -53,32 +53,41 @@ export function calculateScore(findings: ScanFinding[]): number {
 
 export async function updateFindingStatus(
   findingId: string,
+  userId: string,
   status: ScanFinding["status"],
 ): Promise<boolean> {
   try {
-    await updateDoc(doc(db, "diff_scans", findingId), { status });
+    await updateDoc(doc(db, "users", userId, "diff_scans", findingId), {
+      status,
+      timestamp: new Date(),
+    });
     return true;
   } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `diff_scans/${findingId}`);
+    handleFirestoreError(error, OperationType.UPDATE, `users/${userId}/diff_scans/${findingId}`);
     return false;
   }
 }
 
 export async function getScanFindings(userId: string): Promise<ScanFinding[]> {
   try {
-    const snapshot = await getDocs(
-      query(collection(db, "diff_scans"), where("userId", "==", userId)),
+    const q = query(
+      collection(db, "users", userId, "diff_scans"),
     );
+    const snapshot = await getDocs(q);
     return snapshot.docs.map((entry) => {
       const data = entry.data();
       return {
         id: entry.id,
-        ...data,
+        userId,
+        module: data.module ?? "",
+        finding: data.finding ?? "",
+        status: data.status ?? "MONITORED",
         timestamp: data.timestamp?.toDate?.() ?? new Date(0),
+        details: data.details ?? "",
       } as ScanFinding;
     });
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, "diff_scans");
+    handleFirestoreError(error, OperationType.LIST, `users/${userId}/diff_scans`);
     return [];
   }
 }
