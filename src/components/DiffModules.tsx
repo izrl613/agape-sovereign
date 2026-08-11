@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key } from 'lucide-react';
-import { NEON, NeonText, NeonButton, GlassCard, StatusBadge } from './UI';
+import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key, KeyRound, MapPin, Phone } from 'lucide-react';
+import { NEON, NeonText, NeonButton, GlassCard, StatusBadge, DataTag, AutomationCard, ProgressTimeline } from './UI';
+import { DataFootprintMap, DataNode } from './DataFootprintMap';
 import { useScan } from '../ScanContext';
 import { useAuth } from '../AuthContext';
 import { generateSuspiciousReport, ScanFinding } from '../services/scanService';
@@ -611,41 +612,90 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         )}
       </AnimatePresence>
 
+      {/* Saymine-style Data Footprint Map (only show if configured/has findings) */}
+      {decryptedValue && (
+        <DataFootprintMap 
+          nodes={[
+            { id: 'core', label: 'IDENTITY', type: 'core', status: 'safe' },
+            ...displayFindings.filter(f => f.original).map((f, i) => ({
+              id: `node-${i}`,
+              label: (f.original?.details || '').split(' ')[0] || 'Unknown',
+              type: moduleId === 'broker' ? 'broker' : moduleId === 'social' ? 'social' : 'breach',
+              status: f.type === 'NUKED' ? 'exposed' : f.type === 'KNOXED' ? 'safe' : 'resolving'
+            } as DataNode))
+          ]} 
+        />
+      )}
+
       {/* Findings */}
       <div style={{ marginBottom: 16 }}>
         <NeonText color={NEON.orange} size="0.72rem">INTELLIGENCE FINDINGS</NeonText>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {displayFindings.map((f, i) => (
-          <div key={i} className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ flexShrink: 0 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.85rem", color: NEON.text }}>{f.label}</div>
-              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
-                  <NeonButton 
-                    size="sm" 
-                    color={NEON.blue}
-                    onClick={async () => {
-                      setIsGenerating(true);
-                      const report = await generateSuspiciousReport(f.original as ScanFinding);
-                      setSelectedReport(report || "No report generated.");
-                      setIsGenerating(false);
-                    }}
-                    disabled={isGenerating}
-                  >
-                    <FileText size={12} style={{ marginRight: 4 }} />
-                    REPORT
-                  </NeonButton>
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <div style={{ flexShrink: 0, marginTop: 4 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.95rem", color: NEON.text, marginBottom: 4 }}>{f.label}</div>
+                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.textMuted, marginTop: 2, marginBottom: 8, lineHeight: 1.4 }}>{f.detail}</div>
+                
+                {/* Firefox Monitor-style data tags */}
+                {f.type === "NUKED" && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 4 }}>
+                    <DataTag icon={<KeyRound size={10} />} label="Passwords" />
+                    <DataTag icon={<MapPin size={10} />} label="IP Addresses" />
+                    <DataTag icon={<Phone size={10} />} label="Phone Numbers" />
+                  </div>
                 )}
-                <NeonButton size="sm" color={f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}>
-                  {f.action}
-                </NeonButton>
+                
+                {/* Optery-style removal tracker (only for broker modules if nuked/monitored) */}
+                {moduleId === 'broker' && (f.type === 'NUKED' || f.type === 'MONITORED') && (
+                  <ProgressTimeline steps={[
+                    { label: 'Identified', status: 'complete' },
+                    { label: 'Opt-Out Sent', status: 'active' },
+                    { label: 'Verifying', status: 'pending' },
+                    { label: 'Removed', status: 'pending' }
+                  ]} />
+                )}
+              </div>
+              <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
+                    <NeonButton 
+                      size="sm" 
+                      color={NEON.blue}
+                      onClick={async () => {
+                        setIsGenerating(true);
+                        const report = await generateSuspiciousReport(f.original as ScanFinding);
+                        setSelectedReport(report || "No report generated.");
+                        setIsGenerating(false);
+                      }}
+                      disabled={isGenerating}
+                    >
+                      <FileText size={12} style={{ marginRight: 4 }} />
+                      REPORT
+                    </NeonButton>
+                  )}
+                </div>
               </div>
             </div>
+            
+            {/* Jumbo-style Automation Card */}
+            {(f.type === "NUKED" || f.type === "MONITORED") && f.original && (
+              <AutomationCard 
+                icon={<Shield size={16} />}
+                title={moduleId === 'broker' ? "Data Broker Removal Required" : "Automated Remediation Available"}
+                description={`Architect AI can automatically execute the ${f.action} protocol to secure this vector.`}
+                actionLabel={moduleId === 'broker' ? "AUTOMATE REMOVAL" : "AUTO-FIX VULNERABILITY"}
+                status="idle"
+                onAction={() => {
+                  toast.success("Architect AI initialized. Fix protocol engaging...", {
+                    description: "Stand by for vector securing..."
+                  });
+                }}
+              />
+            )}
           </div>
         ))}
       </div>
