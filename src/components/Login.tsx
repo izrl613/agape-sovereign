@@ -151,9 +151,10 @@ const LoadingSpinner = () => {
 
 // ── Main Login component ───────────────────────────────────────
 export const Login = () => {
-  const { login, loginWithPasskey } = useAuth();
+  const { login, loginWithPasskey, registerWithPasskey } = useAuth();
 
   const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
+  const [passkeyAction, setPasskeyAction] = useState<'login' | 'register'>('login');
   const [scanning, setScanning] = useState(false);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -206,7 +207,7 @@ export const Login = () => {
   const handlePasskeyEmailNext = () => {
     setAuthError(null);
     if (!validateEmail(email)) {
-      setEmailError('Enter a valid email to locate your passkey.');
+      setEmailError('Enter a valid email address.');
       return;
     }
     setEmailError(null);
@@ -217,11 +218,15 @@ export const Login = () => {
     setAuthError(null);
     setScanning(true);
     try {
-      await loginWithPasskey(email);
+      if (passkeyAction === 'register') {
+        await registerWithPasskey(email);
+      } else {
+        await loginWithPasskey(email);
+      }
       setStep('creating');
     } catch (err: unknown) {
       setScanning(false);
-      const msg = err instanceof Error ? err.message : 'Passkey authentication failed.';
+      const msg = err instanceof Error ? err.message : 'Passkey action failed.';
       if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
         setAuthError('Passkey prompt was dismissed. Try again or use Google Sign-In.');
       } else {
@@ -462,24 +467,45 @@ export const Login = () => {
                     <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
                   </div>
 
-                  {/* SECONDARY — Passkey */}
-                  <motion.button
-                    whileHover={{ scale: 1.01, borderColor: `rgba(0,212,255,0.45)`, background: 'rgba(0,212,255,0.07)' }}
-                    whileTap={{ scale: 0.975 }}
-                    id="login-passkey-btn"
-                    onClick={() => setStep('passkey-email')}
-                    style={{
-                      ...btnBase,
-                      background: 'rgba(0,212,255,0.04)',
-                      border: `1px solid rgba(0,212,255,0.2)`,
-                      color: 'rgba(255,255,255,0.7)',
-                      fontSize: 13,
-                    }}
-                    aria-label="Sign in with Passkey"
-                  >
-                    <Fingerprint size={18} color={C.blue} />
-                    Use a Passkey instead
-                  </motion.button>
+                  {/* SECONDARY — Passkey actions */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <motion.button
+                      whileHover={{ scale: 1.01, borderColor: `rgba(0,212,255,0.45)`, background: 'rgba(0,212,255,0.07)' }}
+                      whileTap={{ scale: 0.975 }}
+                      id="login-passkey-btn"
+                      onClick={() => { setPasskeyAction('login'); setStep('passkey-email'); }}
+                      style={{
+                        ...btnBase,
+                        background: 'rgba(0,212,255,0.04)',
+                        border: `1px solid rgba(0,212,255,0.2)`,
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: 12,
+                        padding: '12px 10px',
+                      }}
+                      aria-label="Sign in with Passkey"
+                    >
+                      <Fingerprint size={16} color={C.blue} />
+                      Sign in Passkey
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.01, borderColor: `rgba(255,46,159,0.45)`, background: 'rgba(255,46,159,0.07)' }}
+                      whileTap={{ scale: 0.975 }}
+                      id="register-passkey-btn"
+                      onClick={() => { setPasskeyAction('register'); setStep('passkey-email'); }}
+                      style={{
+                        ...btnBase,
+                        background: 'rgba(255,46,159,0.04)',
+                        border: `1px solid rgba(255,46,159,0.25)`,
+                        color: 'rgba(255,255,255,0.8)',
+                        fontSize: 12,
+                        padding: '12px 10px',
+                      }}
+                      aria-label="Register Passkey"
+                    >
+                      <Fingerprint size={16} color={C.magenta} />
+                      Register Passkey
+                    </motion.button>
+                  </div>
                 </div>
 
                 {/* Trust logos — real brand marks */}
@@ -529,11 +555,13 @@ export const Login = () => {
                 initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.28 }}
               >
-                <div style={{ color: C.blue, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>
-                  PASSKEY AUTHENTICATION
+                <div style={{ color: passkeyAction === 'register' ? C.magenta : C.blue, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>
+                  {passkeyAction === 'register' ? 'PASSKEY REGISTRATION' : 'PASSKEY AUTHENTICATION'}
                 </div>
                 <div style={{ color: C.muted, fontSize: 12, marginBottom: 20, lineHeight: 1.65 }}>
-                  Enter the email linked to your passkey. Your device will handle authentication.
+                  {passkeyAction === 'register'
+                    ? 'Enter your email to bind a new Passkey to your hardware device.'
+                    : 'Enter the email linked to your passkey. Your device will handle authentication.'}
                 </div>
 
                 <div style={{ textAlign: 'left', marginBottom: 14 }}>
@@ -572,10 +600,10 @@ export const Login = () => {
                     whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.975 }}
                     id="passkey-continue-btn"
                     onClick={handlePasskeyEmailNext}
-                    style={{ ...btnBase, background: `rgba(0,212,255,0.08)`, border: `1px solid rgba(0,212,255,0.3)`, color: '#fff' }}
+                    style={{ ...btnBase, background: passkeyAction === 'register' ? `rgba(255,46,159,0.1)` : `rgba(0,212,255,0.08)`, border: `1px solid ${passkeyAction === 'register' ? 'rgba(255,46,159,0.35)' : 'rgba(0,212,255,0.3)'}`, color: '#fff' }}
                   >
-                    <Fingerprint size={18} color={C.blue} />
-                    Continue with Passkey
+                    <Fingerprint size={18} color={passkeyAction === 'register' ? C.magenta : C.blue} />
+                    {passkeyAction === 'register' ? 'Register Passkey' : 'Continue with Passkey'}
                   </motion.button>
                   <button
                     onClick={() => { setStep('landing'); setEmailError(null); setAuthError(null); }}
@@ -602,8 +630,8 @@ export const Login = () => {
                 >
                   🔑
                 </motion.div>
-                <div style={{ color: C.orange, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 10 }}>
-                  BIND UNIVERSAL PASSKEY
+                <div style={{ color: passkeyAction === 'register' ? C.magenta : C.orange, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 10 }}>
+                  {passkeyAction === 'register' ? 'CREATE HARDWARE PASSKEY' : 'BIND UNIVERSAL PASSKEY'}
                 </div>
                 <div style={{ color: C.muted, fontSize: 12, marginBottom: 8, lineHeight: 1.65 }}>
                   {email}
@@ -613,14 +641,14 @@ export const Login = () => {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <motion.button
-                    whileHover={{ scale: 1.015, borderColor: `${C.orange}80` }}
+                    whileHover={{ scale: 1.015, borderColor: `${passkeyAction === 'register' ? C.magenta : C.orange}80` }}
                     whileTap={{ scale: 0.975 }}
                     id="passkey-auth-btn"
                     onClick={handlePasskeyLogin}
-                    style={{ ...btnBase, background: `rgba(255,122,24,0.07)`, border: `1px solid rgba(255,122,24,0.3)`, color: C.orange }}
+                    style={{ ...btnBase, background: passkeyAction === 'register' ? `rgba(255,46,159,0.08)` : `rgba(255,122,24,0.07)`, border: `1px solid ${passkeyAction === 'register' ? 'rgba(255,46,159,0.35)' : 'rgba(255,122,24,0.3)'}`, color: passkeyAction === 'register' ? C.magenta : C.orange }}
                   >
-                    <Fingerprint size={18} color={C.orange} />
-                    Authenticate with Passkey
+                    <Fingerprint size={18} color={passkeyAction === 'register' ? C.magenta : C.orange} />
+                    {passkeyAction === 'register' ? 'Create & Register Passkey' : 'Authenticate with Passkey'}
                   </motion.button>
                   <button
                     onClick={() => { setStep('passkey-email'); setAuthError(null); }}
