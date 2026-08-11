@@ -317,15 +317,6 @@ router.post("/register-options", async (req: Request, res: Response) => {
     }
 
     const userRef = db.collection("users").doc(userId);
-    const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      await userRef.set({
-        email: userEmail,
-        createdAt: FieldValue.serverTimestamp(),
-        authType: "passkey",
-      });
-    }
-
     const credsSnap = await userRef.collection("passkeyCredentials").get();
     const excludeCredentials = credsSnap.docs.map((docSnap) => {
       const data = docSnap.data();
