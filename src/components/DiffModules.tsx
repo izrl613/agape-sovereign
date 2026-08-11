@@ -63,27 +63,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   useEffect(() => {
     if (!user) return;
 
-    if (user.uid === 'emergency-bypass-admin-999') {
-      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-      if (localActive) {
-        try {
-          const parsed = JSON.parse(localActive);
-          const encVal = parsed.data?.[moduleId] || "";
-          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
-          setStoredHash(hash);
-          if (encVal) {
-            decryptClientSide(encVal, user.uid).then(dec => {
-              setDecryptedValue(dec);
-              setParameterValue(dec);
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      return;
-    }
-
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
@@ -121,14 +100,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const encrypted = await encryptClientSide(parameterValue, user.uid);
 
       // Save to Firestore
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
-        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+      const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
         await setDoc(docRef, {
           data: {
             [moduleId]: encrypted
@@ -138,7 +110,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           },
           updatedAt: serverTimestamp()
         }, { merge: true });
-      }
 
       // Determine security status heuristically
       let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
@@ -207,43 +178,11 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       }
 
       // Save scan finding to diff_scans
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
-        filtered.push({
-          id: `local-${moduleId}-${Date.now()}`,
-          userId: user.uid,
-          module: moduleId,
-          finding: findingText,
-          status: status,
-          timestamp: new Date().toISOString(),
-          details: detailsText
-        });
-        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
+        const diffScansCol = collection(db, 'users', user.uid, 'diff_scans');
+        const existingSnap = await getDocs(query(diffScansCol, where('module', '==', moduleId)));
 
-        // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-
-        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
-        history.push({
-          userId: user.uid,
-          score: newScore,
-          timestamp: new Date().toISOString(),
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          findings: filtered
-        });
-        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
-      } else {
-        const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
-        const snap = await getDocs(q);
-        
-        if (!snap.empty) {
-          const docRef = doc(db, 'diff_scans', snap.docs[0].id);
+        if (!existingSnap.empty) {
+          const docRef = doc(db, 'users', user.uid, 'diff_scans', existingSnap.docs[0].id);
           await updateDoc(docRef, {
             finding: findingText,
             status: status,
@@ -251,7 +190,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             timestamp: serverTimestamp()
           });
         } else {
-          await addDoc(collection(db, 'diff_scans'), {
+          await addDoc(diffScansCol, {
             userId: user.uid,
             module: moduleId,
             finding: findingText,
@@ -262,17 +201,17 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         }
 
         // Recalculate Sovereign Score
-        const allScansSnap = await getDocs(query(collection(db, 'diff_scans'), where('userId', '==', user.uid)));
+        const allScansSnap = await getDocs(diffScansCol);
         const allScans = allScansSnap.docs.map(d => d.data());
         const nukedCount = allScans.filter(f => f.status === 'NUKED').length;
         const knoxedCount = allScans.filter(f => f.status === 'KNOXED').length;
         const monitoredCount = allScans.filter(f => f.status === 'MONITORED').length;
-        
+
         const newScore = Math.max(45, 100 - (nukedCount * 15));
         await updateDoc(doc(db, 'users', user.uid), { sovereignScore: newScore });
 
         // Add to score history
-        await addDoc(collection(db, 'score_history'), {
+        await addDoc(collection(db, 'users', user.uid, 'score_history'), {
           userId: user.uid,
           score: newScore,
           nukedCount,
@@ -281,7 +220,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           timestamp: serverTimestamp(),
           reason: `DIFF Vector [${vector}] Update`
         });
-      }
 
       toast.dismiss(toastId);
       toast.success("VECTOR SEALED & CRYPTED", {

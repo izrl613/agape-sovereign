@@ -33,22 +33,8 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localKey = `reports_history_${user.uid}`;
-        const existing = localStorage.getItem(localKey);
-        const list = existing ? JSON.parse(existing) : [];
-        const formatted = list.map((item: any) => ({
-          ...item,
-          id: item.reportId,
-          generatedAtDate: item.generatedAt ? new Date(item.generatedAt) : null
-        }));
-        formatted.sort((a: any, b: any) => {
-          const timeA = a.generatedAtDate?.getTime() || 0;
-          const timeB = b.generatedAtDate?.getTime() || 0;
-          return timeB - timeA;
-        });
-        setReports(formatted);
-      } else {
+      setReports(formatted);
+    } else {
         const reportsRef = collection(db, 'users', user.uid, 'reports');
         const q = query(reportsRef, orderBy('generatedAt', 'desc'));
         const querySnapshot = await getDocs(q);
@@ -61,8 +47,7 @@ export const UserProfileSettings = () => {
           };
         });
         setReports(list);
-      }
-    } catch (error) {
+      } catch (error) {
       console.error("Error fetching reports:", error);
     } finally {
       setLoadingReports(false);
@@ -93,8 +78,7 @@ export const UserProfileSettings = () => {
       if (!user) return;
       try {
         const q = query(
-          collection(db, 'score_history'),
-          where('userId', '==', user.uid),
+          collection(db, 'users', user.uid, 'score_history'),
           orderBy('timestamp', 'desc'),
           limit(10)
         );

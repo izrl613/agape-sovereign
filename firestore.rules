@@ -1,97 +1,301 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Safety Net: Default Deny All
+
+    // ─── GLOBAL DEFAULT DENY-ALL ───────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Reusable global security primitives
+    // ─── REUSABLE SECURITY PRIMITIVES ─────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isAppVerified() {
+      return request.app != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.admin == true;
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string
+        && id.size() >= 1
+        && id.size() <= 128
+        && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // System-level capacity tracking (aggregate counters — no PII stored)
-    // Authenticated users can read capacity state and transactionally
-    // reserve / release a slot via capacityService.ts.
-    match /system/{document} {
-      allow read, write: if isSignedIn() && isValidId(document);
+    function isValidTimestamp(ts) {
+      return ts is timestamp
+        && ts > request.time - duration.value(5, 'm')
+        && ts <= request.time + duration.value(1, 'm');
     }
 
-    // System capacity document — authenticated users may check/reserve slots
+    function maxDocSize(bytes) {
+      return request.resource.size() <= bytes;
+    }
+
+    function hasOnlyKeys(allowed) {
+      return request.resource.data.keys().hasOnly(allowed);
+    }
+
+    // ─── SYSTEM (capacity gate — specific paths only) ──────────────────────
+    // Writes are restricted to /system/capacity. capacityService.ts uses
+    // set(..., {merge: true}) so pre-existing fields (lastReservedAt,
+    // lastReservedBy) remain in the merged document; the rule validates the
+    // request-payload fields only and tolerates the pre-existing keys.
     match /system/capacity {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() 
-                   && request.resource.data.keys().hasOnly(['slots'])
-                   && request.resource.data.slots is number
-                   && request.resource.data.slots >= 0;
+      allow read: if isSignedIn() && isAppVerified();
+      allow write: if isSignedIn()
+        && isAppVerified()
+        && maxDocSize(2048)
+        && request.resource.data.keys().hasAny(['slots', 'activeUsers', 'maxUsers', 'lastReservedAt'])
+        && request.resource.data.keys().hasOnly([
+          'slots', 'activeUsers', 'maxUsers',
+          'lastReservedAt', 'lastReservedBy'
+        ])
+        && (!('slots' in request.resource.data) || (request.resource.data.slots is int && request.resource.data.slots >= 0))
+        && (!('activeUsers' in request.resource.data) || (request.resource.data.activeUsers is int && request.resource.data.activeUsers >= 0))
+        && (!('maxUsers' in request.resource.data) || (request.resource.data.maxUsers is int && request.resource.data.maxUsers > 0));
     }
 
-    // Sovereign user accounts & private sandboxes
+    // Explicitly deny everything else under /system
+    match /system/{document} {
+      allow read, write: if false;
+    }
+
+    // ─── USERS / OWNER SANDBOX ─────────────────────────────────────────────
     match /users/{userId} {
-      allow get, write: if isOwner(userId) && isValidId(userId);
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && isValidId(userId);
+      allow update: if isOwner(userId) && isValidId(userId) && maxDocSize(16384);
+      allow delete: if false;
 
-      // Identity Sandbox Partition Modules Subcollection
+      // ─── diff_scans (migrated from flat collection → subcollection) ────
+      // CRITICAL FIX: ownership is enforced by path, not by a mutable data field.
+      // An attacker cannot write to another user's scans because the path itself
+      // binds the document to the owner's UID.
+      match /diff_scans/{scanId} {
+        allow read: if isOwner(userId) && isValidId(scanId);
+        allow create: if isOwner(userId)
+          && isValidId(scanId)
+          && isAppVerified()
+          && maxDocSize(8192)
+          && request.resource.data.userId == userId
+          && request.resource.data.keys().hasOnly([
+            'userId', 'module', 'finding', 'status',
+            'timestamp', 'details', 'seal'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp);
+        allow update: if isOwner(userId)
+          && isValidId(scanId)
+          && isAppVerified()
+          && maxDocSize(8192)
+          && request.resource.data.userId == userId
+          && request.resource.data.keys().hasOnly([
+            'userId', 'module', 'finding', 'status',
+            'timestamp', 'details', 'seal'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp)
+          && request.time - resource.data.timestamp < duration.value(1, 'h');
+        allow delete: if false;
+      }
+
+      // ─── score_history (migrated from flat collection → subcollection) ──
+      // CRITICAL FIX: same ownership-by-path pattern as diff_scans.
+      match /score_history/{entryId} {
+        allow read: if isOwner(userId) && isValidId(entryId);
+        allow create: if isOwner(userId)
+          && isValidId(entryId)
+          && isAppVerified()
+          && maxDocSize(4096)
+          && request.resource.data.userId == userId
+          && request.resource.data.keys().hasOnly([
+            'userId', 'score', 'tier', 'breakdown',
+            'timestamp', 'seal', 'source'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp);
+        allow update: if isOwner(userId)
+          && isValidId(entryId)
+          && isAppVerified()
+          && maxDocSize(4096)
+          && request.resource.data.userId == userId
+          && request.resource.data.keys().hasOnly([
+            'userId', 'score', 'tier', 'breakdown',
+            'timestamp', 'seal', 'source'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp)
+          && request.time - resource.data.timestamp < duration.value(1, 'h');
+        allow delete: if false;
+      }
+
+      // ─── modules ────────────────────────────────────────────────────────
       match /modules/{moduleId} {
-        allow read, write: if isOwner(userId) && isValidId(moduleId);
+        allow read, write: if isOwner(userId)
+          && isValidId(moduleId)
+          && isAppVerified()
+          && maxDocSize(8192);
       }
 
-      // Active module data
+      // ─── module_data ────────────────────────────────────────────────────
       match /module_data/{document} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId)
+          && isValidId(document)
+          && isAppVerified()
+          && maxDocSize(8192);
       }
 
-      // Symmetrically ciphered password keychains
+      // ─── passwords ──────────────────────────────────────────────────────
       match /passwords/{passwordId} {
-        allow read, write: if isOwner(userId) && isValidId(passwordId);
+        allow read, write: if isOwner(userId)
+          && isValidId(passwordId)
+          && isAppVerified()
+          && maxDocSize(4096);
       }
 
-      // E2EE encrypted chats/messages logs
+      // ─── messages (E2EE logs) ───────────────────────────────────────────
       match /messages/{messageId} {
-        allow read, write: if isOwner(userId) && isValidId(messageId);
+        allow read, write: if isOwner(userId)
+          && isValidId(messageId)
+          && isAppVerified()
+          && maxDocSize(4096);
       }
 
-      // Sovereign Secure Document Vault
+      // ─── vault ──────────────────────────────────────────────────────────
       match /vault/{vaultId} {
-        allow read, write: if isOwner(userId) && isValidId(vaultId);
+        allow read, write: if isOwner(userId)
+          && isValidId(vaultId)
+          && isAppVerified()
+          && maxDocSize(4096);
       }
 
-      // Intercepted trackers metrics log
+      // ─── trackers ───────────────────────────────────────────────────────
       match /trackers/{trackerId} {
-        allow read, write: if isOwner(userId) && isValidId(trackerId);
+        allow read, write: if isOwner(userId)
+          && isValidId(trackerId)
+          && isAppVerified()
+          && maxDocSize(4096);
       }
 
-      // Dynamic Security Audit Logs
+      // ─── auditLogs (dynamic security audit logs) ────────────────────────
       match /auditLogs/{logId} {
-        allow read, write: if isOwner(userId) && isValidId(logId);
+        allow read: if isOwner(userId) && isValidId(logId);
+        allow create: if isOwner(userId)
+          && isValidId(logId)
+          && isAppVerified()
+          && maxDocSize(4096)
+          && request.resource.data.keys().hasOnly([
+            'type', 'action', 'userId', 'userEmail', 'timestamp', 'metadata'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp);
+        allow update, delete: if false;
       }
 
-      // WebAuthn passkey credentials (written by Admin SDK in Cloud Functions).
-      // Client-side: owner can read their own credentials (e.g., to list registered
-      // devices). Writes stay server-only — the admin SDK bypasses these rules.
+      // ─── integritySeals (SHA256 seal registry) ──────────────────────────
+      match /integritySeals/{sealId} {
+        allow read: if isOwner(userId) && isValidId(sealId);
+        allow create: if isOwner(userId)
+          && isValidId(sealId)
+          && isAppVerified()
+          && maxDocSize(2048)
+          && request.resource.data.keys().hasOnly([
+            'seal', 'moduleId', 'sealType', 'timestamp', 'dataHash', 'app'
+          ])
+          && isValidTimestamp(request.resource.data.timestamp);
+        allow update, delete: if false;
+      }
+
+      // ─── passkeyCredentials ─────────────────────────────────────────────
+      // Writes are performed exclusively by the Admin SDK (Cloud Functions).
+      // Client-side: owner may read own credential list; no client-side writes.
       match /passkeyCredentials/{credentialId} {
         allow read: if isOwner(userId) && isValidId(credentialId);
-        allow write: if false; // Admin SDK only
+        allow write: if false;
       }
     }
 
-    // DIFF Scans collection
-    match /diff_scans/{docId} {
-      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // ─── GLOBAL COLLECTIONS (non-user-scoped) ───────────────────────────────
+
+    // ─── identity_vectors (shared read-only reference data) ────────────────
+    match /identity_vectors/{vectorId} {
+      allow read: if isSignedIn() && isValidId(vectorId);
+      allow write: if isAdmin();
     }
 
-    // Score history collection
-    match /score_history/{docId} {
-      allow read, write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // ─── user_vector_statuses (user-specific status, indexed by uid_vectorId) ─
+    match /user_vector_statuses/{statusId} {
+      allow read: if isSignedIn()
+        && isValidId(statusId)
+        && request.auth.token.admin == true
+        || (request.auth != null
+          && resource.data.userUid == request.auth.uid);
+      allow create, update: if isSignedIn()
+        && isValidId(statusId)
+        && isAppVerified()
+        && request.resource.data.userUid == request.auth.uid
+        && maxDocSize(4096)
+        && isValidTimestamp(request.resource.data.lastScanAt);
+      allow delete: if false;
+    }
+
+    // ─── findings (scan findings — subcollection under users preferred) ────
+    // Top-level for legacy compatibility; write requires user ownership match.
+    match /findings/{findingId} {
+      allow read: if isSignedIn()
+        && isValidId(findingId)
+        && resource.data.userUid == request.auth.uid
+        || isAdmin();
+      allow create: if isSignedIn()
+        && isValidId(findingId)
+        && isAppVerified()
+        && request.resource.data.userUid == request.auth.uid
+        && maxDocSize(4096)
+        && isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isSignedIn()
+        && isValidId(findingId)
+        && isAppVerified()
+        && resource.data.userUid == request.auth.uid
+        && maxDocSize(4096)
+        && request.time - resource.data.createdAt < duration.value(24, 'h');
+      allow delete: if false;
+    }
+
+    // ─── monitored_emails ──────────────────────────────────────────────────
+    match /monitored_emails/{emailId} {
+      allow read: if isSignedIn()
+        && isValidId(emailId)
+        && resource.data.userUid == request.auth.uid
+        || isAdmin();
+      allow create: if isSignedIn()
+        && isValidId(emailId)
+        && isAppVerified()
+        && request.resource.data.userUid == request.auth.uid
+        && maxDocSize(2048)
+        && isValidTimestamp(request.resource.data.createdAt);
+      allow update: if isSignedIn()
+        && isValidId(emailId)
+        && isAppVerified()
+        && resource.data.userUid == request.auth.uid
+        && maxDocSize(2048);
+      allow delete: if isSignedIn()
+        && isValidId(emailId)
+        && resource.data.userUid == request.auth.uid;
+    }
+
+    // ─── audit_logs (global audit log — Cloud Functions only) ──────────────
+    // Writes are exclusively server-side. Admin read for oversight.
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }
