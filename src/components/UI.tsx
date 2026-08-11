@@ -115,3 +115,97 @@ export const Skeleton: React.FC<{ width?: string | number, height?: string | num
     }} 
   />
 );
+
+// ── Enriched Module Primitives ──────────────────────────────────────────────
+
+export const DataTag: React.FC<{ icon: React.ReactNode, label: string, color?: string }> = ({ icon, label, color = NEON.magenta }) => (
+  <div style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 6,
+    background: `rgba(255,255,255,0.03)`,
+    border: `1px solid ${color}33`,
+    color: '#E8F4FF',
+    fontFamily: "'Share Tech Mono'",
+    fontSize: '0.7rem'
+  }}>
+    <span style={{ color }}>{icon}</span>
+    {label}
+  </div>
+);
+
+export const ProgressTimeline: React.FC<{ steps: { label: string, status: 'complete' | 'active' | 'pending' }[] }> = ({ steps }) => (
+  <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: 4, marginTop: 16 }}>
+    {steps.map((step, idx) => {
+      const isComplete = step.status === 'complete';
+      const isActive = step.status === 'active';
+      const color = isComplete ? NEON.blue : isActive ? NEON.orange : 'rgba(255,255,255,0.2)';
+      
+      return (
+        <React.Fragment key={idx}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1 }}>
+            <div style={{
+              width: 12, height: 12, borderRadius: '50%',
+              background: isComplete ? color : 'transparent',
+              border: `2px solid ${color}`,
+              boxShadow: isComplete || isActive ? `0 0 8px ${color}` : 'none'
+            }} />
+            <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: isActive || isComplete ? NEON.text : NEON.textMuted, textAlign: 'center' }}>
+              {step.label}
+            </span>
+          </div>
+          {idx < steps.length - 1 && (
+            <div style={{ flex: 2, height: 2, background: 'rgba(255,255,255,0.1)', margin: '0 4px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+              <div style={{
+                position: 'absolute', top: 0, left: 0, bottom: 0,
+                width: isComplete ? '100%' : '0%',
+                background: NEON.blue,
+                transition: 'width 0.5s ease'
+              }} />
+            </div>
+          )}
+        </React.Fragment>
+      );
+    })}
+  </div>
+);
+
+export const AutomationCard: React.FC<{
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  status: 'idle' | 'running' | 'complete';
+  icon?: React.ReactNode;
+}> = ({ title, description, actionLabel, onAction, status, icon }) => {
+  return (
+    <GlassCard style={{ padding: 16, borderLeft: `3px solid ${NEON.blue}`, marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        {icon && <div style={{ color: NEON.blue, marginTop: 2 }}>{icon}</div>}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "'Rajdhani'", fontSize: '0.9rem', fontWeight: 600, color: NEON.text }}>{title}</div>
+          <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.7rem', color: NEON.textMuted, marginTop: 4, marginBottom: 12 }}>
+            {description}
+          </div>
+          
+          {status === 'running' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="animate-spin" style={{ width: 14, height: 14, border: `2px solid ${NEON.orange}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+              <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.7rem', color: NEON.orange }}>ARCHITECT AI IS RESOLVING THIS VECTOR...</span>
+            </div>
+          ) : status === 'complete' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: NEON.blue, fontFamily: "'Share Tech Mono'", fontSize: '0.7rem' }}>
+              <span>✓</span> VECTOR SECURED
+            </div>
+          ) : (
+            <NeonButton size="sm" onClick={onAction} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {actionLabel}
+            </NeonButton>
+          )}
+        </div>
+      </div>
+    </GlassCard>
+  );
+};
