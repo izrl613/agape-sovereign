@@ -19,6 +19,7 @@ import { updateFindingStatus, recalculateSovereignScore, ScanFinding, generateSu
 import { logAIChatMessage, logUserEvent } from '../services/analyticsService';
 import { getFeatureFlag } from '../services/remoteConfigService';
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
+import { generateSHA256 } from '../utils/crypto';
 
 interface Message {
   id: string;
@@ -26,7 +27,7 @@ interface Message {
   text: string;
   timestamp: Date;
   feedback?: 'up' | 'down';
-  attachment?: { name: string; content: string };
+  attachment?: { name: string; content: string; hash?: string };
   remediationFor?: string; // findingId
   isAlert?: boolean;
 }
@@ -466,10 +467,17 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     }
     
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
-      setAttachment({ name: file.name, content });
-      setInput(prev => prev.trim() ? prev : `Please analyze ${file.name} for security vulnerabilities and suggest remediation steps.`);
+      const hash = await generateSHA256(content);
+      
+      toast.success("FILE HASHED (SHA-256)", {
+        description: `Integrity Checksum: ${hash.substring(0, 16)}...`,
+        duration: 3000
+      });
+      
+      setAttachment({ name: file.name, content, hash });
+      setInput(prev => prev.trim() ? prev : `Please analyze ${file.name} for security vulnerabilities and suggest remediation steps. (SHA-256: ${hash})`);
     };
     reader.readAsText(file);
   };
@@ -2092,6 +2100,12 @@ Recalculate and surface the Sovereign Score after every module action or user-su
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span style={{ fontSize: '0.8rem', color: NEON.text, fontFamily: "'Rajdhani'", fontWeight: 600 }}>{attachment.name}</span>
                   <span style={{ fontSize: '0.65rem', color: NEON.textMuted }}>{attachment.name.split('.').pop()?.toUpperCase()} FILE</span>
+                  {attachment.hash && (
+                    <div className="text-[10px] text-emerald-400 font-mono mt-1 flex items-center gap-1">
+                      <ShieldCheck size={10} />
+                      SHA256: {attachment.hash.substring(0, 16)}...
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => setAttachment(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', padding: 4, marginLeft: 8 }}>
                   <X size={16} color={NEON.textMuted} />

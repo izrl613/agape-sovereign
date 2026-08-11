@@ -13,8 +13,6 @@ import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/c
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
-import { InteractiveEntryField } from './InteractiveEntryField';
-import { BreachCard } from './BreachCard';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -418,15 +416,41 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
               </div>
             </div>
 
-            <InteractiveEntryField
-              moduleId={moduleId}
-              value={parameterValue}
-              onChange={setParameterValue}
-              onSave={handleUpdate}
-              isSaving={isSaving}
-              title={title}
-              placeholder={`Enter parameter input for ${title}...`}
-            />
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-sans font-semibold text-[#00D4FF] tracking-wider uppercase">Update Vector Value</label>
+              <div className="relative group">
+                <input 
+                  type={moduleId === 'password' ? 'password' : 'text'}
+                  value={parameterValue}
+                  onChange={(e) => setParameterValue(e.target.value)}
+                  className="w-full bg-[#040914] border-2 border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-[#00D4FF] transition-all font-mono text-base placeholder:text-slate-600 shadow-inner"
+                  placeholder={`Enter parameter input for ${title}...`}
+                  disabled={isSaving}
+                />
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div className="flex justify-end">
+            <NeonButton 
+              onClick={handleUpdate}
+              color={NEON.blue} 
+              disabled={isSaving}
+              size="sm"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-2 inline" />
+                  SEALING & CRYPTING...
+                </>
+              ) : (
+                <>
+                  <Key className="w-3.5 h-3.5 mr-2 inline" />
+                  UPDATE & SEAL VECTOR
+                </>
+              )}
+            </NeonButton>
           </div>
         </div>
       </GlassCard>
@@ -583,35 +607,70 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {displayFindings.map((f, i) => (
-          f.original ? (
-            <BreachCard 
-              key={i}
-              finding={f.original as ScanFinding}
-              moduleId={moduleId}
-              onGenerateReport={async (finding) => {
-                setIsGenerating(true);
-                const report = await generateSuspiciousReport(finding);
-                setSelectedReport(report || "No report generated.");
-                setIsGenerating(false);
-              }}
-              onAutomatedFix={() => {
-                toast.success("Architect AI initialized. Fix protocol engaging...", {
-                  description: "Stand by for vector securing..."
-                });
-              }}
-              isGeneratingReport={isGenerating}
-            />
-          ) : (
-            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${NEON.orange}33`, display: "flex", alignItems: "flex-start", gap: 14 }}>
-                <div style={{ flexShrink: 0, marginTop: 4 }}><StatusBadge type="MONITORED" /></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.95rem", color: NEON.text, marginBottom: 4 }}>{f.label}</div>
-                  <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.textMuted, marginTop: 2, marginBottom: 8, lineHeight: 1.4 }}>{f.detail}</div>
+          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "flex-start", gap: 14 }}>
+              <div style={{ flexShrink: 0, marginTop: 4 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.95rem", color: NEON.text, marginBottom: 4 }}>{f.label}</div>
+                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.textMuted, marginTop: 2, marginBottom: 8, lineHeight: 1.4 }}>{f.detail}</div>
+                
+                {/* Firefox Monitor-style data tags */}
+                {f.type === "NUKED" && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 4 }}>
+                    <DataTag icon={<KeyRound size={10} />} label="Passwords" />
+                    <DataTag icon={<MapPin size={10} />} label="IP Addresses" />
+                    <DataTag icon={<Phone size={10} />} label="Phone Numbers" />
+                  </div>
+                )}
+                
+                {/* Optery-style removal tracker (only for broker modules if nuked/monitored) */}
+                {moduleId === 'broker' && (f.type === 'NUKED' || f.type === 'MONITORED') && (
+                  <ProgressTimeline steps={[
+                    { label: 'Identified', status: 'complete' },
+                    { label: 'Opt-Out Sent', status: 'active' },
+                    { label: 'Verifying', status: 'pending' },
+                    { label: 'Removed', status: 'pending' }
+                  ]} />
+                )}
+              </div>
+              <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
+                    <NeonButton 
+                      size="sm" 
+                      color={NEON.blue}
+                      onClick={async () => {
+                        setIsGenerating(true);
+                        const report = await generateSuspiciousReport(f.original as ScanFinding);
+                        setSelectedReport(report || "No report generated.");
+                        setIsGenerating(false);
+                      }}
+                      disabled={isGenerating}
+                    >
+                      <FileText size={12} style={{ marginRight: 4 }} />
+                      REPORT
+                    </NeonButton>
+                  )}
                 </div>
               </div>
             </div>
-          )
+            
+            {/* Jumbo-style Automation Card */}
+            {(f.type === "NUKED" || f.type === "MONITORED") && f.original && (
+              <AutomationCard 
+                icon={<Shield size={16} />}
+                title={moduleId === 'broker' ? "Data Broker Removal Required" : "Automated Remediation Available"}
+                description={`Architect AI can automatically execute the ${f.action} protocol to secure this vector.`}
+                actionLabel={moduleId === 'broker' ? "AUTOMATE REMOVAL" : "AUTO-FIX VULNERABILITY"}
+                status="idle"
+                onAction={() => {
+                  toast.success("Architect AI initialized. Fix protocol engaging...", {
+                    description: "Stand by for vector securing..."
+                  });
+                }}
+              />
+            )}
+          </div>
         ))}
       </div>
 
