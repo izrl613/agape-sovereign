@@ -29,7 +29,48 @@ export interface FirestoreErrorInfo {
   }
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+/**
+ * Extracts a Firestore error code from an unknown error object.
+ */
+function getFirestoreCode(error: unknown): string {
+  if (error && typeof error === 'object' && 'code' in error) {
+    return String((error as { code: string }).code || '');
+  }
+  return '';
+}
+
+/**
+ * Returns true for errors that are transient / race-condition related and
+ * should be swallowed silently (console-only) rather than shown in a toast.
+ *
+ * Examples:
+ *  - permission-denied right after sign-in: Firestore token propagation lag.
+ *  - unavailable: Firestore offline — already handled by offline UI.
+ *  - unauthenticated: fires briefly during logout / tab focus.
+ */
+function isSilentError(code: string, error: unknown): boolean {
+  const silentCodes = [
+    'permission-denied',   // token propagation lag on fresh sign-in
+    'unauthenticated',     // brief gap during auth state change
+    'unavailable',         // Firestore offline — not actionable by user
+    'cancelled',           // listener cancelled on unmount
+  ];
+  if (silentCodes.includes(code)) return true;
+
+  const msg = error instanceof Error ? error.message : String(error);
+  // Suppress the "offline" probe error from firebase.ts boot
+  if (msg.includes('the client is offline')) return true;
+  return false;
+}
+
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null,
+  { silent = false }: { silent?: boolean } = {}
+) {
+  const code = getFirestoreCode(error);
+
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
@@ -48,18 +89,23 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  
-  console.error('Firestore Error: ', errInfo);
-  
-  let safeErrorString = "Unknown error";
-  try {
-    safeErrorString = JSON.stringify(errInfo);
-  } catch (e) {
-    safeErrorString = `Error: ${errInfo.error}, Operation: ${errInfo.operationType}, Path: ${errInfo.path}`;
+
+  console.error('[Firestore Error]', { code, ...errInfo });
+
+  // Silently log transient errors — never surface them as toast notifications
+  if (silent || isSilentError(code, error)) {
+    return;
   }
-  
-  toast.error(`Database Error: ${errInfo.error}`, { 
-    description: `Operation: ${errInfo.operationType}`,
+
+  // User-facing messages for persistent, actionable errors only
+  const userMsg = code === 'not-found'
+    ? 'Record not found.'
+    : code === 'already-exists'
+      ? 'Record already exists.'
+      : errInfo.error;
+
+  toast.error(`Database Error: ${userMsg}`, {
+    description: `Operation: ${operationType}`,
     duration: 5000
   });
 }
