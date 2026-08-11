@@ -915,22 +915,13 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         let activeData: Record<string, string> = {};
         let hashes: Record<string, string> = {};
         
-        if (user.uid === 'emergency-bypass-admin-999') {
-          const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-          if (localActive) {
-            const parsed = JSON.parse(localActive);
-            activeData = parsed.data || {};
-            hashes = parsed.hashes || {};
-          }
-        } else {
-          const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             const snapData = docSnap.data();
             activeData = snapData.data || {};
             hashes = snapData.hashes || {};
           }
-        }
 
         const compiledModules = await Promise.all(DIFF_MODULES.map(async (m) => {
           const encVal = activeData[m.id] || "";

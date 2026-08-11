@@ -101,8 +101,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     if (!user?.uid) return;
 
     const q = query(
-      collection(db, 'score_history'),
-      where('userId', '==', user.uid)
+      collection(db, 'users', user.uid, 'score_history')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -128,26 +127,6 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     }
 
     const loadHistory = async () => {
-      // Handle emergency bypass user with local storage
-      if (user.uid === 'emergency-bypass-admin-999') {
-        const localHistory = localStorage.getItem(`chat_history_${user.uid}`);
-        if (localHistory) {
-          try {
-            const parsed = JSON.parse(localHistory);
-            setMessages(parsed.map((m: any) => ({
-              ...m,
-              timestamp: new Date(m.timestamp)
-            })));
-          } catch (e) {
-            setMessages([getDefaultMessage()]);
-          }
-        } else {
-          setMessages([getDefaultMessage()]);
-        }
-        setIsHistoryLoaded(true);
-        return;
-      }
-
       try {
         const sessionRef = doc(db, 'chat_sessions', user.uid);
         const sessionSnap = await getDoc(sessionRef);
@@ -188,12 +167,6 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
   // Save chat history to Firestore
   const saveHistory = useCallback(async (currentMessages: Message[]) => {
     if (!user?.uid || !isHistoryLoaded || currentMessages.length === 0) return;
-
-    // Handle emergency bypass user with local storage
-    if (user.uid === 'emergency-bypass-admin-999') {
-      localStorage.setItem(`chat_history_${user.uid}`, JSON.stringify(currentMessages));
-      return;
-    }
 
     try {
       const sessionRef = doc(db, 'chat_sessions', user.uid);
