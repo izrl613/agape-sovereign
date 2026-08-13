@@ -5,7 +5,7 @@
 # Also triggered manually via workflow_dispatch.
 #
 # Notes:
-# - GITHUB_TOKEN cannot use a `projects:` permission key in workflow YAML.
+# - main is branch-protected; this workflow does NOT push TIMELINE.md edits.
 # - Optional repo secret TIMELINE_SYNC_TOKEN (classic PAT with repo + project)
 #   enables Projects V2 linking; otherwise milestones/issues still sync.
 
@@ -28,7 +28,7 @@ jobs:
     name: Sync Project Timeline
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       issues: write
 
     steps:
@@ -49,13 +49,6 @@ jobs:
       - name: Run Timeline Sync Agent
         env:
           GITHUB_TOKEN: ${{ secrets.TIMELINE_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+          TIMELINE_SKIP_FILE_WRITE: '1'
         run: |
           python Projects/Timeline/sync_agent.py
-
-      - name: Commit TIMELINE.md timestamp update
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'chore(timeline): auto-sync timestamp update [skip ci]'
-          file_pattern: 'Projects/Timeline/TIMELINE.md'
-          commit_user_name: 'Agape Sovereign Timeline Bot'
-          commit_user_email: 'idin@agape.nyc'

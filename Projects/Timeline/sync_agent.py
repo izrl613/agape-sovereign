@@ -410,17 +410,16 @@ def sync() -> None:
                     add_issue_to_project(node_id)
 
     log.info("=== Sync complete ===")
-    # Update last-sync timestamp in TIMELINE.md
+    # Update last-sync timestamp in TIMELINE.md (skip on CI: main is protected)
+    if os.environ.get("TIMELINE_SKIP_FILE_WRITE", "").strip() in {"1", "true", "yes"}:
+        log.info("Skipping TIMELINE.md write (TIMELINE_SKIP_FILE_WRITE set)")
+        return
+
     timeline_path = TIMELINE_FILE
     if os.path.exists(timeline_path):
         with open(timeline_path, "r") as f:
             content = f.read()
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        updated = content.replace(
-            "*Last updated by sync agent:",
-            f"*Last updated by sync agent: {today} — ",
-        )
-        # Simpler: always rewrite the last line
         lines = content.rstrip().split("\n")
         ts_line = f"*Last updated by sync agent: {today}*"
         if lines and lines[-1].startswith("*Last updated"):
