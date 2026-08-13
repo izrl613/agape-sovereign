@@ -3,6 +3,11 @@
 # in sync with the canonical TIMELINE.md.
 #
 # Also triggered manually via workflow_dispatch.
+#
+# Notes:
+# - GITHUB_TOKEN cannot use a `projects:` permission key in workflow YAML.
+# - Optional repo secret TIMELINE_SYNC_TOKEN (classic PAT with repo + project)
+#   enables Projects V2 linking; otherwise milestones/issues still sync.
 
 name: Timeline Sync
 
@@ -25,7 +30,6 @@ jobs:
     permissions:
       contents: write
       issues: write
-      projects: write
 
     steps:
       - name: Checkout repository
@@ -44,7 +48,7 @@ jobs:
 
       - name: Run Timeline Sync Agent
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TIMELINE_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           python Projects/Timeline/sync_agent.py
 
