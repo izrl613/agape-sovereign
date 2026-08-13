@@ -1,0 +1,57 @@
+# Agape Sovereign — Timeline Sync Workflow
+# Runs daily to keep GitHub milestones, issues, and Project #2
+# in sync with the canonical TIMELINE.md.
+#
+# Also triggered manually via workflow_dispatch.
+
+name: Timeline Sync
+
+on:
+  schedule:
+    # Daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print actions without creating)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-timeline:
+    name: Sync Project Timeline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      projects: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run Timeline Sync Agent
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python Projects/Timeline/sync_agent.py
+
+      - name: Commit TIMELINE.md timestamp update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(timeline): auto-sync timestamp update [skip ci]'
+          file_pattern: 'Projects/Timeline/TIMELINE.md'
+          commit_user_name: 'Agape Sovereign Timeline Bot'
+          commit_user_email: 'idin@agape.nyc'
