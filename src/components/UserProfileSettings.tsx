@@ -33,21 +33,19 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      setReports(formatted);
-    } else {
-        const reportsRef = collection(db, 'users', user.uid, 'reports');
-        const q = query(reportsRef, orderBy('generatedAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const list = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            generatedAtDate: data.generatedAt ? data.generatedAt.toDate() : null
-          };
-        });
-        setReports(list);
-      } catch (error) {
+      const reportsRef = collection(db, 'users', user.uid, 'reports');
+      const q = query(reportsRef, orderBy('generatedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const list = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          generatedAtDate: data.generatedAt ? data.generatedAt.toDate() : null
+        };
+      });
+      setReports(list);
+    } catch (error) {
       console.error("Error fetching reports:", error);
     } finally {
       setLoadingReports(false);
