@@ -22,13 +22,12 @@ export interface AuditLogEntry {
 }
 
 export const logEvent = async (
-  type: AuditLogType,
-  action: string,
-  userId?: string,
-  userEmail?: string,
+  type: AuditLogType, 
+  action: string, 
+  userId?: string, 
+  userEmail?: string, 
   metadata?: Record<string, unknown>
 ) => {
-  if (!userId) return;
   try {
     const logData: Record<string, unknown> = {
       type,
@@ -40,8 +39,8 @@ export const logEvent = async (
     if (userId) logData.userId = userId;
     if (userEmail) logData.userEmail = userEmail;
 
-    await addDoc(collection(db, "users", userId, "auditLogs"), logData);
+    await addDoc(collection(db, "audit_logs"), logData);
   } catch (err) {
-    handleFirestoreError(err, OperationType.CREATE, `users/${userId}/auditLogs`);
+    handleFirestoreError(err, OperationType.CREATE, "audit_logs");
   }
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { NEON, GlassCard, NeonText } from './UI';
 import { Shield, Key, EyeOff, Smartphone, Globe, Lock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { LogoutButton } from './auth/LogoutButton';
 
 const TIPS = [
   {
@@ -81,13 +82,16 @@ const TIPS = [
 export const SecurityTips = () => {
   return (
     <div className="space-y-8">
-      <div>
-        <NeonText color={NEON.blue} size="2rem" weight={700} style={{ marginBottom: '0.5rem' }}>
-          SECURITY PROTOCOLS
-        </NeonText>
-        <div className="text-slate-400 font-mono text-sm tracking-widest">
-          ACTIONABLE INTELLIGENCE FOR DIGITAL SOVEREIGNTY
+      <div className="flex justify-between items-start">
+        <div>
+          <NeonText color={NEON.blue} size="2rem" weight={700} style={{ marginBottom: '0.5rem' }}>
+            SECURITY PROTOCOLS
+          </NeonText>
+          <div className="text-slate-400 font-mono text-sm tracking-widest">
+            ACTIONABLE INTELLIGENCE FOR DIGITAL SOVEREIGNTY
+          </div>
         </div>
+        <LogoutButton variant="icon" size="sm" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -64,7 +64,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
         hashesRecord[`${stepConfig.id}Hash`] = hash;
 
         // 2. Record live initialization state for each module
-        const scanRef = doc(collection(db, "users", user.uid, "diff_scans"));
+        const scanRef = doc(collection(db, "diff_scans"));
         
         let initialFinding: {
           userId: string;
@@ -118,7 +118,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
       });
 
       // 5. Add initial score history record
-      const historyRef = doc(collection(db, 'users', user.uid, 'score_history'));
+      const historyRef = doc(collection(db, 'score_history'));
       batch.set(historyRef, {
         userId: user.uid,
         score,

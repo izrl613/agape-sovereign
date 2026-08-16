@@ -27,7 +27,6 @@ interface AuthContextType {
   demoMode: boolean;
   login: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
-  registerWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
@@ -416,82 +415,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleRegisterWithPasskey = async (email: string) => {
-    const normalized = (email || '').trim().toLowerCase();
-    if (!normalized) {
-      toast.error('Please enter your email to register a passkey.');
-      throw new Error('Please enter your email to register a passkey.');
-    }
-
-    if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
-      const err = new Error('This browser does not support passkeys (WebAuthn).');
-      toast.error(err.message);
-      throw err;
-    }
-
-    try {
-      const sessionNonce = generateSessionNonce();
-      sessionStorage.setItem('sovereign_passkey_auth', 'true');
-      sessionStorage.setItem('sovereign_passkey_nonce', sessionNonce);
-      sessionStorage.setItem('sovereign_passkey_email', normalized);
-
-      // 1. Get registration options for direct registration
-      const optionsRes = await fetch('/api/auth/register-options', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalized }),
-      });
-
-      const optionsBody = await optionsRes.json().catch(() => ({}));
-      if (!optionsRes.ok) {
-        throw new Error(optionsBody.error || `Failed to fetch registration options (${optionsRes.status})`);
-      }
-      if (!optionsBody.challenge) {
-        throw new Error('Invalid registration options from server.');
-      }
-
-      // 2. Start browser registration
-      const attestationResponse = await startRegistration({ optionsJSON: optionsBody });
-
-      const credentialId = attestationResponse.id || attestationResponse.rawId;
-      sessionStorage.setItem('sovereign_passkey_credential', String(credentialId));
-
-      // 3. Verify registration with server
-      const verifyRes = await fetch('/api/auth/verify-registration', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...attestationResponse,
-          email: normalized,
-        }),
-      });
-
-      const verifyBody = await verifyRes.json().catch(() => ({}));
-      const { verified, token, error } = verifyBody;
-
-      if (verifyRes.ok && verified && token) {
-        await signInWithCustomToken(auth, token);
-        toast.success('Passkey registered and authenticated successfully.');
-      } else {
-        throw new Error(error || verifyBody.error || 'Passkey registration verification failed');
-      }
-    } catch (error: any) {
-      console.error('WebAuthn Registration Error:', error);
-      sessionStorage.removeItem('sovereign_passkey_auth');
-      sessionStorage.removeItem('sovereign_passkey_nonce');
-      sessionStorage.removeItem('sovereign_passkey_credential');
-      sessionStorage.removeItem('sovereign_passkey_email');
-      if (error?.name === 'NotAllowedError') {
-        toast.error('Passkey registration cancelled.');
-      } else {
-        toast.error(`Passkey Error: ${error?.message || 'Unknown error'}`);
-      }
-      throw error;
-    }
-  };
-
   const handleSetSetupComplete = async (complete: boolean) => {
     if (!user) return;
     try {
@@ -529,22 +452,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleSetDemoUser = () => {
     writeDemoSession();
-    demoModeRef.current = true;
     setDemoMode(true);
+    demoModeRef.current = true;
     setUser(DEMO_USER_OBJECT);
     setUserData(DEMO_USER_DATA);
     setSovereignScore(DEMO_SOVEREIGN_SCORE);
     setSetupCompleteState(true);
+    setLoading(false);
   };
 
   const handleClearDemoUser = () => {
     clearDemoSession();
-    demoModeRef.current = false;
     setDemoMode(false);
     setUser(null);
     setUserData(null);
-    setIsAdmin(false);
-    setSovereignScore(100);
     setSetupCompleteState(false);
   };
 
@@ -562,7 +483,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       demoMode,
       login: handleLogin,
       loginWithPasskey: handleLoginWithPasskey,
-      registerWithPasskey: handleRegisterWithPasskey,
       logout: handleLogout,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
