@@ -15,6 +15,7 @@ import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
 import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
 import { passkeyLockService } from '../services/passkeyLockService';
+import { LogoutButton } from './auth/LogoutButton';
 
 import { dlpEngine, DlpScanResult, DlpViolation, subscribeDlpViolations, logDlpViolation } from '../services/dlpService';
 import { anonymizePii, detectPiiWithAi, PiiScanResult, AnonymizeTechnique, logPiiScan } from '../services/piiService';
@@ -61,11 +62,16 @@ export const ShieldModule: React.FC = () => {
       <div style={{ filter: isLocked ? 'blur(12px)' : 'none', transition: 'filter 0.3s ease', pointerEvents: isLocked ? 'none' : 'auto' }}>
         {/* Header */}
       <div style={{ padding: '24px 24px 0', borderBottom: `1px solid ${NEON.blue}22` }}>
-        <NeonText color={NEON.blue} size="1.4rem" style={{ letterSpacing: '0.15em' }}>
-          ⬡ SOVEREIGN SHIELD PLATFORM
-        </NeonText>
-        <div style={{ color: NEON.textMuted, fontSize: '0.75rem', marginTop: 4, letterSpacing: '0.08em' }}>
-          ADAPTIVE PRIVACY · ZERO-KNOWLEDGE · RUNTIME PROTECTION
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <NeonText color={NEON.blue} size="1.4rem" style={{ letterSpacing: '0.15em' }}>
+              ⬡ SOVEREIGN SHIELD PLATFORM
+            </NeonText>
+            <div style={{ color: NEON.textMuted, fontSize: '0.75rem', marginTop: 4, letterSpacing: '0.08em' }}>
+              ADAPTIVE PRIVACY · ZERO-KNOWLEDGE · RUNTIME PROTECTION
+            </div>
+          </div>
+          <LogoutButton variant="icon" size="sm" />
         </div>
 
         {/* Tab Nav */}

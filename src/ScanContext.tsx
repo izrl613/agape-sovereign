@@ -62,7 +62,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setIsLoading(true);
-    const q = query(collection(db, "users", user.uid, "diff_scans"));
+    const q = query(collection(db, "diff_scans"), where("userId", "==", user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newFindings = snapshot.docs.map(d => ({ 
         id: d.id, 
@@ -97,7 +97,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLastScanDate(latest.timestamp);
       }
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/diff_scans`);
+      handleFirestoreError(err, OperationType.LIST, 'diff_scans');
     });
 
     return () => unsubscribe();

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON, NeonText, NeonButton, GlassCard } from './UI';
+import { LogoutButton } from './auth/LogoutButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Bot, User, Loader2, Trash2, Sparkles, ThumbsUp, ThumbsDown, Paperclip, X, FileText, Check, AlertTriangle, Rss, ShieldAlert, Globe, Shield, Share2, History, Search, Mail, Users, Zap, ShieldCheck, Download } from 'lucide-react';
 import Markdown from 'react-markdown';
@@ -1323,16 +1324,17 @@ Recalculate and surface the Sovereign Score after every module action or user-su
             >
               <Download size={18} color={NEON.blue} />
             </button>
-            <button 
-              onClick={clearChat}
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,46,159,0.1)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-              title="Clear Chat History"
-            >
-              <Trash2 size={18} color={NEON.magenta} />
-            </button>
-          </div>
+             <button 
+               onClick={clearChat}
+               style={{ background: "transparent", border: "none", cursor: "pointer", padding: 8, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}
+               onMouseEnter={e => e.currentTarget.style.background = "rgba(255,46,159,0.1)"}
+               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+               title="Clear Chat History"
+             >
+               <Trash2 size={18} color={NEON.magenta} />
+             </button>
+             <LogoutButton variant="icon" size="sm" title="Disconnect Session" />
+           </div>
         </div>
 
         <div style={{ height: 1, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", marginBottom: 16, opacity: 0.5 }} />

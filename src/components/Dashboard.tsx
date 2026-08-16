@@ -207,7 +207,8 @@ export const Dashboard = () => {
     if (!user) return;
 
     const q = query(
-      collection(db, "users", user.uid, "score_history"),
+      collection(db, "score_history"),
+      where("userId", "==", user.uid),
       orderBy("timestamp", "asc")
     );
 
@@ -218,7 +219,7 @@ export const Dashboard = () => {
       }));
       setScoreHistory(history);
     }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, `users/${user.uid}/score_history`);
+      handleFirestoreError(err, OperationType.LIST, 'score_history');
     });
 
     return () => unsubscribe();

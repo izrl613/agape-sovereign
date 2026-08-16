@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key, KeyRound, MapPin, Phone } from 'lucide-react';
-import { NEON, NeonText, NeonButton, GlassCard, StatusBadge, DataTag, AutomationCard, ProgressTimeline } from './UI';
-import { DataFootprintMap, DataNode } from './DataFootprintMap';
+import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key } from 'lucide-react';
+import { NEON, NeonText, NeonButton, GlassCard, StatusBadge } from './UI';
 import { useScan } from '../ScanContext';
 import { useAuth } from '../AuthContext';
 import { generateSuspiciousReport, ScanFinding } from '../services/scanService';
@@ -13,8 +12,7 @@ import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/c
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { LogoutButton } from './auth/LogoutButton';
 
 interface ModuleProps {
   title: string;
@@ -63,6 +61,27 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   useEffect(() => {
     if (!user) return;
 
+    if (user.uid === 'emergency-bypass-admin-999') {
+      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
+      if (localActive) {
+        try {
+          const parsed = JSON.parse(localActive);
+          const encVal = parsed.data?.[moduleId] || "";
+          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
+          setStoredHash(hash);
+          if (encVal) {
+            decryptClientSide(encVal, user.uid).then(dec => {
+              setDecryptedValue(dec);
+              setParameterValue(dec);
+            });
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return;
+    }
+
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
@@ -100,7 +119,14 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const encrypted = await encryptClientSide(parameterValue, user.uid);
 
       // Save to Firestore
-      const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+      if (user.uid === 'emergency-bypass-admin-999') {
+        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
+        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
+        parsed.data[moduleId] = encrypted;
+        parsed.hashes[moduleId + "Hash"] = newHash;
+        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
+      } else {
+        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
         await setDoc(docRef, {
           data: {
             [moduleId]: encrypted
@@ -110,6 +136,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           },
           updatedAt: serverTimestamp()
         }, { merge: true });
+      }
 
       // Determine security status heuristically
       let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
@@ -178,11 +205,43 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       }
 
       // Save scan finding to diff_scans
-        const diffScansCol = collection(db, 'users', user.uid, 'diff_scans');
-        const existingSnap = await getDocs(query(diffScansCol, where('module', '==', moduleId)));
+      if (user.uid === 'emergency-bypass-admin-999') {
+        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
+        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
+        filtered.push({
+          id: `local-${moduleId}-${Date.now()}`,
+          userId: user.uid,
+          module: moduleId,
+          finding: findingText,
+          status: status,
+          timestamp: new Date().toISOString(),
+          details: detailsText
+        });
+        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
 
-        if (!existingSnap.empty) {
-          const docRef = doc(db, 'users', user.uid, 'diff_scans', existingSnap.docs[0].id);
+        // Recalculate score
+        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
+        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
+        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
+        const newScore = Math.max(45, 100 - (nukedCount * 15));
+
+        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
+        history.push({
+          userId: user.uid,
+          score: newScore,
+          timestamp: new Date().toISOString(),
+          nukedCount,
+          knoxedCount,
+          monitoredCount,
+          findings: filtered
+        });
+        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
+      } else {
+        const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+          const docRef = doc(db, 'diff_scans', snap.docs[0].id);
           await updateDoc(docRef, {
             finding: findingText,
             status: status,
@@ -190,7 +249,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             timestamp: serverTimestamp()
           });
         } else {
-          await addDoc(diffScansCol, {
+          await addDoc(collection(db, 'diff_scans'), {
             userId: user.uid,
             module: moduleId,
             finding: findingText,
@@ -201,17 +260,17 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         }
 
         // Recalculate Sovereign Score
-        const allScansSnap = await getDocs(diffScansCol);
+        const allScansSnap = await getDocs(query(collection(db, 'diff_scans'), where('userId', '==', user.uid)));
         const allScans = allScansSnap.docs.map(d => d.data());
         const nukedCount = allScans.filter(f => f.status === 'NUKED').length;
         const knoxedCount = allScans.filter(f => f.status === 'KNOXED').length;
         const monitoredCount = allScans.filter(f => f.status === 'MONITORED').length;
-
+        
         const newScore = Math.max(45, 100 - (nukedCount * 15));
         await updateDoc(doc(db, 'users', user.uid), { sovereignScore: newScore });
 
         // Add to score history
-        await addDoc(collection(db, 'users', user.uid, 'score_history'), {
+        await addDoc(collection(db, 'score_history'), {
           userId: user.uid,
           score: newScore,
           nukedCount,
@@ -220,6 +279,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           timestamp: serverTimestamp(),
           reason: `DIFF Vector [${vector}] Update`
         });
+      }
 
       toast.dismiss(toastId);
       toast.success("VECTOR SEALED & CRYPTED", {
@@ -232,39 +292,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(22);
-    doc.setTextColor(0, 212, 255);
-    doc.text(`Agape Sovereign AI`, 14, 20);
-    
-    doc.setFontSize(14);
-    doc.setTextColor(50, 50, 50);
-    doc.text(`Sector: ${vector} - ${title}`, 14, 30);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Integrity Seal: ${storedHash || 'UNSEALED'}`, 14, 38);
-
-    doc.setFontSize(16);
-    doc.setTextColor(20, 20, 20);
-    doc.text("Intelligence Findings", 14, 52);
-
-    const tableData = findings.map(f => [f.status, f.finding, f.details]);
-
-    // @ts-ignore
-    doc.autoTable({
-      startY: 58,
-      head: [['Status', 'Finding', 'Details']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [0, 212, 255] },
-      styles: { cellPadding: 4, fontSize: 9 },
-    });
-
-    doc.save(`sovereign-report-${moduleId}.pdf`);
   };
 
   const displayFindings = findings.length > 0 ? findings.map(f => ({
@@ -301,42 +328,45 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       <div style={{ animation: "fade-in 0.3s ease" }}>
       {/* Integrity Tag */}
       <div className="flex justify-between items-center mb-6">
-        <div className="px-4 py-2 bg-[#040914] border border-[#00D4FF]/30 rounded-lg flex items-center gap-3 shadow-[0_0_15px_rgba(0,212,255,0.15)]">
-          <Lock className="w-4 h-4 text-[#00D4FF]" />
-          <span className="text-xs font-mono text-[#00D4FF] tracking-widest truncate max-w-[320px]">
+        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
+          <Lock className="w-3 h-3 text-[#00D4FF]" />
+          <span className="text-[10px] font-mono text-[#00D4FF] tracking-tighter truncate max-w-[320px]">
             {storedHash ? `SHA256:${storedHash}` : "AWAITING CRYPTOGRAPHIC SEAL"}
           </span>
         </div>
-        <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-          Sovereign Enclave v2.0
+        <div className="flex items-center gap-4">
+          <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+            Sovereign Enclave v2.0
+          </div>
+          <LogoutButton variant="icon" size="sm" style={{ marginRight: 4 }} />
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-        <span style={{ color: sevColor, fontSize: "2.5rem", filter: `drop-shadow(0 0 12px ${sevColor}80)` }}>{icon}</span>
+        <span style={{ color: sevColor, fontSize: "2rem", filter: `drop-shadow(0 0 8px ${sevColor})` }}>{icon}</span>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: NEON.orange, letterSpacing: "0.2em", fontWeight: 700 }}>{vector} · DIFF VECTOR</div>
-          <NeonText color={sevColor} size="1.4rem" weight={700} style={{ letterSpacing: '-0.02em', marginTop: 2 }}>{title}</NeonText>
-          <p style={{ color: NEON.textMuted, fontSize: "0.85rem", marginTop: "6px", fontFamily: "'Inter', sans-serif", lineHeight: 1.5 }}>{description}</p>
+          <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.15em" }}>{vector} · DIFF VECTOR</div>
+          <NeonText color={sevColor} size="1.2rem" weight={700}>{title}</NeonText>
+          <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>{description}</p>
           {pillar && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
               <span style={{
-                fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", fontWeight: 700,
-                color: NEON.magenta, border: `1px solid ${NEON.magenta}40`,
-                background: `${NEON.magenta}10`, borderRadius: 6,
-                padding: "3px 8px", letterSpacing: "0.05em"
+                fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", fontWeight: 700,
+                color: NEON.magenta, border: `1px solid ${NEON.magenta}44`,
+                background: `${NEON.magenta}18`, borderRadius: 4,
+                padding: "2px 6px", letterSpacing: "0.08em"
               }}>{pillar.toUpperCase()}</span>
               {techniques?.map((t, i) => (
                 <span key={i} style={{
-                  fontFamily: "'Inter', sans-serif", fontSize: "0.6rem", color: NEON.textMuted,
-                  border: `1px solid rgba(255,255,255,0.1)`, background: `rgba(255,255,255,0.02)`,
-                  borderRadius: 6, padding: "3px 8px"
-                }}>{t}</span>
+                  fontFamily: "'Share Tech Mono'", fontSize: "0.55rem", color: NEON.blue,
+                  border: `1px solid ${NEON.blue}33`, background: `${NEON.blue}10`,
+                  borderRadius: 4, padding: "2px 5px"
+                }}>▸ {t}</span>
               ))}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
           <NeonButton 
             size="sm" 
             color={NEON.blue} 
@@ -346,90 +376,89 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             {isScanning ? "SCANNING..." : (scanLabel || "RE-SCAN VECTOR")}
           </NeonButton>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "2.5rem", fontWeight: 800, color: sevColor, textShadow: `0 0 20px ${sevColor}80`, lineHeight: 1 }}>{severity}%</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", color: NEON.textMuted, letterSpacing: '0.1em', fontWeight: 600, marginTop: 4 }}>SOVEREIGN SCORE</div>
+            <div style={{ fontFamily: "'Orbitron'", fontSize: "2rem", fontWeight: 900, color: sevColor, textShadow: `0 0 20px ${sevColor}` }}>{severity}%</div>
+            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted }}>SOVEREIGN SCORE</div>
           </div>
         </div>
       </div>
 
       {/* Score bar */}
-      <GlassCard style={{ padding: "20px", marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }} className="flex justify-between">
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", fontWeight: 600, color: NEON.textMuted, letterSpacing: '0.05em' }}>SECURITY POSTURE</span>
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.7rem", fontWeight: 700, color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
+      <GlassCard style={{ padding: "16px", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }} className="flex justify-between">
+          <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.65rem", color: NEON.textMuted }}>SECURITY POSTURE</span>
+          <span style={{ fontFamily: "'Orbitron'", fontSize: "0.65rem", color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
         </div>
-        <div style={{ height: 8, background: "rgba(255,255,255,0.03)", borderRadius: 4, overflow: "hidden", border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ height: "100%", width: `${severity}%`, background: `linear-gradient(90deg, ${NEON.magenta}, ${sevColor})`, borderRadius: 4, boxShadow: `0 0 15px ${sevColor}`, transition: "width 1.5s cubic-bezier(0.4, 0, 0.2, 1)" }} />
+        <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${severity}%`, background: `linear-gradient(90deg, ${NEON.magenta}, ${sevColor})`, borderRadius: 3, boxShadow: `0 0 10px ${sevColor}`, transition: "width 1.5s ease" }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, gap: 16 }}>
-          {[{ l: "CRITICAL", v: nuked, c: NEON.error }, { l: "SECURE", v: knoxed, c: NEON.success }, { l: "MONITORED", v: monitored, c: NEON.warning }].map(s => (
-            <div key={s.l} style={{ flex: 1, textAlign: "center", background: `rgba(255,255,255,0.02)`, borderRadius: 12, padding: "12px 0", border: `1px solid ${s.c}30` }}>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.5rem", fontWeight: 700, color: s.c }}>{s.v}</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: "0.65rem", fontWeight: 600, color: NEON.textMuted, letterSpacing: "0.1em", marginTop: 2 }}>{s.l}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, gap: 12 }}>
+          {[{ l: "NUKED", v: nuked, c: NEON.magenta }, { l: "KNOXED", v: knoxed, c: NEON.blue }, { l: "MONITORED", v: monitored, c: NEON.orange }].map(s => (
+            <div key={s.l} style={{ flex: 1, textAlign: "center", background: `rgba(${s.c === NEON.magenta ? "255,46,159" : s.c === NEON.blue ? "0,212,255" : "255,122,24"},0.08)`, borderRadius: 8, padding: "10px 0", border: `1px solid ${s.c}22` }}>
+              <div style={{ fontFamily: "'Orbitron'", fontSize: "1.4rem", fontWeight: 900, color: s.c }}>{s.v}</div>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, letterSpacing: "0.1em" }}>{s.l}</div>
             </div>
           ))}
         </div>
       </GlassCard>
 
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
-      <GlassCard className="p-8 mb-8 relative overflow-hidden">
+      <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/5">
+          <div className="flex items-center gap-2 mb-4">
             <Cpu className="w-5 h-5 text-[#00D4FF]" />
-            <h4 className="text-sm font-semibold text-white tracking-widest font-sans uppercase">Active Sovereign Enclave Parameters</h4>
+            <h4 className="text-sm font-bold text-white tracking-widest font-mono">ACTIVE SOVEREIGN ENCLAVE PARAMETERS</h4>
           </div>
 
-          <div className="space-y-6 mb-8">
-            <div className="p-5 bg-[#040914] rounded-xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-inner">
+          <div className="space-y-4 mb-6">
+            <div className="p-4 bg-black/40 rounded-xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="text-[10px] text-slate-500 font-sans font-semibold tracking-widest uppercase">Decrypted Parameter Value</div>
+                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Decrypted Parameter Value</div>
                 {isDecrypting ? (
-                  <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                  <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     DECRYPTING CLIENT-SIDE (AES-GCM-256)...
                   </div>
                 ) : (
-                  <div className="font-mono text-[15px] text-white mt-2 break-all flex items-center gap-3 font-semibold">
+                  <div className="font-mono text-sm text-white mt-1 break-all flex items-center gap-2">
                     <span>
                       {decryptedValue 
                         ? (showValue ? decryptedValue : '••••••••••••••••••••••••••••') 
-                        : <span className="text-slate-600 font-sans italic font-normal">No parameter value registered</span>
+                        : <span className="text-slate-600 font-sans italic">No parameter value registered</span>
                       }
                     </span>
                     {decryptedValue && (
                       <button 
                         onClick={() => setShowValue(!showValue)}
-                        className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-white border-none bg-transparent cursor-pointer transition-colors"
+                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
                       >
-                        {showValue ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showValue ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     )}
                   </div>
                 )}
               </div>
-              <div className="md:border-l md:border-white/10 md:pl-6">
-                <div className="text-[10px] text-slate-500 font-sans font-semibold tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
-                <div className="text-xs text-[#10B981] font-mono mt-2 flex items-center gap-2 md:justify-end">
-                  <Shield size={14} />
+              <div>
+                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
+                <div className="text-xs text-[#00D4FF] font-mono mt-1 flex items-center gap-1.5 md:justify-end">
+                  <Shield size={12} />
                   100% Client-Crypted
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <label className="text-xs font-sans font-semibold text-[#00D4FF] tracking-wider uppercase">Update Vector Value</label>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
               <div className="relative group">
                 <input 
                   type={moduleId === 'password' ? 'password' : 'text'}
                   value={parameterValue}
                   onChange={(e) => setParameterValue(e.target.value)}
-                  className="w-full bg-[#040914] border-2 border-white/10 rounded-xl px-5 py-4 text-white focus:outline-none focus:border-[#00D4FF] transition-all font-mono text-base placeholder:text-slate-600 shadow-inner"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
                   placeholder={`Enter parameter input for ${title}...`}
                   disabled={isSaving}
                 />
               </div>
             </div>
-          </div>
           </div>
 
           <div className="flex justify-end">
@@ -586,90 +615,41 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         )}
       </AnimatePresence>
 
-      {/* Saymine-style Data Footprint Map (only show if configured/has findings) */}
-      {decryptedValue && (
-        <DataFootprintMap 
-          nodes={[
-            { id: 'core', label: 'IDENTITY', type: 'core', status: 'safe' },
-            ...displayFindings.filter(f => f.original).map((f, i) => ({
-              id: `node-${i}`,
-              label: (f.original?.details || '').split(' ')[0] || 'Unknown',
-              type: moduleId === 'broker' ? 'broker' : moduleId === 'social' ? 'social' : 'breach',
-              status: f.type === 'NUKED' ? 'exposed' : f.type === 'KNOXED' ? 'safe' : 'resolving'
-            } as DataNode))
-          ]} 
-        />
-      )}
-
       {/* Findings */}
       <div style={{ marginBottom: 16 }}>
         <NeonText color={NEON.orange} size="0.72rem">INTELLIGENCE FINDINGS</NeonText>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {displayFindings.map((f, i) => (
-          <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "flex-start", gap: 14 }}>
-              <div style={{ flexShrink: 0, marginTop: 4 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.95rem", color: NEON.text, marginBottom: 4 }}>{f.label}</div>
-                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.textMuted, marginTop: 2, marginBottom: 8, lineHeight: 1.4 }}>{f.detail}</div>
-                
-                {/* Firefox Monitor-style data tags */}
-                {f.type === "NUKED" && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12, marginBottom: 4 }}>
-                    <DataTag icon={<KeyRound size={10} />} label="Passwords" />
-                    <DataTag icon={<MapPin size={10} />} label="IP Addresses" />
-                    <DataTag icon={<Phone size={10} />} label="Phone Numbers" />
-                  </div>
+          <div key={i} className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ flexShrink: 0 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.85rem", color: NEON.text }}>{f.label}</div>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
+            </div>
+            <div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
+                  <NeonButton 
+                    size="sm" 
+                    color={NEON.blue}
+                    onClick={async () => {
+                      setIsGenerating(true);
+                      const report = await generateSuspiciousReport(f.original as ScanFinding);
+                      setSelectedReport(report || "No report generated.");
+                      setIsGenerating(false);
+                    }}
+                    disabled={isGenerating}
+                  >
+                    <FileText size={12} style={{ marginRight: 4 }} />
+                    REPORT
+                  </NeonButton>
                 )}
-                
-                {/* Optery-style removal tracker (only for broker modules if nuked/monitored) */}
-                {moduleId === 'broker' && (f.type === 'NUKED' || f.type === 'MONITORED') && (
-                  <ProgressTimeline steps={[
-                    { label: 'Identified', status: 'complete' },
-                    { label: 'Opt-Out Sent', status: 'active' },
-                    { label: 'Verifying', status: 'pending' },
-                    { label: 'Removed', status: 'pending' }
-                  ]} />
-                )}
-              </div>
-              <div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
-                    <NeonButton 
-                      size="sm" 
-                      color={NEON.blue}
-                      onClick={async () => {
-                        setIsGenerating(true);
-                        const report = await generateSuspiciousReport(f.original as ScanFinding);
-                        setSelectedReport(report || "No report generated.");
-                        setIsGenerating(false);
-                      }}
-                      disabled={isGenerating}
-                    >
-                      <FileText size={12} style={{ marginRight: 4 }} />
-                      REPORT
-                    </NeonButton>
-                  )}
-                </div>
+                <NeonButton size="sm" color={f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}>
+                  {f.action}
+                </NeonButton>
               </div>
             </div>
-            
-            {/* Jumbo-style Automation Card */}
-            {(f.type === "NUKED" || f.type === "MONITORED") && f.original && (
-              <AutomationCard 
-                icon={<Shield size={16} />}
-                title={moduleId === 'broker' ? "Data Broker Removal Required" : "Automated Remediation Available"}
-                description={`Architect AI can automatically execute the ${f.action} protocol to secure this vector.`}
-                actionLabel={moduleId === 'broker' ? "AUTOMATE REMOVAL" : "AUTO-FIX VULNERABILITY"}
-                status="idle"
-                onAction={() => {
-                  toast.success("Architect AI initialized. Fix protocol engaging...", {
-                    description: "Stand by for vector securing..."
-                  });
-                }}
-              />
-            )}
           </div>
         ))}
       </div>
@@ -887,6 +867,7 @@ export const ErasureModule = () => {
           <NeonText color={NEON.magenta} size="1.2rem" weight={700}>Sovereign Erasure Engine</NeonText>
           <p style={{ color: NEON.textMuted, fontSize: "0.8rem", marginTop: "4px" }}>Automated CCPA/GDPR data broker opt-out requests powered by Gemini AI.</p>
         </div>
+        <LogoutButton variant="icon" size="sm" />
       </div>
 
       <div style={{ display: "grid", gap: 16 }}>

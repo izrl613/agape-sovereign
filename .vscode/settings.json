@@ -1,0 +1,89 @@
+{
+  "terminal.integrated.defaultProfile.osx": "bash",
+  "terminal.integrated.profiles.osx": {
+    "bash": {
+      "path": "/bin/bash",
+      "args": [
+        "-l"
+      ],
+      "icon": "terminal-bash"
+    },
+    "zsh": {
+      "path": "/bin/zsh",
+      "args": [
+        "-l"
+      ]
+    }
+  },
+  "terminal.integrated.shellIntegration.enabled": true,
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python3",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/.venv/lib/python3.9/site-packages"
+  ],
+  "files.autoSave": "onFocusChange",
+  "git.suggestSmartCommit": false,
+  "go.toolsManagement.autoUpdate": true,
+  "npm.packageManager": "npm",
+  "npm.scriptRunner": "npm",
+  "git.enabled": true,
+  "git.defaultCloneDirectory": "${workspaceFolder}",
+  "terminal.integrated.env.osx": {
+    "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+  },
+  "inlineChat.notebookAgent": true,
+  "accessibility.signals.chatResponseReceived": {
+    "sound": "on"
+  },
+  "terminal.integrated.tabs.defaultColor": "terminal.ansiMagenta",
+  "terminal.integrated.tabs.defaultIcon": "github",
+  "chat.promptFilesRecommendations": {},
+  "ollama-view.model": "qwen3.5-9b-sushi-coder-rl-mlx",
+  "ollama-view.baseUrl": "http://localhost:11434",
+  "cline.providers": {
+    "lmstudio": {
+      "name": "LM Studio",
+      "baseUrl": "http://localhost:1234/v1",
+      "apiKey": "lm-studio",
+      "models": [
+        "qwen3.5-9b-sushi-coder-rl-mlx"
+      ]
+    }
+  },
+  "cline.defaultProvider": "lmstudio",
+  "cline.defaultModel": "qwen3.5-9b-sushi-coder-rl-mlx",
+  "continue.providers": [
+    {
+      "name": "lmstudio",
+      "model": "qwen3.5-9b-sushi-coder-rl-mlx",
+      "apiBase": "http://localhost:1234/v1",
+      "apiKey": "lm-studio",
+      "models": [
+        "qwen3.5-9b-sushi-coder-rl-mlx"
+      ]
+    }
+  ],
+  "continue.models": [
+    {
+      "title": "qwen3.5-9b-sushi-coder-rl-mlx (LM Studio)",
+      "provider": "lmstudio",
+      "model": "qwen3.5-9b-sushi-coder-rl-mlx",
+      "apiBase": "http://localhost:1234/v1"
+    }
+  ],
+  "banditStealth.agent.autoApproveEdits": true,
+  "banditStealth.ollamaModel": "Kunj0195/qwen3.5-coder:latest",
+  "banditStealth.debug.emitPlanJson": true,
+  "banditStealth.ollamaBaseUrl": "http://localhost:11434",
+  "banditStealth.model": "bandit-logic",
+  "git.autofetch": true,
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#007acc",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#005999",
+    "titleBar.inactiveForeground": "#cccccc",
+    "statusBar.background": "#007acc",
+    "statusBar.foreground": "#ffffff",
+    "statusBar.noFolderBackground": "#007acc",
+    "statusBar.debuggingBackground": "#005999"
+  }
+}

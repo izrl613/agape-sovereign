@@ -168,7 +168,7 @@ MILESTONES = [
         "state": "open",
         "issues": [
             {
-                "title": "[TIMELINE] Phase 4 — v2.0 Identity Vectors & Shield Platform (Jul 2026)",
+                "title": "[TIMELINE] Phase 4 — v2.0 Identity Vectors (Jul 12, 2026)",
                 "body": (
                     "## v2.0 Identity Vectors & Shield Platform\n\n"
                     "**Period:** May–July 2026 (active)\n\n"
@@ -178,10 +178,8 @@ MILESTONES = [
                     "- Passkey login (WebAuthn Level 2)\n"
                     "- v2.1.0 (Jul 12, 2026): PWA Manifest, GitHub Wiki, README overhaul\n"
                     "- Jul 19, 2026: GCP near-zero cost observability stack\n"
-                    "- Jul 19, 2026: Projects/Timeline sync agent deployed\n"
-                    "- Jul 20, 2026: Timeline sync workflow + agentic workflows\n"
-                    "- Aug 13, 2026: Timeline sync workflow restored after accidental deletion\n\n"
-                    "_Maintained by Timeline Sync Agent_"
+                    "- Jul 19, 2026: Projects/Timeline sync agent deployed\n\n"
+                    "_Created by Timeline Sync Agent on 2026-07-20_"
                 ),
                 "labels": ["roadmap", "stage-3"],
                 "state": "open",
@@ -260,65 +258,18 @@ def ensure_milestone(ms_def: dict, existing: dict) -> int:
 # Issue management
 # ---------------------------------------------------------------------------
 
-def get_existing_timeline_issues() -> dict:
-    """Return {title: issue_dict} for existing [TIMELINE] roadmap issues."""
-    issues = rest(
-        "GET",
-        f"/repos/{REPO_OWNER}/{REPO_NAME}/issues",
-        params={"state": "all", "labels": "roadmap", "per_page": 100},
-    )
-    out = {}
-    for issue in issues:
-        if "pull_request" in issue:
-            continue
-        title = issue.get("title") or ""
-        if title.startswith("[TIMELINE]"):
-            out[title] = issue
-    return out
+def get_existing_timeline_issues() -> set:
+    """Return set of existing [TIMELINE] issue titles."""
+    issues = rest("GET", f"/repos/{REPO_OWNER}/{REPO_NAME}/issues",
+                  params={"state": "all", "labels": "roadmap", "per_page": 100})
+    return {i["title"] for i in issues if "pull_request" not in i}
 
 
-def _phase_key(title: str) -> Optional[str]:
-    """Normalize '[TIMELINE] Phase N — ...' to 'phase-n' for fuzzy match."""
-    lower = title.lower()
-    if "[timeline]" not in lower or "phase" not in lower:
-        return None
-    for n in range(0, 20):
-        token = f"phase {n}"
-        if token in lower:
-            return f"phase-{n}"
-    return None
-
-
-def find_existing_timeline_issue(title: str, existing: dict) -> Optional[dict]:
-    """Exact title match first, then same Phase N timeline issue."""
-    if title in existing:
-        return existing[title]
-    key = _phase_key(title)
-    if not key:
-        return None
-    for existing_title, issue in existing.items():
-        if _phase_key(existing_title) == key:
-            return issue
-    return None
-
-
-def ensure_issue(issue_def: dict, milestone_number: int, existing: dict) -> Optional[int]:
-    """Create issue if not already present; return issue number when newly created."""
+def ensure_issue(issue_def: dict, milestone_number: int, existing_titles: set) -> Optional[int]:
+    """Create issue if not already present; return issue number."""
     title = issue_def["title"]
-    found = find_existing_timeline_issue(title, existing)
-    if found:
-        log.info("Issue exists: %s (#%s)", found.get("title"), found.get("number"))
-        # Keep canonical title if a legacy variant exists
-        if found.get("title") != title:
-            try:
-                rest(
-                    "PATCH",
-                    f"/repos/{REPO_OWNER}/{REPO_NAME}/issues/{found['number']}",
-                    json={"title": title},
-                )
-                log.info("Renamed issue #%s to canonical title", found["number"])
-            except Exception as exc:  # noqa: BLE001
-                log.warning("Could not rename issue #%s: %s", found.get("number"), exc)
+    if title in existing_titles:
+        log.info("Issue exists: %s", title)
         return None
 
     payload = {
@@ -331,15 +282,11 @@ def ensure_issue(issue_def: dict, milestone_number: int, existing: dict) -> Opti
     created = rest("POST", f"/repos/{REPO_OWNER}/{REPO_NAME}/issues", json=payload)
     issue_number = created["number"]
     log.info("Created issue #%d: %s", issue_number, title)
-    existing[title] = created
 
     # Close past-phase issues
     if issue_def.get("state") == "closed":
-        rest(
-            "PATCH",
-            f"/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}",
-            json={"state": "closed", "state_reason": "completed"},
-        )
+        rest("PATCH", f"/repos/{REPO_OWNER}/{REPO_NAME}/issues/{issue_number}",
+             json={"state": "closed", "state_reason": "completed"})
         log.info("Closed issue #%d (completed phase)", issue_number)
 
     return issue_number
@@ -410,16 +357,17 @@ def sync() -> None:
                     add_issue_to_project(node_id)
 
     log.info("=== Sync complete ===")
-    # Update last-sync timestamp in TIMELINE.md (skip on CI: main is protected)
-    if os.environ.get("TIMELINE_SKIP_FILE_WRITE", "").strip() in {"1", "true", "yes"}:
-        log.info("Skipping TIMELINE.md write (TIMELINE_SKIP_FILE_WRITE set)")
-        return
-
+    # Update last-sync timestamp in TIMELINE.md
     timeline_path = TIMELINE_FILE
     if os.path.exists(timeline_path):
         with open(timeline_path, "r") as f:
             content = f.read()
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        updated = content.replace(
+            "*Last updated by sync agent:",
+            f"*Last updated by sync agent: {today} — ",
+        )
+        # Simpler: always rewrite the last line
         lines = content.rstrip().split("\n")
         ts_line = f"*Last updated by sync agent: {today}*"
         if lines and lines[-1].startswith("*Last updated"):
