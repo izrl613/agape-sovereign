@@ -229,6 +229,10 @@ export const Login = () => {
       const msg = err instanceof Error ? err.message : 'Passkey authentication failed.';
       if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
         setAuthError('Passkey prompt was dismissed. Try again or use Google Sign-In.');
+      } else if (msg.includes('User verification required') || msg.includes('could not be verified')) {
+        setAuthError('Biometric verification failed. Ensure your device fingerprint/Face ID is working, or try Google Sign-In.');
+      } else if (msg.includes('No passkey') || msg.includes('No account found')) {
+        setAuthError(msg);
       } else {
         setAuthError(formatError(err));
       }
