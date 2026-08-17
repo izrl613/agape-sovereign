@@ -330,6 +330,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast.error('Passkey registration cancelled by user.');
       } else if (error?.name === 'InvalidStateError') {
         toast.error('A passkey already exists for this authenticator.');
+      } else if (error?.message?.includes('User verification required') || error?.message?.includes('could not be verified')) {
+        toast.error('Biometric verification failed. Ensure your device fingerprint/Face ID is working.');
       } else {
         toast.error(`WebAuthn Error: ${error?.message || 'Unknown error'}`);
       }
@@ -408,6 +410,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('sovereign_passkey_email');
       if (error?.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
+      } else if (error?.message?.includes('User verification required') || error?.message?.includes('could not be verified')) {
+        toast.error('Biometric verification failed. Ensure your device fingerprint/Face ID is working.');
+      } else if (error?.message?.includes('No passkey') || error?.message?.includes('No account found')) {
+        toast.error(error.message);
       } else {
         toast.error(`Passkey Error: ${error?.message || 'Unknown error'}`);
       }

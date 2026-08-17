@@ -439,7 +439,7 @@ router.post("/login-options", async (req: Request, res: Response) => {
       const options = await generateAuthenticationOptions({
         rpID: rpId,
         allowCredentials: [], // discoverable — authenticator selects the key
-        userVerification: "required",
+        userVerification: "preferred",
       });
 
       // We don't know the userId yet; it will be resolved during verify-login

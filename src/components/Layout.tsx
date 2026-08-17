@@ -1380,6 +1380,20 @@ export const Layout = () => {
         </div>
       </div>
 
+      {/* Global Encrypted Footer — SHA-256 integrity seal on every page */}
+      <div style={{ 
+        padding: '6px 20px', 
+        background: 'rgba(6,13,31,0.98)', 
+        borderTop: '1px solid rgba(0,212,255,0.08)',
+        flexShrink: 0 
+      }}>
+        <EncryptedFooter 
+          moduleId="global-session" 
+          uid={user?.uid ?? 'anon'} 
+          compact={true}
+        />
+      </div>
+
       {/* Bottom border gradient */}
       <div style={{ height: 2, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite reverse", flexShrink: 0 }} />
 
