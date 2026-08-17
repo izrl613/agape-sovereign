@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key } from 'lucide-react';
-import { NEON, NeonText, NeonButton, GlassCard, StatusBadge } from './UI';
+import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key, Copy } from 'lucide-react';
+import { NEON, NeonText, NeonButton, GlassCard, StatusBadge, CopyButton } from './UI';
 import { useScan } from '../ScanContext';
 import { useAuth } from '../AuthContext';
 import { generateSuspiciousReport, ScanFinding } from '../services/scanService';
@@ -294,14 +294,21 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     }
   };
 
-  const displayFindings = findings.length > 0 ? findings.map(f => ({
+const displayFindings = findings.length > 0 ? findings.map(f => ({
     type: f.status,
     label: f.finding,
     detail: f.details,
     action: f.status === 'NUKED' ? 'NUKE' : f.status === 'KNOXED' ? 'KNOX' : 'REVIEW',
-    original: f
+    onClick: async () => {
+      if (f.status === 'NUKED' || f.status === 'KNOXED') {
+        setIsGenerating(true);
+        const report = await generateSuspiciousReport(f);
+        setSelectedReport(report || "No report generated.");
+        setIsGenerating(false);
+      }
+    }
   })) : [
-    { type: "MONITORED" as const, label: "Awaiting Scan", detail: "Initiate a scan to populate intelligence.", action: "SCAN", original: null }
+    { type: "MONITORED" as const, label: "Awaiting Scan", detail: "Initiate a scan to populate intelligence.", action: "SCAN", onClick: undefined }
   ];
 
   return (
@@ -338,7 +345,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
             Sovereign Enclave v2.0
           </div>
-          <LogoutButton variant="icon" size="sm" style={{ marginRight: 4 }} />
+          <LogoutButton variant="icon" size="sm" />
         </div>
       </div>
 
@@ -409,57 +416,69 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             <h4 className="text-sm font-bold text-white tracking-widest font-mono">ACTIVE SOVEREIGN ENCLAVE PARAMETERS</h4>
           </div>
 
-          <div className="space-y-4 mb-6">
-            <div className="p-4 bg-black/40 rounded-xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Decrypted Parameter Value</div>
-                {isDecrypting ? (
-                  <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-1">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    DECRYPTING CLIENT-SIDE (AES-GCM-256)...
+<div className="space-y-4 mb-6">
+              <div className="p-4 bg-black/40 rounded-xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Decrypted Parameter Value</div>
+                  {isDecrypting ? (
+                    <div className="flex items-center gap-2 text-xs text-[#00D4FF] font-mono mt-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      DECRYPTING CLIENT-SIDE (AES-GCM-256)...
+                    </div>
+                  ) : (
+                    <div className="font-mono text-sm text-white mt-1 break-all flex items-center gap-2">
+                      <span>
+                        {decryptedValue 
+                          ? (showValue ? decryptedValue : '••••••••••••••••••••••••••••') 
+                          : <span className="text-slate-600 font-sans italic">No parameter value registered</span>
+                        }
+                      </span>
+                      {decryptedValue && (
+                        <button 
+                          onClick={() => setShowValue(!showValue)}
+                          className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
+                        >
+                          {showValue ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      )}
+                      {decryptedValue && (
+                        <CopyButton value={decryptedValue} size={12} />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
+                  <div className="text-xs text-[#00D4FF] font-mono mt-1 flex items-center gap-1.5 md:justify-end">
+                    <Shield size={12} />
+                    100% Client-Crypted
                   </div>
-                ) : (
-                  <div className="font-mono text-sm text-white mt-1 break-all flex items-center gap-2">
-                    <span>
-                      {decryptedValue 
-                        ? (showValue ? decryptedValue : '••••••••••••••••••••••••••••') 
-                        : <span className="text-slate-600 font-sans italic">No parameter value registered</span>
-                      }
-                    </span>
-                    {decryptedValue && (
-                      <button 
-                        onClick={() => setShowValue(!showValue)}
-                        className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white border-none bg-transparent cursor-pointer"
-                      >
-                        {showValue ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    )}
-                  </div>
-                )}
+                </div>
               </div>
-              <div>
-                <div className="text-[10px] text-slate-500 font-mono tracking-widest uppercase md:text-right">Zero-Knowledge Storage</div>
-                <div className="text-xs text-[#00D4FF] font-mono mt-1 flex items-center gap-1.5 md:justify-end">
-                  <Shield size={12} />
-                  100% Client-Crypted
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
+                <div className="relative group">
+                  <input 
+                    type={moduleId === 'password' ? 'password' : 'text'}
+                    value={parameterValue}
+                    onChange={(e) => setParameterValue(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
+                    placeholder={`Enter parameter input for ${title}...`}
+                    disabled={isSaving}
+                  />
+                  {parameterValue && !isSaving && (
+                    <button
+                      onClick={() => setParameterValue('')}
+                      className="absolute right-2 text-xs text-[#666] opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Clear input"
+                    >
+                      <X />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
-              <div className="relative group">
-                <input 
-                  type={moduleId === 'password' ? 'password' : 'text'}
-                  value={parameterValue}
-                  onChange={(e) => setParameterValue(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
-                  placeholder={`Enter parameter input for ${title}...`}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-          </div>
 
           <div className="flex justify-end">
             <NeonButton 
@@ -620,38 +639,24 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         <NeonText color={NEON.orange} size="0.72rem">INTELLIGENCE FINDINGS</NeonText>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-        {displayFindings.map((f, i) => (
-          <div key={i} className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}33`, display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ flexShrink: 0 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.85rem", color: NEON.text }}>{f.label}</div>
-              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {f.original && (f.original.status === 'NUKED' || f.original.status === 'MONITORED') && (
-                  <NeonButton 
-                    size="sm" 
-                    color={NEON.blue}
-                    onClick={async () => {
-                      setIsGenerating(true);
-                      const report = await generateSuspiciousReport(f.original as ScanFinding);
-                      setSelectedReport(report || "No report generated.");
-                      setIsGenerating(false);
-                    }}
-                    disabled={isGenerating}
-                  >
-                    <FileText size={12} style={{ marginRight: 4 }} />
-                    REPORT
-                  </NeonButton>
-                )}
-                <NeonButton size="sm" color={f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange}>
-                  {f.action}
-                </NeonButton>
-              </div>
-            </div>
+        {displayFindings.map((f, i) => {
+      const statusColor = f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange;
+      const isCritical = f.type === "NUKED";
+      return (
+        <div key={i} className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${statusColor}33`, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
+          <div style={{ flexShrink: 0 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.85rem", color: NEON.text, whiteSpace: 'nowrap' }}>{f.label}</div>
+            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
           </div>
-        ))}
+          <div style={{ whiteSpace: 'nowrap' }}>
+            <NeonButton size="sm" color={f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange} onClick={() => f.onClick && f.onClick()}>
+              {f.action}
+            </NeonButton>
+          </div>
+        </div>
+      );
+    })}
       </div>
 
       {/* Report Modal */}

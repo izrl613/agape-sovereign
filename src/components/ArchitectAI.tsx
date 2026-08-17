@@ -1333,7 +1333,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
              >
                <Trash2 size={18} color={NEON.magenta} />
              </button>
-             <LogoutButton variant="icon" size="sm" title="Disconnect Session" />
+             <LogoutButton variant="icon" size="sm" />
            </div>
         </div>
 

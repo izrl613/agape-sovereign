@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
-import { NEON, NeonText, GlassCard, NeonButton, StatusBadge, Skeleton } from './UI';
+import { NEON, NeonText, GlassCard, NeonButton, StatusBadge, Skeleton, HoverCard } from './UI';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Filter, ArrowUpDown, TrendingUp, Copy, Check, Download as DlIcon, Shield } from 'lucide-react';
 import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
@@ -417,11 +417,11 @@ export const Dashboard = () => {
             { label: "SECURED", value: stats.knoxed, sub: "KNOXED & hardened", color: NEON.blue },
             { label: "CRITICAL FLAGS", value: stats.nuked, sub: "Require attention", color: NEON.orange },
           ].map((kpi) => (
-            <GlassCard key={kpi.label} style={{ padding: "16px" }}>
+            <HoverCard key={kpi.label} accent={kpi.color} style={{ padding: "16px" }}>
               <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, letterSpacing: "0.1em", marginBottom: 6 }}>{kpi.label}</div>
               <div style={{ fontFamily: "'Orbitron', monospace", fontSize: "1.8rem", fontWeight: 900, color: kpi.color, textShadow: `0 0 12px ${kpi.color}66` }}>{kpi.value}</div>
               <div style={{ fontSize: "0.7rem", color: NEON.textMuted, marginTop: 4 }}>{kpi.sub}</div>
-            </GlassCard>
+            </HoverCard>
           ))
         )}
       </div>
