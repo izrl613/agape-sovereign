@@ -41,3 +41,4 @@ workspace_outputs/
 tests/
 scripts/venv
 agape-sovereign-1/
+.dyad/
