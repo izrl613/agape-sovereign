@@ -389,24 +389,54 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
         </div>
       </div>
 
-      {/* Score bar */}
-      <GlassCard style={{ padding: "16px", marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }} className="flex justify-between">
-          <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.65rem", color: NEON.textMuted }}>SECURITY POSTURE</span>
-          <span style={{ fontFamily: "'Orbitron'", fontSize: "0.65rem", color: sevColor }}>{severity > 80 ? "SECURED" : severity > 60 ? "MODERATE" : "EXPOSED"}</span>
-        </div>
-        <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${severity}%`, background: `linear-gradient(90deg, ${NEON.magenta}, ${sevColor})`, borderRadius: 3, boxShadow: `0 0 10px ${sevColor}`, transition: "width 1.5s ease" }} />
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, gap: 12 }}>
-          {[{ l: "NUKED", v: nuked, c: NEON.magenta }, { l: "KNOXED", v: knoxed, c: NEON.blue }, { l: "MONITORED", v: monitored, c: NEON.orange }].map(s => (
-            <div key={s.l} style={{ flex: 1, textAlign: "center", background: `rgba(${s.c === NEON.magenta ? "255,46,159" : s.c === NEON.blue ? "0,212,255" : "255,122,24"},0.08)`, borderRadius: 8, padding: "10px 0", border: `1px solid ${s.c}22` }}>
-              <div style={{ fontFamily: "'Orbitron'", fontSize: "1.4rem", fontWeight: 900, color: s.c }}>{s.v}</div>
-              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, letterSpacing: "0.1em" }}>{s.l}</div>
+      {/* Status Cards — matching Dashboard layout */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+        {[
+          { label: 'NUKED', count: nuked, color: NEON.magenta },
+          { label: 'KNOXED', count: knoxed, color: NEON.blue },
+          { label: 'MONITORED', count: monitored, color: NEON.orange },
+        ].map((s) => (
+          <div key={s.label} style={{
+            flex: 1,
+            padding: '20px 16px',
+            borderRadius: 12,
+            background: `linear-gradient(135deg, ${s.color}12 0%, ${s.color}06 100%)`,
+            border: `1.5px solid ${s.color}33`,
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: `radial-gradient(circle at 50% 0%, ${s.color}10 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '1.8rem',
+              fontWeight: 900,
+              color: s.color,
+              textShadow: `0 0 16px ${s.color}66`,
+              lineHeight: 1,
+              marginBottom: 6,
+              position: 'relative',
+            }}>
+              {s.count}
             </div>
-          ))}
-        </div>
-      </GlassCard>
+            <div style={{
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.55rem',
+              fontWeight: 700,
+              color: s.color,
+              letterSpacing: '0.12em',
+              opacity: 0.9,
+              position: 'relative',
+            }}>
+              {s.label}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
       <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
@@ -635,26 +665,67 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
       </AnimatePresence>
 
       {/* Findings */}
-      <div style={{ marginBottom: 16 }}>
-        <NeonText color={NEON.orange} size="0.72rem">INTELLIGENCE FINDINGS</NeonText>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{
+          fontFamily: "'Orbitron', monospace",
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          color: NEON.orange,
+          letterSpacing: '0.12em',
+        }}>
+          INTELLIGENCE FINDINGS
+        </span>
+        <div style={{ flex: 1, height: 1, background: `${NEON.orange}33` }} />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {displayFindings.map((f, i) => {
       const statusColor = f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange;
-      const isCritical = f.type === "NUKED";
+      const statusIcon = f.type === "NUKED" ? '🔥' : f.type === "KNOXED" ? '🛡️' : '👁️';
       return (
-        <div key={i} className={f.type === "NUKED" ? "nuked-item" : f.type === "KNOXED" ? "knoxed-item" : ""} style={{ borderRadius: 10, padding: "14px 16px", border: `1px solid ${statusColor}33`, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "all 0.2s ease" }}>
-          <div style={{ flexShrink: 0 }}><StatusBadge type={f.type as 'NUKED' | 'KNOXED' | 'MONITORED'} /></div>
+        <motion.div 
+          key={i} 
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: i * 0.05 }}
+          style={{ 
+            borderRadius: 10, 
+            padding: "16px 18px", 
+            border: `1px solid ${statusColor}22`,
+            borderLeft: `4px solid ${statusColor}`,
+            background: 'rgba(255,255,255,0.02)',
+            display: "flex", 
+            alignItems: "center", 
+            gap: 14, 
+            cursor: "pointer", 
+            transition: "all 0.2s ease",
+            boxShadow: f.type === 'NUKED' ? `0 0 15px ${statusColor}12` : 'none',
+          }}
+        >
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '4px 10px',
+            borderRadius: 6,
+            background: `${statusColor}15`,
+            border: `1px solid ${statusColor}33`,
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '0.55rem',
+            fontWeight: 700,
+            color: statusColor,
+            letterSpacing: '0.08em',
+            flexShrink: 0,
+          }}>
+            {statusIcon} {f.type}
+          </span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.85rem", color: NEON.text, whiteSpace: 'nowrap' }}>{f.label}</div>
-            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
+            <div style={{ fontFamily: "'Rajdhani'", fontWeight: 600, fontSize: "0.88rem", color: '#fff', whiteSpace: 'nowrap' }}>{f.label}</div>
+            <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.textMuted, marginTop: 2 }}>{f.detail}</div>
           </div>
           <div style={{ whiteSpace: 'nowrap' }}>
             <NeonButton size="sm" color={f.type === "NUKED" ? NEON.magenta : f.type === "KNOXED" ? NEON.blue : NEON.orange} onClick={() => f.onClick && f.onClick()}>
               {f.action}
             </NeonButton>
           </div>
-        </div>
+        </motion.div>
       );
     })}
       </div>
@@ -690,10 +761,56 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
         </div>
       )}
 
-      {/* Action buttons */}
+      {/* Action buttons — matching Dashboard design */}
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-        <NeonButton color={NEON.magenta} style={{ flex: 1 }}>🔥 NUKE ALL EXPOSURES</NeonButton>
-        <NeonButton color={NEON.blue} style={{ flex: 1 }}>🛡️ KNOX ALL SECURED</NeonButton>
+        <motion.button
+          whileHover={{ scale: 1.02, boxShadow: `0 0 24px ${NEON.magenta}33` }}
+          whileTap={{ scale: 0.98 }}
+          style={{
+            flex: 1,
+            padding: '14px 20px',
+            borderRadius: 10,
+            background: `linear-gradient(135deg, ${NEON.magenta}18 0%, ${NEON.magenta}08 100%)`,
+            border: `1.5px solid ${NEON.magenta}44`,
+            color: NEON.magenta,
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.3s ease',
+          }}
+        >
+          🔥 NUKE ALL EXPOSURES
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02, boxShadow: `0 0 24px ${NEON.blue}33` }}
+          whileTap={{ scale: 0.98 }}
+          style={{
+            flex: 1,
+            padding: '14px 20px',
+            borderRadius: 10,
+            background: `linear-gradient(135deg, ${NEON.blue}18 0%, ${NEON.blue}08 100%)`,
+            border: `1.5px solid ${NEON.blue}44`,
+            color: NEON.blue,
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '0.7rem',
+            fontWeight: 800,
+            letterSpacing: '0.08em',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            transition: 'all 0.3s ease',
+          }}
+        >
+          🛡️ KNOX ALL SECURED
+        </motion.button>
       </div>
 
       {/* ── Sovereign Integrity Footer Seal ─────────────────────────────── */}
