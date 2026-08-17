@@ -53,7 +53,8 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "@dyad-sh/react-vite-component-tagger": "^0.9.0"
   },
   "engines": {
     "node": ">=20.0.0"
