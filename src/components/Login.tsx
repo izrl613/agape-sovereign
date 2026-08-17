@@ -159,6 +159,7 @@ export const Login = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isIncognito, setIsIncognito] = useState<boolean | null>(null); // null = detecting
+  const [activeMethod, setActiveMethod] = useState<'google' | 'passkey' | null>(null);
 
   // Detect private browsing on mount
   useEffect(() => {
@@ -193,12 +194,14 @@ export const Login = () => {
   const handleGoogleLogin = async () => {
     setAuthError(null);
     setScanning(true);
+    setActiveMethod('google');
     try {
       await login();
       // Redirect fallback navigates away; if we are still here, session is ready.
       setStep('creating');
     } catch (err: unknown) {
       setScanning(false);
+      setActiveMethod(null);
       setAuthError(formatError(err));
     }
   };
@@ -216,11 +219,13 @@ export const Login = () => {
   const handlePasskeyLogin = async () => {
     setAuthError(null);
     setScanning(true);
+    setActiveMethod('passkey');
     try {
       await loginWithPasskey(email);
       setStep('creating');
     } catch (err: unknown) {
       setScanning(false);
+      setActiveMethod(null);
       const msg = err instanceof Error ? err.message : 'Passkey authentication failed.';
       if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
         setAuthError('Passkey prompt was dismissed. Try again or use Google Sign-In.');
@@ -650,7 +655,19 @@ export const Login = () => {
                   INITIALIZING ARCHITECT AI…
                 </div>
                 <div style={{ color: C.muted, fontSize: 11, marginTop: 8 }}>
-                  Preparing your DIFF sovereignty console
+                  {activeMethod === 'passkey'
+                    ? 'Passkey session verified · Preparing your DIFF sovereignty console'
+                    : 'Google identity verified · Preparing your DIFF sovereignty console'}
+                </div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  marginTop: 14, fontSize: 9, letterSpacing: '0.14em',
+                  color: activeMethod === 'passkey' ? C.blue : '#4285F4',
+                  border: `1px solid ${activeMethod === 'passkey' ? C.blue : '#4285F4'}33`,
+                  borderRadius: 100, padding: '4px 12px',
+                  fontFamily: 'monospace',
+                }}>
+                  {activeMethod === 'passkey' ? '⬡ FIDO2 PASSKEY' : 'G GOOGLE OAUTH'}
                 </div>
               </motion.div>
             )}
