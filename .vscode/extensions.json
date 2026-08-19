@@ -1,6 +1,5 @@
 {
   "recommendations": [
-    "saoudrizwan.claude-dev",
     "ms-vscode.live-server"
   ],
   "unwantedRecommendations": [
