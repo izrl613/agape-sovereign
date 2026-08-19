@@ -10,6 +10,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { functions } from "@/lib/firebase";
 import { httpsCallable } from "firebase/functions";
+import { verifyIdToken } from "firebase/auth";
 
 // pages/api/auth/login.ts
 export async function POST(req: NextRequest) {
@@ -46,8 +47,8 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.split(" ")[1];
-    // Validate JWT token here in production
-    const userId = token; // TODO: Replace with actual JWT validation
+    const decodedToken = await verifyIdToken(auth, token);
+    const userId = decodedToken.uid;
     
     if (!userId || userId.length > 128) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
@@ -74,8 +75,8 @@ export async function PUT(req: NextRequest) {
     }
 
     const token = authHeader.split(" ")[1];
-    // Validate JWT token here in production
-    const userId = token; // TODO: Replace with actual JWT validation
+    const decodedToken = await verifyIdToken(auth, token);
+    const userId = decodedToken.uid;
     
     if (!userId || userId.length > 128) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Call Cloud Function
+    // Call Cloud Function with proper authentication
     const initiateDIFFScan = httpsCallable(functions, "initiateDIFFScan");
     const result = await initiateDIFFScan({ vectors: 16 });
 
@@ -118,8 +119,8 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.split(" ")[1];
-    // Validate JWT token here in production
-    const userId = token; // TODO: Replace with actual JWT validation
+    const decodedToken = await verifyIdToken(auth, token);
+    const userId = decodedToken.uid;
     
     if (!userId || userId.length > 128) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });
@@ -181,8 +182,8 @@ export async function GET(req: NextRequest) {
     }
 
     const token = authHeader.split(" ")[1];
-    // Validate JWT token here in production
-    const userId = token; // TODO: Replace with actual JWT validation
+    const decodedToken = await verifyIdToken(auth, token);
+    const userId = decodedToken.uid;
     
     if (!userId || userId.length > 128) {
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 });

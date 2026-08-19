@@ -58,8 +58,7 @@ const BUILTIN_ORIGINS = [
 const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
 
 const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
-  process.env.COOKIE_SECRET ||
-  "sovereign-secret-key";
+  process.env.COOKIE_SECRET;
 
 const authApp = express();
 
@@ -631,7 +630,7 @@ export const authApi = onRequest(
     invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    secrets: ["PASSKEY_COOKIE_SECRET"],
+    secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"],
   },
   authApp
 );

@@ -30,7 +30,7 @@ async function startServer() {
 
   app.set('trust proxy', 1);
   app.use(express.json({limit: process?.env?.API_PAYLOAD_MAX_SIZE || "7mb"}));
-  app.use(cookieParser(process.env.COOKIE_SECRET || "sovereign-secret-key")); 
+  app.use(cookieParser(process.env.COOKIE_SECRET)); 
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
