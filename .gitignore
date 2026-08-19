@@ -42,3 +42,5 @@ tests/
 scripts/venv
 agape-sovereign-1/
 .dyad/
+.spectra/
+openspec/.vector-search.db*
