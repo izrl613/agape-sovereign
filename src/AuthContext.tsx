@@ -128,8 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const userSnap = await getDoc(userRef);
             
-            const isSuperAdmin = currentUser.email === 'idin@agape.nyc' ||
-                                 currentUser.email === 'agape@sovereign.nyc';
+            // Check for admin custom claim instead of hardcoded emails
+            const tokenResult = await currentUser.getIdTokenResult();
+            const isSuperAdmin = tokenResult.claims.admin === true;
             
             // Determine authType early — passkey detection via sessionStorage flag
             const isPasskeyLogin = sessionStorage.getItem('sovereign_passkey_auth') === 'true';
