@@ -34,6 +34,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
+    "openclaw": "^2026.7.1-2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
@@ -75,7 +76,8 @@
     "grpc@0.14.1": true,
     "protobufjs@6.11.6": true,
     "protobufjs@7.6.5": true,
-    "re2@1.26.1": true
+    "re2@1.26.1": true,
+    "openclaw@2026.7.1-2": true
   },
   "overrides": {
     "tar": "^7.5.21",
