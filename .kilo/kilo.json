@@ -1,0 +1,22 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "mcp": {
+    "firebase": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "firebase-tools@14.15.2",
+        "experimental:mcp"
+      ]
+    },
+    "bigquery-mcp": {
+      "type": "remote",
+      "url": "https://bigquery.googleapis.com/mcp"
+    },
+    "git-mcp": {
+      "type": "remote",
+      "url": "https://gitmcp.io/izrl613/agape-sovereign"
+    }
+  }
+}
