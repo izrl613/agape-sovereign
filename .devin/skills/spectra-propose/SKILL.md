@@ -1,4 +1,8 @@
 ---
+name: spectra-propose
+---
+
+---
 name: Spectra: Propose
 description: Create a complete change proposal with all artifacts in a single workflow
 category: Workflow

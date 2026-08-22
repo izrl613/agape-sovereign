@@ -1,4 +1,8 @@
 ---
+name: spectra-archive
+---
+
+---
 name: Spectra: Archive
 description: Archive a completed change
 category: Workflow

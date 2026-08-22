@@ -30,7 +30,7 @@ export async function getRegistrationOptions(uid: string) {
 
   const options = await generateRegistrationOptions({
     rpName: 'Agape Sovereign',
-    rpID: 'aitnyc.cloudflareaccess.com', // domain of the app
+    rpID: process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'agape-sovereign.web.app' : 'localhost'),
     userID: new TextEncoder().encode(uid),
     userName: uid,
     timeout: 60000,
@@ -59,8 +59,8 @@ export async function verifyAndStoreRegistration(uid: string, attestationRespons
   const verification = await verifyRegistrationResponse({
     credential: attestationResponse,
     expectedChallenge,
-    expectedOrigin: `https://${process.env.CF_ACCESS_DOMAIN}`,
-    expectedRPID: 'aitnyc.cloudflareaccess.com',
+    expectedOrigin: process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === 'production' ? 'https://agape-sovereign.web.app' : 'http://localhost:5000'),
+    expectedRPID: process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'agape-sovereign.web.app' : 'localhost'),
   });
 
   if (!verification.verified) {
@@ -95,7 +95,7 @@ export async function getAuthenticationOptions(uid: string) {
 
   const options = await generateAuthenticationOptions({
     timeout: 60000,
-    rpID: 'aitnyc.cloudflareaccess.com',
+    rpID: process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'agape-sovereign.web.app' : 'localhost'),
     allowCredentials,
     userVerification: 'preferred',
   });
@@ -126,8 +126,8 @@ export async function verifyAuthentication(uid: string, assertionResponse: any) 
   const verification = await verifyAuthenticationResponse({
     credential: assertionResponse,
     expectedChallenge,
-    expectedOrigin: `https://${process.env.CF_ACCESS_DOMAIN}`,
-    expectedRPID: 'aitnyc.cloudflareaccess.com',
+    expectedOrigin: process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === 'production' ? 'https://agape-sovereign.web.app' : 'http://localhost:5000'),
+    expectedRPID: process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'agape-sovereign.web.app' : 'localhost'),
     authenticator: {
       credentialPublicKey: base64url.decode(stored?.credentialPublicKey),
       counter: stored?.counter || 0,

@@ -1,4 +1,8 @@
 ---
+name: spectra-debug
+---
+
+---
 name: Spectra: Debug
 description: Systematically debug a problem using a four-phase workflow
 category: Development

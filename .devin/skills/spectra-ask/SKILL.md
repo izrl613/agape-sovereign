@@ -1,4 +1,8 @@
 ---
+name: spectra-ask
+---
+
+---
 name: Spectra: Ask
 description: Query {{SPEC_DIR}}documents and answer questions
 category: Workflow

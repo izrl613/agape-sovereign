@@ -1,4 +1,8 @@
 ---
+name: spectra-audit
+---
+
+---
 name: Spectra: Audit
 description: Audit changed code for security sharp edges — dangerous defaults, type confusion, and silent failures
 category: Development

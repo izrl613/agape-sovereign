@@ -1,4 +1,8 @@
 ---
+name: spectra-commit
+---
+
+---
 name: Spectra: Commit
 description: Commit files related to a specific Spectra change
 category: Utility
