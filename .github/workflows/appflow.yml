@@ -1,0 +1,316 @@
+# ============================================================
+# AGAPE SOVEREIGN — APPFLOW CI/CD PIPELINE
+# Complete build, test, security, and deploy pipeline
+# ============================================================
+name: AppFlow CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+  FIREBASE_PROJECT: agape-sovereign
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  security-events: write
+  actions: read
+
+concurrency:
+  group: "appflow-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # LINT & TYPECHECK
+  # ─────────────────────────────────────────────────────────────
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run root lint
+        run: npm run lint
+
+      - name: Run root typecheck
+        run: npm run typecheck
+
+      - name: Run functions lint
+        run: npm run lint --prefix functions
+
+      - name: Run functions typecheck
+        run: npm run typecheck --prefix functions
+
+  # ─────────────────────────────────────────────────────────────
+  # UNIT TESTS
+  # ─────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Run frontend tests
+        run: npm test --if-present
+        continue-on-error: true
+
+      - name: Run functions tests
+        run: npm test --prefix functions --if-present
+        continue-on-error: true
+
+  # ─────────────────────────────────────────────────────────────
+  # BUILD
+  # ─────────────────────────────────────────────────────────────
+  build:
+    name: Build Application
+    needs: [lint-and-typecheck, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install functions dependencies
+        run: npm ci --prefix functions
+
+      - name: Build frontend
+        run: npm run build:frontend
+
+      - name: Build functions
+        run: npm run build:functions
+
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          retention-days: 7
+
+      - name: Upload functions build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: functions-lib
+          path: functions/lib/
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────
+  # SECURITY SCANNING
+  # ─────────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci && npm ci --prefix functions
+
+      # npm audit
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Run functions npm audit
+        run: npm audit --audit-level=high --prefix functions
+        continue-on-error: true
+
+      # Snyk security scan (if token available)
+      - name: Snyk Security Scan
+        uses: snyk/actions/node@master
+        if: env.SNYK_TOKEN != ''
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      # CodeQL Analysis
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+
+      # Dependency Review
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0, AGPL-3.0
+
+      # Trivy filesystem scan
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ─────────────────────────────────────────────────────────────
+  # DEPLOY TO FIREBASE (staging on PR, production on main)
+  # ─────────────────────────────────────────────────────────────
+  deploy-firebase:
+    name: Deploy to Firebase
+    needs: [build, security-scan]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      - name: Download functions build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: functions-lib
+          path: functions/lib/
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@latest
+
+      - name: Deploy to Firebase
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "Deploying to PRODUCTION..."
+            firebase deploy --project ${{ env.FIREBASE_PROJECT }} --token $FIREBASE_TOKEN
+          else
+            echo "Deploying to PREVIEW CHANNEL..."
+            firebase hosting:channel:deploy PR-${{ github.event.number }} --project ${{ env.FIREBASE_PROJECT }} --token $FIREBASE_TOKEN --expires 7d
+          fi
+
+  # ─────────────────────────────────────────────────────────────
+  # DEPLOY TO GITHUB PAGES (static preview)
+  # ─────────────────────────────────────────────────────────────
+  deploy-github-pages:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+  # ─────────────────────────────────────────────────────────────
+  # NOTIFICATION
+  # ─────────────────────────────────────────────────────────────
+  notify:
+    name: Notify Completion
+    needs: [deploy-firebase, deploy-github-pages]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Status Summary
+        run: |
+          echo "## AppFlow Pipeline Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Jobs" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint & Typecheck: ${{ needs.lint-and-typecheck.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Tests: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Firebase Deploy: ${{ needs.deploy-firebase.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Pages: ${{ needs.deploy-github-pages.result }}" >> $GITHUB_STEP_SUMMARY
