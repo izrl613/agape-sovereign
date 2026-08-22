@@ -156,10 +156,10 @@ authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
 
 /**
  * Normalize email for stable Firestore lookups.
- * @param {string} email Raw email.
+ * @param {string | null | undefined} email Raw email.
  * @return {string} Lowercased trimmed email.
  */
-function normalizeEmail(email: string): string {
+export function normalizeEmail(email: string | null | undefined): string {
   return String(email || "").trim().toLowerCase();
 }
 
@@ -168,7 +168,7 @@ function normalizeEmail(email: string): string {
  * @param {string} origin Fully-qualified origin.
  * @return {string} RP ID.
  */
-function rpIdForOrigin(origin: string): string {
+export function rpIdForOrigin(origin: string): string {
   try {
     const host = new URL(origin).hostname;
     if (host === "localhost" || host === "127.0.0.1") return host;
@@ -288,7 +288,7 @@ function readSession(req: Request): Record<string, unknown> | null {
  * @param {string | Uint8Array} id Credential id.
  * @return {string} base64url id.
  */
-function encodeCredentialId(id: string | Uint8Array): string {
+export function encodeCredentialId(id: string | Uint8Array): string {
   if (typeof id === "string") return id;
   return Buffer.from(id).toString("base64url");
 }

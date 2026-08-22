@@ -13,6 +13,9 @@
     "deploy": "firebase deploy",
     "lint": "npm run lint --prefix functions",
     "typecheck": "tsc --noEmit && npm run typecheck --if-present --prefix functions",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "logs": "firebase functions:log"
   },
   "dependencies": {
@@ -49,15 +52,21 @@
   },
   "devDependencies": {
     "@dyad-sh/react-vite-component-tagger": "^0.9.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^9.1.2",
+    "jsdom": "^30.0.1",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.0.0"
