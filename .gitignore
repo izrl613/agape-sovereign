@@ -30,6 +30,12 @@ conflicts.txt
 FILE_NAME
 package 2.json
 *.orig
+* (1).*
+* (1)/
+
+# Design/UX assets (not for production)
+architect-ai/
+*.pdf
 
 # Firebase / functions build output
 functions/lib/
