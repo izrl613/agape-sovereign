@@ -151,6 +151,7 @@ export const recalculateSovereignScore = onDocumentWritten(
       logger.info("Score updated", {userId, score: sovereignScore});
     } catch (error) {
       logger.error("Recalculation failed", {error});
+      throw error;
     }
   }
 );
@@ -206,6 +207,7 @@ export const cleanupAuditLogs = onSchedule(
       logger.info("Audit cleanup", {deleted});
     } catch (error) {
       logger.error("Cleanup failed", {error});
+      throw error;
     }
   }
 );

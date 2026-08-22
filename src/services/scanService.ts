@@ -60,7 +60,7 @@ export async function updateFindingStatus(
     return true;
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `diff_scans/${findingId}`);
-    return false;
+    throw error;
   }
 }
 
@@ -79,7 +79,7 @@ export async function getScanFindings(userId: string): Promise<ScanFinding[]> {
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "diff_scans");
-    return [];
+    throw error;
   }
 }
 
