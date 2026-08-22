@@ -8,7 +8,7 @@ export const checkBackendHealth = async () => {
     return result.data as string;
   } catch (error) {
     console.error("Functions health check failed:", error);
-    return null;
+    throw error;
   }
 };
 

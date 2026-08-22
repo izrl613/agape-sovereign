@@ -22,8 +22,13 @@ export const uploadProfilePicture = async (userId: string, file: File, onProgres
         reject(error);
       }, 
       async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        resolve(downloadURL);
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          resolve(downloadURL);
+        } catch (error) {
+          console.error("Storage download URL error:", error);
+          reject(error);
+        }
       }
     );
   });
@@ -36,7 +41,7 @@ export const deleteUserFile = async (path: string) => {
     return true;
   } catch (error) {
     console.error("Storage delete error:", error);
-    return false;
+    throw error;
   }
 };
 
@@ -47,6 +52,6 @@ export const listUserFiles = async (userId: string) => {
     return res.items;
   } catch (error) {
     console.error("Storage list error:", error);
-    return [];
+    throw error;
   }
 };
