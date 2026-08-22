@@ -1,4 +1,8 @@
 ---
+name: spectra-drift
+---
+
+---
 name: Spectra: Drift
 description: Detect drift between a Spectra change and the current codebase state
 category: Workflow

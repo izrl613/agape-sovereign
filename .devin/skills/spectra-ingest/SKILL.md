@@ -1,4 +1,8 @@
 ---
+name: spectra-ingest
+---
+
+---
 name: Spectra: Ingest
 description: Update an existing Spectra change from a plan file or conversation context
 category: Workflow

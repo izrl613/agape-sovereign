@@ -1,4 +1,8 @@
 ---
+name: spectra-apply
+---
+
+---
 name: Spectra: Apply
 description: Implement tasks from a Spectra change
 category: Workflow

@@ -181,7 +181,7 @@ function rpIdForOrigin(origin: string): string {
 
 /**
  * Resolve expectedOrigin + rpId from the request Origin/Referer.
- * Firebase Hosting and Cloudflare terminate TLS before the function runs.
+ * Firebase Hosting terminates TLS before the function runs.
  * @param {Request} req Express request.
  * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
