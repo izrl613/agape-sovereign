@@ -2,6 +2,7 @@ export const NEON = {
   magenta: "#FF2E9F",
   blue: "#00D4FF",
   orange: "#FF7A18",
+  green: "#00FF87",
   bg: "#060D1F",
   bgCard: "rgba(8, 18, 40, 0.85)",
   bgGlass: "rgba(0, 212, 255, 0.04)",
