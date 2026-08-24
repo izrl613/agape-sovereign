@@ -7,6 +7,8 @@ import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import {ErrorReporting} from "@google-cloud/error-reporting";
 import {
   generateRegistrationOptions,
@@ -58,12 +60,15 @@ const BUILTIN_ORIGINS = [
 const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
 
 const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
-  process.env.COOKIE_SECRET ||
-  "sovereign-secret-key";
+  process.env.COOKIE_SECRET;
 
 const authApp = express();
 
 const corsOrigins = ALLOWED_ORIGINS.filter((o) => o.startsWith("http"));
+const isProduction = process.env.NODE_ENV === "production" ||
+  process.env.K_SERVICE !== undefined ||
+  process.env.FUNCTION_TARGET !== undefined;
+
 authApp.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser / same-origin proxy calls with no Origin header
@@ -71,6 +76,24 @@ authApp.use(cors({
       callback(null, true);
       return;
     }
+
+    // In production, restrict to sovereign.nyc and Firebase Hosting domains only
+    if (isProduction) {
+      const allowedProdOrigins = [
+        "https://sovereign.nyc",
+        "https://www.sovereign.nyc",
+        "https://agape-sovereign.web.app",
+        "https://agape-sovereign.firebaseapp.com",
+      ];
+      if (allowedProdOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+      return;
+    }
+
+    // Development: allow localhost and other dev origins
     if (corsOrigins.includes(origin) || origin.endsWith(".web.app") ||
       origin.endsWith(".firebaseapp.com") || origin.includes("localhost") ||
       origin.includes("127.0.0.1")) {
@@ -83,6 +106,37 @@ authApp.use(cors({
 }));
 authApp.use(express.json({limit: "256kb"}));
 authApp.use(cookieParser(COOKIE_SECRET));
+
+// Security headers with helmet
+authApp.use(helmet({
+  contentSecurityPolicy: false, // Disabled for WebAuthn compatibility
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  referrerPolicy: {policy: "strict-origin-when-cross-origin"},
+  frameguard: {action: "deny"},
+  noSniff: true,
+  xssFilter: true,
+}));
+
+// Rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: {error: "Too many authentication attempts, please try again later"},
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 attempts per hour
+  message: {error: "Rate limit exceeded, please try again later"},
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Firebase App Check verification (opt-in via env)
 authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
@@ -102,10 +156,10 @@ authApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
 
 /**
  * Normalize email for stable Firestore lookups.
- * @param {string} email Raw email.
+ * @param {string | null | undefined} email Raw email.
  * @return {string} Lowercased trimmed email.
  */
-function normalizeEmail(email: string): string {
+export function normalizeEmail(email: string | null | undefined): string {
   return String(email || "").trim().toLowerCase();
 }
 
@@ -114,7 +168,7 @@ function normalizeEmail(email: string): string {
  * @param {string} origin Fully-qualified origin.
  * @return {string} RP ID.
  */
-function rpIdForOrigin(origin: string): string {
+export function rpIdForOrigin(origin: string): string {
   try {
     const host = new URL(origin).hostname;
     if (host === "localhost" || host === "127.0.0.1") return host;
@@ -127,7 +181,7 @@ function rpIdForOrigin(origin: string): string {
 
 /**
  * Resolve expectedOrigin + rpId from the request Origin/Referer.
- * Firebase Hosting and Cloudflare terminate TLS before the function runs.
+ * Firebase Hosting terminates TLS before the function runs.
  * @param {Request} req Express request.
  * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
@@ -197,9 +251,11 @@ function setSessionCookie(res: Response, sessionData: object): void {
     httpOnly: true,
     secure: isSecure,
     signed: true,
-    maxAge: 5 * 60_000,
-    sameSite: "lax",
+    maxAge: 15 * 60_000, // 15 minutes for better UX while maintaining security
+    sameSite: isSecure ? "strict" : "lax", // strict in production for CSRF protection
     path: "/",
+    priority: "high",
+    domain: isSecure ? (process.env.COOKIE_DOMAIN || undefined) : undefined,
   });
 }
 
@@ -232,7 +288,7 @@ function readSession(req: Request): Record<string, unknown> | null {
  * @param {string | Uint8Array} id Credential id.
  * @return {string} base64url id.
  */
-function encodeCredentialId(id: string | Uint8Array): string {
+export function encodeCredentialId(id: string | Uint8Array): string {
   if (typeof id === "string") return id;
   return Buffer.from(id).toString("base64url");
 }
@@ -279,7 +335,7 @@ async function requireRegisteredUser(
 }
 
 // POST /register-options
-router.post("/register-options", async (req: Request, res: Response) => {
+router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
     const email = normalizeEmail(req.body?.email || "");
     if (!email) {
@@ -348,7 +404,7 @@ router.post("/register-options", async (req: Request, res: Response) => {
 });
 
 // POST /verify-registration
-router.post("/verify-registration", async (req: Request, res: Response) => {
+router.post("/verify-registration", strictLimiter, async (req: Request, res: Response) => {
   try {
     const body = req.body as RegistrationResponseJSON & {
       userId?: string;
@@ -430,7 +486,7 @@ router.post("/verify-registration", async (req: Request, res: Response) => {
 //  2. Resident-key / reauth — body: { reauth: true }  (no email required)
 //     Returns discoverable-credential options (empty allowCredentials) so the
 //     authenticator can select the appropriate resident key automatically.
-router.post("/login-options", async (req: Request, res: Response) => {
+router.post("/login-options", authLimiter, async (req: Request, res: Response) => {
   try {
     const {rpId, expectedOrigin} = getWebAuthnConfig(req);
 
@@ -521,7 +577,7 @@ router.post("/login-options", async (req: Request, res: Response) => {
 });
 
 // POST /verify-login
-router.post("/verify-login", async (req: Request, res: Response) => {
+router.post("/verify-login", strictLimiter, async (req: Request, res: Response) => {
   try {
     const body = req.body as AuthenticationResponseJSON;
     const sessionData = readSession(req);
@@ -631,7 +687,7 @@ export const authApi = onRequest(
     invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    secrets: ["PASSKEY_COOKIE_SECRET"],
+    secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"],
   },
   authApp
 );

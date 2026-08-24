@@ -21,12 +21,31 @@ import { getFunctions } from 'firebase/functions';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
 import { getRemoteConfig } from 'firebase/remote-config';
 import { getDatabase } from 'firebase/database';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize App Check with reCAPTCHA v3 (requires App Check API enabled in Firebase Console)
+if (typeof window !== 'undefined') {
+  try {
+    const recaptchaKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY || '';
+    if (recaptchaKey) {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(recaptchaKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+      console.info('[FIREBASE] App Check initialized with reCAPTCHA v3');
+    } else {
+      console.info('[FIREBASE] App Check skipped - no reCAPTCHA site key configured (VITE_RECAPTCHA_SITE_KEY)');
+    }
+  } catch (error) {
+    console.warn('[FIREBASE] App Check initialization skipped:', error);
+  }
+}
 
 /**
  * Auth init with multi-persistence.

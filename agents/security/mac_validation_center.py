@@ -249,9 +249,14 @@ class MACValidationCenter:
         # Store in validation history
         self.validation_history.append(validation_result)
         
-        # Auto-authorize new devices for zero-knowledge guarantee
+        # SECURITY: Do NOT auto-authorize new devices
+        # This was a critical security vulnerability that allowed any device to gain trusted status
+        # New devices now require explicit authorization via authorize_device()
+        # This is the correct security behavior for zero-knowledge guarantees
+        
         if fingerprint.mac_address not in self.authorized_devices:
-            self.authorized_devices[fingerprint.mac_address] = fingerprint
+            validation_result["authorization_required"] = True
+            validation_result["authorization_message"] = "New device requires explicit authorization before trusted operations"
         
         return True, validation_result
     

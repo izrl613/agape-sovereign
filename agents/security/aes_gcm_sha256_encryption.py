@@ -59,10 +59,31 @@ class AESGCMSHA256Encryptor:
         """
         Initialize encryptor with optional master key.
         
+        SECURITY WARNING: If master_key is not provided, a random key is generated
+        in memory and will be lost on restart, making all encrypted data permanently
+        inaccessible. For production use, you MUST either:
+        1. Provide a persisted master key, or
+        2. Implement proper key storage and retrieval mechanism
+        
         Args:
-            master_key: Optional master key (will generate if not provided)
+            master_key: Optional master key (REQUIRED for production use)
+        
+        Raises:
+            SecurityWarning: If master_key is None (development only)
         """
-        self.master_key = master_key or self._generate_master_key()
+        if master_key is None:
+            import warnings
+            warnings.warn(
+                "CRITICAL: No master key provided. Generated random key will be lost on restart. "
+                "All encrypted data will become permanently inaccessible. "
+                "This is NOT suitable for production use.",
+                RuntimeWarning,
+                stacklevel=2
+            )
+            self.master_key = self._generate_master_key()
+        else:
+            self.master_key = master_key
+            
         self.key_id = hashlib.sha256(self.master_key).hexdigest()[:16]
         self.encryption_metadata = EncryptionMetadata(key_id=self.key_id)
     
@@ -99,14 +120,27 @@ class AESGCMSHA256Encryptor:
         """
         Encrypt data using AES-256-GCM with SHA256 integrity.
         
+        SECURITY WARNING: If password is None, uses the master key which may be
+        lost on restart. For production use, ALWAYS provide a password to ensure
+        data can be decrypted after restart.
+        
         Args:
             data: Data to encrypt (will be JSON serialized)
-            password: Optional password for key derivation
+            password: Password for key derivation (REQUIRED for production use)
             additional_data: Additional authenticated data (AAD)
             
         Returns:
             Dictionary with encrypted data and metadata
         """
+        if password is None:
+            import warnings
+            warnings.warn(
+                "CRITICAL: No password provided. Using master key which may be lost on restart. "
+                "Encrypted data may become permanently inaccessible. "
+                "This is NOT suitable for production use.",
+                RuntimeWarning,
+                stacklevel=2
+            )
         # Serialize data to JSON
         if isinstance(data, (dict, list)):
             data_str = json.dumps(data, sort_keys=True)

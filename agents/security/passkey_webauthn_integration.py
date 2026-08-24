@@ -259,15 +259,23 @@ class SecurityEnhancedPasskeyManager:
             offline_mode=True
         )
         
-        # In production, verify the signature using the public key
-        # For now, we'll simulate successful authentication
+        # SECURITY: In production, this MUST verify the signature using the public key
+        # This is a CRITICAL security gap that must be fixed before production deployment
+        # The signature verification should use cryptography.hazmat.primitives.asymmetric.ec
+        # or a WebAuthn library to verify the authenticator signature against the stored public key
+        
+        # TEMPORARY: This is a SECURITY VULNERABILITY - signature verification is not implemented
+        # TODO: Implement proper signature verification using the public key
+        # Current implementation allows authentication without cryptographic proof
+        
         return True, {
             "authenticated": True,
             "user_id": user_id,
             "credential_id": credential_id,
             "sha256_id": auth_sha256_id,
             "device_validated": True,
-            "authentication_timestamp": datetime.utcnow().isoformat()
+            "authentication_timestamp": datetime.utcnow().isoformat(),
+            "security_warning": "CRITICAL: Signature verification not implemented - authentication is not cryptographically verified"
         }
     
     def get_passkey_for_user(self, user_id: str) -> Optional[PasskeyCredential]:
