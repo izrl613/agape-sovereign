@@ -17,6 +17,7 @@ NO VERTEX AI. NO GEMINI API. NO CLOUD AI SERVICES.
 """
 from __future__ import annotations
 
+import hmac
 import json
 import os
 import sys
@@ -47,6 +48,25 @@ LMSTUDIO_MODEL = os.environ.get("LMSTUDIO_MODEL", "qwen3.5-9b-sushi-coder-rl-mlx
 # MCP server metadata
 SERVER_NAME = "architect-ai-mcp"
 SERVER_VERSION = "1.0.0"
+
+# ---------------------------------------------------------------------------
+# Auth — gate MCP tool calls (Firebase ID token OR static API key)
+#   MCP_REQUIRE_AUTH=true        enforce auth on POST (default true on Cloud Run)
+#   MCP_API_KEY=<secret>         if set, requests may send X-API-Key: <secret>
+#   FIREBASE_PROJECT_ID          project for Firebase ID token verification
+# GET /health stays open for Cloud Run probes; POST (tools/call) is gated.
+# ---------------------------------------------------------------------------
+MCP_REQUIRE_AUTH = os.environ.get("MCP_REQUIRE_AUTH", "true").lower() in (
+    "1", "true", "yes", "on",
+)
+if not MCP_REQUIRE_AUTH and os.environ.get("K_SERVICE"):
+    MCP_REQUIRE_AUTH = True  # always gate inside Cloud Run
+MCP_API_KEY = os.environ.get("MCP_API_KEY", "")
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "agape-sovereign")
+_FIREBASE_JWKS_URL = (
+    "https://www.googleapis.com/service_accounts/v1/jwk/"
+    "securetoken@system.gserviceaccount.com"
+)
 
 # ---------------------------------------------------------------------------
 # Architect AI system prompt (condensed for MCP tool responses)
@@ -158,6 +178,49 @@ def _infer(messages: list[dict], max_tokens: int = 1200, temperature: float = 0.
         "Start Ollama (ollama serve) or LM Studio with API server enabled.",
         "unavailable",
     )
+
+
+# ---------------------------------------------------------------------------
+# Auth helpers
+# ---------------------------------------------------------------------------
+
+def _verify_firebase_id_token(token: str) -> dict | None:
+    """Verify a Firebase ID token (RS256) via Google JWKS. Returns payload or None."""
+    try:
+        from jwt import PyJWKClient
+        import jwt as _jwt
+    except Exception:
+        # PyJWT not installed — token verification unavailable; rely on API key.
+        return None
+    try:
+        signing_key = PyJWKClient(_FIREBASE_JWKS_URL).get_signing_key_from_jwt(token)
+        issuer = f"https://securetoken.google.com/{FIREBASE_PROJECT_ID}"
+        return _jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=FIREBASE_PROJECT_ID,
+            issuer=issuer,
+        )
+    except Exception as e:
+        print(f"[MCP] Firebase token verify failed: {e}", file=sys.stderr)
+        return None
+
+
+def _auth_ok(headers) -> tuple[bool, str]:
+    """Return (authorized, reason). Accepts Bearer Firebase token or X-API-Key."""
+    authz = headers.get("Authorization") or headers.get("authorization")
+    if authz and authz.startswith("Bearer "):
+        payload = _verify_firebase_id_token(authz[len("Bearer "):].strip())
+        if payload:
+            return True, f"firebase:{payload.get('uid', '?')}"
+        return False, "invalid_firebase_token"
+    if MCP_API_KEY:
+        key = headers.get("X-API-Key") or headers.get("x-api-key")
+        if key and hmac.compare_digest(str(key), MCP_API_KEY):
+            return True, "api_key"
+        return False, "invalid_api_key"
+    return False, "no_credentials"
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +378,21 @@ class MCPHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self) -> None:
+        if MCP_REQUIRE_AUTH:
+            ok, reason = _auth_ok(self.headers)
+            if not ok:
+                err = {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32600, "message": f"Unauthorized: {reason}"},
+                }
+                payload = json.dumps(err).encode()
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+                return
         length = int(self.headers.get("Content-Length", 0))
         raw = self.rfile.read(length)
         try:
@@ -348,6 +426,8 @@ if __name__ == "__main__":
     print(f"[MCP] Ollama host  : {OLLAMA_HOST}")
     print(f"[MCP] LM Studio    : {LMSTUDIO_HOST}")
     print(f"[MCP] Vertex AI    : DISABLED (offline LLM only)")
+    print(f"[MCP] Auth gate    : {'ENABLED' if MCP_REQUIRE_AUTH else 'disabled'}"
+          f" (firebase={FIREBASE_PROJECT_ID}, api_key={'set' if MCP_API_KEY else 'unset'})")
 
     server = HTTPServer(("0.0.0.0", PORT), MCPHandler)
     try:

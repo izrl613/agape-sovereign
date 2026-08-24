@@ -12,6 +12,10 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
   backend "gcs" {
     bucket = "agape-sovereign-terraform-state"
@@ -243,52 +247,86 @@ resource "google_billing_budget" "emergency_stop" {
   }
 }
 
-# ─── Cloud Function for Budget Enforcement (Optional) ────────────────────────
-# Uncomment to enable automated shutdown on budget exceed
-# resource "google_cloudfunctions2_function" "budget_enforcement" {
-#   name        = "budget-enforcement"
-#   location    = var.region
-#   description = "Automatically disable billing on budget exceed"
-#
-#   build_config {
-#     runtime     = "nodejs20"
-#     entry_point = "handleBudgetAlert"
-#     source {
-#       storage_source {
-#         bucket = "agape-sovereign-functions-source"
-#         object = "budget-enforcement.zip"
-#       }
-#     }
-#   }
-#
-#   service_config {
-#     max_instance_count = 1
-#     available_memory   = "256M"
-#     timeout_seconds    = 60
-#     environment_variables = {
-#       PROJECT_ID = var.project_id
-#     }
-#   }
-#
-#   event_trigger {
-#     event_type = "google.cloud.pubsub.topic.v1.messagePublished"
-#     pubsub_topic = google_pubsub_topic.billing_alerts.id
-#     service_account = "budget-enforcement@${var.project_id}.iam.gserviceaccount.com"
-#   }
-# }
+# ─── Budget Enforcement: Cloud Run auto-cap on budget alert ───────────────
+# Source lives in functions/budget-enforcement/ and is zipped here via the
+# archive provider, uploaded to GCS, and deployed as a Gen 2 Cloud Function
+# triggered by the billing-alerts Pub/Sub topic. On a breached threshold it
+# scales the cost-driving Cloud Run services to maxScale=0 to cap spend.
 
-# ─── IAM for Budget Enforcement (Optional) ──────────────────────────────────
-# resource "google_service_account" "budget_enforcement" {
-#   account_id   = "budget-enforcement"
-#   display_name = "Budget Enforcement Service Account"
-#   labels       = var.labels
-# }
-#
-# resource "google_project_iam_member" "budget_enforcement_billing_admin" {
-#   project = var.project_id
-#   role    = "roles/billing.projectManager"
-#   member  = "serviceAccount:${google_service_account.budget_enforcement.email}"
-# }
+data "archive_file" "budget_enforcement_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../functions/budget-enforcement"
+  output_path = "${path.module}/build/budget-enforcement.zip"
+}
+
+resource "google_storage_bucket" "function_source" {
+  name                        = "${var.project_id}-functions-source"
+  location                    = var.region
+  uniform_bucket_level_access = true
+  labels                      = var.labels
+}
+
+resource "google_storage_bucket_object" "budget_enforcement_zip" {
+  name   = "budget-enforcement-${data.archive_file.budget_enforcement_zip.output_md5}.zip"
+  bucket = google_storage_bucket.function_source.name
+  source = data.archive_file.budget_enforcement_zip.output_path
+  labels = var.labels
+}
+
+resource "google_service_account" "budget_enforcement" {
+  account_id   = "budget-enforcement"
+  display_name = "Budget Enforcement Service Account"
+  project      = var.project_id
+  labels       = var.labels
+}
+
+# Run Admin lets the function scale Cloud Run services to zero
+resource "google_project_iam_member" "budget_enforcement_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.budget_enforcement.email}"
+}
+
+resource "google_project_iam_member" "budget_enforcement_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.budget_enforcement.email}"
+}
+
+resource "google_cloudfunctions2_function" "budget_enforcement" {
+  name        = "budget-enforcement"
+  location    = var.region
+  description = "Scale Cloud Run services to zero when a billing budget threshold is breached"
+
+  build_config {
+    runtime     = "nodejs20"
+    entry_point = "handleBudgetAlert"
+    source {
+      storage_source {
+        bucket = google_storage_bucket.function_source.name
+        object = google_storage_bucket_object.budget_enforcement_zip.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count    = 1
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    service_account_email = google_service_account.budget_enforcement.email
+    environment_variables = {
+      PROJECT_ID       = var.project_id
+      REGION           = var.region
+      CAP_SERVICES     = "agape-sovereign-ee8f4200,agape-sovereign-server,gemma4-mcp-server"
+      CAP_AT_THRESHOLD = "1.0"
+    }
+  }
+
+  event_trigger {
+    event_type   = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic = google_pubsub_topic.billing_alerts.id
+  }
+}
 
 # ─── Outputs ────────────────────────────────────────────────────────────────
 output "billing_export_dataset" {
