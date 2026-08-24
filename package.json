@@ -13,6 +13,9 @@
     "deploy": "firebase deploy",
     "lint": "npm run lint --prefix functions",
     "typecheck": "tsc --noEmit && npm run typecheck --if-present --prefix functions",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "logs": "firebase functions:log"
   },
   "dependencies": {
@@ -34,6 +37,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
+    "openclaw": "^2026.7.1-2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
@@ -43,18 +47,26 @@
     "remark-gfm": "^4.0.0",
     "sonner": "^2.0.1",
     "tailwindcss": "^4.0.6",
-    "typescript": "^5.7.3",
-    "vite": "^6.1.0"
+    "vite": "^6.1.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@dyad-sh/react-vite-component-tagger": "^0.9.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/node": "^22.13.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^9.1.2",
-    "@dyad-sh/react-vite-component-tagger": "^0.9.0"
+    "jsdom": "^30.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -73,7 +85,8 @@
     "grpc@0.14.1": true,
     "protobufjs@6.11.6": true,
     "protobufjs@7.6.5": true,
-    "re2@1.26.1": true
+    "re2@1.26.1": true,
+    "openclaw@2026.7.1-2": true
   },
   "overrides": {
     "tar": "^7.5.21",

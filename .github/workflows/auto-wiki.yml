@@ -82,9 +82,7 @@ jobs:
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f README.md ]; then
-            cat > wiki-repo/Home.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit README.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit README.md instead. -->" > wiki-repo/Home.md
             cat README.md >> wiki-repo/Home.md
             echo "Generated Home.md from README.md"
           fi
@@ -94,9 +92,7 @@ HEREDOC_END
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f SECURITY.md ]; then
-            cat > wiki-repo/Security.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit SECURITY.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit SECURITY.md instead. -->" > wiki-repo/Security.md
             cat SECURITY.md >> wiki-repo/Security.md
             echo "Generated Security.md"
           fi
@@ -106,9 +102,7 @@ HEREDOC_END
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f CHANGELOG.md ]; then
-            cat > wiki-repo/Changelog.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit CHANGELOG.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit CHANGELOG.md instead. -->" > wiki-repo/Changelog.md
             cat CHANGELOG.md >> wiki-repo/Changelog.md
             echo "Generated Changelog.md"
           fi
@@ -118,9 +112,7 @@ HEREDOC_END
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f DEPLOYMENT_GUIDE.md ]; then
-            cat > wiki-repo/Deployment.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit DEPLOYMENT_GUIDE.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit DEPLOYMENT_GUIDE.md instead. -->" > wiki-repo/Deployment.md
             cat DEPLOYMENT_GUIDE.md >> wiki-repo/Deployment.md
             echo "Generated Deployment.md"
           fi
@@ -130,9 +122,7 @@ HEREDOC_END
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f QUICKSTART.md ]; then
-            cat > wiki-repo/Quick-Start.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit QUICKSTART.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit QUICKSTART.md instead. -->" > wiki-repo/Quick-Start.md
             cat QUICKSTART.md >> wiki-repo/Quick-Start.md
             echo "Generated Quick-Start.md"
           fi
@@ -142,9 +132,7 @@ HEREDOC_END
         if: steps.clone_wiki.outputs.wiki_available == 'true'
         run: |
           if [ -f INTEGRATION_GUIDE.md ]; then
-            cat > wiki-repo/Integration-Guide.md << 'HEREDOC_END'
-<!-- AUTO-GENERATED — do not edit directly. Edit INTEGRATION_GUIDE.md instead. -->
-HEREDOC_END
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit INTEGRATION_GUIDE.md instead. -->" > wiki-repo/Integration-Guide.md
             cat INTEGRATION_GUIDE.md >> wiki-repo/Integration-Guide.md
             echo "Generated Integration-Guide.md"
           fi
