@@ -23,7 +23,7 @@
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.0",
     "@supabase/ssr": "^0.12.3",
-    "@supabase/supabase-js": "^2.110.9",
+    "@supabase/supabase-js": "^2.112.3",
     "@tailwindcss/vite": "^4.0.6",
     "@vitejs/plugin-react": "^4.3.4",
     "cookie-parser": "^1.4.7",
