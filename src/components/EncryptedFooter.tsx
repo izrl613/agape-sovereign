@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { NEON } from './UI';
+import { NEON } from "../theme";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EncryptedFooter — Sovereign Integrity Seal

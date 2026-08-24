@@ -1,19 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  NEON,
-  NeonText,
-  GlassCard,
-  NeonButton,
-  StatusBadge,
-} from "./UI";
-
-export { NEON, NeonText, GlassCard, NeonButton, StatusBadge };
+import { NEON } from "../theme";
+import { NeonButton } from "./UI/NeonButton";
 
 /**
  * CopyButton — Zero-knowledge copy-to-clipboard with animated feedback.
  * Shows a temporary "COPIED ✓" pulse then reverts.
  */
-export const CopyButton: React.FC<{
+const CopyButton: React.FC<{
   value: string;
   label?: string;
   size?: number;
@@ -77,7 +70,7 @@ export const CopyButton: React.FC<{
 /**
  * RevealText — masked value with an eye toggle to reveal/hide.
  */
-export const RevealText: React.FC<{
+const RevealText: React.FC<{
   value: string;
   masked?: boolean;
   maskChar?: string;
@@ -114,47 +107,4 @@ export const RevealText: React.FC<{
   );
 };
 
-/**
- * HoverCard — GlassCard with interactive lift + glow on hover.
- */
-export const HoverCard: React.FC<{ children: React.ReactNode, style?: React.CSSProperties, className?: string, onClick?: () => void, accent?: string }> = ({ children, style = {}, className = "", onClick, accent = NEON.blue }) => {
-  return (
-    <div
-      className={`hover-card neon-border ${className}`}
-      onClick={onClick}
-      style={{
-        background: NEON.bgCard,
-        backdropFilter: "blur(20px)",
-        borderRadius: 12,
-        border: "1px solid rgba(0,212,255,0.15)",
-        position: "relative",
-        cursor: onClick ? "pointer" : "default",
-        transition: "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease",
-        ...style,
-      }}
-    >
-      <style>{`
-        .hover-card:hover { transform: translateY(-3px); border-color: ${accent}55; box-shadow: 0 10px 30px ${accent}22; }
-      `}</style>
-      {children}
-    </div>
-  );
-};
-
-export const Skeleton: React.FC<{ width?: string | number, height?: string | number, borderRadius?: string | number, style?: React.CSSProperties }> = ({ 
-  width = "100%", 
-  height = "1rem", 
-  borderRadius = 4, 
-  style = {} 
-}) => (
-  <div 
-    className="animate-pulse" 
-    style={{ 
-      width, 
-      height, 
-      borderRadius, 
-      background: "rgba(255,255,255,0.05)", 
-      ...style 
-    }} 
-  />
-);
+export { CopyButton, RevealText };
