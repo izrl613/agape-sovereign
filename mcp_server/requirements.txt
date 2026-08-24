@@ -4,6 +4,12 @@
 # HTTP server uses only Python stdlib (http.server) — no extra deps required.
 # Optional: uncomment for production WSGI/ASGI deployments
 
+# Auth gate — Firebase ID token verification (RS256 via Google JWKS).
+# Required to enforce MCP_REQUIRE_AUTH on Cloud Run. Pure stdlib fallback
+# (API-key only) works without these, but token verification needs both.
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
 # gunicorn>=21.2.0       # production WSGI (alternative to stdlib HTTPServer)
 # uvicorn>=0.29.0        # production ASGI
 # fastapi>=0.111.0       # FastAPI (if migrating from stdlib HTTPServer)

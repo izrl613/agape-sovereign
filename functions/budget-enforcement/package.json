@@ -1,0 +1,10 @@
+{
+  "name": "budget-enforcement",
+  "version": "1.0.0",
+  "main": "index.js",
+  "private": true,
+  "description": "Cloud Run auto-cap on billing budget breach (Agape Sovereign)",
+  "dependencies": {
+    "google-auth-library": "^9.14.0"
+  }
+}
