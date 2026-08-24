@@ -28,7 +28,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "cookie-parser": "^1.4.7",
     "esbuild": "^0.25.0",
-    "express": "^4.22.2",
+    "express": "^5.2.1",
     "express-rate-limit": "^7.5.0",
     "firebase": "^11.10.0",
     "firebase-admin": "^14.2.0",
