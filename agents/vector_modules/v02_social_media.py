@@ -12,6 +12,19 @@ from datetime import datetime
 from .base_vector_agent import BaseVectorAgent, UserQuery
 
 
+def _get_enricher():
+    """Lazy load the free third-party enricher (Mastodon federated lookup +
+    Gravatar SHA256(email) profile). Returns None if unavailable."""
+    try:
+        from agents.security.free_third_party_sources import free_third_party_enricher
+        return free_third_party_enricher
+    except Exception:
+        return None
+
+
+_MASTODON_RE = re.compile(r'@([A-Za-z0-9_]+)@((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})', re.IGNORECASE)
+
+
 class SocialMediaFootprintVectorAgent(BaseVectorAgent):
     """V-02 Social Media Footprint - Processes social media security vectors"""
     
@@ -33,9 +46,10 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
             "handles": [],
             "usernames": [],
             "platforms": [],
+            "mastodon_handles": [],
             "parameters": query.parameters
         }
-        
+
         # Common social media patterns
         patterns = {
             "twitter": r'@(\w{1,15})',
@@ -45,7 +59,7 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
             "tiktok": r'tiktok\.com/@(\w+)',
             "reddit": r'reddit\.com/user/(\w+)'
         }
-        
+
         for platform, pattern in patterns.items():
             matches = re.findall(pattern, query.query_text, re.IGNORECASE)
             for match in matches:
@@ -56,12 +70,20 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
                 })
                 if platform not in parsed["platforms"]:
                     parsed["platforms"].append(platform)
-        
+
+        # Mastodon / federated handles: @user@instance (free, no-key enrichment)
+        for user, instance in _MASTODON_RE.findall(query.query_text or ""):
+            full = f"@{user}@{instance}"
+            if full not in parsed["mastodon_handles"]:
+                parsed["mastodon_handles"].append(full)
+            if "mastodon" not in parsed["platforms"]:
+                parsed["platforms"].append("mastodon")
+
         # Extract standalone usernames
         username_pattern = r'\b(?<!@)(\w{3,20})\b'
         usernames = re.findall(username_pattern, query.query_text)
         parsed["usernames"] = list(set(usernames))
-        
+
         return parsed
     
     def process_data(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -74,11 +96,31 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
             "confidence": 0.85,
             "profile_analysis": [],
             "exposure_risks": [],
-            "privacy_recommendations": []
+            "privacy_recommendations": [],
+            "enrichment_findings": [],
+            "sources_consulted": []
         }
-        
-        if not parsed_data["handles"]:
+
+        enricher = _get_enricher()
+        sources_seen: set = set()
+
+        # Free federated enrichment for Mastodon @user@instance handles
+        if enricher is not None:
+            for handle in parsed_data.get("mastodon_handles", []) or []:
+                for f in enricher.enrich_username(handle):
+                    processed["enrichment_findings"].append(f.to_dict())
+                    sources_seen.add(f.source)
+                    if f.status == "NUKED":
+                        processed["critical_findings"] += 1
+                        processed["base_risk_score"] += 12
+                        processed["exposure_risks"].append(f"Public Mastodon profile exposed: {handle}")
+                        processed["findings"].append(f"NUKED: {f.detail}")
+                    elif f.status == "MONITORED":
+                        processed["findings"].append(f"MONITORED: {f.detail}")
+
+        if not parsed_data["handles"] and not parsed_data.get("mastodon_handles"):
             processed["findings"].append("No social media handles detected")
+            processed["sources_consulted"] = sorted(sources_seen)
             return processed
         
         # Analyze each social media handle
@@ -123,7 +165,8 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
         processed["privacy_recommendations"] = self._generate_privacy_recommendations(
             processed["profile_analysis"]
         )
-        
+
+        processed["sources_consulted"] = sorted(sources_seen)
         return processed
     
     def _assess_profile_risk(self, platform: str, handle: str) -> Dict[str, Any]:
@@ -186,6 +229,12 @@ class SocialMediaFootprintVectorAgent(BaseVectorAgent):
             "detailed_findings": {
                 "profile_analysis": processed_data["profile_analysis"],
                 "exposure_risks": processed_data["exposure_risks"]
+            },
+            "free_third_party_enrichment": {
+                "sources_consulted": processed_data.get("sources_consulted", []),
+                "finding_count": len(processed_data.get("enrichment_findings", [])),
+                "findings": processed_data.get("enrichment_findings", []),
+                "hashing": "SHA256 (handle hashed for audit; Mastodon lookup sends user@instance to the named instance only)",
             },
             "privacy_recommendations": processed_data["privacy_recommendations"],
             "priority_for_architect": "high" if processed_data["risk_level"] == "critical" else "standard"
