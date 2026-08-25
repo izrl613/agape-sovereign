@@ -1,3 +1,8 @@
+---
+title: "Security model, authentication layers, and App Check"
+description: "Zero-knowledge security architecture: Firestore isolation rules, Firebase App Check, MCP server authentication, and vulnerability reporting."
+---
+
 # Security
 
 ## Security Model

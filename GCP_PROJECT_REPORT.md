@@ -1,3 +1,8 @@
+---
+title: "GCP and Firebase project report for agape-sovereign"
+description: "Inventory of the agape-sovereign GCP project: Cloud Run services, Firestore, auth providers, billing budgets, and security recommendations."
+---
+
 # agape.sovereign — GCP/Firebase Project Report
 **Generated:** 2026-07-20 · **Account:** idin@agape.nyc · **Project:** `agape-sovereign` (956088455461)  
 **Billing Account:** 018175-BBE06D-3B0276 · **Billing:** Enabled

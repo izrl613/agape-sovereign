@@ -1,3 +1,8 @@
+---
+title: "Deploy Architect AI on Firebase with security hardening"
+description: "Step-by-step Firebase deployment guide for Architect AI, covering Cloud Functions, hosting, budget auto-cap, and production hardening steps."
+---
+
 # ð Architect AI â Complete Deployment Guide
 
 ## Agape Sovereign Enclave 2026 | DIFF Intelligence Platform
