@@ -424,7 +424,9 @@ npm run deploy
 
 ## ð Post-Deployment Security Checklist
 
-- [ ] Enable Firebase App Check (production only)
+- [x] Enable Firebase App Check — providers declared in `firebase.json` (reCAPTCHA v3 web + Play Integrity Android); set your reCAPTCHA site key before deploying
+- [x] Lock down the MCP server — `gemma4-mcp-server` requires a Firebase ID token or `X-API-Key` on all POST requests (see the Security wiki page)
+- [x] Wire budget alerts to the auto-cap function (see "Budget auto-cap" below)
 - [ ] Set up custom domain with SSL
 - [ ] Configure Content Security Policy (CSP) headers
 - [ ] Enable Firestore encryption at rest (default: on)
@@ -448,6 +450,45 @@ npm run deploy
 2. Set spending limits ($50/month recommended)
 3. Monitor usage dashboard
 4. Cost breakdowns per service
+
+### Budget auto-cap (spend enforcement)
+
+Billing budget alerts publish to the `billing-alerts` Pub/Sub topic, which triggers the `budget-enforcement` Gen 2 Cloud Function. The function is deployed by Terraform (`terraform/billing.tf`) from source in `functions/budget-enforcement/`.
+
+When an alert's exceeded threshold reaches `CAP_AT_THRESHOLD`, the function PATCHes each Cloud Run service listed in `CAP_SERVICES` to `maxScale=0`. Capped services can no longer spin up instances, so spend stops immediately.
+
+Function environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PROJECT_ID` | `agape-sovereign` | GCP project id |
+| `REGION` | `us-central1` | Cloud Run region |
+| `CAP_SERVICES` | (set in Terraform) | Comma-separated Cloud Run services to cap |
+| `CAP_AT_THRESHOLD` | `1.0` | Budget fraction that triggers the cap (1.0 = 100%) |
+
+The cap is reversible. Restore a service after resolving the overspend:
+
+```bash
+gcloud run services update SERVICE_NAME \
+  --project=agape-sovereign --region=us-central1 \
+  --max-instances=3
+```
+
+### Production hardening script
+
+`scripts/prod-hardening.sh` consolidates the remaining hardening steps that mutate live GCP/Firebase state. It is dry-run by default and only executes with `--apply`:
+
+```bash
+./scripts/prod-hardening.sh                  # dry-run: prints commands only
+./scripts/prod-hardening.sh --apply          # execute all steps
+./scripts/prod-hardening.sh --apply --only=pitr
+```
+
+Steps:
+
+- `ar` — Artifact Registry cleanup policy (keep 3 newest images, prune anything older than 30 days) across the project's Docker repos
+- `pitr` — enable point-in-time recovery on the `(default)` Firestore database
+- `auth` — disable Firebase Anonymous Auth to reduce the abuse and billing surface
 
 ### Optimization Tips
 - Batch Firestore operations

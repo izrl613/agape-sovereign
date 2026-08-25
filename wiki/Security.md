@@ -21,6 +21,40 @@ agape.sovereign is built on a **zero-knowledge, privacy-first** security archite
 | Device Binding | WebAuthn / FIDO2 Passkey | Hardware-bound |
 | Request Attestation | Firebase App Check | Abuse prevention |
 | Session Integrity | Firebase Auth tokens | Short-lived JWTs |
+| MCP Tool Calls | Firebase ID token or API key | Server-side gate |
+
+### Firebase App Check
+
+App Check providers are declared in `firebase.json` and attest that requests to Auth, Firestore, and Storage come from your real apps:
+
+- **Web:** reCAPTCHA v3 — set your site key in the `appCheck.providers.recaptchaV3.siteKey` field
+- **Android:** Play Integrity with token exchange
+
+### MCP server authentication
+
+The `gemma4-mcp-server` Cloud Run service gates every POST (JSON-RPC) request. `GET /health` stays open for Cloud Run probes. A request is authorized by either:
+
+1. A **Firebase ID token** in the `Authorization: Bearer <token>` header, verified as RS256 against Google's JWKS for the configured Firebase project
+2. A **static API key** in the `X-API-Key` header, compared in constant time against the server's configured key
+
+Unauthorized requests receive HTTP 401 with a JSON-RPC error (`code: -32600`, message `Unauthorized: <reason>`).
+
+Configuration (environment variables on the Cloud Run service):
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `MCP_REQUIRE_AUTH` | `true` | Enforce the auth gate on POST. Force-enabled on Cloud Run regardless of value |
+| `MCP_API_KEY` | unset | If set, requests may authenticate with `X-API-Key: <secret>` |
+| `FIREBASE_PROJECT_ID` | `agape-sovereign` | Project used as issuer/audience for ID token verification |
+
+Example authenticated tool call:
+
+```bash
+curl -X POST https://gemma4-mcp-server-vub7d55vga-uc.a.run.app \
+  -H "Authorization: Bearer $FIREBASE_ID_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
 
 ### Data Isolation
 - Each user's data is isolated via Firestore security rules

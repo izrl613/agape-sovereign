@@ -31,7 +31,7 @@ All 5 services are **READY** in `us-central1`.
 | `registerpasskeyoptions` | `https://registerpasskeyoptions-vub7d55vga-uc.a.run.app` | Passkey registration Cloud Function |
 
 **Notes:**
-- All services are publicly invokable (`allUsers` → `roles/run.invoker`). Ensure this is intentional for `gemma4-mcp-server` — it currently has no auth gate.
+- All services are publicly invokable (`allUsers` → `roles/run.invoker`). `gemma4-mcp-server` now enforces an application-level auth gate on all POST (JSON-RPC) requests: a Firebase ID token (`Authorization: Bearer`) or a static `X-API-Key`. `GET /health` stays open for Cloud Run probes. Auth is auto-enabled whenever the server runs on Cloud Run.
 - `gemma4-mcp-server` is capped at 3 max instances and 512 MiB RAM — adequate for single-user.
 - `authapi` uses `PASSKEY_COOKIE_SECRET` from Secret Manager ✓
 
@@ -67,7 +67,7 @@ Key buckets:
 | **GitHub OAuth** | ✓ Enabled |
 | Passkey (WebAuthn) | ✓ Implemented via `authapi` / `registerpasskeyoptions` |
 
-**Recommendation:** Disable Anonymous auth if it's not used for onboarding flows — reduces abuse surface.
+**Recommendation:** Disable Anonymous auth if it's not used for onboarding flows — reduces abuse surface. Run `./scripts/prod-hardening.sh --apply --only=auth` to disable it.
 
 ---
 
@@ -171,17 +171,17 @@ Key buckets:
 
 ### High Priority
 
-1. **Lock down `gemma4-mcp-server` IAM** — currently public. Add an API key or Firebase Auth header check so it's not open to the internet.
+1. ✅ **DONE (2026-08-24): Lock down `gemma4-mcp-server`** — the server now gates every POST (JSON-RPC `tools/call`) request behind a Firebase ID token (RS256, verified against Google's JWKS) or a static `X-API-Key`. Configure via `MCP_REQUIRE_AUTH`, `MCP_API_KEY`, and `FIREBASE_PROJECT_ID` env vars; auth is force-enabled on Cloud Run. Unauthorized requests receive HTTP 401 with a JSON-RPC error.
 2. **Enable Google Sign-In in Firebase Auth UI** — it's configured at the project level but `signIn` block was empty in the config response. Verify it's wired in the PWA's `firebase.ts`.
-3. **Point Blaze budget alert to Pub/Sub** — current budgets alert by email only. Wire to `pubsub/eventarc` → Cloud Run function to auto-cap spending.
+3. ✅ **DONE (2026-08-24): Blaze budget alerts wired to Pub/Sub auto-cap** — the `billing-alerts` Pub/Sub topic now triggers the `budget-enforcement` Gen 2 Cloud Function (deployed via Terraform). When a budget alert crosses the configured threshold (default 100%), the function scales the cost-driving Cloud Run services (`agape-sovereign-ee8f4200`, `agape-sovereign-server`, `gemma4-mcp-server`) to `maxScale=0` so they can no longer accrue cost. The cap is reversible by redeploying or raising `maxScale`.
 4. **Delete or rotate stale GitHub OAuth tokens** in Secret Manager — 4 `apphosting-github-conn-*` tokens + 2 `izrl613-github-oauthtoken-*` from different dates. Audit which are still active.
 
 ### Medium Priority
 
-5. **Enable Firebase App Check** for the Android and Web apps — protects Auth, Firestore, and Storage from abuse. Add `reCAPTCHA v3` for web, `Play Integrity` for Android. Free tier.
+5. ✅ **DONE (2026-08-24): Firebase App Check enabled** — `firebase.json` now declares App Check providers: `reCAPTCHA v3` for web (set the site key) and `Play Integrity` for Android. Protects Auth, Firestore, and Storage from abuse. Free tier.
 6. **Add Error Reporting to Cloud Run services** — now that `clouderrorreporting.googleapis.com` is enabled, add `@google-cloud/error-reporting` client to `agape-sovereign-server` and `authapi`.
 7. **Add Cloud Profiler to backend** — `cloudprofiler.googleapis.com` is now enabled. Add `import('pprof')` in the Node.js server to track CPU/memory.
-8. **Enable Point-in-Time Recovery on Firestore** — `(default)` DB has `POINT_IN_TIME_RECOVERY_DISABLED`. Enable it in Blaze tier projects for production safety.
+8. **Enable Point-in-Time Recovery on Firestore** — `(default)` DB has `POINT_IN_TIME_RECOVERY_DISABLED`. Run `./scripts/prod-hardening.sh --apply --only=pitr` to enable it.
 9. **BigQuery analytics** — `bq-operational-logs` sink is writing to `agape_sovereign_analytics` but no dashboard exists. Create a Looker Studio report from the BigQuery data.
 
 ### Low Priority / Nice-to-Have

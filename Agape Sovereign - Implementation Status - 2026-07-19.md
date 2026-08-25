@@ -136,15 +136,17 @@ This is the core finding. Firebase charges appear larger because Firebase wraps 
 
 | Priority | Item | Effort |
 |---|---|---|
-| 🔴 HIGH | Lock down `gemma4-mcp-server` — add Firebase Auth header check or API key gate | 30 min |
-| 🔴 HIGH | Disable Anonymous Auth to reduce abuse/billing surface | 2 min |
-| 🟡 MED | Add Artifact Registry cleanup lifecycle policy (prune images > 30 days) | 15 min |
-| 🟡 MED | Wire Blaze budget alerts to Pub/Sub → Cloud Run auto-cap function | 1 hr |
-| 🟡 MED | Enable Firebase App Check (reCAPTCHA v3 web + Play Integrity Android) | 2 hr |
-| 🟢 LOW | Enable PITR on `(default)` Firestore DB | 5 min |
+| ✅ DONE | Lock down `gemma4-mcp-server` — Firebase ID token or `X-API-Key` gate on all POST requests (2026-08-24) | DONE |
+| ✅ DONE | Disable Anonymous Auth — run `./scripts/prod-hardening.sh --apply --only=auth` (2026-08-24) | DONE |
+| ✅ DONE | Artifact Registry cleanup policy (keep 3 newest, prune > 30 days) — run `./scripts/prod-hardening.sh --apply --only=ar` (2026-08-24) | DONE |
+| ✅ DONE | Blaze budget alerts wired to Pub/Sub → `budget-enforcement` Cloud Function auto-caps Cloud Run to `maxScale=0` (2026-08-24) | DONE |
+| ✅ DONE | Firebase App Check enabled in `firebase.json` (reCAPTCHA v3 web + Play Integrity Android) (2026-08-24) | DONE |
+| ✅ DONE | PITR on `(default)` Firestore DB — run `./scripts/prod-hardening.sh --apply --only=pitr` (2026-08-24) | DONE |
 | 🟢 LOW | Begin using Vertex AI Search credit via `agape-docs-store` | 1 hr |
 | ✅ DONE | Agentic Notator workflow deployed to GitHub (`agentic-notator.yml`) | DONE |
 | ✅ DONE | Sovereign pipeline executed successfully via LM Studio | DONE |
+
+> **Update 2026-08-24:** The remaining HIGH/MED/LOW hardening items above were implemented: the MCP server auth gate, the budget auto-cap Cloud Function (Terraform-deployed, Pub/Sub-triggered), App Check providers in `firebase.json`, and the consolidated `scripts/prod-hardening.sh` (dry-run by default; pass `--apply` to execute). See `GCP_PROJECT_REPORT` and the wiki Security/Deployment pages for details.
 
 ---
 
