@@ -115,6 +115,21 @@ Restricted to admin emails (`idin@agape.nyc`, `agape@sovereign.nyc`):
 | `generateDIFFReport` | Firestore write | Generate PDF after scan completion |
 | `cleanupOldReports` | Scheduled | Delete reports older than 2 years |
 | `healthCheck` | HTTP call | Infrastructure monitoring endpoint |
+| `architectApi` | HTTP request | Serves `POST /api/architect`, the Gemini chat proxy |
+
+---
+
+## Chat Endpoint (`/api/architect`)
+
+The `architectApi` function exposes the Architect AI chat at `POST /api/architect`. Send `{ message, history }` and receive `{ reply, uid }`. The last 10 history entries are used as session context.
+
+Requests must pass three security layers:
+
+- **Auth**: `Authorization: Bearer <Firebase ID token>` header (401 otherwise)
+- **App Check**: `X-Firebase-AppCheck` token when enforcement is enabled (401 otherwise)
+- **Rate limit**: 30 requests per 15-minute window per client (429 otherwise)
+
+See the [Architect AI README](/ARCHITECT_AI_README) for the full request schema and a curl example.
 
 ---
 

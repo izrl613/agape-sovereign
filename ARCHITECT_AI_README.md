@@ -300,6 +300,38 @@ POST /api/ai/chat
   → { success: true, response: "..." }
 ```
 
+### Architect AI Chat Endpoint (`/api/architect`)
+
+The `architectApi` Cloud Function (region `us-central1`, 60s timeout, 512 MiB) exposes the Gemini chat proxy at `POST /api/architect`. Use it to send a user message plus optional conversation history and receive an Architect AI reply.
+
+```
+POST /api/architect
+  { message: "string (required)", history: [ { role, content } ] }
+  → { reply: "...", uid: "user_uuid" }
+```
+
+Only the last 10 `history` entries are used as session context. Request bodies are capped at 256 KB.
+
+**Security requirements:**
+
+| Layer | Requirement | Failure response |
+|-------|-------------|------------------|
+| **Auth** | `Authorization: Bearer <Firebase ID token>` header; the token is verified server-side | `401 { "error": "Authentication required" }` |
+| **App Check** | `X-Firebase-AppCheck` header with a valid App Check token (enforced when `RECAPTCHA_ENABLED=true`) | `401` missing or invalid token |
+| **Rate limit** | 30 requests per 15-minute window per client (standard `RateLimit-*` headers) | `429 { "error": "Too many requests, please try again later" }` |
+| **CORS** | Origin must be `https://sovereign.nyc`, `https://agape-sovereign.web.app`, `https://agape-sovereign.firebaseapp.com`, or localhost dev ports (`5173`, `5000`) | Request blocked by browser |
+| **Validation** | `message` must be a non-empty string | `400 { "error": "Missing message" }` |
+
+Example request:
+
+```bash
+curl -X POST https://us-central1-agape-sovereign.cloudfunctions.net/architectApi/api/architect \
+  -H "Authorization: Bearer $FIREBASE_ID_TOKEN" \
+  -H "X-Firebase-AppCheck: $APP_CHECK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Summarize my NUKED exposures", "history": []}'
+```
+
 ---
 
 ## 🧪 Local Development
