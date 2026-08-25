@@ -1,3 +1,8 @@
+---
+title: "Architect AI DIFF platform and /api/architect endpoint"
+description: "Deploy the Architect AI DIFF platform on Firebase and call the /api/architect Gemini chat endpoint with auth, App Check, and rate limits."
+---
+
 # Architect AI — Agape Sovereign Enclave 2026
 
 ## Digital Identity Federated Footprint (DIFF) Intelligence Platform

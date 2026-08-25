@@ -1,3 +1,8 @@
+---
+title: "Architect AI: 16-vector DIFF scanner and chat endpoint"
+description: "How Architect AI scans 16 identity vectors, computes the DIFF sovereign score, generates audit reports, and serves the /api/architect chat."
+---
+
 # Architect AI — DIFF Intelligence Platform
 
 > *Digital Identity Federated Footprint (DIFF) Scanner*

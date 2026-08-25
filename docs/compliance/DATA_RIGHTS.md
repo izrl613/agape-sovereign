@@ -1,3 +1,8 @@
+---
+title: "User data rights, GDPR rectification, and HDI scoring"
+description: "Your data access, deletion, and correction rights on Agape Sovereign, including GDPR Article 16 rectification, HDI scoring, and dignity tiers."
+---
+
 # User Data Rights
 
 **Standards**: ECRA 2026, CPRA, GDPR (where applicable)  
