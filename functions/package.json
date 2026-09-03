@@ -24,10 +24,10 @@
     "@simplewebauthn/server": "^13.3.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
-    "express": "^4.22.2",
+    "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "firebase-admin": "^13.10.0",
-    "firebase-functions": "^6.4.0",
+    "firebase-functions": "^7.3.2",
     "helmet": "^8.3.0"
   },
   "devDependencies": {
