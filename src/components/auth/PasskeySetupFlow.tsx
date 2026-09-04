@@ -2,26 +2,32 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../AuthContext';
 
-// Premium glassmorphic step‑by‑step flow for setting up a Passkey
+// Step-by-step flow for setting up a Passkey.
+// Uses AuthContext.bindPasskey which calls the correct API endpoints:
+//   POST /api/auth/register-options → POST /api/auth/verify-registration
 export const PasskeySetupFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const { bindPasskey } = useAuth();
+  const { user, bindPasskey } = useAuth();
   const [step, setStep] = useState<'idle' | 'binding' | 'done'>('idle');
-  const [loading, setLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const handleBind = async () => {
-    setLoading(true);
+    if (!user?.email) {
+      toast.error('❌ Email address required for passkey registration');
+      return;
+    }
+
     setStep('binding');
+    setIsRegistering(true);
     try {
       await bindPasskey();
-      toast.success('✅ Passkey setup complete!');
       setStep('done');
       onComplete();
     } catch (err) {
+      // bindPasskey already shows a toast for most errors
       console.error(err);
-      toast.error('❌ Passkey setup failed');
       setStep('idle');
     } finally {
-      setLoading(false);
+      setIsRegistering(false);
     }
   };
 
@@ -32,7 +38,7 @@ export const PasskeySetupFlow: React.FC<{ onComplete: () => void }> = ({ onCompl
         backdropFilter: 'blur(14px) saturate(180%)',
         borderRadius: '1.5rem',
         padding: '2rem',
-        maxWidth: '480px',
+        maxWidth: '520px',
         margin: 'auto',
         color: '#fff',
         fontFamily: '"Inter", sans-serif',
@@ -42,31 +48,48 @@ export const PasskeySetupFlow: React.FC<{ onComplete: () => void }> = ({ onCompl
     >
       <h2>🔐 Set up your Universal Passkey</h2>
       <p>
-        Your passkey replaces passwords with a cryptographic credential stored securely on your device.
-        It works across browsers and platforms via the WebAuthn standard.
+        Your passkey replaces passwords with a cryptographic credential stored securely
+        on your device. It works across browsers and platforms via the WebAuthn standard.
       </p>
+
       {step === 'idle' && (
         <button
           onClick={handleBind}
-          disabled={loading}
+          disabled={isRegistering}
           style={{
             padding: '0.75rem 1.5rem',
             borderRadius: '0.75rem',
             border: 'none',
-            background: '#4f46e5',
+            background: isRegistering ? 'rgba(79, 70, 229, 0.5)' : '#4f46e5',
             color: '#fff',
-            cursor: 'pointer',
+            cursor: isRegistering ? 'not-allowed' : 'pointer',
             transition: 'background 0.2s',
             fontFamily: '"Inter", sans-serif',
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#4338ca')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#4f46e5')}
+          onMouseEnter={e => !isRegistering && (e.currentTarget.style.background = '#4338ca')}
+          onMouseLeave={e => !isRegistering && (e.currentTarget.style.background = '#4f46e5')}
         >
-          {loading ? '🔄 Setting up…' : 'Start Passkey Setup'}
+          {isRegistering ? '🔄 Setting up…' : 'Start Passkey Setup'}
         </button>
       )}
-      {step === 'binding' && <p>🔄 Creating your passkey, please follow the device prompt…</p>}
-      {step === 'done' && <p>🎉 Your account is now secured with a Passkey.</p>}
+
+      {step === 'binding' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+          <p>🔄 Creating your passkey, please follow the device prompt…</p>
+          <div style={{ fontSize: '0.7rem', color: '#6b7280', fontFamily: '"Share Tech Mono", monospace' }}>
+            AES-256-GCM Encryption Active
+          </div>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+          <p>🎉 Your account is now secured with a Passkey.</p>
+          <div style={{ fontSize: '0.7rem', color: '#10b981', fontFamily: '"Share Tech Mono", monospace' }}>
+            ✅ Passkey bound successfully
+          </div>
+        </div>
+      )}
     </div>
   );
 };

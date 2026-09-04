@@ -9,6 +9,10 @@ import { updateProfile as firebaseUpdateProfile } from 'firebase/auth';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
 import { signInWithCustomToken } from 'firebase/auth';
+// OPERATION FRAMEWORK: Sovereign Pipeline
+import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
+import { generateSessionNonce } from './services/sovereignHashService';
+import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
 
 interface AuthContextType {
   user: User | null;
@@ -16,44 +20,165 @@ interface AuthContextType {
   isAdmin: boolean;
   isAnonymous: boolean;
   sovereignScore: number;
+  sovereignHash: string | null;
+  authType: 'google' | 'passkey' | 'anonymous' | null;
   setupComplete: boolean;
   loading: boolean;
+  demoMode: boolean;
   login: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
+  setDemoUser: () => void;
+  clearDemoUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const DEMO_SESSION_KEY = 'sovereign_demo_mode';
+const DEMO_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+interface DemoSession {
+  active: boolean;
+  expiresAt: number;
+}
+
+function readDemoSession(): DemoSession | null {
+  try {
+    const raw = sessionStorage.getItem(DEMO_SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DemoSession;
+  } catch {
+    return null;
+  }
+}
+
+function writeDemoSession() {
+  sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({
+    active: true,
+    expiresAt: Date.now() + DEMO_TTL_MS,
+  }));
+}
+
+function clearDemoSession() {
+  sessionStorage.removeItem(DEMO_SESSION_KEY);
+}
+
+const DEMO_USER_OBJECT = {
+  uid: 'demo-user',
+  email: 'demo@sovereign.nyc',
+  displayName: 'Demo Explorer',
+  isAnonymous: true,
+} as unknown as User;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sovereignScore, setSovereignScore] = useState(100);
+  // OPERATION FRAMEWORK: SHA-256 identity hash (the sole session identifier)
+  const [sovereignHash, setSovereignHash] = useState<string | null>(null);
+  const [authType, setAuthType] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
+  // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
+  // without being recreated every time demoMode changes.
+  const demoModeRef = React.useRef(false);
+  React.useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
+
+  // Restore demo session on mount (handles page refresh within TTL)
+  useEffect(() => {
+    const session = readDemoSession();
+    if (session?.active && session.expiresAt > Date.now()) {
+      demoModeRef.current = true;
+      setDemoMode(true);
+      setUser(DEMO_USER_OBJECT);
+      setUserData(DEMO_USER_DATA);
+      setSovereignScore(DEMO_SOVEREIGN_SCORE);
+      setSetupCompleteState(true);
+      setLoading(false);
+    } else if (session) {
+      clearDemoSession();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       try {
+        // Don't evict an active demo session when Firebase confirms no real auth.
+        // demoMode is read from the ref below so the closure always sees current value.
+        if (!currentUser && demoModeRef.current) {
+          setLoading(false);
+          return;
+        }
+
         setUser(currentUser);
         if (currentUser) {
           // Initialize Remote Config for the user
           initializeRemoteConfig();
-          
+           
           const userRef = doc(db, 'users', currentUser.uid);
           
           try {
             const userSnap = await getDoc(userRef);
             
-            const isSuperAdmin = currentUser.email === 'idin@agape.nyc' ||
-                                 currentUser.email === 'agape@sovereign.nyc';
+            // Check for admin custom claim instead of hardcoded emails
+            const tokenResult = await currentUser.getIdTokenResult();
+            const isSuperAdmin = tokenResult.claims.admin === true;
             
+            // Determine authType early — passkey detection via sessionStorage flag
+            const isPasskeyLogin = sessionStorage.getItem('sovereign_passkey_auth') === 'true';
+            const sessionNonce = sessionStorage.getItem('sovereign_passkey_nonce') || undefined;
+            const credentialId = sessionStorage.getItem('sovereign_passkey_credential') || undefined;
+
+            let resolvedAuthType: 'google' | 'passkey' | 'anonymous' = 'google';
+            if (currentUser.isAnonymous) {
+              resolvedAuthType = 'anonymous';
+            } else if (isPasskeyLogin && credentialId && sessionNonce) {
+              resolvedAuthType = 'passkey';
+            }
+            setAuthType(resolvedAuthType);
+
+            // OPERATION FRAMEWORK: Produce SHA-256 identity hash immediately (Phase 1 Gatekeeper)
+            // Raw uid + email never stored beyond this scope — hash is the sole session identifier.
+            try {
+              const hash = await gatekeeperStage({
+                authType: resolvedAuthType,
+                uid: currentUser.uid,
+                email: currentUser.email || currentUser.uid,
+                credentialId,
+                sessionNonce,
+              });
+              setSovereignHash(hash);
+
+              // Clean up passkey session artifacts after hash is computed
+              if (isPasskeyLogin) {
+                sessionStorage.removeItem('sovereign_passkey_auth');
+                sessionStorage.removeItem('sovereign_passkey_nonce');
+                sessionStorage.removeItem('sovereign_passkey_credential');
+              }
+            } catch (hashErr) {
+              console.warn('[AUTH] Gatekeeper hash failed — degraded mode:', hashErr);
+              // Never leave UI stuck on "hashing": fall back to Google identity hash inputs
+              try {
+                const fallback = await gatekeeperStage({
+                  authType: 'google',
+                  uid: currentUser.uid,
+                  email: currentUser.email || currentUser.uid,
+                });
+                setSovereignHash(fallback);
+              } catch {
+                // Last resort stable marker so Login timeouts do not fire forever
+                setSovereignHash(`degraded_${currentUser.uid}`);
+              }
+            }
+
             if (!userSnap.exists()) {
               const initialData = {
                 uid: currentUser.uid,
@@ -63,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 createdAt: serverTimestamp(),
                 sovereignScore: 100,
                 setupComplete: false,
+                authType: resolvedAuthType,
                 notificationsEnabled: false
               };
               try {
@@ -91,6 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSovereignScore(data.sovereignScore || 100);
                 setIsAdmin(data.role === 'admin' || isSuperAdmin);
                 setSetupCompleteState(data.setupComplete || false);
+                if (data.authType) setAuthType(data.authType);
               }
             }, (error) => {
               handleFirestoreError(error, OperationType.GET, `users/${currentUser.uid}`);
@@ -101,9 +228,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setIsAdmin(false);
           setSovereignScore(100);
+          setSovereignHash(null);
+          setAuthType(null);
           setSetupCompleteState(false);
           setUserData(null);
           if (unsubscribeUserDoc) unsubscribeUserDoc();
+          // Release capacity slot on sign-out
+          cleanupSession().catch(() => {});
         }
       } finally {
         setLoading(false);
@@ -117,7 +248,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const handleLogin = async () => {
-    await loginWithGoogle();
+    const userOrNull = await loginWithGoogle();
+    // Redirect flow leaves the page; no further client work until return.
+    if (userOrNull === null) {
+      return;
+    }
   };
 
   const handleLogout = async () => {
@@ -130,98 +265,158 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.error('You must be logged in to bind a passkey.');
       return;
     }
-    
+
     try {
+      if (!window.PublicKeyCredential) {
+        throw new Error('This browser does not support passkeys (WebAuthn).');
+      }
       if (!currentUser.email) {
         throw new Error('Your Google account must provide an email address before you can register a passkey.');
       }
-      const idToken = await currentUser.getIdToken();
+      const idToken = await currentUser.getIdToken(/* forceRefresh */ true);
 
-      // 1. Get registration options from server
+      // 1. Get registration options from server (same-origin Hosting rewrite → authApi)
       const optionsRes = await fetch('/api/auth/register-options', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({ email: currentUser.email }),
       });
-      
-      if (!optionsRes.ok) throw new Error('Failed to fetch registration options');
-      const options = await optionsRes.json();
 
-      // 2. Start registration with the browser (v13 API requires optionsJSON wrapper)
-      const attestationResponse = await startRegistration({ optionsJSON: options });
+      const optionsBody = await optionsRes.json().catch(() => ({}));
+      if (!optionsRes.ok) {
+        throw new Error(optionsBody.error || `Failed to fetch registration options (${optionsRes.status})`);
+      }
+      if (!optionsBody.challenge || !optionsBody.rp) {
+        throw new Error('Invalid registration options from server.');
+      }
+
+      // 2. Start registration with the browser (simplewebauthn v13+)
+      const attestationResponse = await startRegistration({ optionsJSON: optionsBody });
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-registration', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...attestationResponse, userId: currentUser.uid, email: currentUser.email }),
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          ...attestationResponse,
+          userId: currentUser.uid,
+          email: currentUser.email,
+        }),
       });
-      const { verified } = await verifyRes.json();
+      const verifyBody = await verifyRes.json().catch(() => ({}));
 
-      if (verified) {
+      if (verifyRes.ok && verifyBody.verified) {
         toast.success('Universal Passkey bound to this device successfully.');
         logEvent(AuditLogType.SECURITY_EVENT, 'Passkey bound to device', currentUser.uid, currentUser.email || undefined);
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          await updateDoc(userRef, { hasPasskey: true, authType: 'passkey' });
+        } catch {
+          // non-fatal
+        }
       } else {
-        throw new Error('Verification failed');
+        throw new Error(verifyBody.error || 'Passkey verification failed');
       }
     } catch (error: any) {
       console.error('WebAuthn Error:', error);
-      if (error.name === 'NotAllowedError') {
+      if (error?.name === 'NotAllowedError' || /cancel/i.test(String(error?.message || ''))) {
         toast.error('Passkey registration cancelled by user.');
+      } else if (error?.name === 'InvalidStateError') {
+        toast.error('A passkey already exists for this authenticator.');
+      } else if (error?.message?.includes('User verification required') || error?.message?.includes('could not be verified')) {
+        toast.error('Biometric verification failed. Ensure your device fingerprint/Face ID is working.');
       } else {
-        toast.error(`WebAuthn Error: ${error.message || 'Unknown error'}`);
+        toast.error(`WebAuthn Error: ${error?.message || 'Unknown error'}`);
       }
       throw error;
     }
   };
 
   const handleLoginWithPasskey = async (email: string) => {
-    if (!email) {
+    const normalized = (email || '').trim().toLowerCase();
+    if (!normalized) {
       toast.error('Please enter your email to login with passkey.');
-      return;
+      throw new Error('Please enter your email to login with passkey.');
+    }
+
+    if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
+      const err = new Error('This browser does not support passkeys (WebAuthn).');
+      toast.error(err.message);
+      throw err;
     }
 
     try {
-      // 1. Get login options
+      // OPERATION FRAMEWORK: Pre-compute passkey session nonce for hash
+      const sessionNonce = generateSessionNonce();
+      // Store in sessionStorage so onAuthStateChanged can retrieve it after
+      // signInWithCustomToken fires the auth state change callback.
+      sessionStorage.setItem('sovereign_passkey_auth', 'true');
+      sessionStorage.setItem('sovereign_passkey_nonce', sessionNonce);
+      sessionStorage.setItem('sovereign_passkey_email', normalized);
+
+      // 1. Get login options (same-origin → Hosting rewrite → authApi)
       const optionsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: normalized }),
       });
 
+      const optionsBody = await optionsRes.json().catch(() => ({}));
       if (!optionsRes.ok) {
-        const errData = await optionsRes.json();
-        throw new Error(errData.error || 'Failed to fetch login options');
+        throw new Error(optionsBody.error || `Failed to fetch login options (${optionsRes.status})`);
       }
-      const options = await optionsRes.json();
+      if (!optionsBody.challenge) {
+        throw new Error('Invalid authentication options from server.');
+      }
 
-      // 2. Start authentication (v13 API requires optionsJSON wrapper)
-      const assertionResponse = await startAuthentication({ optionsJSON: options });
+      // 2. Start authentication (simplewebauthn v13+)
+      const assertionResponse = await startAuthentication({ optionsJSON: optionsBody });
+
+      // Store credential ID for hash computation in onAuthStateChanged
+      const credentialId = assertionResponse.id || assertionResponse.rawId;
+      sessionStorage.setItem('sovereign_passkey_credential', String(credentialId));
 
       // 3. Verify with server
       const verifyRes = await fetch('/api/auth/verify-login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(assertionResponse),
       });
 
-      const { verified, token, error } = await verifyRes.json();
+      const verifyBody = await verifyRes.json().catch(() => ({}));
+      const { verified, token, error } = verifyBody;
 
-      if (verified && token) {
+      if (verifyRes.ok && verified && token) {
         await signInWithCustomToken(auth, token);
         toast.success('Authenticated successfully with Passkey.');
       } else {
-        throw new Error(error || 'Verification failed');
+        throw new Error(error || verifyBody.error || 'Passkey verification failed');
       }
     } catch (error: any) {
       console.error('WebAuthn Login Error:', error);
-      if (error.name === 'NotAllowedError') {
+      // Clean up sessionStorage on failure so stale state doesn't persist
+      sessionStorage.removeItem('sovereign_passkey_auth');
+      sessionStorage.removeItem('sovereign_passkey_nonce');
+      sessionStorage.removeItem('sovereign_passkey_credential');
+      sessionStorage.removeItem('sovereign_passkey_email');
+      if (error?.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
+      } else if (error?.message?.includes('User verification required') || error?.message?.includes('could not be verified')) {
+        toast.error('Biometric verification failed. Ensure your device fingerprint/Face ID is working.');
+      } else if (error?.message?.includes('No passkey') || error?.message?.includes('No account found')) {
+        toast.error(error.message);
       } else {
-        toast.error(`Passkey Error: ${error.message || 'Unknown error'}`);
+        toast.error(`Passkey Error: ${error?.message || 'Unknown error'}`);
       }
       throw error;
     }
@@ -262,21 +457,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const handleSetDemoUser = () => {
+    writeDemoSession();
+    setDemoMode(true);
+    demoModeRef.current = true;
+    setUser(DEMO_USER_OBJECT);
+    setUserData(DEMO_USER_DATA);
+    setSovereignScore(DEMO_SOVEREIGN_SCORE);
+    setSetupCompleteState(true);
+    setLoading(false);
+  };
+
+  const handleClearDemoUser = () => {
+    clearDemoSession();
+    setDemoMode(false);
+    setUser(null);
+    setUserData(null);
+    setSetupCompleteState(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
+    <AuthContext.Provider value={{
+      user,
       userData,
-      isAdmin, 
+      isAdmin,
       isAnonymous: user?.isAnonymous || false,
-      sovereignScore, 
+      sovereignScore,
+      sovereignHash,
+      authType,
       setupComplete,
-      loading, 
-      login: handleLogin, 
+      loading,
+      demoMode,
+      login: handleLogin,
       loginWithPasskey: handleLoginWithPasskey,
-      logout: handleLogout, 
+      logout: handleLogout,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
-      updateProfile: handleUpdateProfile
+      updateProfile: handleUpdateProfile,
+      setDemoUser: handleSetDemoUser,
+      clearDemoUser: handleClearDemoUser,
     }}>
       {children}
     </AuthContext.Provider>

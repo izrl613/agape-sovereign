@@ -30,7 +30,7 @@ async function startServer() {
 
   app.set('trust proxy', 1);
   app.use(express.json({limit: process?.env?.API_PAYLOAD_MAX_SIZE || "7mb"}));
-  app.use(cookieParser("sovereign-secret-key")); 
+  app.use(cookieParser(process.env.COOKIE_SECRET)); 
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -120,10 +120,9 @@ async function startServer() {
 
   const { getAuth: getAdminAuth } = await import("firebase-admin/auth");
 
-  // RP config — set WEBAUTHN_RP_ID to your production domain (e.g. sovereign.nyc)
   const RP_NAME = process.env.WEBAUTHN_RP_NAME || "Agape Sovereign";
-  const RP_ID   = process.env.WEBAUTHN_RP_ID   || "localhost";
-  const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || `http://localhost:${Number(process.env.PORT) || 5000}`;
+  const RP_ID   = process.env.WEBAUTHN_RP_ID   || (process.env.NODE_ENV === "production" ? "sovereign.nyc" : "localhost");
+  const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === "production" ? "https://sovereign.nyc" : `http://localhost:${Number(process.env.PORT) || 5000}`);
 
   // ── POST /api/auth/register-options ──────────────────────────────
   // Called when a logged-in user wants to bind a new passkey (hardware or platform).
@@ -131,30 +130,27 @@ async function startServer() {
   app.post("/api/auth/register-options", async (req, res) => {
     try {
       const { userId, userEmail, email } = req.body;
-      const resolvedEmail = userEmail || email;
+      const resolvedEmail = (userEmail || email || "").trim().toLowerCase();
       if (!resolvedEmail) return res.status(400).json({ error: "email is required" });
 
+      const resolvedUserId = userId || resolvedEmail;
+
       // Look up existing credentials for this user so we can exclude them
-      const existingSnap = await db.collection("passkey_credentials")
-        .where("email", "==", resolvedEmail)
-        .get();
-      const excludeCredentials = existingSnap.docs.map((d) => ({
-        id: d.data().credentialID,
-        type: "public-key" as const,
+      const credsSnap = await db.collection("users").doc(resolvedUserId).collection("passkeyCredentials").get();
+      const excludeCredentials = credsSnap.docs.map((d) => ({
+        id: (d.data().credentialID || d.id) as string,
         transports: d.data().transports || [],
       }));
 
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
         rpID: RP_ID,
-        userID: new TextEncoder().encode(userId || resolvedEmail),
+        userID: new TextEncoder().encode(resolvedUserId),
         userName: resolvedEmail,
         userDisplayName: resolvedEmail,
         attestationType: "none",
         excludeCredentials,
         authenticatorSelection: {
-          // Allow both platform (Face ID / Touch ID) and cross-platform (YubiKey)
-          // Front-end can override by setting authenticatorAttachment on the options
           residentKey: "preferred",
           userVerification: "preferred",
         },
@@ -181,10 +177,11 @@ async function startServer() {
   app.post("/api/auth/verify-registration", async (req, res) => {
     try {
       const { email, userId, ...attestationResponse } = req.body;
-      if (!email) return res.status(400).json({ error: "email is required" });
+      const resolvedEmail = (email || "").trim().toLowerCase();
+      if (!resolvedEmail) return res.status(400).json({ error: "email is required" });
 
       // Fetch and validate challenge
-      const challengeRef = db.collection("passkey_challenges").doc(email);
+      const challengeRef = db.collection("passkey_challenges").doc(resolvedEmail);
       const challengeDoc = await challengeRef.get();
       if (!challengeDoc.exists) return res.status(400).json({ error: "No pending challenge for this email" });
       const { challenge, expiresAt } = challengeDoc.data()!;
@@ -208,25 +205,34 @@ async function startServer() {
       }
 
       const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
-
-      // Persist credential
+      const resolvedUserId = userId || resolvedEmail;
       const credentialID = Buffer.from(credential.id).toString("base64url");
-      await db.collection("passkey_credentials").doc(credentialID).set({
+      const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
+
+      // Persist credential in user subcollection
+      await db.collection("users").doc(resolvedUserId).collection("passkeyCredentials").doc(credentialID).set({
         credentialID,
-        credentialPublicKey: Buffer.from(credential.publicKey).toString("base64"),
+        publicKey: publicKeyB64,
+        credentialPublicKey: publicKeyB64,
         counter: credential.counter,
         credentialDeviceType,
         credentialBackedUp,
         transports: attestationResponse.response?.transports || [],
-        email,
-        userId: userId || email,
+        email: resolvedEmail,
+        userId: resolvedUserId,
         createdAt: Date.now(),
-      });
+      }, { merge: true });
+
+      await db.collection("users").doc(resolvedUserId).set({
+        email: resolvedEmail,
+        hasPasskey: true,
+        updatedAt: Date.now(),
+      }, { merge: true });
 
       // Mint a Firebase custom token so the client can sign in
-      const firebaseToken = await getAdminAuth().createCustomToken(userId || email, {
+      const firebaseToken = await getAdminAuth().createCustomToken(resolvedUserId, {
         passkey: true,
-        email,
+        email: resolvedEmail,
       });
 
       res.json({ verified: true, token: firebaseToken });
@@ -240,21 +246,24 @@ async function startServer() {
   // Returns an assertion challenge for an existing passkey login.
   app.post("/api/auth/login-options", async (req, res) => {
     try {
-      const { email } = req.body;
+      const email = (req.body?.email || "").trim().toLowerCase();
       if (!email) return res.status(400).json({ error: "email is required" });
 
       // Look up credentials for this user
-      const credsSnap = await db.collection("passkey_credentials")
-        .where("email", "==", email)
-        .get();
+      let userSnap = await db.collection("users").where("email", "==", email).limit(1).get();
+      if (userSnap.empty) {
+        return res.status(404).json({ error: "No account found for this email. Sign in with Google first, then bind a passkey." });
+      }
+
+      const userDoc = userSnap.docs[0];
+      const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
 
       if (credsSnap.empty) {
-        return res.status(404).json({ error: "No passkey registered for this email" });
+        return res.status(404).json({ error: "No passkey registered for this email. Sign in with Google, then set up a passkey." });
       }
 
       const allowCredentials = credsSnap.docs.map((d) => ({
-        id: d.data().credentialID,
-        type: "public-key" as const,
+        id: (d.data().credentialID || d.id) as string,
         transports: d.data().transports || [],
       }));
 
@@ -291,12 +300,28 @@ async function startServer() {
         typeof rawCredentialID === "string" ? Buffer.from(rawCredentialID, "base64url") : rawCredentialID
       ).toString("base64url");
 
-      const credRef = db.collection("passkey_credentials").doc(credentialID);
-      const credDoc = await credRef.get();
-      if (!credDoc.exists) {
+      let credDoc = await db.collectionGroup("passkeyCredentials")
+        .where("credentialID", "==", credentialID).limit(1).get();
+
+      let storedCred: any = null;
+      let userId: string | null = null;
+
+      if (!credDoc.empty) {
+        storedCred = credDoc.docs[0].data();
+        userId = credDoc.docs[0].ref.parent.parent?.id || storedCred.userId || storedCred.email;
+      } else {
+        // Fallback check top-level legacy collection
+        const legacyRef = db.collection("passkey_credentials").doc(credentialID);
+        const legacyDoc = await legacyRef.get();
+        if (legacyDoc.exists) {
+          storedCred = legacyDoc.data();
+          userId = storedCred.userId || storedCred.email;
+        }
+      }
+
+      if (!storedCred || !userId) {
         return res.status(404).json({ error: "Credential not found" });
       }
-      const storedCred = credDoc.data()!;
 
       // Fetch challenge
       const challengeRef = db.collection("passkey_challenges").doc(storedCred.email);
@@ -308,15 +333,18 @@ async function startServer() {
         return res.status(400).json({ error: "Challenge expired. Please try again." });
       }
 
+      const publicKeyRaw = storedCred.publicKey || storedCred.credentialPublicKey;
+      const publicKeyBuffer = Buffer.from(publicKeyRaw, publicKeyRaw.includes("-") || publicKeyRaw.includes("_") ? "base64url" : "base64");
+
       const verification = await verifyAuthenticationResponse({
         response: assertionResponse,
         expectedChallenge: challenge,
         expectedOrigin: EXPECTED_ORIGIN,
         expectedRPID: RP_ID,
         credential: {
-          id: storedCred.credentialID,
-          publicKey: Buffer.from(storedCred.credentialPublicKey, "base64"),
-          counter: storedCred.counter,
+          id: storedCred.credentialID || credentialID,
+          publicKey: publicKeyBuffer,
+          counter: typeof storedCred.counter === "number" ? storedCred.counter : 0,
           transports: storedCred.transports,
         },
         requireUserVerification: false,
@@ -328,11 +356,8 @@ async function startServer() {
         return res.status(400).json({ verified: false, error: "Authentication failed" });
       }
 
-      // Update counter to prevent replay attacks
-      await credRef.update({ counter: verification.authenticationInfo.newCounter });
-
       // Mint Firebase custom token
-      const firebaseToken = await getAdminAuth().createCustomToken(storedCred.userId || storedCred.email, {
+      const firebaseToken = await getAdminAuth().createCustomToken(userId, {
         passkey: true,
         email: storedCred.email,
       });

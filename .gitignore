@@ -12,6 +12,9 @@ firebase-debug.log
 firebase-debug.*.log
 .firebase/
 .env
+__pycache__/
+*.pyc
+mcp_server/__pycache__/
 
 # --- Repo hygiene fix (2026-07-10) ---
 # GCP CLI SDK must never be vendored into the repo
@@ -27,7 +30,23 @@ conflicts.txt
 FILE_NAME
 package 2.json
 *.orig
+* (1).*
+* (1)/
+
+# Design/UX assets (not for production)
+architect-ai/
+*.pdf
 
 # Firebase / functions build output
 functions/lib/
 functions/node_modules/
+recaptcha-key.json
+
+# Simulation and test outputs
+workspace_outputs/
+tests/
+scripts/venv
+agape-sovereign-1/
+.dyad/
+.spectra/
+openspec/.vector-search.db*

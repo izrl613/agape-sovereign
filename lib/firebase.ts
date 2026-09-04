@@ -12,7 +12,7 @@ import { getAnalytics } from "firebase/analytics";
 
 // Firebase configuration - Agape Sovereign Enclave
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "agape-sovereign.firebaseapp.com",
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://agape-sovereign-default-rtdb.firebaseio.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "agape-sovereign",

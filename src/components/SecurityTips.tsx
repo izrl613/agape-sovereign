@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { NEON, GlassCard, NeonText } from './UI';
 import { Shield, Key, EyeOff, Smartphone, Globe, Lock, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { LogoutButton } from './auth/LogoutButton';
 
 const TIPS = [
   {
@@ -23,7 +24,7 @@ const TIPS = [
     description: 'Limit the amount of personal information you share online. The less data exists about you, the smaller your attack surface.',
     actionable: [
       'Use alias email addresses for signups (e.g., SimpleLogin or Apple Hide My Email).',
-      'Provide fake or minimal information for non-essential services.',
+      'Provide minimal information for non-essential services.',
       'Regularly review and delete old accounts you no longer use.'
     ],
     color: NEON.magenta
@@ -35,7 +36,7 @@ const TIPS = [
     description: 'Data brokers aggregate your PII from public records and social media. Proactive removal is the only way to NUKED these profiles.',
     actionable: [
       'Submit opt-out requests to major brokers like Spokeo, Whitepages, and Intelius.',
-      'Use alias email addresses and dummy data for services that do not require verification.',
+      'Use alias email addresses for services that do not require verification.',
       'NUKED your digital presence from people-search sites using ECRA-compliant templates.'
     ],
     color: '#00D4FF'
@@ -81,13 +82,16 @@ const TIPS = [
 export const SecurityTips = () => {
   return (
     <div className="space-y-8">
-      <div>
-        <NeonText color={NEON.blue} size="2rem" weight={700} style={{ marginBottom: '0.5rem' }}>
-          SECURITY PROTOCOLS
-        </NeonText>
-        <div className="text-slate-400 font-mono text-sm tracking-widest">
-          ACTIONABLE INTELLIGENCE FOR DIGITAL SOVEREIGNTY
+      <div className="flex justify-between items-start">
+        <div>
+          <NeonText color={NEON.blue} size="2rem" weight={700} style={{ marginBottom: '0.5rem' }}>
+            SECURITY PROTOCOLS
+          </NeonText>
+          <div className="text-slate-400 font-mono text-sm tracking-widest">
+            ACTIONABLE INTELLIGENCE FOR DIGITAL SOVEREIGNTY
+          </div>
         </div>
+        <LogoutButton variant="icon" size="sm" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

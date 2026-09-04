@@ -1,6 +1,10 @@
 {
-  "recommendations": [],
+  "recommendations": [
+    "ms-vscode.live-server"
+  ],
   "unwantedRecommendations": [
-    "google.securecoder"
+    "google.securecoder",
+    "saoudrizwan.cline-nightly",
+    "rooveterinaryinc.roo-cline"
   ]
 }

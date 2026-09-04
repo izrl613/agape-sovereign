@@ -13,10 +13,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../AuthContext';
 import { NEON, NeonText, GlassCard, NeonButton } from './UI';
+import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
+import { passkeyLockService } from '../services/passkeyLockService';
+import { LogoutButton } from './auth/LogoutButton';
 
 import { dlpEngine, DlpScanResult, DlpViolation, subscribeDlpViolations, logDlpViolation } from '../services/dlpService';
 import { anonymizePii, detectPiiWithAi, PiiScanResult, AnonymizeTechnique, logPiiScan } from '../services/piiService';
-import { subscribeIdentityRisks, remediateIdentity, IdentityRecord, DEMO_IDENTITIES, saveIdentityRisk } from '../services/identityRiskService';
+import { subscribeIdentityRisks, remediateIdentity, IdentityRecord } from '../services/identityRiskService';
 
 // ── Panel type ─────────────────────────────────────────────────────────────────
 
@@ -36,6 +39,13 @@ const PANELS: Array<{ id: ShieldPanel; label: string; icon: string; color: strin
 export const ShieldModule: React.FC = () => {
   const { user } = useAuth();
   const [activePanel, setActivePanel] = useState<ShieldPanel>('overview');
+  const [isLocked, setIsLocked] = useState(passkeyLockService.getState().vaultLocked && passkeyLockService.getState().vaultEnabled);
+
+  useEffect(() => {
+    return passkeyLockService.subscribe(state => {
+      setIsLocked(state.vaultLocked && state.vaultEnabled);
+    });
+  }, []);
 
   const containerStyle: React.CSSProperties = {
     minHeight: '100vh',
@@ -46,14 +56,22 @@ export const ShieldModule: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      {/* Header */}
+    <div style={{ ...containerStyle, position: 'relative' }}>
+      <PasskeyLockOverlay zone="vault" />
+      
+      <div style={{ filter: isLocked ? 'blur(12px)' : 'none', transition: 'filter 0.3s ease', pointerEvents: isLocked ? 'none' : 'auto' }}>
+        {/* Header */}
       <div style={{ padding: '24px 24px 0', borderBottom: `1px solid ${NEON.blue}22` }}>
-        <NeonText color={NEON.blue} size="1.4rem" style={{ letterSpacing: '0.15em' }}>
-          ⬡ SOVEREIGN SHIELD PLATFORM
-        </NeonText>
-        <div style={{ color: NEON.textMuted, fontSize: '0.75rem', marginTop: 4, letterSpacing: '0.08em' }}>
-          ADAPTIVE PRIVACY · ZERO-KNOWLEDGE · RUNTIME PROTECTION
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <NeonText color={NEON.blue} size="1.4rem" style={{ letterSpacing: '0.15em' }}>
+              ⬡ SOVEREIGN SHIELD PLATFORM
+            </NeonText>
+            <div style={{ color: NEON.textMuted, fontSize: '0.75rem', marginTop: 4, letterSpacing: '0.08em' }}>
+              ADAPTIVE PRIVACY · ZERO-KNOWLEDGE · RUNTIME PROTECTION
+            </div>
+          </div>
+          <LogoutButton variant="icon" size="sm" />
         </div>
 
         {/* Tab Nav */}
@@ -100,6 +118,7 @@ export const ShieldModule: React.FC = () => {
           {activePanel === 'airs'      && <AirsPanel />}
         </motion.div>
       </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -322,24 +341,13 @@ const RISK_COLOR: Record<string, string> = {
 
 const IdentityPanel: React.FC<{ userId: string }> = ({ userId }) => {
   const [identities, setIdentities] = useState<IdentityRecord[]>([]);
-  const [seeded, setSeeded] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeIdentityRisks(userId, recs => {
       setIdentities(recs);
-      setSeeded(true);
     });
     return unsub;
   }, [userId]);
-
-  // Seed demo data on first load if Firestore is empty
-  useEffect(() => {
-    if (seeded && identities.length === 0) {
-      DEMO_IDENTITIES.forEach(d => {
-        saveIdentityRisk({ ...d, userId, timestamp: new Date() });
-      });
-    }
-  }, [seeded, identities.length, userId]);
 
   const remediate = async (id: string) => {
     if (!id) return;
@@ -373,7 +381,7 @@ const IdentityPanel: React.FC<{ userId: string }> = ({ userId }) => {
 
       {/* Identity List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {(identities.length > 0 ? identities : DEMO_IDENTITIES.map((d, i) => ({ ...d, id: `demo-${i}`, userId, timestamp: new Date() }))).map((identity, i) => (
+        {identities.map((identity, i) => (
           <GlassCard key={identity.id ?? i} style={{ padding: '12px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ width: 36, height: 36, borderRadius: 8, background: `${RISK_COLOR[identity.riskLevel] ?? NEON.blue}18`, border: `1px solid ${RISK_COLOR[identity.riskLevel] ?? NEON.blue}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1rem' }}>

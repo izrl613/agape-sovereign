@@ -1,0 +1,27 @@
+# Agape Sovereign - Terraform Variables for Billing
+# Copy to terraform.tfvars and fill in your values
+
+project_id          = "agape-sovereign"
+region              = "us-central1"
+billing_account_id  = "012345-ABCDEF-123456"  # REPLACE: Get from 'gcloud billing accounts list'
+
+# Budget configuration (USD per month)
+budget_amount_usd = 50
+
+# Alert thresholds as percentages of budget
+budget_alert_thresholds = [0.5, 0.75, 0.9, 1.0]
+
+# BigQuery dataset for billing export
+bigquery_dataset_id = "billing_export"
+bigquery_table_id   = "gcp_billing_export_v1"
+
+# Pub/Sub topic for budget alerts
+budget_alert_pubsub_topic = "projects/agape-sovereign/topics/billing-alerts"
+
+# Labels for all resources
+labels = {
+  project     = "agape-sovereign"
+  environment = "production"
+  managed_by  = "terraform"
+  cost_center = "agape-sovereign"
+}

@@ -28,13 +28,13 @@ interface DocumentSealModalProps {
 const DOC_META = {
   TERMS: {
     label: 'Terms of Service',
-    href: '/TERMS.pdf',
+    href: '/terms/YERMS.PDF',
     icon: '📋',
     color: '#FF7A18',
   },
   PRIVACY: {
     label: 'Privacy Policy',
-    href: '/privacy.pdf',
+    href: '/privacy/PRIVACY.PDF',
     icon: '🛡️',
     color: '#00D4FF',
   },
@@ -62,10 +62,10 @@ const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onC
     // Glitch animate while computing
     let tick = 0;
     glitchRef.current = setInterval(() => {
-      const fake = Array.from({ length: 64 }, () =>
+      const scrambled = Array.from({ length: 64 }, () =>
         chars[Math.floor(Math.random() * chars.length)]
       ).join('');
-      if (mounted) setDisplayHash(fake);
+      if (mounted) setDisplayHash(scrambled);
       tick++;
       if (tick > 14) clearInterval(glitchRef.current!);
     }, 55);
@@ -1380,6 +1380,20 @@ export const Layout = () => {
         </div>
       </div>
 
+      {/* Global Encrypted Footer — SHA-256 integrity seal on every page */}
+      <div style={{ 
+        padding: '6px 20px', 
+        background: 'rgba(6,13,31,0.98)', 
+        borderTop: '1px solid rgba(0,212,255,0.08)',
+        flexShrink: 0 
+      }}>
+        <EncryptedFooter 
+          moduleId="global-session" 
+          uid={user?.uid ?? 'anon'} 
+          compact={true}
+        />
+      </div>
+
       {/* Bottom border gradient */}
       <div style={{ height: 2, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite reverse", flexShrink: 0 }} />
 
@@ -1388,4 +1402,3 @@ export const Layout = () => {
     </div>
   );
 };
-
