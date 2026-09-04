@@ -1,0 +1,295 @@
+name: Auto-Update Wiki
+
+# Regenerates wiki pages from source code and documentation changes,
+# then pushes the result to the GitHub wiki on every push to main.
+#
+# Pages generated / updated:
+#   Home.md          — project overview (from README.md)
+#   Architecture.md  — from docs or inline generation
+#   Security.md      — from SECURITY.md
+#   Deployment.md    — from DEPLOYMENT_GUIDE.md
+#   Quick-Start.md   — from QUICKSTART.md
+#   Changelog.md     — from CHANGELOG.md
+#   Integration-Guide.md — from INTEGRATION_GUIDE.md
+#   _Sidebar.md      — auto-generated index of all pages
+#
+# The wiki repo must be initialised (create one page via GitHub UI) before
+# the first run. If it has not been initialised yet the workflow warns and
+# exits cleanly rather than failing.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wiki/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'CHANGELOG.md'
+      - 'DEPLOYMENT_GUIDE.md'
+      - 'QUICKSTART.md'
+      - 'INTEGRATION_GUIDE.md'
+      - 'docs/**'
+      - 'src/**'
+      - 'functions/src/**'
+  workflow_dispatch:
+    inputs:
+      force_regenerate:
+        description: 'Force full wiki regeneration even if no source changed'
+        required: false
+        default: 'false'
+
+jobs:
+  update-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Clone wiki repo ──────────────────────────────────────────────────
+      - name: Clone wiki repo
+        id: clone_wiki
+        run: |
+          if git clone \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" \
+            wiki-repo 2>&1; then
+            echo "wiki_available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::GitHub wiki has not been initialised yet."
+            echo "::warning::Visit https://github.com/${{ github.repository }}/wiki and create the first page,"
+            echo "::warning::then this workflow will succeed on the next push."
+            echo "wiki_available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if wiki unavailable
+        if: steps.clone_wiki.outputs.wiki_available == 'false'
+        run: exit 0
+
+      # ── Sync static wiki/ sources ────────────────────────────────────────
+      - name: Copy static wiki pages
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -d wiki ] && ls wiki/*.md 2>/dev/null; then
+            cp wiki/*.md wiki-repo/
+          fi
+
+      # ── Auto-generate Home.md from README ───────────────────────────────
+      - name: Generate Home.md from README.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f README.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit README.md instead. -->" > wiki-repo/Home.md
+            cat README.md >> wiki-repo/Home.md
+            echo "Generated Home.md from README.md"
+          fi
+
+      # ── Auto-generate Security.md ────────────────────────────────────────
+      - name: Generate Security.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f SECURITY.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit SECURITY.md instead. -->" > wiki-repo/Security.md
+            cat SECURITY.md >> wiki-repo/Security.md
+            echo "Generated Security.md"
+          fi
+
+      # ── Auto-generate Changelog.md ───────────────────────────────────────
+      - name: Generate Changelog.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit CHANGELOG.md instead. -->" > wiki-repo/Changelog.md
+            cat CHANGELOG.md >> wiki-repo/Changelog.md
+            echo "Generated Changelog.md"
+          fi
+
+      # ── Auto-generate Deployment.md ─────────────────────────────────────
+      - name: Generate Deployment.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f DEPLOYMENT_GUIDE.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit DEPLOYMENT_GUIDE.md instead. -->" > wiki-repo/Deployment.md
+            cat DEPLOYMENT_GUIDE.md >> wiki-repo/Deployment.md
+            echo "Generated Deployment.md"
+          fi
+
+      # ── Auto-generate Quick-Start.md ─────────────────────────────────────
+      - name: Generate Quick-Start.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f QUICKSTART.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit QUICKSTART.md instead. -->" > wiki-repo/Quick-Start.md
+            cat QUICKSTART.md >> wiki-repo/Quick-Start.md
+            echo "Generated Quick-Start.md"
+          fi
+
+      # ── Auto-generate Integration-Guide.md ──────────────────────────────
+      - name: Generate Integration-Guide.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          if [ -f INTEGRATION_GUIDE.md ]; then
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit INTEGRATION_GUIDE.md instead. -->" > wiki-repo/Integration-Guide.md
+            cat INTEGRATION_GUIDE.md >> wiki-repo/Integration-Guide.md
+            echo "Generated Integration-Guide.md"
+          fi
+
+      # ── Generate API reference from source ───────────────────────────────
+      - name: Generate API-Reference.md from functions source
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          {
+            echo "<!-- AUTO-GENERATED from functions/src — do not edit directly -->"
+            echo ""
+            echo "# API Reference"
+            echo ""
+            echo "_Generated from source on $(date -u '+%Y-%m-%d %H:%M UTC')_"
+            echo ""
+            echo "## Authentication API (\`/api/auth\`)"
+            echo ""
+            # Extract router.XXX('/endpoint') lines from auth.ts and emit as a table
+            echo "| Method | Endpoint | Description |"
+            echo "|--------|----------|-------------|"
+            if [ -f functions/src/auth.ts ]; then
+              grep -E "router\.(get|post|put|delete|patch)\(" functions/src/auth.ts | \
+              sed -E "s/.*router\.([a-z]+)\(['\"]([^'\"]+)'.*/| \U\1 | \`\2\` | |/" || true
+            fi
+            echo ""
+            echo "## Auth Endpoints Detail"
+            echo ""
+            echo "### POST /register-options"
+            echo "Returns WebAuthn registration options for a signed-in user."
+            echo "Requires: \`Authorization: Bearer <Firebase ID token>\`, body: \`{ email }\`"
+            echo ""
+            echo "### POST /verify-registration"
+            echo "Verifies the WebAuthn attestation and persists the credential."
+            echo "Returns: \`{ verified, token, credentialId }\`"
+            echo ""
+            echo "### POST /login-options"
+            echo "Returns WebAuthn authentication options."
+            echo "- Email-based: body \`{ email }\` — returns \`allowCredentials\` for that user."
+            echo "- Resident-key / reauth: body \`{ reauth: true }\` — returns discoverable-credential options."
+            echo ""
+            echo "### POST /verify-login"
+            echo "Verifies the WebAuthn assertion and returns a Firebase custom token."
+            echo "Returns: \`{ verified, token, credentialId }\`"
+          } > wiki-repo/API-Reference.md
+          echo "Generated API-Reference.md"
+
+      # ── Generate Authentication.md ────────────────────────────────────────
+      - name: Generate Authentication.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          {
+            echo "<!-- AUTO-GENERATED — do not edit directly -->"
+            echo ""
+            echo "# Authentication System"
+            echo ""
+            echo "_Generated on $(date -u '+%Y-%m-%d %H:%M UTC')_"
+            echo ""
+            echo "Agape Sovereign supports two authentication paths:"
+            echo ""
+            echo "## 1. Google Sign-In (Federated Identity)"
+            echo ""
+            echo "Uses Firebase Authentication with Google OAuth 2.0."
+            echo "Implemented in \`src/AuthContext.tsx\` via \`loginWithGoogle()\`."
+            echo ""
+            echo "## 2. Passkey / WebAuthn (FIDO2)"
+            echo ""
+            echo "Device-bound cryptographic authentication. No password required."
+            echo ""
+            echo "### Registration flow"
+            echo "\`\`\`"
+            echo "Client                        Server (/api/auth)"
+            echo "  │ POST /register-options ──► │  (requires Bearer token)"
+            echo "  │ ◄── PublicKeyCredentialCreationOptions"
+            echo "  │ navigator.credentials.create()"
+            echo "  │ POST /verify-registration ► │"
+            echo "  │ ◄── { verified, token }     │"
+            echo "  │ signInWithCustomToken()      │"
+            echo "\`\`\`"
+            echo ""
+            echo "### Login flow"
+            echo "\`\`\`"
+            echo "Client                        Server (/api/auth)"
+            echo "  │ POST /login-options ──────► │  (email or reauth:true)"
+            echo "  │ ◄── PublicKeyCredentialRequestOptions"
+            echo "  │ navigator.credentials.get()"
+            echo "  │ POST /verify-login ────────► │"
+            echo "  │ ◄── { verified, token }      │"
+            echo "  │ signInWithCustomToken()       │"
+            echo "\`\`\`"
+            echo ""
+            echo "### Resident-key / reauth mode"
+            echo ""
+            echo "Send \`{ reauth: true }\` to \`/login-options\` (no email required)."
+            echo "The server returns discoverable-credential options."
+            echo "The user identity is resolved from the \`userHandle\` in the assertion response."
+            echo ""
+            echo "### Key files"
+            echo ""
+            echo "| File | Purpose |"
+            echo "|------|---------|"
+            echo "| \`src/AuthContext.tsx\` | \`bindPasskey()\` and \`loginWithPasskey()\` client logic |"
+            echo "| \`functions/src/auth.ts\` | Cloud Function — all WebAuthn API endpoints |"
+            echo "| \`src/components/auth/PasskeySetupFlow.tsx\` | Setup UI — calls \`AuthContext.bindPasskey\` |"
+            echo "| \`src/components/auth/PasskeySetupPrompt.tsx\` | Post-login onboarding prompt |"
+            echo "| \`firestore.rules\` | \`passkeyCredentials\` subcollection rules |"
+          } > wiki-repo/Authentication.md
+          echo "Generated Authentication.md"
+
+      # ── Auto-generate _Sidebar.md ────────────────────────────────────────
+      - name: Generate _Sidebar.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          {
+            echo "<!-- AUTO-GENERATED — do not edit directly -->"
+            echo ""
+            echo "## Agape Sovereign"
+            echo ""
+            # Always pin these at the top
+            for page in Home Quick-Start Architecture; do
+              if [ -f "wiki-repo/${page}.md" ]; then
+                echo "- [[${page}]]"
+              fi
+            done
+            echo ""
+            echo "## Guides"
+            echo ""
+            for page in Authentication Deployment Integration-Guide Security; do
+              if [ -f "wiki-repo/${page}.md" ]; then
+                echo "- [[${page}]]"
+              fi
+            done
+            echo ""
+            echo "## Reference"
+            echo ""
+            for page in API-Reference Changelog Agent-System Architect-AI Local-LLM-PWA; do
+              if [ -f "wiki-repo/${page}.md" ]; then
+                echo "- [[${page}]]"
+              fi
+            done
+          } > wiki-repo/_Sidebar.md
+          echo "Generated _Sidebar.md"
+
+      # ── Commit and push ──────────────────────────────────────────────────
+      - name: Commit and push wiki changes
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          cd wiki-repo
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No wiki changes to publish."
+          else
+            TRIGGER_SHA="${{ github.sha }}"
+            TRIGGER_REF="${{ github.ref_name }}"
+            git commit -m "Auto-update wiki from ${TRIGGER_REF} (${TRIGGER_SHA:0:7}) [skip ci]"
+            git push
+            echo "Wiki updated successfully."
+          fi

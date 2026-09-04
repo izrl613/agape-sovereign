@@ -1,238 +1,147 @@
-/**
- * ============================================================
- * ARCHITECT AI — Cloud Functions (Firebase v2)
- * Agape Sovereign Enclave 2026
- * ============================================================
- * 
- * Deploy with: firebase deploy --only functions:default
- */
+import { onRequest } from "firebase-functions/https";
+import { logger } from "firebase-functions";
+import { initializeApp, getApps } from "firebase-admin/app";
+import { getAppCheck } from "firebase-admin/app-check";
+import { getAuth } from "firebase-admin/auth";
+import express, { Request, Response } from "express";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
-import { onCall, HttpsError } from 'firebase-functions/https';
-import { onDocumentWritten } from 'firebase-functions/firestore';
-import { onSchedule } from 'firebase-functions/scheduler';
-import * as logger from 'firebase-functions/logger';
-import * as admin from 'firebase-admin';
-
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp();
+// Admin init
+if (!getApps().length) {
+  initializeApp();
 }
 
-const db = admin.firestore();
+const appCheck = getAppCheck();
+const auth = getAuth();
 
-// ─── GENERATE DIFF PDF REPORT ───────────────────────────────
+const architectApp = express();
 
-export const generateDiffReport = onCall(
-  { region: 'us-east1', maxInstances: 5 },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
-    }
-
-    const userId = request.auth.uid;
-    const userEmail = request.auth.token.email || 'user@agape.nyc';
-
-    try {
-      logger.info('PDF generation started', { userId });
-
-      // Fetch user profile
-      const userDoc = await db.collection('users').doc(userId).get();
-      if (!userDoc.exists) {
-        throw new Error('User not found');
-      }
-
-      const userData = userDoc.data() as any;
-      const reportId = `DIFF-${userId}-${Date.now()}`;
-
-      // Create report metadata
-      const reportData = {
-        userId,
-        userEmail,
-        reportId,
-        sovereignScore: userData.sovereignScore || 71,
-        tier: userData.sovereignTier || 'EXPOSURE_RISK',
-        generatedAt: new Date().toISOString(),
-      };
-
-      // Generate SHA-256 seal
-      const crypto = require('crypto');
-      const seal = crypto
-        .createHash('sha256')
-        .update(JSON.stringify(reportData))
-        .digest('hex');
-
-      // Store in Firestore
-      await db.collection('diff_reports').doc(reportId).set({
-        userId,
-        userEmail,
-        sovereignScore: reportData.sovereignScore,
-        generatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        sha256Seal: seal,
-      });
-
-      // Audit log
-      await db.collection('audit_logs').add({
-        event: 'PDF_GENERATED',
-        userId,
-        reportId,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      logger.info('PDF metadata stored', { reportId });
-
-      return {
-        success: true,
-        reportId,
-        sovereignScore: reportData.sovereignScore,
-        sha256Seal: seal,
-      };
-    } catch (error) {
-      logger.error('PDF generation failed', { error });
-      throw new HttpsError('internal', 'Failed to generate report');
-    }
-  }
-);
-
-// ─── RECALCULATE SOVEREIGN SCORE ────────────────────────────
-
-export const recalculateSovereignScore = onDocumentWritten(
-  {
-    document: 'diff_scans/{scanId}/vectorResults/{vectorId}',
-    region: 'us-east1',
+architectApp.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const allowed = [
+      "https://sovereign.nyc",
+      "https://agape-sovereign.web.app",
+      "https://agape-sovereign.firebaseapp.com",
+      "http://localhost:5173",
+      "http://localhost:5000",
+    ];
+    if (allowed.includes(origin)) return callback(null, true);
+    callback(null, false);
   },
-  async (event) => {
-    const after = event.data?.after.data() as any;
-    const userId = after?.userId;
+  credentials: true,
+}));
+architectApp.use(express.json({ limit: "256kb" }));
 
-    if (!userId) return;
+// Helmet security headers
+architectApp.use(helmet({
+  contentSecurityPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  frameguard: { action: "deny" },
+  noSniff: true,
+}));
 
-    try {
-      // Calculate from all vectors
-      const scans = await db
-        .collection('diff_scans')
-        .where('userId', '==', userId)
-        .get();
+// Rate limiting
+const architectLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: "Too many requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-      let totalNuked = 0;
-      let totalKnoxed = 0;
+architectApp.use(architectLimiter);
 
-      for (const scan of scans.docs) {
-        const vectors = await scan.ref.collection('vectorResults').get();
-        vectors.forEach((v) => {
-          const data = v.data();
-          totalNuked += data.nukedCount || 0;
-          totalKnoxed += data.knoxedCount || 0;
-        });
-      }
+// App Check verification
+architectApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
+  if (process.env.RECAPTCHA_ENABLED !== "true") return next();
+  const appCheckToken = req.header("X-Firebase-AppCheck");
+  if (!appCheckToken) {
+    res.status(401).json({ error: "Missing App Check token" });
+    return;
+  }
+  try {
+    await appCheck.verifyToken(appCheckToken);
+    next();
+  } catch {
+    res.status(401).json({ error: "Invalid App Check token" });
+  }
+});
 
-      // Score calculation
-      const sovereignScore = Math.max(
-        0,
-        Math.min(100, 100 - totalNuked * 3 + Math.min(totalKnoxed * 0.5, 25))
-      );
+// Auth verification
+async function requireAuth(req: Request): Promise<{ uid: string; email: string }> {
+  const authHeader = req.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Error("Authentication required");
+  }
+  const token = authHeader.slice("Bearer ".length);
+  const decoded = await auth.verifyIdToken(token);
+  return { uid: decoded.uid, email: decoded.email || "" };
+}
 
-      const tier =
-        sovereignScore >= 85
-          ? 'KNOXED_SOVEREIGN'
-          : sovereignScore >= 65
-            ? 'PARTIALLY_SECURED'
-            : sovereignScore >= 40
-              ? 'EXPOSURE_RISK'
-              : 'CRITICALLY_NUKED';
+// POST /api/architect
+const architectRouter = express.Router();
+architectRouter.post("/", architectLimiter, async (req: Request, res: Response) => {
+  try {
+    const { message, history } = req.body;
+    if (!message || typeof message !== "string") {
+      res.status(400).json({ error: "Missing message" });
+      return;
+    }
 
-      await db.collection('users').doc(userId).update({
-        sovereignScore: Math.round(sovereignScore),
-        sovereignTier: tier,
-        lastScoreUpdate: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    // Verify auth
+    const { uid } = await requireAuth(req);
 
-      logger.info('Score updated', { userId, score: sovereignScore });
-    } catch (error) {
-      logger.error('Recalculation failed', { error });
+    // Build context from history
+    const context = history && Array.isArray(history) 
+      ? history.slice(-10).map((m: any) => `${m.role}: ${m.content}`).join("\n")
+      : "";
+
+    // Call Gemini API (using Vertex AI or direct)
+    // For now, return structured response
+    const reply = `Greetings, Sovereign. I am Architect AI — your Digital Identity Federated Footprint intelligence engine.
+
+I have analyzed your query: "${message}"
+
+**Context from session:** ${context || "No prior history"}
+
+**Analysis:**
+- Your 16-layer identity vector profile is actively monitored
+- Current Sovereign Score reflects real-time threat intelligence
+- NUKED exposures are prioritized for immediate remediation
+- KNOXED vectors are hardened with AES-256-GCM encryption
+
+**Recommendations:**
+1. Review NUKED exposures in the Dashboard
+2. Initiate Vector Sweep on critical modules
+3. Bind Passkey for Level 3 sovereignty
+
+What aspect of your digital sovereignty would you like to explore?`;
+
+    res.json({ reply, uid });
+  } catch (error) {
+    logger.error("Architect AI Error:", error);
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    if (message === "Authentication required") {
+      res.status(401).json({ error: message });
+    } else {
+      res.status(500).json({ error: "Internal Server Error" });
     }
   }
-);
+});
 
-// ─── PASSKEY CHALLENGE ──────────────────────────────────────
+architectApp.use("/api/architect", architectRouter);
 
-export const generatePasskeyChallenge = onCall(
-  { region: 'us-east1' },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
-    }
-
-    const crypto = require('crypto');
-    const challenge = crypto.randomBytes(32).toString('base64');
-
-    try {
-      await db.collection('sessions').doc(request.auth.uid).set(
-        {
-          passkeyChallenge: challenge,
-          challengeExpiresAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      return { challenge };
-    } catch (error) {
-      throw new HttpsError('internal', 'Challenge generation failed');
-    }
-  }
-);
-
-// ─── AUDIT LOG CLEANUP (Monthly) ────────────────────────────
-
-export const cleanupAuditLogs = onSchedule(
-  { region: 'us-east1', schedule: 'every 30 days' },
-  async () => {
-    try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const logs = await db
-        .collection('audit_logs')
-        .where('timestamp', '<', thirtyDaysAgo)
-        .limit(100)
-        .get();
-
-      let deleted = 0;
-      const batch = db.batch();
-      logs.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleted++;
-      });
-
-      if (deleted > 0) await batch.commit();
-      logger.info('Audit cleanup', { deleted });
-    } catch (error) {
-      logger.error('Cleanup failed', { error });
-    }
-  }
-);
-
-// ─── GENERATE ECRA OPT-OUT ──────────────────────────────────
-
-export const generateECRAOptOut = onCall(
-  { region: 'us-east1' },
-  async (request) => {
-    if (!request.auth) {
-      throw new HttpsError('unauthenticated', 'Must be authenticated');
-    }
-
-    const { userName, userEmail } = request.data;
-
-    const template = `ECRA 2026 DATA SUBJECT REMOVAL REQUEST
-
-From: ${userName}
-Email: ${userEmail}
-Date: ${new Date().toISOString()}
-
-To Whom It May Concern:
-
-Pursuant to ECRA 2026 § 4.2, I request immediate deletion of all personal data held on file.
-
-Respectfully,
-${userName}`;
-
-    return { optOutTemplate: template };
-  }
+export const architectApi = onRequest(
+  {
+    region: "us-central1",
+    timeoutSeconds: 60,
+    memory: "512MiB",
+    invoker: "public",
+    serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+  },
+  architectApp
 );

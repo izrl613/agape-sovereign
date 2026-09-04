@@ -1,0 +1,15 @@
+{
+  "displayName": "Firebase Daily Spend Alert",
+  "combiner": "OR",
+  "conditions": [
+    {
+      "displayName": "Cost Condition",
+      "conditionThreshold": {
+        "filter": "metric.type=\"billing.googleapis.com/concept_count\" resource.type=\"global\"",
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 10,
+        "duration": "0s"
+      }
+    }
+  ]
+}

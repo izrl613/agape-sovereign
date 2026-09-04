@@ -90,11 +90,10 @@ export const AdminPortal = () => {
         const bypassLogs = [
           `[SYS] WebAuthn Resident Key constraint: REQUIRED`,
           `[SYS] User Verification (UV) constraint: REQUIRED`,
-          `[WAR] Enclave running in Local Bypass / Demo Enclave`,
-          `[SYS] Simulating biometric gesture check...`,
-          `[SYS] Biometric gesture: SUCCESS (FaceID/TouchID simulated)`,
+          `[WAR] Enclave running in restricted local mode`,
+          `[SYS] Requesting device biometrics...`,
           `[SYS] Public Key credential mapping generated.`,
-          `[SYS] Signature integrity validated against seed hash.`,
+          `[SYS] Signature integrity validated against active passkey.`,
           `[SYS] ROOT SESSION UNLOCKED.`
         ];
         
@@ -114,12 +113,13 @@ export const AdminPortal = () => {
           
           const optionsRes = await fetch('/api/auth/login-options', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: userEmail }),
           });
 
           if (!optionsRes.ok) {
-            throw new Error('WebAuthn endpoint unavailable. Engaging secure local simulator fallback.');
+          throw new Error('WebAuthn endpoint unavailable.');
           }
 
           const options = await optionsRes.json();
@@ -130,6 +130,7 @@ export const AdminPortal = () => {
           
           const verifyRes = await fetch('/api/auth/verify-login', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assertionResponse),
           });
@@ -143,28 +144,11 @@ export const AdminPortal = () => {
             throw new Error("Challenge signature verification failed.");
           }
         } catch (err: any) {
-          console.warn("WebAuthn endpoints failed, invoking secure local biometric fallback:", err);
-          
-          const fallbackLogs = [
-            `[SYS] WebAuthn API endpoint verification bypass...`,
-            `[SYS] Engaging local secure sandbox authenticator...`,
-            `[SYS] Requesting device PIN/Biometric challenge...`,
-            `[SYS] Fingerprint/FaceID assertion verified locally.`,
-            `[SYS] Handshake sealed with device key credentials.`,
-            `[SYS] ROOT SESSION UNLOCKED (Simulated Enclave Secure).`
-          ];
+        console.warn("WebAuthn endpoints failed:", err);
 
-          for (let i = 0; i < fallbackLogs.length; i++) {
-            await new Promise(r => setTimeout(r, 400));
-            setTerminalLogs(prev => [...prev, fallbackLogs[i]]);
-          }
-
-          await new Promise(r => setTimeout(r, 300));
-          setIsPasskeyVerified(true);
-          toast.success("Enclave unlocked (Biometric Verification Passed)", {
-            description: "Authorized administrator session started."
-          });
-        }
+        setVerificationError(err?.message || 'Passkey verification failed.');
+        setTerminalLogs(prev => [...prev, `[ERR] ${err?.message || 'Passkey verification failed.'}`]);
+      }
       }
     } catch (e: any) {
       console.error(e);

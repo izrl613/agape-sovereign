@@ -1,0 +1,4 @@
+node_modules
+.kilo
+dist
+scripts/venv

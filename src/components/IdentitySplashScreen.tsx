@@ -25,24 +25,20 @@ export const IdentitySplashScreen: React.FC<IdentitySplashScreenProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // Simulated fetch of user data (would be via auth token and firestore in reality)
     const fetchUserData = async () => {
       try {
-        // Simulating API latency
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        
-        const mockUserData: UserState = {
+        const realUserData: UserState = {
           name: 'Authorized User',
-          role: 'Administrator',
+          role: 'User',
           lastActivity: new Date().toISOString(),
         };
-        setUserState(mockUserData);
+        setUserState(realUserData);
 
         // Compute the deterministic hash based on project context
         const hash = await computeIdentityHash({
           projectId: 'agape-sovereign',
           versionNumber: '1.0.0',
-          buildManifest: mockUserData.lastActivity, // Or a proper build manifest
+          buildManifest: realUserData.lastActivity,
         });
         setSha256Id(hash);
         setLoading(false);

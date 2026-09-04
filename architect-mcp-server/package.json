@@ -11,6 +11,7 @@
     "dev:watch": "tsx watch src/index.ts"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@modelcontextprotocol/sdk": "^1.15.0",
     "cors": "^2.8.5",
     "express": "^4.21.2"

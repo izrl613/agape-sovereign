@@ -3,14 +3,36 @@
 	"tasks": [
 		{
 			"type": "npm",
-			"script": "start",
-			"problemMatcher": [],
-			"label": "npm: start",
-			"detail": "NODE_ENV=production node dist/server.js",
+			"script": "dev",
+			"problemMatcher": [
+				{
+					"base": "$vite",
+					"background": {
+						"beginsPattern": "^.*VITE.*",
+						"endsPattern": "^.*Local:.*"
+					}
+				}
+			],
+			"label": "npm: dev",
+			"detail": "vite dev server (hot reload, HMR)",
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			}
+			},
+			"presentation": {
+				"panel": "dedicated",
+				"group": "dev",
+				"reveal": "always"
+			},
+			"isBackground": true
+		},
+		{
+			"type": "npm",
+			"script": "start",
+			"problemMatcher": [],
+			"label": "npm: start (production)",
+			"detail": "NODE_ENV=production node dist/server.js",
+			"group": "none"
 		}
 	]
 }

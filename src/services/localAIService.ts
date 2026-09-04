@@ -1,27 +1,42 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// localAIService.ts — Gemma 4 E4B · Offline-First Sovereign AI Service
-// ALL inference routes through the Gemma4 MCP Server.
+// localAIService.ts — Sovereign AI Service
+// Supports dual backends:
+//   1. LMStudio (OpenAI-compatible API, port 1234) — primary
+//      Model: qwen3.5-9b-sushi-coder-rl-mlx (when running)
+//   2. Ollama (native API, port 11434) — fallback
+//      Model: gemma4:e4b / qwen2.5-coder:7b (always-on)
+//
+// Detection order: LMStudio → Ollama → Offline
 // NO external AI calls. Zero external billing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { DEFAULT_MODEL, OLLAMA_BASE_URL } from '../config/aiModel.js';
 
-// Ollama is user-controlled and is the only AI endpoint for this service.
+// ─── Endpoint configuration ───────────────────────────────────────────────────
 const LOCAL_OLLAMA_URL = OLLAMA_BASE_URL;
+const LOCAL_LMSTUDIO_URL = 'http://localhost:1234';
+// Preferred LMStudio model (qwen3.5 sushi coder variant running in LMStudio)
+const LMSTUDIO_MODEL = 'qwen3.5-9b-sushi-coder-rl-mlx';
+// Ollama fallback model
+const OLLAMA_MODEL = DEFAULT_MODEL;
 
+// Active backend state — updated by probeBackend()
+type BackendType = 'lmstudio' | 'ollama' | 'offline';
+let ACTIVE_BACKEND: BackendType = 'offline';
 let ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
+let ACTIVE_MODEL = OLLAMA_MODEL;
 
-// ─── Model identifiers ────────────────────────────────────────────────────────
+// Keep for legacy compat
 const GEMMA_MODEL = DEFAULT_MODEL;
 
 // ─── Offline response template ────────────────────────────────────────────────
-const OFFLINE_RESPONSE = `⚠️ Gemma 4 E4B is currently unreachable.
+const OFFLINE_RESPONSE = `⚠️ Local AI is currently unreachable.
 
 Your Sovereign Enclave is operating in **offline mode**. No data has left your device.
 
 To restore AI capabilities:
-1. Ensure the configured model is available locally: \`ollama run gemma4:e4b\`
-2. Verify that Ollama is running locally at ${LOCAL_OLLAMA_URL}
+- **LMStudio**: Launch LMStudio, load model \`${LMSTUDIO_MODEL}\`, and start the server on port 1234.
+- **Ollama**: Ensure Ollama is running at ${LOCAL_OLLAMA_URL} with \`ollama run ${OLLAMA_MODEL}\`
 
 All scan logic, encryption, and identity protection continue to function offline.`;
 
@@ -41,32 +56,83 @@ export interface LocalStatus {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Live status probe — local Ollama only
+// 1. Backend probe — LMStudio first, then Ollama
 // ─────────────────────────────────────────────────────────────────────────────
-export async function getLocalAIStatus(): Promise<LocalStatus> {
+
+/** Probe LMStudio OpenAI-compatible endpoint on port 1234 */
+async function probeLMStudio(): Promise<boolean> {
+  try {
+    const res = await fetch(`${LOCAL_LMSTUDIO_URL}/v1/models`, {
+      signal: AbortSignal.timeout(1500)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // LMStudio returns { data: [ { id: "model-name", ... } ] }
+      const models: string[] = (data?.data ?? []).map((m: { id: string }) => m.id);
+      ACTIVE_BACKEND = 'lmstudio';
+      ACTIVE_PROXY_URL = LOCAL_LMSTUDIO_URL;
+      // Use qwen3.5 if loaded, else whatever LMStudio has loaded
+      ACTIVE_MODEL = models.find(m => m.toLowerCase().includes('qwen3.5') || m.toLowerCase().includes('qwen3_5'))
+        ?? models[0]
+        ?? LMSTUDIO_MODEL;
+      return true;
+    }
+  } catch {
+    // LMStudio not running
+  }
+  return false;
+}
+
+/** Probe Ollama native endpoint on port 11434 */
+async function probeOllama(): Promise<boolean> {
   try {
     const res = await fetch(`${LOCAL_OLLAMA_URL}/api/tags`, {
       signal: AbortSignal.timeout(2000)
     });
     if (res.ok) {
+      ACTIVE_BACKEND = 'ollama';
       ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
-      return {
-        online: true,
-        port: 11434,
-        modelName: "Gemma 4 E4B (Ollama)",
-        usage: "Unlimited Tokens · Local Ollama",
-        costModel: "Local — Zero External Billing",
-        activeEndpoint: LOCAL_OLLAMA_URL
-      };
+      ACTIVE_MODEL = OLLAMA_MODEL;
+      return true;
     }
   } catch {
-    // Fully offline
+    // Ollama not running
+  }
+  return false;
+}
+
+export async function getLocalAIStatus(): Promise<LocalStatus> {
+  // Try LMStudio first (user's primary model)
+  const lmStudioOnline = await probeLMStudio();
+  if (lmStudioOnline) {
+    return {
+      online: true,
+      port: 1234,
+      modelName: `${ACTIVE_MODEL} (LMStudio)`,
+      usage: "Unlimited Tokens · LM Studio",
+      costModel: "Local — Zero External Billing",
+      activeEndpoint: LOCAL_LMSTUDIO_URL
+    };
   }
 
+  // Fallback to Ollama
+  const ollamaOnline = await probeOllama();
+  if (ollamaOnline) {
+    return {
+      online: true,
+      port: 11434,
+      modelName: `${ACTIVE_MODEL} (Ollama)`,
+      usage: "Unlimited Tokens · Local Ollama",
+      costModel: "Local — Zero External Billing",
+      activeEndpoint: LOCAL_OLLAMA_URL
+    };
+  }
+
+  ACTIVE_BACKEND = 'offline';
   return {
     online: false,
     port: 11434,
-    modelName: "Gemma 4 E4B",
+    modelName: OLLAMA_MODEL,
     usage: "Offline Mode — No data leaves device",
     costModel: "Zero External Billing",
     activeEndpoint: undefined
@@ -74,35 +140,87 @@ export async function getLocalAIStatus(): Promise<LocalStatus> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. Internal: route a chat request to the active Gemma4 endpoint
+// 2. Internal: route a chat request to the active backend
+//    LMStudio uses OpenAI-compatible API (/v1/chat/completions)
+//    Ollama uses native API (/api/chat)
 // ─────────────────────────────────────────────────────────────────────────────
+async function callLocalAI(
+  messages: { role: string; content: string }[],
+  jsonMode = false
+): Promise<string> {
+  // Ensure backend is probed
+  if (ACTIVE_BACKEND === 'offline') {
+    await getLocalAIStatus();
+  }
+
+  // LMStudio path: OpenAI-compatible /v1/chat/completions
+  if (ACTIVE_BACKEND === 'lmstudio') {
+    try {
+      const body: Record<string, unknown> = {
+        model: ACTIVE_MODEL,
+        messages,
+        stream: false,
+        max_tokens: jsonMode ? 2048 : -1,
+        temperature: 0.7,
+      };
+      if (jsonMode) {
+        body.response_format = { type: 'json_object' };
+      }
+      const response = await fetch(`${LOCAL_LMSTUDIO_URL}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(120000)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content ?? "";
+      }
+    } catch {
+      // LMStudio may have gone offline; fall through to Ollama
+      ACTIVE_BACKEND = 'offline';
+    }
+  }
+
+  // Ollama path: native /api/chat
+  if (ACTIVE_BACKEND === 'ollama' || ACTIVE_BACKEND === 'offline') {
+    // Re-probe Ollama if we just fell through
+    if (ACTIVE_BACKEND === 'offline') {
+      await probeOllama();
+    }
+    if (ACTIVE_BACKEND === 'ollama') {
+      try {
+        const response = await fetch(`${LOCAL_OLLAMA_URL}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: ACTIVE_MODEL,
+            messages,
+            stream: false,
+            format: jsonMode ? 'json' : undefined,
+            options: { num_predict: jsonMode ? 2048 : -1 }
+          }),
+          signal: AbortSignal.timeout(120000)
+        });
+        if (response.ok) {
+          const data = await response.json();
+          return data.message?.content ?? "";
+        }
+      } catch {
+        ACTIVE_BACKEND = 'offline';
+      }
+    }
+  }
+
+  return OFFLINE_RESPONSE;
+}
+
+// Legacy alias kept for any internal callers
 async function callGemma4(
   messages: { role: string; content: string }[],
   jsonMode = false
 ): Promise<string> {
-  // Via Ollama native API
-  try {
-    const response = await fetch(`${LOCAL_OLLAMA_URL}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: GEMMA_MODEL,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-        stream: false,
-        options: { num_predict: jsonMode ? 2048 : -1 }
-      }),
-      signal: AbortSignal.timeout(30000)
-    });
-    if (response.ok) {
-      ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
-      const data = await response.json();
-      return data.message?.content || "";
-    }
-  } catch {
-    // Fully offline
-  }
-
-  return OFFLINE_RESPONSE;
+  return callLocalAI(messages, jsonMode);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

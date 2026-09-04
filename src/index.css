@@ -129,3 +129,27 @@ body::before {
   background-color: var(--neon-blue);
   border-radius: 10px;
 }
+
+/* PWA Mobile & Standalone Overrides */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* iOS Safe Areas & Touch Feedback */
+.safe-padding {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+button:active, .module-card:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+

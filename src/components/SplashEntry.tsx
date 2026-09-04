@@ -63,7 +63,7 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
         encryptedDataRecord[stepConfig.id] = encrypted;
         hashesRecord[`${stepConfig.id}Hash`] = hash;
 
-        // 2. Generate custom initial findings in diff_scans for each module
+        // 2. Record live initialization state for each module
         const scanRef = doc(collection(db, "diff_scans"));
         
         let initialFinding: {
@@ -82,36 +82,11 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
           details: `Zero-knowledge profile encryption activated. Integrity seal: ${hash}`
         };
 
-        // Create interesting mock findings based on user input
         if (rawValue) {
-          if (stepConfig.id === 'email' && (rawValue.includes('leak') || rawValue.includes('pwned') || rawValue.length % 2 === 0)) {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Breached credentials in public paste dumps`,
-              status: "NUKED" as const,
-              timestamp: new Date(),
-              details: `Primary email '${rawValue}' was found in historical credential stuffing logs. Action required: rotate credentials and bind passkey.`
-            };
-          } else if (stepConfig.id === 'password' && rawValue.length < 8) {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Weak entropy credential pattern`,
-              status: "NUKED" as const,
-              timestamp: new Date(),
-              details: `The password credentials provided have low entropy. Strongly advise upgrading to WebAuthn Level 3 Universal Passkey.`
-            };
-          } else if (stepConfig.id === 'broker') {
-            initialFinding = {
-              userId: user.uid,
-              module: stepConfig.id,
-              finding: `Public listings on Spokeo & Acxiom`,
-              status: "MONITORED" as const,
-              timestamp: new Date(),
-              details: `Identity profile associated with your query is actively listed by 4 primary data brokers. Erasure engine primed.`
-            };
-          }
+          initialFinding = {
+            ...initialFinding,
+            details: `Live user input captured and encrypted for ${stepConfig.id}. Integrity seal: ${hash}`,
+          };
         }
 
         batch.set(scanRef, {
@@ -188,12 +163,16 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FF2E9F] to-[#00D4FF] flex items-center justify-center shadow-[0_0_20px_rgba(0,212,255,0.3)]">
-                  <Shield className="text-white w-6 h-6" />
+                <div style={{ filter: 'drop-shadow(0 0 8px #00D4FF)', flexShrink: 0 }}>
+                  <svg viewBox="0 0 40 40" width={36} height={36}>
+                    <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke="#00D4FF" strokeWidth="1.5" />
+                    <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke="#FF2E9F" strokeWidth="1" opacity="0.7" />
+                    <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill="#FF6B00" fillOpacity="0.8" stroke="#FF6B00" strokeWidth="0.5" />
+                  </svg>
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold tracking-wider text-white font-display">ARCHITECT AI</h2>
-                  <p className="text-[10px] text-[#00D4FF] font-mono tracking-[0.2em] uppercase">DIFF Initialization Sequence</p>
+                  <h2 className="text-xl font-bold tracking-wider text-white font-display">Agape Sovereign AI</h2>
+                  <p className="text-[10px] text-[#00D4FF] font-mono tracking-[0.2em] uppercase">DIGITAL IDENTITY DEFENSE</p>
                 </div>
               </div>
               <div className="text-right">
@@ -252,28 +231,54 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
               </motion.div>
             </AnimatePresence>
 
-            <div className="mt-10 flex items-center justify-between">
-              <div className="flex gap-1">
-                {MODULE_STEPS.map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={`h-1 rounded-full transition-all duration-500 ${i <= step ? 'w-6 bg-[#00D4FF]' : 'w-2 bg-white/10'}`} 
-                  />
-                ))}
+            {/* ── Progress Bar ── */}
+            <div style={{ marginTop: 28 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: 'rgba(226,232,240,0.4)', letterSpacing: '0.12em' }}>
+                  INITIALIZATION PROGRESS
+                </span>
+                <span style={{ fontFamily: "'Orbitron'", fontSize: '0.65rem', color: '#00D4FF', fontWeight: 700 }}>
+                  {Math.round(((step) / (MODULE_STEPS.length - 1)) * 100)}%
+                </span>
               </div>
-              
-              <button
-                disabled={step < MODULE_STEPS.length - 1 && !data[currentStep.id]}
-                onClick={handleNext}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
-                  (step === MODULE_STEPS.length - 1 || data[currentStep.id]) 
-                    ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105' 
-                    : 'bg-white/5 text-white/20 cursor-not-allowed'
-                }`}
-              >
-                {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden', marginBottom: 16 }}>
+                <motion.div
+                  style={{
+                    height: '100%',
+                    background: 'linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18)',
+                    borderRadius: 2,
+                  }}
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${((step) / (MODULE_STEPS.length - 1)) * 100}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={handleNext}
+                  disabled={currentStep.id !== 'final' && !data[currentStep.id]}
+                  style={{ opacity: currentStep.id === 'final' || !data[currentStep.id] ? 0.3 : 0.7 }}
+                  className="text-[10px] font-mono text-slate-400 hover:text-white transition-colors"
+                  title="Skip this step (optional fields only)"
+                >
+                  {currentStep.id !== 'final' && !data[currentStep.id] ? 'SKIP →' : ''}
+                </button>
+
+                <button
+                  disabled={step < MODULE_STEPS.length - 1 && !data[currentStep.id]}
+                  onClick={handleNext}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold tracking-wider transition-all ${
+                    (step === MODULE_STEPS.length - 1 || data[currentStep.id])
+                      ? 'bg-gradient-to-r from-[#FF2E9F] to-[#00D4FF] text-white shadow-[0_0_15px_rgba(0,212,255,0.4)] hover:scale-105'
+                      : 'bg-white/5 text-white/20 cursor-not-allowed'
+                  }`}
+                >
+                  {step === MODULE_STEPS.length - 1 ? 'INITIALIZE DIFF' : 'NEXT STEP'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -285,4 +290,3 @@ export const SplashEntry = ({ onComplete }: { onComplete: () => void }) => {
     </div>
   );
 };
-
