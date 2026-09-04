@@ -85,5 +85,6 @@
     "statusBar.foreground": "#ffffff",
     "statusBar.noFolderBackground": "#007acc",
     "statusBar.debuggingBackground": "#005999"
-  }
+  },
+  "git.ignoreLimitWarning": true
 }
