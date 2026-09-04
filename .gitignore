@@ -50,3 +50,7 @@ agape-sovereign-1/
 .dyad/
 .spectra/
 openspec/.vector-search.db*
+
+# IDE workspace metadata (should never be committed)
+.metadata/
+.idea/
