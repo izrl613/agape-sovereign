@@ -27,7 +27,7 @@ export const StatusBadge = ({ type }: StatusBadgeProps) => {
         fontWeight: 700,
         fontFamily: "'Orbitron', monospace",
         border: `1px solid ${cfg.color}44`,
-      } as CSSProperties
+      } as CSSProperties}
     >
       {cfg.label}
     </span>

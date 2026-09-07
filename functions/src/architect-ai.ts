@@ -1,9 +1,10 @@
-import { onRequest } from "firebase-functions/https";
-import { logger } from "firebase-functions";
-import { initializeApp, getApps } from "firebase-admin/app";
-import { getAppCheck } from "firebase-admin/app-check";
-import { getAuth } from "firebase-admin/auth";
-import express, { Request, Response } from "express";
+/* eslint-disable require-jsdoc, new-cap, max-len */
+import {onRequest} from "firebase-functions/https";
+import {logger} from "firebase-functions";
+import {initializeApp, getApps} from "firebase-admin/app";
+import {getAppCheck} from "firebase-admin/app-check";
+import {getAuth} from "firebase-admin/auth";
+import express, {Request, Response} from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
@@ -33,14 +34,14 @@ architectApp.use(cors({
   },
   credentials: true,
 }));
-architectApp.use(express.json({ limit: "256kb" }));
+architectApp.use(express.json({limit: "256kb"}));
 
 // Helmet security headers
 architectApp.use(helmet({
   contentSecurityPolicy: false,
-  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
-  frameguard: { action: "deny" },
+  hsts: {maxAge: 31536000, includeSubDomains: true, preload: true},
+  referrerPolicy: {policy: "strict-origin-when-cross-origin"},
+  frameguard: {action: "deny"},
   noSniff: true,
 }));
 
@@ -48,7 +49,7 @@ architectApp.use(helmet({
 const architectLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
-  message: { error: "Too many requests, please try again later" },
+  message: {error: "Too many requests, please try again later"},
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -60,14 +61,14 @@ architectApp.use(async (req: Request, res: Response, next: express.NextFunction)
   if (process.env.RECAPTCHA_ENABLED !== "true") return next();
   const appCheckToken = req.header("X-Firebase-AppCheck");
   if (!appCheckToken) {
-    res.status(401).json({ error: "Missing App Check token" });
+    res.status(401).json({error: "Missing App Check token"});
     return;
   }
   try {
     await appCheck.verifyToken(appCheckToken);
     next();
   } catch {
-    res.status(401).json({ error: "Invalid App Check token" });
+    res.status(401).json({error: "Invalid App Check token"});
   }
 });
 
@@ -79,26 +80,26 @@ async function requireAuth(req: Request): Promise<{ uid: string; email: string }
   }
   const token = authHeader.slice("Bearer ".length);
   const decoded = await auth.verifyIdToken(token);
-  return { uid: decoded.uid, email: decoded.email || "" };
+  return {uid: decoded.uid, email: decoded.email || ""};
 }
 
 // POST /api/architect
 const architectRouter = express.Router();
 architectRouter.post("/", architectLimiter, async (req: Request, res: Response) => {
   try {
-    const { message, history } = req.body;
+    const {message, history} = req.body;
     if (!message || typeof message !== "string") {
-      res.status(400).json({ error: "Missing message" });
+      res.status(400).json({error: "Missing message"});
       return;
     }
 
     // Verify auth
-    const { uid } = await requireAuth(req);
+    const {uid} = await requireAuth(req);
 
     // Build context from history
-    const context = history && Array.isArray(history) 
-      ? history.slice(-10).map((m: any) => `${m.role}: ${m.content}`).join("\n")
-      : "";
+    const context = history && Array.isArray(history) ?
+      history.slice(-10).map((m: any) => `${m.role}: ${m.content}`).join("\n") :
+      "";
 
     // Call Gemini API (using Vertex AI or direct)
     // For now, return structured response
@@ -121,14 +122,14 @@ I have analyzed your query: "${message}"
 
 What aspect of your digital sovereignty would you like to explore?`;
 
-    res.json({ reply, uid });
+    res.json({reply, uid});
   } catch (error) {
     logger.error("Architect AI Error:", error);
     const message = error instanceof Error ? error.message : "Internal Server Error";
     if (message === "Authentication required") {
-      res.status(401).json({ error: message });
+      res.status(401).json({error: message});
     } else {
-      res.status(500).json({ error: "Internal Server Error" });
+      res.status(500).json({error: "Internal Server Error"});
     }
   }
 });
