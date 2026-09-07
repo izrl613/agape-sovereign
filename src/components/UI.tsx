@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  NEON,
   NeonText,
   GlassCard,
   NeonButton,
   StatusBadge,
-} from "./UI";
+} from "./UI/index";
+import { NEON } from "../theme/tokens";
 
 export { NEON, NeonText, GlassCard, NeonButton, StatusBadge };
 

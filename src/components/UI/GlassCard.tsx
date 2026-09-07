@@ -25,7 +25,6 @@ export const GlassCard = ({
       position: "relative",
       ...style,
     }}
-    onClick={onClick}
   >
     {children}
   </div>
