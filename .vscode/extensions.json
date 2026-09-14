@@ -1,6 +1,10 @@
 {
   "recommendations": [
-    "ms-vscode.live-server"
+    "ms-vscode.live-server",
+    "GitHub.vscode-pull-request-github",
+    "GitHub.vscode-github-actions",
+    "GitHub.remotehub",
+    "saoudrizwan.claude-dev"
   ],
   "unwantedRecommendations": [
     "google.securecoder",

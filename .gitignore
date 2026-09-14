@@ -54,3 +54,4 @@ openspec/.vector-search.db*
 # IDE workspace metadata (should never be committed)
 .metadata/
 .idea/
+.env.keys
