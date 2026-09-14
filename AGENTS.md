@@ -370,3 +370,42 @@ firebase functions:log --only api --lines=50
 4. Select "LM Studio" as provider, model auto-selected
 
 **LM Studio verified running** on port 1234 with `nemotron-3-nano:9b` ✓
+
+---
+
+## ChatGPT (OpenAI) Integration
+
+**Status**: Configured — awaiting API key
+**Provider entries added to**: `.vscode/settings.json` (Cline + Continue)
+
+### Models available once key is applied:
+- `gpt-4o` — Most capable (default)
+- `gpt-4o-mini` — Fast & cheap
+- `o1-mini` / `o3-mini` — Reasoning models
+
+### To activate:
+1. Fill in `OPENAI_API_KEY` in `.env.keys`
+2. Run: `bash scripts/apply-keys.sh`
+3. In Cline → Settings → Provider → select **"OpenAI (ChatGPT)"**
+
+---
+
+## GitHub Integration
+
+**Status**: Git remote connected to `izrl613/agape-sovereign` via HTTPS
+**GitHub MCP Server**: Added to `mcp_config_backup.json` — awaiting PAT token
+
+### GitHub MCP capabilities (once token applied):
+- Read/write Issues and Pull Requests via AI tools
+- Create branches, commits, and file updates via agent
+- Search code and repos
+
+### To activate:
+1. Fill in `GITHUB_PERSONAL_ACCESS_TOKEN` in `.env.keys`
+2. Run: `bash scripts/apply-keys.sh`
+3. Add GitHub MCP entry from `mcp_config_backup.json` to main AGY MCP config
+
+### Required GitHub PAT scopes:
+- `repo` (Contents, Issues, Pull Requests, Metadata)
+
+**GitKraken MCP** is already active for: git_log, git_status, git_branch, git_commit, git_push, git_pull, git_checkout, git_diff, and more.
