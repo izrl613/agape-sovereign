@@ -96,7 +96,9 @@ export const GlobalStyles = () => {
       .thinking-dot:nth-child(3) { animation-delay: 0.3s; background: #FF7A18; }
     `;
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
   return null;
 };

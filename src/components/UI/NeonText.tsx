@@ -7,6 +7,7 @@ interface NeonTextProps {
   size?: string;
   weight?: number;
   style?: CSSProperties;
+  className?: string;
 }
 
 export const NeonText = ({
@@ -15,8 +16,10 @@ export const NeonText = ({
   size = "1rem",
   weight = 700,
   style = {},
+  className = "",
 }: NeonTextProps) => (
   <span
+    className={className}
     style={{
       fontFamily: "'Orbitron', monospace",
       color,

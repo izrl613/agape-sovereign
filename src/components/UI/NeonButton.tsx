@@ -3,7 +3,7 @@ import { NEON } from "../../theme";
 
 interface NeonButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  color?: typeof NEON.blue | typeof NEON.magenta | typeof NEON.orange;
+  color?: typeof NEON.blue | typeof NEON.magenta | typeof NEON.orange | string;
   style?: CSSProperties;
   disabled?: boolean;
   size?: "sm" | "md" | "lg";
@@ -20,12 +20,14 @@ export const NeonButton = ({
 }: NeonButtonProps) => {
   const pad = size === "sm" ? "8px 18px" : size === "lg" ? "14px 32px" : "10px 24px";
   const fs = size === "sm" ? "0.75rem" : size === "lg" ? "1rem" : "0.85rem";
-  const colorMap = {
+  const colorMap: Record<string, string> = {
     [NEON.blue]: "0,212,255",
     [NEON.magenta]: "255,46,159",
     [NEON.orange]: "255,122,24",
+    [NEON.green]: "0,255,137",
+    [NEON.textMuted]: "123,155,181",
   };
-  const colorRgb = colorMap[color] || colorMap[NEON.blue];
+  const colorRgb = colorMap[color] || "0,212,255";
 
   return (
     <button
