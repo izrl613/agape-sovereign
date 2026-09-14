@@ -147,11 +147,11 @@ export class DlpEngine {
 
       if (rule.action === 'BLOCK') {
         blocked = true;
-        processed = `[BLOCKED — ${rule.name}]`;
+        processed = `[BLOCKED — ${ rule.name }]`;
         break;
       } else if (rule.action === 'REDACT' || rule.action === 'REPLACE') {
         const freshReplace = new RegExp(rule.pattern.source, rule.pattern.flags.includes('g') ? rule.pattern.flags : rule.pattern.flags + 'g');
-        processed = processed.replace(freshReplace, rule.replacement ?? `[${rule.name} REDACTED]`);
+        processed = processed.replace(freshReplace, rule.replacement ?? `[${ rule.name } REDACTED]`);
       }
       // ALERT: leave content unchanged but record violation
     }
