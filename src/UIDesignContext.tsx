@@ -12,7 +12,7 @@ const UIDesignContext = createContext<UIDesignContextType | undefined>(undefined
 export const UIDesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentDesign, setCurrentDesign] = useState<DesignType>(() => {
     const saved = localStorage.getItem('ui_design_preference');
-    return (saved === 'agape' || saved === 'architect') ? saved : 'agape';
+    return (saved === 'agape' || saved === 'architect') ? saved : 'architect';
   });
 
   const toggleDesign = () => {

@@ -142,19 +142,40 @@ const AppRoutes = () => {
 import { Toaster } from 'sonner';
 import { PasskeySetupPrompt } from './components/auth/PasskeySetupPrompt';
 import { DemoBanner } from './components/auth/DemoBanner';
+import { UIDesignProvider, useUIDesign } from './UIDesignContext';
+import ArchitectUI from './ArchitectUI';
+
+const MainAppContent = () => {
+  const { currentDesign } = useUIDesign();
+
+  if (currentDesign === 'architect') {
+    return (
+      <>
+        <ArchitectUI />
+        <Toaster position="top-right" theme="dark" richColors closeButton />
+      </>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <DemoBanner />
+      <AppRoutes />
+      <Toaster position="top-right" theme="dark" richColors closeButton />
+      {/* Passkey onboarding: appears once after first Google login on capable devices */}
+      <PasskeySetupPrompt />
+    </BrowserRouter>
+  );
+};
 
 export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <ScanProvider>
-          <BrowserRouter>
-            <DemoBanner />
-            <AppRoutes />
-            <Toaster position="top-right" theme="dark" richColors closeButton />
-            {/* Passkey onboarding: appears once after first Google login on capable devices */}
-            <PasskeySetupPrompt />
-          </BrowserRouter>
+          <UIDesignProvider>
+            <MainAppContent />
+          </UIDesignProvider>
         </ScanProvider>
       </AuthProvider>
     </ErrorBoundary>
