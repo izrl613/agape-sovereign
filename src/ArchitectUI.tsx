@@ -6,6 +6,7 @@ import { doc, getDoc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "fir
 import { startRegistration } from "@simplewebauthn/browser";
 import { httpsCallable } from "firebase/functions";
 import { useUIDesign } from "./UIDesignContext";
+import { useScan } from "./ScanContext";
 import { chatComplete } from "./services/localAIService";
 import { ARCHITECT_SYSTEM_PROMPT } from "./architectPrompt";
 // ============================================================
@@ -738,25 +739,26 @@ const DashboardView = ({ diffModules, onModuleClick }) => {
 };
 
 // ─── Module Detail View ───────────────────────────────────────
-const ModuleDetailView = ({ diffModules, moduleId }) => {
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [currentStage, setCurrentStage] = useState("");
-  const [completedStages, setCompletedStages] = useState([]);
-  const [activeStageIndex, setActiveStageIndex] = useState(-1);
+const ModuleDetailView = ({ diffModules, moduleId }: any) => {
+  const { findings: liveFindings, isScanning, scanProgress, triggerModuleScan, currentSubTask, currentStep, totalSteps } = useScan();
 
-  const m = diffModules.find(x => x.id === moduleId);
+  const m = diffModules.find((x: any) => x.id === moduleId);
   if (!m) return null;
   const sev = m.severity;
   const sevColor = sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
 
-  const findings = [
-    { type: "NUKED", label: "Data broker profile found", detail: "Spokeo, Whitepages, BeenVerified", action: "Request removal initiated" },
-    { type: "MONITORED", label: "Metadata exposure detected", detail: "Email headers contain IP address", action: "Review & configure" },
-    { type: "KNOXED", label: "Breach database clear", detail: "No matches in HaveIBeenPwned", action: "Verified secure" },
-    { type: "KNOXED", label: "2FA enforced", detail: "TOTP active on primary account", action: "Hardened" },
-    { type: "NUKED", label: "Personal info indexed", detail: "Name + phone on 3 data aggregators", action: "Removal in progress" },
-  ].slice(0, m.nuked + m.knoxed > 5 ? 5 : 3);
+  // Map live findings to the display format
+  const moduleFindings = liveFindings.filter(f => f.module === moduleId || f.module === m.vector);
+  
+  const findings = moduleFindings.map(f => ({
+    type: f.status,
+    label: f.finding,
+    detail: f.details || (f.status === "NUKED" ? "Exposure confirmed" : f.status === "KNOXED" ? "Verified secure" : "Review needed"),
+    action: f.status === "NUKED" ? "Removal in progress" : f.status === "KNOXED" ? "Hardened" : "Review & configure"
+  })).slice(0, 10); // Show up to 10 findings
+
+  // Fallback if no live data is present and we're not scanning (optional, but requested no mock data so we just show empty or a placeholder if empty)
+  // The user requested NO MOCK DATA. We will rely entirely on liveFindings.
 
   const baseStages = [
     "INITIALIZING SENSORS",
@@ -768,31 +770,8 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
     "SCAN COMPLETE"
   ];
 
-  const handleScan = () => {
-    setIsScanning(true);
-    setScanProgress(0);
-    setCompletedStages([]);
-    setActiveStageIndex(0);
-    setCurrentStage(baseStages[0]);
-    
-    let current = 0;
-    const interval = setInterval(() => {
-      if (current < baseStages.length) {
-        const progress = Math.min(100, Math.floor(((current + 1) / baseStages.length) * 100));
-        setScanProgress(progress);
-        setCurrentStage(baseStages[current]);
-        setActiveStageIndex(current);
-        if (current > 0) {
-          setCompletedStages(prev => [...prev, baseStages[current-1]]);
-        }
-        current++;
-      } else {
-        setCompletedStages(prev => [...prev, baseStages[baseStages.length-1]]);
-        setActiveStageIndex(-1);
-        clearInterval(interval);
-        setTimeout(() => setIsScanning(false), 3000);
-      }
-    }, 1200);
+  const handleScan = async () => {
+    await triggerModuleScan(m.id || m.vector);
   };
 
   return (
@@ -848,6 +827,11 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
             </div>
           </div>
         ))}
+        {findings.length === 0 && !isScanning && (
+          <div style={{ color: NEON.textMuted, fontFamily: "'Share Tech Mono'", fontSize: "0.8rem", textAlign: "center", padding: "20px" }}>
+            No intelligence findings recorded. Initiate a vector sweep.
+          </div>
+        )}
       </div>
 
       {/* Scan Progress Visualization */}
@@ -869,8 +853,11 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
             {baseStages.map((stage, idx) => {
-              const isCompleted = completedStages.includes(stage);
-              const isActive = activeStageIndex === idx;
+              // Map the actual progress to these fake visual stages for effect
+              const stagePct = (idx + 1) / baseStages.length * 100;
+              const isCompleted = scanProgress >= stagePct;
+              const isActive = !isCompleted && scanProgress >= (idx / baseStages.length * 100);
+              
               return (
                 <div key={idx} style={{ 
                   display: 'flex', 
@@ -910,7 +897,7 @@ const ModuleDetailView = ({ diffModules, moduleId }) => {
                 {[0,1,2,3].map(i => <div key={i} style={{ width: 2, height: 10, background: NEON.blue, opacity: 0.3 + (i * 0.2) }} />)}
              </div>
              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.blue, letterSpacing: '0.1em' }}>
-                CURRENT: {currentStage}
+                CURRENT: {currentSubTask || "ANALYZING VECTORS..."}
              </div>
           </div>
         </GlassCard>
