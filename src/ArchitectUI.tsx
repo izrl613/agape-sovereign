@@ -1322,7 +1322,7 @@ const ProfilePanel = ({ user, onClose }: any) => {
 };
 
 // ─── MAIN APP ─────────────────────────────────────────────────
-export default function App() {
+export default function ArchitectUI() {
   const [user, setUser] = useState<any>(null);
   const [diffModules, setDiffModules] = useState<any[]>(DEFAULT_MODULE_DATA);
   const [activeSection, setActiveSection] = useState<any>("dashboard");

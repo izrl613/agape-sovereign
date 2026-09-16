@@ -4,6 +4,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  signInAnonymously,
   signOut,
   getRedirectResult,
   setPersistence,
@@ -241,6 +242,16 @@ export const logout = async () => {
     try { localStorage.removeItem('sovereign_login_hint'); } catch { /* ignore */ }
   } catch (error) {
     console.error('Error signing out', error);
+    throw error;
+  }
+};
+
+export const loginAnonymously = async () => {
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error) {
+    console.error('[AUTH] Anonymous sign-in error:', error);
     throw error;
   }
 };
