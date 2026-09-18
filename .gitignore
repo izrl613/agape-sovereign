@@ -55,3 +55,6 @@ openspec/.vector-search.db*
 .metadata/
 .idea/
 .env.keys
+
+# Kilo Code IDE agent config
+.kilo/
