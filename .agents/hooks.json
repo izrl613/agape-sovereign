@@ -1,0 +1,18 @@
+{
+  "git-autorepair": {
+    "PostInvocation": [
+      {
+        "type": "command",
+        "command": "bash scripts/git-autorepair.sh",
+        "timeout": 30
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash scripts/git-autorepair.sh",
+        "timeout": 30
+      }
+    ]
+  }
+}
