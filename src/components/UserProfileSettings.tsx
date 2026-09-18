@@ -12,7 +12,7 @@ import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, demoMode } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,7 +33,7 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      if (user.uid === 'emergency-bypass-admin-999') {
+      if (demoMode) {
         const localKey = `reports_history_${user.uid}`;
         const existing = localStorage.getItem(localKey);
         const list = existing ? JSON.parse(existing) : [];

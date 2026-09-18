@@ -28,7 +28,7 @@ interface ModuleProps {
 }
 
 export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel, pillar, techniques }: ModuleProps) => {
-  const { user } = useAuth();
+  const { user, demoMode } = useAuth();
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,7 +61,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   useEffect(() => {
     if (!user) return;
 
-    if (user.uid === 'emergency-bypass-admin-999') {
+    if (demoMode) {
       const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
       if (localActive) {
         try {
@@ -118,8 +118,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const newHash = await generateSHA256(parameterValue);
       const encrypted = await encryptClientSide(parameterValue, user.uid);
 
-      // Save to Firestore
-      if (user.uid === 'emergency-bypass-admin-999') {
+      // Save to Firestore or LocalStorage for demoMode
+      if (demoMode) {
         const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
         const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
         parsed.data[moduleId] = encrypted;
@@ -204,8 +204,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         }
       }
 
-      // Save scan finding to diff_scans
-      if (user.uid === 'emergency-bypass-admin-999') {
+      // Save scan finding to diff_scans or LocalStorage for demoMode
+      if (demoMode) {
         const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
         const filtered = localFindings.filter((f: any) => f.module !== moduleId);
         filtered.push({

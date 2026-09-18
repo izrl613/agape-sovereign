@@ -5,10 +5,12 @@ import { onAuthStateChanged, signInWithCustomToken, linkWithPopup, GoogleAuthPro
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { startRegistration } from "@simplewebauthn/browser";
 import { httpsCallable } from "firebase/functions";
-import { useUIDesign } from "./UIDesignContext";
-import { useScan } from "./ScanContext";
-import { chatComplete } from "./services/localAIService";
-import { ARCHITECT_SYSTEM_PROMPT } from "./architectPrompt";
+import { ArchitectLayout } from "./components/architect/ArchitectLayout";
+import { SovereignStatus } from "./components/architect/SovereignStatus";
+import { ActivitySidebar } from "./components/architect/ActivitySidebar";
+import { ActionRow } from "./components/architect/ActionRow";
+import { VectorFooter } from "./components/architect/VectorFooter";
+
 // ============================================================
 // ARCHITECT AI — AGAPE SOVEREIGN ENCLAVE 2026
 // Digital Identity Federated Footprint (DIFF) Intelligence
@@ -1310,7 +1312,10 @@ const ProfilePanel = ({ user, onClose }: any) => {
 
 // ─── MAIN APP ─────────────────────────────────────────────────
 export default function ArchitectUI() {
+  const { findings, isScanning, triggerFullScan } = useScan();
+
   const [user, setUser] = useState<any>(null);
+
   const [diffModules, setDiffModules] = useState<any[]>(DEFAULT_MODULE_DATA);
   const [activeSection, setActiveSection] = useState<any>("dashboard");
   const [activeModule, setActiveModule] = useState<any>(null);
@@ -1430,20 +1435,17 @@ export default function ArchitectUI() {
     if (activeSection === "architect") return <ArchitectAIView user={user} diffModules={diffModules} isCloudMode={isCloudMode} />;
     if (activeSection === "report") return <ReportView diffModules={diffModules} />;
     if (activeSection === "modules" && activeModule) return <ModuleDetailView diffModules={diffModules} moduleId={activeModule} />;
-    return <DashboardView diffModules={diffModules} onModuleClick={handleModuleClick} />;
+    return <SovereignStatus />;
   };
 
   return (
     <>
       <GlobalStyle />
-      {/* App shell */}
       <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: NEON.bg, overflow: "hidden" }}>
-        {/* Top border gradient */}
         <div style={{ height: 2, background: GRADIENT_BORDER, backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite", flexShrink: 0 }} />
 
         <TopHeader user={user} onAdmin={() => setShowAdmin(true)} onProfile={() => setShowProfile(true)} isCloudMode={isCloudMode} setIsCloudMode={setIsCloudMode} />
 
-        {/* Anonymous upgrade banner — Layer 1 → Layer 2 */}
         {showAnonUpgrade && !passkeyBound && (
           <div style={{ padding: "10px 24px", background: "rgba(255,122,24,0.08)", borderBottom: "1px solid rgba(255,122,24,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1456,7 +1458,6 @@ export default function ArchitectUI() {
           </div>
         )}
 
-        {/* Passkey binding prompt — Layer 3 (for federated users) */}
         {showPasskeyPrompt && !passkeyBound && (
           <div style={{ padding: "10px 24px", background: "rgba(255,46,159,0.06)", borderBottom: "1px solid rgba(255,46,159,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1474,23 +1475,22 @@ export default function ArchitectUI() {
           </div>
         )}
 
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <LeftNav diffModules={diffModules} activeModule={activeModule} setActiveModule={setActiveModule} activeSection={activeSection} setActiveSection={setActiveSection} />
+        <ArchitectLayout
+          sidebar={<ActivitySidebar />}
+          actionRow={
+            <ActionRow
+              onScan={triggerFullScan}
+              onRemediate={() => {}}
+              onReport={() => setActiveSection("report")}
+              onRecover={() => {}}
+              isScanning={isScanning}
+            />
+          }
+          footer={<VectorFooter />}
+        >
+          {renderMain()}
+        </ArchitectLayout>
 
-          {/* Main content */}
-          <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-            {/* Background grid */}
-            <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px)`, backgroundSize: "32px 32px", pointerEvents: "none" }} />
-            {/* Glow orbs */}
-            <div style={{ position: "absolute", top: "20%", right: "15%", width: 300, height: 300, background: "radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", bottom: "20%", left: "20%", width: 200, height: 200, background: "radial-gradient(circle, rgba(255,46,159,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-            <div style={{ position: "relative", zIndex: 1, height: "100%", overflowY: "auto" }}>
-              {renderMain()}
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom border gradient */}
         <div style={{ height: 2, background: GRADIENT_BORDER, backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear reverse infinite", flexShrink: 0 }} />
       </div>
 

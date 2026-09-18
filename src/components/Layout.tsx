@@ -891,7 +891,7 @@ interface PreGenModalProps {
 }
 
 const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
-  const { user, sovereignScore } = useAuth();
+  const { user, sovereignScore, demoMode } = useAuth();
   const { findings } = useScan();
   const [loading, setLoading] = useState(true);
   const [modulesData, setModulesData] = useState<any[]>([]);
@@ -915,7 +915,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         let activeData: Record<string, string> = {};
         let hashes: Record<string, string> = {};
         
-        if (user.uid === 'emergency-bypass-admin-999') {
+        if (demoMode || user.isAnonymous) {
           const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
           if (localActive) {
             const parsed = JSON.parse(localActive);

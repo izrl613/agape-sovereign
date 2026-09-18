@@ -7,8 +7,11 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 import { DEMO_FINDINGS } from './data/demoData';
 
+import { DIFF_MODULES, DiffModule } from './lib/diffModules';
+
 interface ScanContextType {
   findings: ScanFinding[];
+  diffModules: DiffModule[];
   isLoading: boolean;
   isScanning: boolean;
   scanProgress: number; // 0 to 100
@@ -37,8 +40,36 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentModule, setCurrentModule] = useState<string | null>(null);
   const [currentSubTask, setCurrentSubTask] = useState<string | null>(null);
   const [lastScanDate, setLastScanDate] = useState<Date | null>(null);
+  const [diffModules, setDiffModules] = useState<DiffModule[]>(DIFF_MODULES);
   const [error, setError] = useState<string | null>(null);
   const [notifiedFindingIds, setNotifiedFindingIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (findings.length > 0) {
+      setDiffModules(prevModules =>
+        prevModules.map(mod => {
+          const modFindings = findings.filter(f =>
+            f.module?.toLowerCase() === mod.id.toLowerCase() ||
+            f.module?.toLowerCase() === mod.label.toLowerCase() ||
+            f.module?.toLowerCase().includes(mod.id.split('-')[0])
+          );
+          if (modFindings.length === 0) return mod;
+          const nuked = modFindings.filter(f => f.status === 'NUKED').length;
+          const knoxed = modFindings.filter(f => f.status === 'KNOXED').length;
+          const monitored = modFindings.filter(f => f.status === 'MONITORED').length;
+          const sevCalc = Math.max(0, 100 - (knoxed * 5) + (nuked * 15));
+          return {
+            ...mod,
+            nukedCount: nuked,
+            knoxedCount: knoxed,
+            monitoredCount: monitored,
+            severity: Math.min(100, Math.max(10, sevCalc)),
+            lastScanned: Date.now()
+          };
+        })
+      );
+    }
+  }, [findings]);
 
   useEffect(() => {
     // Demo mode: inject pre-populated findings without hitting Firestore
@@ -163,7 +194,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   return (
-    <ScanContext.Provider value={{ findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, currentSubTask, lastScanDate, error, triggerFullScan, triggerModuleScan }}>
+    <ScanContext.Provider value={{ findings, diffModules, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, currentSubTask, lastScanDate, error, triggerFullScan, triggerModuleScan }}>
       {children}
     </ScanContext.Provider>
   );
