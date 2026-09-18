@@ -129,8 +129,8 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     }
 
     const loadHistory = async () => {
-      // Handle emergency bypass user with local storage
-      if (user.uid === 'emergency-bypass-admin-999') {
+      // Handle demo / anonymous user with local storage
+      if (user?.isAnonymous || user?.uid?.startsWith('demo-')) {
         const localHistory = localStorage.getItem(`chat_history_${user.uid}`);
         if (localHistory) {
           try {
@@ -190,8 +190,8 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
   const saveHistory = useCallback(async (currentMessages: Message[]) => {
     if (!user?.uid || !isHistoryLoaded || currentMessages.length === 0) return;
 
-    // Handle emergency bypass user with local storage
-    if (user.uid === 'emergency-bypass-admin-999') {
+    // Handle demo / anonymous user with local storage
+    if (user?.isAnonymous || user?.uid?.startsWith('demo-')) {
       localStorage.setItem(`chat_history_${user.uid}`, JSON.stringify(currentMessages));
       return;
     }

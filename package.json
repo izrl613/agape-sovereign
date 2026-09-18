@@ -97,5 +97,8 @@
     "@grpc/proto-loader": "^0.7.0",
     "@opentelemetry/core": "^2.8.0",
     "brace-expansion": "^2.0.1"
+  },
+  "optionalDependencies": {
+    "@esbuild/darwin-arm64": "^0.28.2"
   }
 }
