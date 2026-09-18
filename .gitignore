@@ -58,3 +58,7 @@ openspec/.vector-search.db*
 
 # Kilo Code IDE agent config
 .kilo/
+
+# Auto-added by git-autorepair.sh
+.cursor/  # Cursor IDE
+.windsurf/  # Windsurf IDE
