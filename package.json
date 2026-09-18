@@ -22,8 +22,6 @@
     "test:coverage": "vitest run --coverage",
     "logs": "firebase functions:log"
   },
-
-  },
   "dependencies": {
     "@google/genai": "^2.15.0",
     "@simplewebauthn/browser": "^13.3.0",
