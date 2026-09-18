@@ -6,18 +6,23 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:full": "concurrently \"npm run dev\" \"npm run build:watch --prefix functions\"",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --outfile=dist/server.js --packages=external",
     "build:server": "esbuild server.ts --bundle --platform=node --format=esm --outfile=dist/server.js --packages=external",
     "build:all": "vite build && esbuild server.ts --bundle --platform=node --format=esm --outfile=dist/server.js --packages=external && npm run build --prefix functions",
     "build:frontend": "vite build",
     "build:functions": "npm run build --prefix functions",
-    "deploy": "firebase deploy",
+    "deploy": "npm run build && npm run build --prefix functions && firebase deploy",
+    "deploy:all": "npm run build && npm run build --prefix functions && firebase deploy",
+    "deploy:cloudrun": "gcloud builds submit --tag gcr.io/agape-sovereign/agape-sovereign && gcloud run deploy agape-sovereign --image gcr.io/agape-sovereign/agape-sovereign --platform managed --region us-central1",
     "lint": "npm run lint --prefix functions",
     "typecheck": "tsc --noEmit && npm run typecheck --if-present --prefix functions",
     "test": "node --test tests/*.test.js",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "logs": "firebase functions:log"
+  },
+
   },
   "dependencies": {
     "@google/genai": "^2.15.0",

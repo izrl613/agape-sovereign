@@ -1,12 +1,12 @@
 /* eslint-disable require-jsdoc, new-cap, max-len */
-import {onRequest} from "firebase-functions/https";
+import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getAppCheck} from "firebase-admin/app-check";
 import {getAuth} from "firebase-admin/auth";
 import express, {Request, Response} from "express";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 
 // Admin init

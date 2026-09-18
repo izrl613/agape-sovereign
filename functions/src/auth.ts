@@ -1,4 +1,4 @@
-import {onRequest} from "firebase-functions/https";
+import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
@@ -7,7 +7,7 @@ import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import {ErrorReporting} from "@google-cloud/error-reporting";
 import {
