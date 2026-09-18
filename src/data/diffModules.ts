@@ -1,4 +1,4 @@
-import { DiffModule } from "../types/diff";
+import type { DiffModule } from "../types/diff.ts";
 
 export const BASE_MODULES: DiffModule[] = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", nuked: 0, knoxed: 0, monitored: 0, severity: 100, findings: [] },
