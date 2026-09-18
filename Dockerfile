@@ -1,24 +1,18 @@
-FROM node:22-slim
-
+# ---- Builder stage ----
+FROM node:22-slim AS builder
 WORKDIR /app
-
-# Copy root package files (frontend at src/, server at root, functions/ workspace)
-COPY package.json package-lock.json ./
-COPY functions/package.json ./functions/package.json
-
-# Install all dependencies (root + functions workspace)
-RUN npm ci
-
-# Copy the rest of the application code
 COPY . .
+# Install dependencies and build frontend & functions
+RUN npm ci && npm run build && npm run build --prefix functions
 
-# Build the frontend (Vite) and bundle the server (esbuild)
-RUN npm run build
-
-# Expose Cloud Run port
-EXPOSE 8080
-ENV PORT=8080
+# ---- Runtime stage ----
+FROM node:22-slim
+WORKDIR /app
+# Copy built artifacts
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/functions/lib ./functions/lib
+COPY --from=builder /app/functions/package.json ./functions/package.json
+# Install production dependencies for functions only
+RUN cd functions && npm ci --omit=dev
 ENV NODE_ENV=production
-
-# Start the Express server
 CMD ["node", "dist/server.js"]
