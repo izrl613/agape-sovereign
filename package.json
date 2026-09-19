@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "logs": "firebase functions:log",
+    "commit": "bash scripts/one-tap-autocommit.sh",
     "autocommit": "bash scripts/autocommit.sh",
     "repair": "bash scripts/git-autorepair.sh",
     "repair:check": "bash scripts/git-autorepair.sh --check",
