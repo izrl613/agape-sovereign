@@ -28,8 +28,8 @@ If no argument is provided, the workflow will extract requirements from conversa
    a. **Argument provided** (e.g., "add dark mode") → use it as the requirement description, skip to deriving the change name below.
 
    b. **Plan file available**:
-   - Check if the conversation context mentions a plan file path (plan mode system messages include the path like `<name>.md`)
-   - If found, check if the file exists at ``
+   - Check if the conversation context mentions a plan file path (plan mode system messages include the path like `~/.windsurf/plans/<name>.md`)
+   - If found, check if the file exists at `~/.windsurf/plans/`
    - If a plan file is found, use the **AskUserQuestion tool** to ask:
      - Option 1: Use the plan file
      - Option 2: Use conversation context
@@ -77,7 +77,7 @@ If no argument is provided, the workflow will extract requirements from conversa
 4. **Create the change directory**
 
    ```bash
-   spectra new change "<name>" --agent kilocode
+   spectra new change "<name>" --agent windsurf
    ```
 
    If a change with that name already exists, suggest continuing the existing change instead of creating a new one.

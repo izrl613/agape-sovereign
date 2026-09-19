@@ -39,7 +39,7 @@ Do NOT keep trying variations of the same approach. That's a loop, not debugging
 Before anything else, make the bug happen reliably.
 
 - **Find the exact steps** to trigger the bug
-- **Identify the expected vs actual behavior** — be precise
+- **Identify the expected vs actual behavior** �� be precise
 - **Determine if it's consistent** — does it happen every time? Only on certain input?
 - **Simplify the reproduction** — strip away everything that's not essential
 
