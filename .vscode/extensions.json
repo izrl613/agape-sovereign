@@ -3,8 +3,7 @@
     "ms-vscode.live-server",
     "GitHub.vscode-pull-request-github",
     "GitHub.vscode-github-actions",
-    "GitHub.remotehub",
-    "saoudrizwan.claude-dev"
+    "GitHub.remotehub"
   ],
   "unwantedRecommendations": [
     "google.securecoder",
