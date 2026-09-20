@@ -7,7 +7,7 @@ import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import { rateLimit } from "express-rate-limit";
+import {rateLimit} from "express-rate-limit";
 import helmet from "helmet";
 import {ErrorReporting} from "@google-cloud/error-reporting";
 import {
