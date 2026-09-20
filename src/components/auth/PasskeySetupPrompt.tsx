@@ -14,10 +14,12 @@ const NEON_MAGENTA = '#FF2E9F';
 const NEON_ORANGE = '#FF6B00';
 const STORAGE_KEY = 'agape_passkey_prompt_dismissed';
 
+type AuthenticatorMode = 'platform' | 'cross-platform' | null;
+
 export const PasskeySetupPrompt: React.FC = () => {
   const { user, bindPasskey } = useAuth();
   const [visible, setVisible] = useState(false);
-  const [platformAvailable, setPlatformAvailable] = useState(false);
+  const [authenticatorMode, setAuthenticatorMode] = useState<AuthenticatorMode>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -25,14 +27,27 @@ export const PasskeySetupPrompt: React.FC = () => {
     if (!user || user.isAnonymous) return;
     if (localStorage.getItem(STORAGE_KEY)) return;
 
-    // Only show if platform authenticator is available
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(ok => {
-        if (ok) setPlatformAvailable(true);
-        // Delay slightly so it doesn't appear before the app settles
-        setTimeout(() => setVisible(ok), 1200);
-      }).catch(() => {});
-    }
+    if (typeof window === 'undefined' || !window.PublicKeyCredential) return;
+
+    // Check platform authenticator first (TouchID / FaceID / Windows Hello)
+    PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+      .then(platformOk => {
+        if (platformOk) {
+          setAuthenticatorMode('platform');
+          setTimeout(() => setVisible(true), 1200);
+          return;
+        }
+        // Fall through: check if WebAuthn is at least available (cross-device)
+        // Using a basic availability check — if PublicKeyCredential exists,
+        // cross-device passkeys (hardware keys, phone passkeys) may work.
+        setAuthenticatorMode('cross-platform');
+        setTimeout(() => setVisible(true), 1200);
+      })
+      .catch(() => {
+        // If the platform check itself throws, still offer cross-platform option
+        setAuthenticatorMode('cross-platform');
+        setTimeout(() => setVisible(true), 1800);
+      });
   }, [user]);
 
   const dismiss = () => {
@@ -59,7 +74,16 @@ export const PasskeySetupPrompt: React.FC = () => {
     }
   };
 
-  if (!platformAvailable) return null;
+  if (!authenticatorMode) return null;
+
+  const isPlatform = authenticatorMode === 'platform';
+
+  const title = isPlatform
+    ? 'Enable Passkey Login'
+    : 'Add a Cross-Device Passkey';
+  const subtitle = isPlatform
+    ? 'Sign in next time with your fingerprint or Face ID — no password, no Google prompt.'
+    : 'Register a hardware key or phone passkey for passwordless sign-in on any device.';
 
   return (
     <AnimatePresence>
@@ -114,17 +138,20 @@ export const PasskeySetupPrompt: React.FC = () => {
                 </div>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 14, color: '#fff', lineHeight: 1.3, marginBottom: 4 }}>
-                    Enable Passkey Login
+                    {title}
                   </div>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.5 }}>
-                    Sign in next time with your fingerprint or Face ID — no password, no Google prompt.
+                    {subtitle}
                   </div>
                 </div>
               </div>
 
               {/* Benefits */}
               <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {['Phishing-resistant authentication', 'Device-bound — never leaves your hardware', 'Instant biometric unlock'].map(b => (
+                {(isPlatform
+                  ? ['Phishing-resistant authentication', 'Device-bound — never leaves your hardware', 'Instant biometric unlock']
+                  : ['Works with hardware security keys', 'Use your phone as a passkey via QR code', 'Phishing-resistant — no password']
+                ).map(b => (
                   <div key={b} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Shield size={11} color={NEON_ORANGE} />
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{b}</span>

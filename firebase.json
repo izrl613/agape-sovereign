@@ -12,7 +12,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://sovereign.nyc https://authapi-vub7d55vga-uc.a.run.app https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com wss://*.firebaseio.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+            "value": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://sovereign.nyc https://www.sovereign.nyc https://authapi-vub7d55vga-uc.a.run.app https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://oauth2.googleapis.com wss://*.firebaseio.com https://*.googleapis.com; frame-src https://accounts.google.com https://sovereign.nyc https://agape-sovereign.firebaseapp.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com"
           },
           {
             "key": "Strict-Transport-Security",
