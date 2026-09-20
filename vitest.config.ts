@@ -7,13 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    // tests/**/*.test.js uses node:test (run via `npm test`), not Vitest — exclude them here
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/**/*.{test,spec}.{ts,tsx}'],
-    exclude: [
-      'node_modules',
-      'tests/aiModel.test.js',
-      'tests/diffModules.test.js',
-    ],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],

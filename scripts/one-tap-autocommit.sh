@@ -64,17 +64,46 @@ DELETED=$(git diff --cached --name-only --diff-filter=D | wc -l | tr -d ' ')
 # List top changed files for context
 TOP_FILES=$(git diff --cached --name-only | head -4 | sed 's|.*/||' | paste -sd ', ' -)
 
-# Pick the right conventional commit prefix
-TOTAL=$((ADDED + MODIFIED + DELETED))
-if   [[ $ADDED   -gt $MODIFIED && $ADDED   -gt $DELETED ]]; then PREFIX="feat"
-elif [[ $DELETED -gt $MODIFIED ]];                           then PREFIX="refactor"
-elif [[ $MODIFIED -ge 1 && $TOTAL -lt 4 ]];                 then PREFIX="fix"
-else                                                              PREFIX="chore"
+DIFF_CONTENT=$(git diff --cached | head -n 300)
+AI_MSG=""
+
+if [[ -n "$DIFF_CONTENT" ]]; then
+  PAYLOAD=$(jq -n --arg diff "$DIFF_CONTENT" '{
+    messages: [
+      {
+        role: "system",
+        content: "You are an expert software developer writing a conventional commit message. Return ONLY a single line valid conventional commit string. No markdown, no quotes, no explanations. Format: <type>(<scope>): <description>"
+      },
+      {
+        role: "user",
+        content: "Write a single-line conventional commit message for the following git diff:\n\n\($diff)"
+      }
+    ],
+    temperature: 0.2,
+    max_tokens: 100
+  }')
+  
+  if curl -s -f -X POST "http://localhost:1234/v1/chat/completions" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" > /tmp/lmstudio_response.json 2>/dev/null; then
+    
+    # Parse out just the message content
+    AI_MSG=$(jq -r '.choices[0].message.content // empty' < /tmp/lmstudio_response.json | sed -e 's/^"//' -e 's/"$//' -e 's/^`*//' -e 's/`*$//' | xargs)
+  fi
 fi
 
-# Build message
-SCOPE="autogenerate"
-MSG="${PREFIX}(${SCOPE}): ${TIMESTAMP} — ${TOP_FILES}"
+if [[ -n "$AI_MSG" ]]; then
+  MSG="$AI_MSG"
+else
+  TOTAL=$((ADDED + MODIFIED + DELETED))
+  if   [[ $ADDED   -gt $MODIFIED && $ADDED   -gt $DELETED ]]; then PREFIX="feat"
+  elif [[ $DELETED -gt $MODIFIED ]];                           then PREFIX="refactor"
+  elif [[ $MODIFIED -ge 1 && $TOTAL -lt 4 ]];                 then PREFIX="fix"
+  else                                                              PREFIX="chore"
+  fi
+  SCOPE="autogenerate"
+  MSG="${PREFIX}(${SCOPE}): ${TIMESTAMP} — ${TOP_FILES}"
+fi
 BODY="Changes: +${ADDED} added  ~${MODIFIED} modified  -${DELETED} deleted on ${BRANCH}"
 
 # ── 5. Commit ─────────────────────────────────────────────────────────────────
