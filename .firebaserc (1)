@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "agape-sovereign",
-    "agape-sovereign": "agape-sovereign"
-  },
-  "targets": {},
-  "etags": {}
-}
