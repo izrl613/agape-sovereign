@@ -249,9 +249,9 @@ function setSessionCookie(res: Response, sessionData: object): void {
 
   // Default to sovereign.nyc in production so the cookie is scoped to the
   // same eTLD+1 as the Hosting rewrite — this fixes passkey challenge routing.
-  const cookieDomain = isSecure
-    ? (process.env.COOKIE_DOMAIN || "sovereign.nyc")
-    : undefined;
+  const cookieDomain = isSecure ?
+    (process.env.COOKIE_DOMAIN || "sovereign.nyc") :
+    undefined;
 
   res.cookie("__session", JSON.stringify(sessionData), {
     httpOnly: true,
