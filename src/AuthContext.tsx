@@ -13,6 +13,8 @@ import { signInWithCustomToken } from 'firebase/auth';
 import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
 import { generateSessionNonce } from './services/sovereignHashService';
 import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
+import { localVaultService } from './services/localVaultService';
+import { driveExportService } from './services/driveExportService';
 
 interface AuthContextType {
   user: User | null;
@@ -33,6 +35,9 @@ interface AuthContextType {
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
   setDemoUser: () => void;
   clearDemoUser: () => void;
+  vaultReady: boolean;
+  saveToVault: (pdfBlob: Blob, metadata: any) => Promise<string>;
+  exportToDrive: (pdfBlob: Blob, fileName: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
+  const [vaultReady, setVaultReady] = useState(false);
   // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
   // without being recreated every time demoMode changes.
   const demoModeRef = React.useRef(false);
@@ -144,6 +150,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               resolvedAuthType = 'passkey';
             }
             setAuthType(resolvedAuthType);
+            
+            if (resolvedAuthType === 'passkey') {
+              setVaultReady(true);
+            } else {
+              setVaultReady(false);
+            }
 
             // OPERATION FRAMEWORK: Produce SHA-256 identity hash immediately (Phase 1 Gatekeeper)
             // Raw uid + email never stored beyond this scope — hash is the sole session identifier.
@@ -232,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setAuthType(null);
           setSetupCompleteState(false);
           setUserData(null);
+          setVaultReady(false);
           if (unsubscribeUserDoc) unsubscribeUserDoc();
           // Release capacity slot on sign-out
           cleanupSession().catch(() => {});
@@ -476,6 +489,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSetupCompleteState(false);
   };
 
+  const saveToVault = async (pdfBlob: Blob, metadata: any) => {
+    if (!user || authType !== 'passkey') {
+      throw new Error('Vault is only available for Passkey users');
+    }
+    return await localVaultService.saveReport(user.uid, pdfBlob, metadata);
+  };
+
+  const exportToDrive = async (pdfBlob: Blob, fileName: string) => {
+    if (!user || authType !== 'google') {
+      throw new Error('Drive export is only available for Google users');
+    }
+    return await driveExportService.exportToDrive(pdfBlob, fileName);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -496,6 +523,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateProfile: handleUpdateProfile,
       setDemoUser: handleSetDemoUser,
       clearDemoUser: handleClearDemoUser,
+      vaultReady,
+      saveToVault,
+      exportToDrive,
     }}>
       {children}
     </AuthContext.Provider>
