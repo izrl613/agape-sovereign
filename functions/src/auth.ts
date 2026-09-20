@@ -185,7 +185,7 @@ export function rpIdForOrigin(origin: string): string {
  * @param {Request} req Express request.
  * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
-function getWebAuthnConfig(req: Request): {
+export function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
   rpId: string;
   allowedOrigins: string[];
