@@ -1,0 +1,45 @@
+{
+  "name": "agape0sovereign",
+  "version": "1.0.0",
+  "description": "Agape Sovereign - Real PWA Implementation with Breach Detection",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "cypress run",
+    "test:e2e": "cypress run",
+    "db:generate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.21.0",
+    "@tanstack/react-query": "^5.62.14",
+    "@vercel/analytics": "^1.3.2",
+    "axios": "^1.7.7",
+    "jose": "^5.9.0",
+    "next": "15.0.4",
+    "postcss": "^8.4.49",
+    "postcss-preset-env": "^9.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.1"
+  },
+  "devDependencies": {
+    "@cypress/webpack-preprocessor": "^6.0.6",
+    "@types/node": "^22.10.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "cypress": "^14.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "15.0.4",
+    "prisma": "^5.21.0",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.7.2"
+  }
+}
