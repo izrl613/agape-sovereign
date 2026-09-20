@@ -6,7 +6,7 @@ import {getAppCheck} from "firebase-admin/app-check";
 import {getAuth} from "firebase-admin/auth";
 import express, {Request, Response} from "express";
 import cors from "cors";
-import { rateLimit } from "express-rate-limit";
+import {rateLimit} from "express-rate-limit";
 import helmet from "helmet";
 
 // Admin init
@@ -98,7 +98,7 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
 
     // Build context from history
     const context = history && Array.isArray(history) ?
-      history.slice(-10).map((m: any) => `${m.role}: ${m.content}`).join("\n") :
+      history.slice(-10).map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join("\n") :
       "";
 
     // Call Gemini API (using Vertex AI or direct)
