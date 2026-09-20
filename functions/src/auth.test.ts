@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { normalizeEmail, rpIdForOrigin, encodeCredentialId } from "./auth";
+import { normalizeEmail, rpIdForOrigin, encodeCredentialId, getWebAuthnConfig } from "./auth";
+import type { Request } from "express";
 
 // Mock the external dependencies
 vi.mock("firebase-admin/app", () => ({
@@ -79,6 +80,35 @@ describe("Auth Utilities", () => {
       const buffer = new Uint8Array([0x01, 0x02, 0x03, 0x04]);
       const result = encodeCredentialId(buffer);
       expect(result).toBe("AQIDBA");
+    });
+  });
+
+  describe("getWebAuthnConfig", () => {
+    it("resolves sovereign.nyc from origin header", () => {
+      const req = {
+        get: (header: string) => (header === "origin" ? "https://sovereign.nyc" : ""),
+      } as unknown as Request;
+      const config = getWebAuthnConfig(req);
+      expect(config.expectedOrigin).toBe("https://sovereign.nyc");
+      expect(config.rpId).toBe("sovereign.nyc");
+    });
+
+    it("resolves localhost from referer header when origin header missing", () => {
+      const req = {
+        get: (header: string) => (header === "referer" ? "http://localhost:5173/login" : ""),
+      } as unknown as Request;
+      const config = getWebAuthnConfig(req);
+      expect(config.expectedOrigin).toBe("http://localhost:5173");
+      expect(config.rpId).toBe("localhost");
+    });
+
+    it("falls back to default origin when origin/referer empty", () => {
+      const req = {
+        get: () => "",
+      } as unknown as Request;
+      const config = getWebAuthnConfig(req);
+      expect(config.expectedOrigin).toBe("https://sovereign.nyc");
+      expect(config.rpId).toBe("sovereign.nyc");
     });
   });
 });
