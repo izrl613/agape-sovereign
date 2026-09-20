@@ -724,17 +724,22 @@ router.post("/magic-link", authLimiter, async (req: Request, res: Response) => {
         message: {
           subject: "Your Agape Sovereign Sign-In Link",
           html: `
-<div style="font-family:'Inter',sans-serif;background:#060C1A;color:#fff;padding:40px;border-radius:12px;max-width:480px;margin:auto">
+<div style="font-family:'Inter',sans-serif;background:#060C1A;color:#fff;padding:40px;` +
+            `border-radius:12px;max-width:480px;margin:auto">
   <div style="text-align:center;margin-bottom:28px">
     <div style="font-size:28px;font-weight:900;letter-spacing:0.08em;color:#00D4FF">Agape Sovereign</div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:0.18em;margin-top:4px">DIGITAL IDENTITY DEFENSE</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:0.18em;margin-top:4px">` +
+            `DIGITAL IDENTITY DEFENSE</div>
   </div>
-  <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.15);border-radius:10px;padding:24px;margin-bottom:24px">
+  <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.15);` +
+            `border-radius:10px;padding:24px;margin-bottom:24px">
     <p style="margin:0 0 16px;font-size:14px;color:rgba(255,255,255,0.8);line-height:1.6">
       Click the button below to sign in to your Sovereign account. This link expires in 1 hour.
     </p>
     <div style="text-align:center">
-      <a href="${link}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#FF2E9F,#00D4FF);color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;letter-spacing:0.04em">
+      <a href="${link}" style="display:inline-block;padding:14px 28px;` +
+            "background:linear-gradient(135deg,#FF2E9F,#00D4FF);color:#fff;font-weight:700;" +
+            `font-size:14px;border-radius:10px;text-decoration:none;letter-spacing:0.04em">
         Sign In to Sovereign
       </a>
     </div>
