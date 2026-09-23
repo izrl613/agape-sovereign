@@ -3,11 +3,9 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
 
-// Visible only when VITE_DEMO_MODE=true or ?demo=true in the URL
+// Always visible — removed environment flag gate per requirements
 function isDemoVisible(): boolean {
-  if (import.meta.env.VITE_DEMO_MODE === 'true') return true;
-  if (typeof window !== 'undefined' && window.location.search.includes('demo=true')) return true;
-  return false;
+  return true;
 }
 
 // CSS keyframes injected once
@@ -119,13 +117,13 @@ export const DemoBypassButton: React.FC = () => {
         }} />
 
         {/* Demo icon */}
-        <span style={{ fontSize: 14, flexShrink: 0 }} aria-hidden>⚗</span>
+        <span style={{ fontSize: 14, flexShrink: 0 }} aria-hidden>🚀</span>
 
         {/* Glitch label */}
         <span style={labelStyle}>
-          ENTER AS GUEST // DEMO MODE
+          EXPLORE AS GUEST · NO ACCOUNT NEEDED
           <span style={glitchOverlayStyle} aria-hidden>
-            ENTER AS GUEST // DEMO MODE
+            EXPLORE AS GUEST · NO ACCOUNT NEEDED
           </span>
         </span>
       </motion.button>

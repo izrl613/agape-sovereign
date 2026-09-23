@@ -14,6 +14,8 @@ import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorServi
 import { generateSessionNonce } from './services/sovereignHashService';
 import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
 import { calculateEnhancedSovereignScore, getScanFindings } from './services/scanService';
+import { localVaultService } from './services/localVaultService';
+import { driveExportService } from './services/driveExportService';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +26,7 @@ interface AuthContextType {
   sovereignHash: string | null;
   authType: 'google' | 'passkey' | 'anonymous' | null;
   setupComplete: boolean;
+  vaultReady: boolean;
   loading: boolean;
   demoMode: boolean;
   login: () => Promise<void>;
@@ -34,6 +37,8 @@ interface AuthContextType {
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
   setDemoUser: () => void;
   clearDemoUser: () => void;
+  saveToVault: (pdfBlob: Blob, metadata: any) => Promise<string>;
+  exportToDrive: (pdfBlob: Blob, fileName: string) => Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [sovereignHash, setSovereignHash] = useState<string | null>(null);
   const [authType, setAuthType] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
+  const [vaultReady, setVaultReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
   // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
@@ -145,6 +151,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               resolvedAuthType = 'passkey';
             }
             setAuthType(resolvedAuthType);
+
+            // Initialize local vault for passkey users
+            if (resolvedAuthType === 'passkey') {
+              try {
+                await localVaultService.init();
+                setVaultReady(true);
+              } catch (vaultErr) {
+                console.warn('[AUTH] Local vault initialization failed:', vaultErr);
+                setVaultReady(false);
+              }
+            }
 
             // OPERATION FRAMEWORK: Produce SHA-256 identity hash immediately (Phase 1 Gatekeeper)
             // Raw uid + email never stored beyond this scope — hash is the sole session identifier.
@@ -494,6 +511,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSetupCompleteState(false);
   };
 
+  const handleSaveToVault = async (pdfBlob: Blob, metadata: any): Promise<string> => {
+    if (!user) {
+      throw new Error('You must be logged in to save to vault');
+    }
+    
+    try {
+      const reportId = await localVaultService.saveReport(user.uid, pdfBlob, metadata);
+      toast.success('Report saved to local encrypted vault');
+      logEvent(AuditLogType.SECURITY_EVENT, 'Report saved to local vault', user.uid, user.email || undefined);
+      return reportId;
+    } catch (error) {
+      console.error('Failed to save to vault:', error);
+      toast.error('Failed to save report to vault');
+      throw error;
+    }
+  };
+
+  const handleExportToDrive = async (pdfBlob: Blob, fileName: string): Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string }> => {
+    if (!user || authType !== 'google') {
+      return { success: false, error: 'Google Drive export is only available for Google-authenticated users' };
+    }
+    
+    try {
+      const result = await driveExportService.exportToDrive(pdfBlob, fileName);
+      if (result.success) {
+        toast.success('Report exported to Google Drive');
+        logEvent(AuditLogType.SECURITY_EVENT, 'Report exported to Google Drive', user.uid, user.email || undefined);
+      } else {
+        toast.error(result.error || 'Failed to export to Google Drive');
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to export to Drive:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to export to Drive: ${errorMessage}`);
+      return { success: false, error: errorMessage };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -504,6 +560,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sovereignHash,
       authType,
       setupComplete,
+      vaultReady,
       loading,
       demoMode,
       login: handleLogin,
@@ -514,6 +571,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateProfile: handleUpdateProfile,
       setDemoUser: handleSetDemoUser,
       clearDemoUser: handleClearDemoUser,
+      saveToVault: handleSaveToVault,
+      exportToDrive: handleExportToDrive,
     }}>
       {children}
     </AuthContext.Provider>

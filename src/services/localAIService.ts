@@ -2,7 +2,7 @@
 // localAIService.ts — Sovereign AI Service
 // Supports dual backends:
 //   1. LMStudio (OpenAI-compatible API, port 1234) — primary
-//      Model: qwen3.5-9b-sushi-coder-rl-mlx (when running)
+//      Model: NVIDIA/Nemotron-3-Nano-4b:bf16 (when running)
 //   2. Ollama (native API, port 11434) — fallback
 //      Model: gemma4:e4b / qwen2.5-coder:7b (always-on)
 //
@@ -15,8 +15,8 @@ import { DEFAULT_MODEL, OLLAMA_BASE_URL } from '../config/aiModel.js';
 // ─── Endpoint configuration ───────────────────────────────────────────────────
 const LOCAL_OLLAMA_URL = OLLAMA_BASE_URL;
 const LOCAL_LMSTUDIO_URL = 'http://localhost:1234';
-// Preferred LMStudio model (qwen3.5 sushi coder variant running in LMStudio)
-const LMSTUDIO_MODEL = 'qwen3.5-9b-sushi-coder-rl-mlx';
+// Preferred LMStudio model (NVIDIA Nemotron-3-Nano-4b:bf16 running in LMStudio)
+const LMSTUDIO_MODEL = 'NVIDIA/Nemotron-3-Nano-4b:bf16';
 // Ollama fallback model
 const OLLAMA_MODEL = DEFAULT_MODEL;
 

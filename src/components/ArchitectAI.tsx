@@ -997,11 +997,6 @@ The report includes detailed remediation recommendations for all NUKED findings 
     }
   };
 
-  const analyzeSovereignty = () => {
-    const prompt = "Analyze my current Sovereign Score and findings. Provide personalized recommendations to improve my score and fortify my digital identity.";
-    handleSend(undefined, prompt);
-  };
-
   const generateImprovementPlan = () => {
     const nukedList = findings.filter(f => f.status === 'NUKED').map(f => `- [${f.module.toUpperCase()}] ${f.finding}: ${f.details}`).join('\n');
     const activeThreats = threatFeed.map(t => `- [${t.severity}] ${t.title} (Source: ${t.source})`).join('\n');

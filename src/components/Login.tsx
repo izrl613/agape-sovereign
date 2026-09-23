@@ -432,63 +432,57 @@ export const Login = () => {
                   analysis. Your sovereignty begins here.
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {/* PRIMARY — Google */}
-                  <motion.button
-                    whileHover={{ scale: 1.015, boxShadow: '0 6px 22px rgba(66,133,244,0.5)' }}
-                    whileTap={{ scale: 0.975 }}
-                    id="login-google-btn"
-                    onClick={handleGoogleLogin}
-                    style={{
-                      ...btnBase,
-                      backgroundColor: '#4285F4',
-                      padding: '2px 20px 2px 2px',
-                      boxShadow: '0 4px 14px rgba(66,133,244,0.35)',
-                      fontFamily: 'Roboto, Arial, sans-serif',
-                      fontWeight: 500,
-                      fontSize: 15,
-                      justifyContent: 'flex-start',
-                      gap: 0,
-                    }}
-                    aria-label="Sign in with Google"
-                  >
-                    <div style={{
-                      background: '#fff', borderRadius: 4, padding: 10,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      marginRight: 14, flexShrink: 0,
-                    }}>
-                      <GoogleIcon />
-                    </div>
-                    <span style={{ flex: 1, textAlign: 'left', letterSpacing: '0.2px' }}>
-                      Sign in with Google
-                    </span>
-                  </motion.button>
-
-                  {/* DIVIDER */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(255,255,255,0.18)', fontSize: 10, letterSpacing: '0.1em', fontFamily: 'monospace' }}>
-                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-                    OR
-                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
-                  </div>
-
-                  {/* SECONDARY — Passkey */}
-                  <motion.button
-                    whileHover={{ scale: 1.01, borderColor: `rgba(0,212,255,0.45)`, background: 'rgba(0,212,255,0.07)' }}
-                    whileTap={{ scale: 0.975 }}
-                    id="login-passkey-btn"
+                {/* DUAL AUTH PANELS — Side by side */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                  {/* LEFT PANEL — Passkey */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setStep('passkey-email')}
                     style={{
-                      ...btnBase,
                       background: 'rgba(0,212,255,0.04)',
                       border: `1px solid rgba(0,212,255,0.2)`,
-                      color: 'rgba(255,255,255,0.7)',
-                      fontSize: 13,
+                      borderRadius: 12,
+                      padding: '20px 16px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s',
                     }}
                     aria-label="Sign in with Passkey"
                   >
-                    <Fingerprint size={18} color={C.blue} />
-                    Use a Passkey instead
-                  </motion.button>
+                    <Fingerprint size={24} color={C.blue} style={{ marginBottom: 8 }} />
+                    <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                      Passkey / WebAuthn
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+                      Device-bound · Local vault
+                    </div>
+                  </motion.div>
+
+                  {/* RIGHT PANEL — Google */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleGoogleLogin}
+                    style={{
+                      background: 'rgba(66,133,244,0.08)',
+                      border: `1px solid rgba(66,133,244,0.3)`,
+                      borderRadius: 12,
+                      padding: '20px 16px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    aria-label="Sign in with Google"
+                  >
+                    <GoogleIcon style={{ marginBottom: 8 }} />
+                    <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
+                      Sign in with Google
+                    </div>
+                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+                      Save reports to Google Drive
+                    </div>
+                  </motion.div>
                 </div>
 
                 {/* Trust logos — real brand marks */}
