@@ -1,0 +1,24 @@
+schema: spec-driven
+
+context: |
+  Agape Sovereign AI - Digital Identity Federated Footprint (DIFF) Intelligence Platform
+  Tech stack: React 19+, TypeScript, Vite, Firebase (Auth, Firestore, Functions, Hosting, Storage), 
+  TailwindCSS, Framer Motion, WebAuthn/FIDO2, Gemini API
+  Architecture: Zero-knowledge encryption, AES-256-GCM, passkey-first authentication, 
+  16-vector identity scanning, sovereign scoring (NUKED/KNOXED/MONITORED)
+  Security model: Admin-blind, client-side encryption, immutable audit trail, SHA-256 session hashing
+  Compliance: ECRA 2026, GDPR, CCPA
+  Conventions: Functional React patterns, TypeScript strict mode, Firebase v2 functions, 
+  progressive enhancement, PWA offline-first design
+
+rules:
+  proposal:
+    - Include detailed implementation phases with dependencies
+    - Specify security and compliance requirements for each component
+    - Define testing and validation criteria
+    - Include infrastructure and deployment considerations
+  tasks:
+    - Break tasks into logical implementation units
+    - Include Firebase-specific deployment steps
+    - Specify security rules and permissions needed
+    - Define acceptance criteria for each task

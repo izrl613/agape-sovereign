@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "ms-vscode.live-server",
+    "GitHub.vscode-pull-request-github",
+    "GitHub.vscode-github-actions",
+    "GitHub.remotehub"
+  ],
+  "unwantedRecommendations": [
+    "google.securecoder",
+    "saoudrizwan.cline-nightly",
+    "rooveterinaryinc.roo-cline"
+  ]
+}

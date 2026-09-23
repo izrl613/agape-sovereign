@@ -1,0 +1,10 @@
+node_modules/
+**/node_modules/
+.git/
+.firebase/
+dist/
+build/
+.next/
+.cache/
+coverage/
+*.log

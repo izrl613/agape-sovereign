@@ -185,7 +185,7 @@ export function rpIdForOrigin(origin: string): string {
  * @param {Request} req Express request.
  * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
-export function getWebAuthnConfig(req: Request): {
+function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
   rpId: string;
   allowedOrigins: string[];
@@ -247,12 +247,6 @@ function setSessionCookie(res: Response, sessionData: object): void {
     process.env.K_SERVICE !== undefined ||
     process.env.FUNCTION_TARGET !== undefined;
 
-  // Default to sovereign.nyc in production so the cookie is scoped to the
-  // same eTLD+1 as the Hosting rewrite — this fixes passkey challenge routing.
-  const cookieDomain = isSecure ?
-    (process.env.COOKIE_DOMAIN || "sovereign.nyc") :
-    undefined;
-
   res.cookie("__session", JSON.stringify(sessionData), {
     httpOnly: true,
     secure: isSecure,
@@ -261,7 +255,7 @@ function setSessionCookie(res: Response, sessionData: object): void {
     sameSite: isSecure ? "strict" : "lax", // strict in production for CSRF protection
     path: "/",
     priority: "high",
-    domain: cookieDomain,
+    domain: isSecure ? (process.env.COOKIE_DOMAIN || undefined) : undefined,
   });
 }
 
@@ -677,92 +671,6 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
     const message = error instanceof Error ? error.message : "Internal Server Error";
     res.status(500).json({
       error: message.length < 200 ? message : "Internal Server Error",
-    });
-  }
-});
-
-// POST /magic-link
-// ─────────────────
-// Auth bypass endpoint: generates a Firebase email sign-in link and sends it
-// to the provided email.  Used when both Passkey and Google auth fail.
-// The client (AuthBypassPanel) stores the email in localStorage so the redirect
-// handler can complete sign-in automatically.
-router.post("/magic-link", authLimiter, async (req: Request, res: Response) => {
-  try {
-    const email = normalizeEmail(req.body?.email || "");
-    if (!email) {
-      res.status(400).json({error: "Email is required"});
-      return;
-    }
-
-    // Determine the action URL based on environment
-    const isSecure = process.env.K_SERVICE !== undefined ||
-      process.env.FUNCTION_TARGET !== undefined;
-    const baseUrl = isSecure ? DEFAULT_ORIGIN : "http://localhost:5173";
-    const actionCodeSettings = {
-      url: `${baseUrl}/login?source=magic`,
-      handleCodeInApp: true,
-    };
-
-    const link = await auth.generateSignInWithEmailLink(email, actionCodeSettings);
-    logger.info("Magic link generated for:", email.replace(/@.*/, "@***"));
-
-    // ── TODO: send via transactional email (Sendgrid, Mailgun, etc.)
-    // For now, return the link in the response ONLY in development.
-    // In production, the client falls back to Firebase client SDK sendSignInLinkToEmail.
-    if (!isSecure) {
-      res.json({sent: true, link, note: "Dev mode — link returned directly"});
-      return;
-    }
-
-    // Production: attempt to send via Firebase Extensions email trigger
-    // (requires firebase-admin or a Firestore mail extension)
-    try {
-      const db2 = getFirestore();
-      await db2.collection("mail").add({
-        to: email,
-        message: {
-          subject: "Your Agape Sovereign Sign-In Link",
-          html: `
-<div style="font-family:'Inter',sans-serif;background:#060C1A;color:#fff;padding:40px;` +
-            `border-radius:12px;max-width:480px;margin:auto">
-  <div style="text-align:center;margin-bottom:28px">
-    <div style="font-size:28px;font-weight:900;letter-spacing:0.08em;color:#00D4FF">Agape Sovereign</div>
-    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:0.18em;margin-top:4px">` +
-            `DIGITAL IDENTITY DEFENSE</div>
-  </div>
-  <div style="background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.15);` +
-            `border-radius:10px;padding:24px;margin-bottom:24px">
-    <p style="margin:0 0 16px;font-size:14px;color:rgba(255,255,255,0.8);line-height:1.6">
-      Click the button below to sign in to your Sovereign account. This link expires in 1 hour.
-    </p>
-    <div style="text-align:center">
-      <a href="${link}" style="display:inline-block;padding:14px 28px;` +
-            "background:linear-gradient(135deg,#FF2E9F,#00D4FF);color:#fff;font-weight:700;" +
-            `font-size:14px;border-radius:10px;text-decoration:none;letter-spacing:0.04em">
-        Sign In to Sovereign
-      </a>
-    </div>
-  </div>
-  <p style="text-align:center;font-size:11px;color:rgba(255,255,255,0.25);margin:0">
-    If you didn't request this, safely ignore this email. This link expires in 1 hour.
-  </p>
-</div>`,
-        },
-        createdAt: FieldValue.serverTimestamp(),
-      });
-      res.json({sent: true});
-    } catch (mailErr) {
-      // Mail extension not configured — return link so client can fall back
-      logger.warn("Mail extension not available, returning link:", mailErr);
-      res.json({sent: false, link, fallback: true});
-    }
-  } catch (error) {
-    logger.error("Magic Link Error:", error);
-    errors.report(error as Error);
-    const message = error instanceof Error ? error.message : "Internal Server Error";
-    res.status(500).json({
-      error: message.length < 200 ? message : "Failed to generate sign-in link",
     });
   }
 });

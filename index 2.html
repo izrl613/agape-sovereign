@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agape Sovereign AI — Digital Identity Protection Platform</title>
+
+  <!-- Canonical + Indexing -->
+  <link rel="canonical" href="https://sovereign.nyc/" />
+  <meta name="robots" content="index,follow" />
+
+  <!-- Primary SEO / Google OAuth verification -->
+  <meta name="description"
+    content="Agape Sovereign AI is an advanced privacy and digital identity protection platform. It scans, monitors, and defends your personal data across 16 identity vectors — including email breaches, dark web exposure, data broker listings, and AI biometric risks." />
+  <meta name="application-name" content="Agape Sovereign AI" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Agape Sovereign AI — Digital Identity Protection" />
+  <meta property="og:description"
+    content="Take back control of your digital life. Agape Sovereign AI provides real-time breach monitoring, 16-vector identity scanning, client-side AES-GCM encryption, and a 5-pillar Shield Platform to defend your personal data." />
+  <meta property="og:url" content="https://sovereign.nyc/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Agape Sovereign AI" />
+  <meta property="og:image" content="https://sovereign.nyc/agape-logo-oauth.png" />
+
+  <!-- Structured data for Google search / OAuth branding verification -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Agape Sovereign AI",
+    "url": "https://sovereign.nyc/",
+    "description": "Advanced privacy and digital identity protection platform with 16-vector identity scanning, breach monitoring, and client-side AES-GCM encryption.",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Organization",
+      "name": "Agape Sovereign AI",
+      "url": "https://sovereign.nyc/",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://sovereign.nyc/contact"
+      }
+    }
+  }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0D0D0D">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sovereign">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: #060C1A; color: #E8F4FF; font-family: 'Inter', Arial, sans-serif; overflow-x: hidden; }
+
+    /* ── Animated grid background ── */
+    .bg-grid {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .bg-glow-top {
+      position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 1000px; height: 700px; pointer-events: none; z-index: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(0,212,255,0.08) 0%, transparent 70%);
+    }
+    .bg-glow-bottom {
+      position: fixed; bottom: -200px; right: -100px;
+      width: 600px; height: 600px; pointer-events: none; z-index: 0;
+      background: radial-gradient(circle, rgba(255,46,159,0.05) 0%, transparent 70%);
+    }
+
+    /* ── Header ── */
+    .site-header {
+      position: relative; z-index: 10;
+      padding: 18px 48px;
+      border-bottom: 1px solid rgba(0,212,255,0.1);
+      backdrop-filter: blur(12px);
+      background: rgba(6,12,26,0.8);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 14px; text-decoration: none; }
+    .brand-text-main { font-weight: 800; font-size: 15px; letter-spacing: 0.1em; color: #fff; }
+    .brand-text-sub { font-size: 8px; color: #00D4FF; font-family: 'Share Tech Mono', monospace; letter-spacing: 0.25em; opacity: 0.8; margin-top: 2px; }
+    .secure-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 10px; color: rgba(0,212,255,0.7); font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.12em; border: 1px solid rgba(0,212,255,0.15);
+      border-radius: 100px; padding: 5px 12px; background: rgba(0,212,255,0.04);
+    }
+    .secure-dot { width: 6px; height: 6px; border-radius: 50%; background: #00D4FF; animation: pulse-dot 2s ease-in-out infinite; flex-shrink: 0; }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+    .nav-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-passkey {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 18px; border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 10px; background: rgba(0,212,255,0.06);
+      color: #00D4FF; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-passkey:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); }
+
+    /* Google brand button — official spec */
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 0;
+      padding: 2px 16px 2px 2px;
+      background: #4285F4; color: #fff; border: none; border-radius: 4px;
+      font-size: 14px; font-weight: 500; text-decoration: none;
+      font-family: 'Roboto', Arial, sans-serif;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      white-space: nowrap; cursor: pointer;
+      transition: box-shadow 0.2s, background 0.2s;
+    }
+    .btn-google:hover { background: #3367d6; box-shadow: 0 4px 10px rgba(66,133,244,0.45); }
+    .btn-google-icon {
+      background: #fff; border-radius: 2px; padding: 8px;
+      display: flex; align-items: center; justify-content: center;
+      margin-right: 12px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; z-index: 1;
+      text-align: center; padding: 96px 32px 72px;
+      max-width: 860px; margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.18);
+      border-radius: 100px; padding: 7px 20px;
+      font-size: 10px; letter-spacing: 0.28em; color: #00D4FF;
+      font-family: 'Share Tech Mono', monospace; margin-bottom: 36px;
+    }
+    .hero-eyebrow-dot { width: 5px; height: 5px; border-radius: 50%; background: #00D4FF; animation: pulse-dot 2s ease-in-out infinite; }
+    .hero-h1 {
+      font-size: clamp(38px, 6.5vw, 76px);
+      font-weight: 900; line-height: 1.06;
+      margin: 0 0 10px;
+      background: linear-gradient(135deg, #ffffff 35%, #00D4FF 75%, #FF2E9F 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; letter-spacing: -0.03em;
+    }
+    .hero-sub {
+      font-size: clamp(14px, 2vw, 20px);
+      color: rgba(255,255,255,0.55); line-height: 1.7;
+      max-width: 600px; margin: 0 auto 16px;
+    }
+
+    /* Trust bar */
+    .trust-bar {
+      display: flex; align-items: center; justify-content: center;
+      gap: 24px; flex-wrap: wrap;
+      margin: 0 auto 48px; max-width: 640px;
+      padding: 14px 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+    }
+    .trust-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: 0.06em; white-space: nowrap; }
+    .trust-icon { font-size: 13px; }
+    .trust-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.1); }
+
+    /* CTA group */
+    .cta-group {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 14px; max-width: 360px; margin: 0 auto;
+    }
+    .btn-google-hero {
+      display: flex; align-items: center;
+      width: 100%; padding: 2px 24px 2px 2px;
+      background: #4285F4; color: #fff; border: none; border-radius: 6px;
+      font-size: 15px; font-weight: 500; text-decoration: none;
+      font-family: 'Roboto', Arial, sans-serif;
+      box-shadow: 0 4px 14px rgba(66,133,244,0.4);
+      transition: box-shadow 0.2s, background 0.2s;
+      cursor: pointer;
+    }
+    .btn-google-hero:hover { background: #3367d6; box-shadow: 0 6px 20px rgba(66,133,244,0.55); }
+    .btn-google-hero-icon {
+      background: #fff; border-radius: 4px; padding: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-right: 16px; flex-shrink: 0;
+    }
+    .btn-google-hero span { flex: 1; text-align: left; }
+    .btn-passkey-secondary {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px 24px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(0,212,255,0.2);
+      border-radius: 8px; color: rgba(255,255,255,0.7);
+      font-size: 13px; font-weight: 600; text-decoration: none;
+      letter-spacing: 0.04em; transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-passkey-secondary:hover { border-color: rgba(0,212,255,0.45); background: rgba(0,212,255,0.06); color: #fff; }
+    .cta-micro {
+      font-size: 11px; color: rgba(255,255,255,0.25);
+      letter-spacing: 0.04em; margin-top: 4px;
+    }
+
+    /* ── Authority strip ── */
+    .authority-strip {
+      position: relative; z-index: 1;
+      border-top: 1px solid rgba(0,212,255,0.07);
+      border-bottom: 1px solid rgba(0,212,255,0.07);
+      background: rgba(0,212,255,0.02);
+      padding: 40px 48px;
+    }
+    .authority-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+    .authority-card {
+      display: flex; flex-direction: column; gap: 10px;
+      padding: 24px 20px;
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(0,212,255,0.1);
+      border-radius: 14px;
+    }
+    .authority-card-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, rgba(0,212,255,0.12), rgba(255,46,159,0.1));
+      border: 1px solid rgba(0,212,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .authority-card-title { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.04em; }
+    .authority-card-stat { font-size: 22px; font-weight: 900; color: #00D4FF; letter-spacing: -0.02em; }
+    .authority-card-desc { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.6; }
+
+    /* ── Stats ── */
+    .stats-strip {
+      position: relative; z-index: 1;
+      padding: 36px 48px;
+      display: flex; justify-content: center; gap: 56px; flex-wrap: wrap;
+    }
+    .stat-item { text-align: center; }
+    .stat-value {
+      font-size: 34px; font-weight: 900;
+      background: linear-gradient(135deg, #FF6B00, #FF2E9F);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: 0.18em; margin-top: 4px; text-transform: uppercase; }
+
+    /* ── Features ── */
+    .features {
+      position: relative; z-index: 1;
+      padding: 80px 48px; max-width: 1100px; margin: 0 auto;
+    }
+    .features-header { text-align: center; margin-bottom: 52px; }
+    .section-eyebrow { font-size: 10px; letter-spacing: 0.28em; color: #00D4FF; font-family: 'Share Tech Mono', monospace; margin-bottom: 16px; }
+    .section-h2 { font-size: clamp(26px, 4vw, 38px); font-weight: 800; color: #fff; }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(0,212,255,0.1);
+      border-top: 2px solid rgba(0,212,255,0.25);
+      border-radius: 16px; padding: 28px 24px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .feature-card:hover { background: rgba(0,212,255,0.04); border-top-color: #00D4FF; }
+    .feature-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 8px; color: #fff; }
+    .feature-card p { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.65; margin: 0; }
+    .feature-badge {
+      display: inline-block; margin-bottom: 14px;
+      font-size: 8px; letter-spacing: 0.2em; padding: 3px 8px;
+      border-radius: 4px; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+    }
+    .badge-active { background: rgba(0,212,255,0.1); color: #00D4FF; border: 1px solid rgba(0,212,255,0.2); }
+    .badge-live { background: rgba(0,255,120,0.08); color: #00FF78; border: 1px solid rgba(0,255,120,0.2); }
+    .badge-beta { background: rgba(255,107,0,0.08); color: #FF6B00; border: 1px solid rgba(255,107,0,0.2); }
+
+    /* ── CTA section ── */
+    .cta-section {
+      position: relative; z-index: 1;
+      text-align: center; padding: 90px 48px 110px;
+      border-top: 1px solid rgba(0,212,255,0.08);
+    }
+    .cta-section h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; margin: 0 0 14px; color: #fff; }
+    .cta-section p { font-size: 15px; color: rgba(255,255,255,0.45); margin-bottom: 44px; max-width: 440px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    .cta-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center; }
+
+    /* ── Footer ── */
+    .site-footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 14px;
+      backdrop-filter: blur(12px);
+      background: rgba(4,8,18,0.6);
+    }
+    .footer-links { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .footer-link-terms {
+      font-size: 10px; color: #00D4FF; text-decoration: none;
+      letter-spacing: 0.18em; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+      text-shadow: 0 0 10px rgba(0,212,255,0.4);
+    }
+    .footer-link-privacy {
+      font-size: 10px; color: #FF6B00; text-decoration: none;
+      letter-spacing: 0.18em; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+      text-shadow: 0 0 10px rgba(255,107,0,0.4);
+    }
+    .footer-link-contact {
+      font-size: 10px; color: rgba(255,255,255,0.4); text-decoration: none;
+      letter-spacing: 0.18em; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+    }
+    .footer-copyright {
+      font-size: 10px; color: #FF2E9F;
+      letter-spacing: 0.18em; font-family: 'Share Tech Mono', monospace; font-weight: 700;
+      text-shadow: 0 0 10px rgba(255,46,159,0.4);
+    }
+
+    @media (max-width: 680px) {
+      .site-header { padding: 16px 20px; }
+      .hero { padding: 64px 20px 56px; }
+      .stats-strip, .authority-strip { padding: 32px 20px; }
+      .features { padding: 60px 20px; }
+      .cta-section { padding: 60px 20px 80px; }
+      .site-footer { padding: 20px; flex-direction: column; text-align: center; }
+      .secure-badge { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Static pre-render for Google OAuth verification bot (no JS required) -->
+  <div id="static-prerender">
+
+    <!-- Backgrounds -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow-top"></div>
+    <div class="bg-glow-bottom"></div>
+
+    <!-- ── Header ── -->
+    <header class="site-header">
+      <a href="/" class="brand">
+        <svg viewBox="0 0 40 40" width="36" height="36" style="filter:drop-shadow(0 0 8px #00D4FF);flex-shrink:0;" aria-hidden="true">
+          <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke="#00D4FF" stroke-width="1.5"/>
+          <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke="#FF2E9F" stroke-width="1" opacity="0.7"/>
+          <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill="#FF6B00" fill-opacity="0.85" stroke="#FF6B00" stroke-width="0.5"/>
+        </svg>
+        <div>
+          <div class="brand-text-main">Agape Sovereign AI</div>
+          <div class="brand-text-sub">DIGITAL IDENTITY DEFENSE</div>
+        </div>
+      </a>
+
+      <div class="secure-badge">
+        <span class="secure-dot"></span>
+        SECURE CONNECTION
+      </div>
+
+      <nav class="nav-actions" aria-label="Main navigation">
+        <a href="/login" class="btn-passkey" id="nav-passkey-btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="11" r="3"/><path d="M12 2C6.477 2 2 6.477 2 12c0 2.136.67 4.116 1.807 5.73L2 22l4.27-1.807A9.953 9.953 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+          PASSKEY
+        </a>
+        <a href="/login" class="btn-google" id="nav-google-btn">
+          <span class="btn-google-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+          </span>
+          Sign in with Google
+        </a>
+      </nav>
+    </header>
+
+    <!-- ── Hero ── -->
+    <main>
+      <section class="hero">
+        <div class="hero-eyebrow">
+          <span class="hero-eyebrow-dot"></span>
+          SOVEREIGN DIGITAL IDENTITY PLATFORM
+        </div>
+
+        <h1 class="hero-h1">Agape Sovereign AI</h1>
+
+        <p class="hero-sub">
+          Your digital identity is exposed across 16 attack surfaces. We scan, monitor, and defend every one — with zero-knowledge encryption and AI-powered sovereignty.
+        </p>
+
+        <!-- Trust Bar -->
+        <div class="trust-bar" aria-label="Security certifications">
+          <div class="trust-item"><span class="trust-icon">🔒</span> Zero-Knowledge</div>
+          <div class="trust-divider"></div>
+          <div class="trust-item"><span class="trust-icon">🛡️</span> AES-256-GCM</div>
+          <div class="trust-divider"></div>
+          <div class="trust-item"><span class="trust-icon">🔑</span> FIDO2 Passkey</div>
+          <div class="trust-divider"></div>
+          <div class="trust-item"><span class="trust-icon">☁️</span> Firebase Secured</div>
+        </div>
+
+        <!-- CTA Group -->
+        <div class="cta-group">
+          <a href="/login" class="btn-google-hero" id="hero-google-btn">
+            <span class="btn-google-hero-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <span>Sign in with Google</span>
+          </a>
+
+          <a href="/login" class="btn-passkey-secondary" id="hero-passkey-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00D4FF" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="11" r="3"/><path d="M12 2C6.477 2 2 6.477 2 12c0 2.136.67 4.116 1.807 5.73L2 22l4.27-1.807A9.953 9.953 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+            or use a Passkey →
+          </a>
+
+          <p class="cta-micro">No credit card · No data stored unencrypted · Cancel anytime</p>
+        </div>
+      </section>
+
+      <!-- ── Authority Cards ── -->
+      <div class="authority-strip">
+        <div class="authority-inner">
+          <div class="authority-card">
+            <div class="authority-card-icon">🏛️</div>
+            <div class="authority-card-title">Enterprise-Grade Encryption</div>
+            <div class="authority-card-stat">AES-256-GCM</div>
+            <div class="authority-card-desc">Military-standard client-side encryption. Your data is encrypted before it ever leaves your device. We never see it.</div>
+          </div>
+          <div class="authority-card">
+            <div class="authority-card-icon">🔑</div>
+            <div class="authority-card-title">FIDO2 Passkey Auth</div>
+            <div class="authority-card-stat">Passwordless</div>
+            <div class="authority-card-desc">WebAuthn FIDO2 authentication bound to your device. No passwords. No breach vectors. Pure biometric sovereignty.</div>
+          </div>
+          <div class="authority-card">
+            <div class="authority-card-icon">⚡</div>
+            <div class="authority-card-title">Zero-Knowledge Architecture</div>
+            <div class="authority-card-stat">0 Data Exposed</div>
+            <div class="authority-card-desc">We operate on a strict zero-knowledge model. Even our engineers cannot access your identity data. Ever.</div>
+          </div>
+          <div class="authority-card">
+            <div class="authority-card-icon">🛡️</div>
+            <div class="authority-card-title">Google OAuth 2.0 Verified</div>
+            <div class="authority-card-stat">OAuth Secured</div>
+            <div class="authority-card-desc">Google-verified OAuth 2.0 integration. Your Google account credentials are never shared with or stored by Agape Sovereign AI.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Stats ── -->
+      <div class="stats-strip">
+        <div class="stat-item">
+          <div class="stat-value">16</div>
+          <div class="stat-label">Identity Vectors</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">5</div>
+          <div class="stat-label">Shield Pillars</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">256-bit</div>
+          <div class="stat-label">AES-GCM Encryption</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">100%</div>
+          <div class="stat-label">Client-Side Privacy</div>
+        </div>
+      </div>
+
+      <!-- ── Features ── -->
+      <section id="features" class="features">
+        <div class="features-header">
+          <div class="section-eyebrow">PLATFORM CAPABILITIES</div>
+          <h2 class="section-h2">Everything you need to reclaim your identity</h2>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-badge badge-active">ACTIVE</div>
+            <h3>Digital Identity Protection</h3>
+            <p>16-vector identity scanning across email, social, device, financial, and dark web surfaces.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-badge badge-live">LIVE</div>
+            <h3>Continuous Breach Monitoring</h3>
+            <p>Real-time surveillance of data broker listings, credential leaks, and public exposure.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-badge badge-active">ACTIVE</div>
+            <h3>Client-Side Encryption</h3>
+            <p>AES-GCM zero-knowledge encryption — your data is encrypted before it ever leaves your device.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-badge badge-active">ACTIVE</div>
+            <h3>Architect AI</h3>
+            <p>Sovereign AI assistant that helps you understand, restore, and defend your digital identity.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-badge badge-active">ACTIVE</div>
+            <h3>5-Pillar Shield Platform</h3>
+            <p>Integrated defense across Polymer, Unosecur, Nymiz, PrivacyProctor, and Prisma AIRS.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-badge badge-live">LIVE</div>
+            <h3>Erasure Engine</h3>
+            <p>Automated data broker opt-out and removal requests across major aggregators.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── CTA Section ── -->
+      <section class="cta-section">
+        <h2>Your digital identity is exposed.<br>Let's fix that.</h2>
+        <p>Join thousands securing their digital sovereignty. Google sign-in takes 30 seconds. Your data stays yours.</p>
+        <div class="cta-buttons">
+          <a href="/login" class="btn-google-hero" id="cta-google-btn" style="max-width:320px;">
+            <span class="btn-google-hero-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </span>
+            <span>Sign in with Google</span>
+          </a>
+          <a href="/login" class="btn-passkey-secondary" id="cta-passkey-btn" style="min-width:180px;">
+            Use a Passkey →
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- ── Footer (Google OAuth: must show Privacy Policy + Terms) ── -->
+    <footer class="site-footer">
+      <div class="footer-links">
+        <a href="https://sovereign.nyc/terms/TERMS.pdf" rel="terms-of-service" class="footer-link-terms" id="footer-terms">TERMS OF SERVICE</a>
+        <a href="https://sovereign.nyc/privacy/PRIVACY.pdf" rel="privacy-policy" class="footer-link-privacy" id="footer-privacy">PRIVACY POLICY</a>
+        <a href="/contact" class="footer-link-contact" id="footer-contact">CONTACT</a>
+      </div>
+      <span class="footer-copyright">COPYRIGHT 2026 AGAPE SOVEREIGN AI</span>
+    </footer>
+  </div>
+
+  <div id="root"></div>
+
+  <script>
+    // Hide static pre-render once React has mounted
+    document.addEventListener('DOMContentLoaded', function () {
+      var root = document.getElementById('root');
+      var pre = document.getElementById('static-prerender');
+      if (!pre) return;
+      var obs = new MutationObserver(function () {
+        if (root && root.children.length > 0) {
+          pre.style.display = 'none';
+          obs.disconnect();
+        }
+      });
+      obs.observe(root, { childList: true, subtree: true });
+    });
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+  </script>
+  <!-- Firebase is initialized via the modular SDK in src/firebase.ts
+       (v11 via npm) — the legacy v8 compat CDN script is removed to
+       silence the "development build" warning and avoid double initialisation. -->
+</body>
+
+</html>

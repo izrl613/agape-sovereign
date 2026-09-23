@@ -50,7 +50,7 @@ service cloud.firestore {
     match /user_vector_statuses/{statusId} {
       allow read, write: if isSignedIn() && (
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.resource != null && request.resource.data.userId == request.auth.uid) ||
+        (request.resource != null && resource.data.userId == request.auth.uid) ||
         statusId.matches('^' + request.auth.uid + '_.*')
       );
     }
@@ -59,7 +59,7 @@ service cloud.firestore {
     match /findings/{findingId} {
       allow read, write: if isSignedIn() && (
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.resource != null && request.resource.data.userId == request.auth.uid)
+        (request.resource != null && resource.data.userId == request.auth.uid)
       );
     }
 
@@ -67,16 +67,17 @@ service cloud.firestore {
     match /monitored_emails/{emailId} {
       allow read, write: if isSignedIn() && (
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.resource != null && request.resource.data.userId == request.auth.uid)
+        (request.resource != null && resource.data.userId == request.auth.uid)
       );
     }
 
-    // DIFF Scans (scoped to owner)
+    // DIFF Scans (scoped to owner, enhanced for 16-vector scanning)
     match /diff_scans/{scanId} {
-      allow read, write: if isSignedIn() && (
-        (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.resource != null && request.resource.data.userId == request.auth.uid)
-      );
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid 
+                   && request.resource.data.diffOnly('status');
+      allow delete: if false; // Immutable after creation for audit trail
     }
 
     // Chat Sessions (scoped to owner)
@@ -88,7 +89,7 @@ service cloud.firestore {
     match /score_history/{historyId} {
       allow read, write: if isSignedIn() && (
         (resource != null && resource.data.userId == request.auth.uid) ||
-        (request.resource != null && request.resource.data.userId == request.auth.uid)
+        (request.resource != null && resource.data.userId == request.auth.uid)
       );
     }
 

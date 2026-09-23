@@ -1,0 +1,243 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Agape Sovereign",
+  "description": "AI Digital Identity Sovereign Restoration Platform — docs for the PWA, auth, identity vectors, Shield platform, Architect AI, and GCP/Firebase deployment.",
+  "colors": {
+    "primary": "#C026D3",
+    "light": "#E879F9",
+    "dark": "#A21CAF"
+  },
+  "favicon": "/public/agape-logo-192.png",
+  "logo": {
+    "light": "/public/agape-logo-192.png",
+    "dark": "/public/agape-logo-192.png",
+    "href": "https://sovereign.nyc"
+  },
+  "font": {
+    "headings": {
+      "family": "Inter"
+    },
+    "body": {
+      "family": "Inter"
+    }
+  },
+  "appearance": {
+    "default": "dark",
+    "strict": false
+  },
+  "background": {
+    "color": {
+      "light": "#FAFAFA",
+      "dark": "#0B0B0F"
+    }
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "App",
+        "href": "https://sovereign.nyc"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/izrl613/agape-sovereign"
+      },
+      {
+        "label": "Firebase",
+        "href": "https://console.firebase.google.com/project/agape-sovereign/overview"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Open sovereign.nyc",
+      "href": "https://sovereign.nyc"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting started",
+            "icon": "rocket",
+            "pages": [
+              "docs/wiki/Home",
+              "QUICKSTART",
+              "wiki/Quick-Start",
+              "README"
+            ]
+          },
+          {
+            "group": "Platform wiki",
+            "icon": "book-open",
+            "pages": [
+              "docs/wiki/Architecture",
+              "docs/wiki/Identity-Vectors",
+              "docs/wiki/Identity-Modules",
+              "docs/wiki/Shield-Platform",
+              "docs/wiki/Authentication",
+              "docs/wiki/OAuth-Verification",
+              "docs/wiki/Deployment",
+              "docs/wiki/Changelog"
+            ]
+          },
+          {
+            "group": "Guides",
+            "icon": "map",
+            "pages": [
+              "DEPLOYMENT_GUIDE",
+              "INTEGRATION_GUIDE",
+              "wiki/Integration-Guide",
+              "BILLING_SETUP_GUIDE",
+              "CREDIT_PRESERVATION",
+              "docs/PASSKEY_WEBAUTHN_IMPLEMENTATION",
+              "docs/zero-trust",
+              "docs/stage-1A1"
+            ]
+          },
+          {
+            "group": "Architect AI",
+            "icon": "robot",
+            "pages": [
+              "ARCHITECT_AI_README",
+              "ArchitectAI-IDE",
+              "wiki/Architect-AI",
+              "wiki/Agent-System",
+              "wiki/Local-LLM-PWA",
+              "AGENTS",
+              "README_agents",
+              "architect-mcp-server/README"
+            ]
+          },
+          {
+            "group": "Operations & GCP",
+            "icon": "cloud",
+            "pages": [
+              "GCP_PROJECT_REPORT",
+              "wiki/Deployment",
+              "SECURITY",
+              "wiki/Security",
+              "DELIVERY_SUMMARY",
+              "CHANGELOG"
+            ]
+          },
+          {
+            "group": "Compliance",
+            "icon": "shield-halved",
+            "pages": [
+              "docs/compliance/SOVEREIGN_ARCHITECTURE",
+              "docs/compliance/GOVERNANCE",
+              "docs/compliance/SECURITY_POLICY",
+              "docs/compliance/DATA_RIGHTS",
+              "docs/compliance/AI_TRANSPARENCY",
+              "docs/compliance/ROADMAP",
+              "docs/compliance/DAILY_LOG",
+              "docs/compliance/modules/EMAIL_BREACH_AND_METADATA_SCANNER",
+              "docs/compliance/modules/NON_MOBILE_OS_PRIVACY_AUDIT"
+            ]
+          },
+          {
+            "group": "Session exports",
+            "icon": "file-export",
+            "pages": [
+              "docs/README_SHA256+_EXPORT",
+              "docs/SHA256+_SESSION_EXPORT"
+            ]
+          },
+          {
+            "group": "Project status",
+            "icon": "flag",
+            "pages": [
+              "Agape Sovereign - Implementation Status - 2026-07-19",
+              "Sovereign Data Pipeline Defined - 2026-07-15 21.46",
+              "Projects/Timeline/README",
+              "Projects/Timeline/TIMELINE"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Live app",
+          "href": "https://sovereign.nyc",
+          "icon": "globe"
+        },
+        {
+          "anchor": "Hosting",
+          "href": "https://agape-sovereign.web.app",
+          "icon": "cloud"
+        },
+        {
+          "anchor": "Repository",
+          "href": "https://github.com/izrl613/agape-sovereign",
+          "icon": "github"
+        },
+        {
+          "anchor": "GCP / Firebase",
+          "href": "https://console.firebase.google.com/project/agape-sovereign/overview",
+          "icon": "fire"
+        }
+      ]
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/izrl613/agape-sovereign",
+      "website": "https://sovereign.nyc"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:site_name": "Agape Sovereign Docs",
+      "og:title": "Agape Sovereign Documentation",
+      "og:description": "Sovereign identity, Shield platform, passkeys, Architect AI, and Firebase/GCP operations for agape-sovereign."
+    },
+    "indexing": "all"
+  },
+  "redirects": [
+    {
+      "source": "/index",
+      "destination": "/docs/wiki/Home"
+    },
+    {
+      "source": "/",
+      "destination": "/docs/wiki/Home"
+    },
+    {
+      "source": "/home",
+      "destination": "/docs/wiki/Home"
+    },
+    {
+      "source": "/quickstart",
+      "destination": "/QUICKSTART"
+    },
+    {
+      "source": "/architecture",
+      "destination": "/docs/wiki/Architecture"
+    },
+    {
+      "source": "/deployment",
+      "destination": "/docs/wiki/Deployment"
+    },
+    {
+      "source": "/auth",
+      "destination": "/docs/wiki/Authentication"
+    },
+    {
+      "source": "/security",
+      "destination": "/SECURITY"
+    }
+  ],
+  "contextual": {
+    "options": ["copy", "view", "chatgpt", "claude"]
+  },
+  "search": {
+    "prompt": "Search Agape Sovereign docs…"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs"
+  }
+}

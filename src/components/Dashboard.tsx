@@ -10,46 +10,35 @@ import { EncryptedFooter } from './EncryptedFooter';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
+import { calculateEnhancedSovereignScore } from '../services/scanService';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
   { id: "social",     icon: "◈", label: "Social Media Footprint",       vector: "V-02" },
   { id: "device",     icon: "⬡", label: "Device File Scan",             vector: "V-03" },
   { id: "mobile",     icon: "◻", label: "Mobile Security Layer",        vector: "V-04" },
-  { id: "deepweb",    icon: "◉", label: "Deep Web Exposure",            vector: "V-05" },
-  { id: "broker",     icon: "⧫", label: "Data Broker Removal",          vector: "V-06" },
-  { id: "password",   icon: "⬟", label: "Password Vault Analysis",      vector: "V-07" },
-  { id: "location",   icon: "◎", label: "Location Data Footprint",      vector: "V-08" },
-  { id: "browser",    icon: "◯", label: "Browser & Cookie Tracker",     vector: "V-09" },
-  { id: "financial",  icon: "⬡", label: "Financial Identity Exposure",  vector: "V-10" },
-  { id: "medical",    icon: "⊕", label: "Medical Data Footprint",        vector: "V-11" },
-  { id: "biometric",  icon: "⊛", label: "Voice & Biometric Data",       vector: "V-12" },
-  { id: "iot",        icon: "⊡", label: "IoT & Smart Device Scan",      vector: "V-13" },
-  { id: "cloud",      icon: "⊞", label: "Cloud Storage Exposure",       vector: "V-14" },
-  { id: "darkweb",    icon: "◈", label: "Dark Web Monitoring",          vector: "V-15" },
-  { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis",  vector: "V-16" },
+  { id: "laptop",     icon: "💻", label: "Laptop System Security",      vector: "V-05" },
+  { id: "deepweb",    icon: "◉", label: "Deep Web Exposure",            vector: "V-06" },
+  { id: "broker",     icon: "⧫", label: "Data Broker Removal",          vector: "V-07" },
+  { id: "password",   icon: "⬟", label: "Password Vault Analysis",      vector: "V-08" },
+  { id: "network",    icon: "◎", label: "Network & DNS Security",       vector: "V-09" },
+  { id: "cloud",      icon: "⊞", label: "Cloud Storage Exposure",       vector: "V-10" },
+  { id: "comm",       icon: "💬", label: "Communication Privacy",        vector: "V-11" },
+  { id: "financial",  icon: "⬡", label: "Financial Identity Surface",   vector: "V-12" },
+  { id: "docs",       icon: "📄", label: "Identity Document Exposure",  vector: "V-13" },
+  { id: "oauth",      icon: "🔑", label: "Third-Party OAuth Audit",     vector: "V-14" },
+  { id: "legal",      icon: "⚖", label: "Public Records & Legal",       vector: "V-15" },
+  { id: "ai",         icon: "⊛", label: "AI & Biometric Exposure",      vector: "V-16" },
 ];
 
 const MODULE_ROUTES: Record<string, string> = {
-  email: "/dashboard/email",
-  social: "/dashboard/social",
-  device: "/dashboard/device",
-  mobile: "/dashboard/mobile",
-  deepweb: "/dashboard/deepweb",
-  broker: "/dashboard/broker",
-  password: "/dashboard/password",
-  location: "/dashboard/location",
-  browser: "/dashboard/browser",
-  financial: "/dashboard/financial",
-  medical: "/dashboard/medical",
-  biometric: "/dashboard/biometric",
-  iot: "/dashboard/iot",
-  cloud: "/dashboard/cloud",
-  darkweb: "/dashboard/darkweb",
-  behavioral: "/dashboard/behavioral",
+  email: "/email", social: "/social", device: "/device", mobile: "/system",
+  laptop: "/system", deepweb: "/deepweb", broker: "/databroker", password: "/password",
+  network: "/network", cloud: "/cloud", comm: "/communication", financial: "/financial",
+  docs: "/documents", oauth: "/oauth", legal: "/legal", ai: "/ai",
 };
 
-const StatusCard = ({ label, count, color, glow }: { label: string; count: number; color: string; glow: string }) => (
+const StatusCard = ({ label, count, color, glow, classification }: { label: string; count: number; color: string; glow: string; classification?: string }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -94,6 +83,20 @@ const StatusCard = ({ label, count, color, glow }: { label: string; count: numbe
     }}>
       {label}
     </div>
+    {classification && (
+      <div style={{
+        fontFamily: "'Orbitron', monospace",
+        fontSize: '0.55rem',
+        fontWeight: 600,
+        color,
+        letterSpacing: '0.1em',
+        marginTop: 4,
+        position: 'relative',
+        opacity: 0.8,
+      }}>
+        {classification}
+      </div>
+    )}
   </motion.div>
 );
 
@@ -227,6 +230,11 @@ export const Dashboard = () => {
     return { nuked, knoxed, monitored };
   }, [findings]);
 
+  // Enhanced sovereign score calculation with classification
+  const sovereignScoreData = useMemo(() => {
+    return calculateEnhancedSovereignScore(findings);
+  }, [findings]);
+
   const modules = useMemo(() => {
     return MODULE_CONFIG.map(config => {
       const moduleFindings = findings.filter(f => f.module === config.id);
@@ -272,6 +280,13 @@ export const Dashboard = () => {
           <StatusCard label="NUKED" count={stats.nuked} color={NEON.magenta} glow={`${NEON.magenta}22`} />
           <StatusCard label="KNOXED" count={stats.knoxed} color={NEON.orange} glow={`${NEON.orange}22`} />
           <StatusCard label="MONITORED" count={stats.monitored} color={NEON.blue} glow={`${NEON.blue}22`} />
+          <StatusCard 
+            label="SOVEREIGN SCORE" 
+            count={sovereignScoreData.score} 
+            color={sovereignScoreData.classification === 'KNOXED' ? NEON.blue : NEON.magenta} 
+            glow={sovereignScoreData.classification === 'KNOXED' ? `${NEON.blue}22` : `${NEON.magenta}22`}
+            classification={sovereignScoreData.classification}
+          />
         </div>
 
         {/* ── Intelligence Findings ── */}
