@@ -101,63 +101,34 @@ const AppRoutes = () => {
       {/* Auth route — redirect to dashboard if already signed in */}
       <Route path="/login" element={(user || demoMode) ? <Navigate to="/dashboard" replace /> : <Login />} />
 
-      {/* Top-level aliases redirecting to /dashboard/* */}
-      <Route path="/email" element={<Navigate to="/dashboard/email" replace />} />
-      <Route path="/social" element={<Navigate to="/dashboard/social" replace />} />
-      <Route path="/device" element={<Navigate to="/dashboard/device" replace />} />
-      <Route path="/mobile" element={<Navigate to="/dashboard/mobile" replace />} />
-      <Route path="/system" element={<Navigate to="/dashboard/mobile" replace />} />
-      <Route path="/laptop" element={<Navigate to="/dashboard/laptop" replace />} />
-      <Route path="/deepweb" element={<Navigate to="/dashboard/deepweb" replace />} />
-      <Route path="/broker" element={<Navigate to="/dashboard/broker" replace />} />
-      <Route path="/databroker" element={<Navigate to="/dashboard/broker" replace />} />
-      <Route path="/password" element={<Navigate to="/dashboard/password" replace />} />
-      <Route path="/location" element={<Navigate to="/dashboard/location" replace />} />
-      <Route path="/browser" element={<Navigate to="/dashboard/browser" replace />} />
-      <Route path="/financial" element={<Navigate to="/dashboard/financial" replace />} />
-      <Route path="/medical" element={<Navigate to="/dashboard/medical" replace />} />
-      <Route path="/biometric" element={<Navigate to="/dashboard/biometric" replace />} />
-      <Route path="/iot" element={<Navigate to="/dashboard/iot" replace />} />
-      <Route path="/cloud" element={<Navigate to="/dashboard/cloud" replace />} />
-      <Route path="/darkweb" element={<Navigate to="/dashboard/darkweb" replace />} />
-      <Route path="/behavioral" element={<Navigate to="/dashboard/behavioral" replace />} />
-      <Route path="/architect" element={<Navigate to="/dashboard/architect" replace />} />
-      <Route path="/security-tips" element={<Navigate to="/dashboard/security-tips" replace />} />
-      <Route path="/settings" element={<Navigate to="/dashboard/settings" replace />} />
-      <Route path="/shield" element={<Navigate to="/dashboard/shield" replace />} />
-      <Route path="/admin" element={<Navigate to="/dashboard/admin" replace />} />
-
       {/* Protected app — all authenticated routes live under /dashboard */}
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
-        {/* Canonical 16 Identity Vectors */}
         <Route path="email" element={<EmailModule />} />
         <Route path="social" element={<SocialModule />} />
         <Route path="device" element={<DeviceModule />} />
-        <Route path="mobile" element={<SystemModule />} />
         <Route path="system" element={<SystemModule />} />
         <Route path="laptop" element={<LaptopModule />} />
         <Route path="deepweb" element={<DeepWebModule />} />
-        <Route path="broker" element={<DataBrokerModule />} />
         <Route path="databroker" element={<DataBrokerModule />} />
         <Route path="password" element={<PasswordModule />} />
-        <Route path="location" element={<LocationModule />} />
-        <Route path="browser" element={<BrowserTrackerModule />} />
-        <Route path="financial" element={<FinancialModule />} />
-        <Route path="medical" element={<MedicalModule />} />
-        <Route path="biometric" element={<BiometricIdentityModule />} />
-        <Route path="iot" element={<IoTModule />} />
-        <Route path="cloud" element={<CloudModule />} />
-        <Route path="darkweb" element={<DarkWebModule />} />
-        <Route path="behavioral" element={<BehavioralModule />} />
-        {/* Supporting specialized modules */}
         <Route path="network" element={<NetworkModule />} />
+        <Route path="cloud" element={<CloudModule />} />
         <Route path="communication" element={<CommunicationModule />} />
+        <Route path="financial" element={<FinancialModule />} />
         <Route path="documents" element={<DocumentModule />} />
         <Route path="oauth" element={<OauthModule />} />
         <Route path="legal" element={<LegalModule />} />
         <Route path="ai" element={<BiometricModule />} />
         <Route path="erasure" element={<ErasureModule />} />
+        {/* V-08 through V-15 — identity-vector routes */}
+        <Route path="location"   element={<LocationModule />} />
+        <Route path="browser"    element={<BrowserTrackerModule />} />
+        <Route path="medical"    element={<MedicalModule />} />
+        <Route path="biometric"  element={<BiometricIdentityModule />} />
+        <Route path="iot"        element={<IoTModule />} />
+        <Route path="darkweb"    element={<DarkWebModule />} />
+        <Route path="behavioral" element={<BehavioralModule />} />
         <Route path="shield" element={<ShieldModule />} />
         <Route path="architect" element={<ArchitectAI />} />
         <Route path="security-tips" element={<SecurityTips />} />

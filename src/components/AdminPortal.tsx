@@ -17,13 +17,20 @@ import {
   RefreshCw,
   Lock,
   FileText,
-  Cpu
+  Cpu,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Eye,
+  Download,
+  Trash2
 } from 'lucide-react';
-import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, limit, orderBy, where, onSnapshot } from 'firebase/firestore';
 import { db, storage } from '../firebase';
 import { ref, listAll, getDownloadURL } from 'firebase/storage';
 import { startAuthentication } from '@simplewebauthn/browser';
 import { toast } from 'sonner';
+import { IDENTITY_VECTORS } from '../services/scanService';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -31,6 +38,7 @@ const TABS = [
   { id: 'firestore', label: 'Firestore', icon: Database },
   { id: 'storage', label: 'Storage', icon: HardDrive },
   { id: 'analytics', label: 'Analytics', icon: Shield },
+  { id: 'audit', label: 'Audit Logs', icon: FileText },
   { id: 'config', label: 'Config', icon: Settings },
 ];
 
@@ -285,6 +293,7 @@ export const AdminPortal = () => {
           {activeTab === 'firestore' && <FirestoreTab />}
           {activeTab === 'storage' && <StorageTab />}
           {activeTab === 'analytics' && <AnalyticsTab />}
+          {activeTab === 'audit' && <AuditLogsTab />}
           {activeTab === 'config' && <ConfigTab />}
         </motion.div>
       </AnimatePresence>

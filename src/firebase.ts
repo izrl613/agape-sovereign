@@ -195,19 +195,6 @@ export const loginWithGoogle = async () => {
       }
     }
 
-    // Detect PWA standalone mode (iOS / Android installed PWA)
-    const isStandalone = typeof window !== 'undefined' && (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as any).standalone === true ||
-      document.referrer.includes('android-app://')
-    );
-
-    if (isStandalone) {
-      console.info('[AUTH] PWA standalone display mode detected — using signInWithRedirect.');
-      await signInWithRedirect(auth, googleProvider);
-      return null;
-    }
-
     const result = await signInWithPopup(auth, googleProvider);
     // Persist email as login_hint so the next sign-in can skip the account picker
     try {

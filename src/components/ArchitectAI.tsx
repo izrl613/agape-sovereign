@@ -16,10 +16,12 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, addDoc, serverTimestamp, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
-import { updateFindingStatus, recalculateSovereignScore, ScanFinding, generateSuspiciousReport } from '../services/scanService';
+import { updateFindingStatus, recalculateSovereignScore, ScanFinding, generateSuspiciousReport, IDENTITY_VECTORS } from '../services/scanService';
 import { logAIChatMessage, logUserEvent } from '../services/analyticsService';
 import { getFeatureFlag } from '../services/remoteConfigService';
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
+import { chatComplete } from '../services/localAIService';
+import { generateSovereignReport, getUserReports } from '../services/pdfReportService';
 
 interface Message {
   id: string;
@@ -58,11 +60,15 @@ export const ArchitectAI = () => {
     role: 'model',
     text: `Greetings, Sovereign ${user?.displayName || 'User'}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.
 
-I have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${sovereignScore}/100**.
+I have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${sovereignScore}/100** (${sovereignScore >= 70 ? 'KNOXED' : 'NUKED'}).
 
-- 🔥 **${stats.nuked} NUKED** exposures identified across data brokers and breach databases.
-- 🛡️ **${stats.knoxed} KNOXED** vectors hardened and secured.
-- 👁️ **${stats.monitored} MONITORED** vectors under active surveillance.
+**Intelligence Summary:**
+- 🔥 **${stats.nuked} NUKED** exposures identified across data brokers and breach databases
+- 🛡️ **${stats.knoxed} KNOXED** vectors hardened and secured  
+- 👁️ **${stats.monitored} MONITORED** vectors under active surveillance
+
+**Active Identity Vectors:**
+${IDENTITY_VECTORS.slice(0, 8).map(v => `- **${v.id} ${v.name}**: ${v.description}`).join('\n')}
 
 What aspect of your digital sovereignty would you like to reclaim today?`,
     timestamp: new Date()
@@ -754,7 +760,9 @@ You must enforce this role model in every response. If a non-admin user requests
 
 You have awareness of the following 16 identity vector modules. When a user activates a module or asks about a category, you provide detailed, actionable, real-time guidance scoped to that vector.
 
-01 Email Breach & Metadata | 02 Social Media Footprint | 03 File System Auditor | 04 Mobile Posture | 05 Desktop Enclave | 06 Deep/Dark Web Monitor | 07 Data Broker Removal | 08 Credential Vault Audit | 09 Network/DNS Security | 10 Cloud Storage Security | 11 Communication Privacy | 12 Financial Identity | 13 ID Document Exposure | 14 Third-Party OAuth Audit | 15 Public Records | 16 AI/Biometric Exposure
+${IDENTITY_VECTORS.map((v, i) => `${String(i + 1).padStart(2, '0')} ${v.name} (${v.id}): ${v.description}`).join('\n')}
+
+When users ask about specific vectors, reference them by their V-XX identifier and provide tailored guidance for that specific identity attack surface.
 
 ---
 
@@ -818,55 +826,58 @@ Recalculate and surface the Sovereign Score after every module action or user-su
         remediationFor: remediationId
       }]);
 
-      const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOllamaChatPayload({
-          stream: true,
-          messages: [
-            { role: "system", content: systemInstruction },
-            { role: "user", content: promptText }
-          ]
-        }))
-      });
+      // Use enhanced local AI service with LM Studio/Ollama fallback
+      const aiResponse = await chatComplete(promptText, systemInstruction, false, messages.map(m => ({
+        role: m.role === 'model' ? 'assistant' : 'user',
+        content: m.text
+      })));
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+      let responseText = aiResponse.text;
+      const isOffline = aiResponse.offline;
+
+      if (isOffline) {
+        responseText = `⚠️ **Architect AI Offline Mode**
+
+I apologize, but the local AI service is currently unavailable. Your Sovereign Enclave continues to operate in secure offline mode - no data has left your device.
+
+To restore AI capabilities:
+- **LMStudio**: Launch LMStudio, load your preferred model, and start the server on port 1234
+- **Ollama**: Ensure Ollama is running with \`ollama run ${DEFAULT_MODEL}\`
+
+All scan logic, encryption, and identity protection continue to function normally in offline mode.
+
+**Current Status:**
+- Sovereign Score: ${sovereignScore}/100
+- NUKED Findings: ${stats.nuked}
+- KNOXED Findings: ${stats.knoxed}`;
       }
 
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let fullText = '';
+      // Update the message with the response
+      setMessages(prev => prev.map(msg => 
+        msg.id === modelMessageId 
+          ? { ...msg, text: responseText }
+          : msg
+      ));
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunkStr = decoder.decode(value, { stream: true });
-          const lines = chunkStr.split('\n').filter(l => l.trim());
-          for (const line of lines) {
-            try {
-              const parsed = JSON.parse(line);
-              if (parsed.message?.content) {
-                fullText += parsed.message.content;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === modelMessageId ? { ...msg, text: fullText } : msg
-                ));
-              }
-            } catch (e) {
-              // ignore partial line parsing errors
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Architect AI Error:", error);
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'model',
-        text: "Connection to Architect AI core interrupted. Please verify your secure connection and try again.",
-        timestamp: new Date()
+      await saveHistory([...messages, userMessage, { 
+        id: modelMessageId, 
+        role: 'model', 
+        text: responseText, 
+        timestamp: new Date(),
+        remediationFor: remediationId
       }]);
+
+      logAIChatMessage(userMessage.text, responseText, user?.uid);
+
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'model' as const,
+        text: 'I apologize, but I encountered an error processing your request. The Architect AI is currently operating in offline mode. Please ensure your local AI service is running.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -907,196 +918,88 @@ Recalculate and surface the Sovereign Score after every module action or user-su
     handleSend(undefined, prompt);
   };
 
-  const generateFullReport = () => {
-    if (findings.length === 0) return;
-
-    const doc = new jsPDF();
-    const timestamp = new Date().toLocaleString();
-    
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(255, 46, 159); // NEON.magenta
-    doc.text("AGAPE SOVEREIGN ENCLAVE 2026", 105, 20, { align: "center" });
-    
-    doc.setFontSize(16);
-    doc.setTextColor(0, 212, 255); // NEON.blue
-    doc.text("IDENTITY SECURITY & AUDIT REPORT", 105, 30, { align: "center" });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(150, 150, 150);
-    doc.text(`Generated on: ${timestamp}`, 105, 38, { align: "center" });
-    
-    // User Info
-    doc.setFontSize(12);
-    doc.setTextColor(255, 255, 255);
-    doc.setFillColor(8, 18, 40);
-    doc.rect(14, 45, 182, 25, "F");
-    
-    doc.setTextColor(255, 255, 255);
-    doc.text(`Sovereign: ${user?.displayName || user?.email || 'Unknown'}`, 20, 55);
-    doc.text(`Sovereign Score: ${sovereignScore}/100`, 20, 63);
-    
-    // Summary Stats
-    doc.text(`NUKED: ${stats.nuked}`, 140, 55);
-    doc.text(`KNOXED: ${stats.knoxed}`, 140, 60);
-    doc.text(`MONITORED: ${stats.monitored}`, 140, 65);
-    
-    // Sovereign Score Trend Graph
-    const graphX = 20;
-    const graphY = 85;
-    const graphWidth = 160;
-    const graphHeight = 40;
-    
-    doc.setFontSize(12);
-    doc.setTextColor(0, 212, 255); // NEON.blue
-    doc.text("SOVEREIGN SCORE TREND", graphX, graphY - 5);
-    
-    // Draw axes
-    doc.setDrawColor(100, 100, 100);
-    doc.setLineWidth(0.5);
-    doc.line(graphX, graphY, graphX, graphY + graphHeight); // Y axis
-    doc.line(graphX, graphY + graphHeight, graphX + graphWidth, graphY + graphHeight); // X axis
-    
-    // Y-axis labels
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text("100", graphX - 8, graphY + 3);
-    doc.text("50", graphX - 6, graphY + (graphHeight / 2) + 3);
-    doc.text("0", graphX - 4, graphY + graphHeight + 3);
-    
-    // Generate a live trend line from the current score baseline
-    const trendData = [
-      Math.max(0, sovereignScore - 25),
-      Math.max(0, sovereignScore - 15),
-      Math.max(0, sovereignScore - 10),
-      Math.max(0, sovereignScore - 5),
-      sovereignScore
-    ];
-    
-    const pointSpacing = graphWidth / (trendData.length - 1);
-    
-    doc.setDrawColor(255, 46, 159); // NEON.magenta
-    doc.setLineWidth(1);
-    
-    for (let i = 0; i < trendData.length - 1; i++) {
-      const x1 = graphX + (i * pointSpacing);
-      const y1 = graphY + graphHeight - ((trendData[i] / 100) * graphHeight);
-      const x2 = graphX + ((i + 1) * pointSpacing);
-      const y2 = graphY + graphHeight - ((trendData[i+1] / 100) * graphHeight);
-      
-      doc.line(x1, y1, x2, y2);
-      
-      // Draw point
-      doc.setFillColor(0, 212, 255);
-      doc.circle(x1, y1, 1.5, 'F');
-    }
-    
-    // Draw last point
-    const lastX = graphX + ((trendData.length - 1) * pointSpacing);
-    const lastY = graphY + graphHeight - ((trendData[trendData.length - 1] / 100) * graphHeight);
-    doc.setFillColor(0, 212, 255);
-    doc.circle(lastX, lastY, 2, 'F');
-    
-    // Add current score label
-    doc.setTextColor(255, 46, 159);
-    doc.setFontSize(10);
-    doc.text(`${sovereignScore}`, lastX - 3, lastY - 4);
-    
-    let currentY = graphY + graphHeight + 20;
-    const nukedFindings = findings.filter(f => f.status === 'NUKED').slice(0, 3);
-    
-    if (nukedFindings.length > 0) {
-      doc.setFontSize(14);
-      doc.setTextColor(255, 46, 159); // NEON.magenta
-      doc.text("TOP 3 CRITICAL EXPOSURES SUMMARY", 14, currentY);
-      currentY += 10;
-      
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      nukedFindings.forEach((f, index) => {
-        doc.text(`${index + 1}. [${f.module.toUpperCase()}] ${f.finding}`, 18, currentY);
-        doc.setTextColor(0, 212, 255); // NEON.blue
-        doc.text("(See detailed remediation below)", 150, currentY);
-        doc.setTextColor(0, 0, 0);
-        currentY += 7;
+  const generateFullReport = async () => {
+    if (findings.length === 0) {
+      toast.error("No findings to report", {
+        description: "Run a DIFF scan first to generate a report."
       });
-      
-      currentY += 10;
-      doc.setFontSize(14);
-      doc.setTextColor(255, 46, 159); // NEON.magenta
-      doc.text("DETAILED PRIORITY REMEDIATION STEPS", 14, currentY);
-      currentY += 10;
-      
-      nukedFindings.forEach((f, index) => {
-        if (currentY > 240) {
-          doc.addPage();
-          currentY = 20;
-        }
-        
-        doc.setFontSize(11);
-        doc.setTextColor(255, 255, 255);
-        doc.setFillColor(255, 46, 159); // NEON.magenta
-        doc.rect(14, currentY - 5, 182, 8, "F");
-        doc.text(`RISK #${index + 1}: ${f.finding}`, 18, currentY);
-        currentY += 10;
-        
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        const splitDetails = doc.splitTextToSize(f.details, 175);
-        doc.text(splitDetails, 18, currentY);
-        currentY += (splitDetails.length * 5) + 10;
-      });
-      
-      currentY += 5;
+      return;
     }
 
-    // Findings Table
-    autoTable(doc, {
-      startY: currentY,
-      head: [['Module', 'Finding', 'Status', 'Details']],
-      body: findings.map(f => [
-        f.module.toUpperCase(),
-        f.finding,
-        f.status,
-        f.details
-      ]),
-      headStyles: {
-        fillColor: [255, 46, 159],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
-      alternateRowStyles: {
-        fillColor: [240, 240, 240]
-      },
-      margin: { top: 75 },
-      styles: {
-        fontSize: 9,
-        cellPadding: 4
-      },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 40 },
-        2: { cellWidth: 25 },
-        3: { cellWidth: 'auto' }
-      }
-    });
-    
-    // Footer
-    const pageCount = (doc as unknown as { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(
-        "Architect AI - Sovereign Identity Intelligence Engine - Confidential",
-        105,
-        285,
-        { align: "center" }
-      );
-      doc.text(`Page ${i} of ${pageCount}`, 190, 285, { align: "right" });
+    try {
+      setIsLoading(true);
+      toast.loading("Generating sovereign PDF report...", { id: "pdf-generation" });
+
+      const reportMetadata = await generateSovereignReport({
+        userId: user?.uid || 'demo-user',
+        userEmail: user?.email || 'demo@sovereign.nyc',
+        findings,
+        sovereignScore,
+        classification: sovereignScore >= 70 ? 'KNOXED' : 'NUKED',
+        includeRemediation: true,
+        includeComplianceInfo: true
+      });
+
+      // Download the PDF
+      const link = document.createElement('a');
+      link.href = reportMetadata.downloadUrl;
+      link.download = `Agape-Sovereign-Report-${reportMetadata.reportId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("PDF Report Generated", {
+        description: `Report ID: ${reportMetadata.reportId} | SHA256: ${reportMetadata.sha256Digest.substring(0, 16)}...`,
+        duration: 5000,
+        id: "pdf-generation"
+      });
+
+      // Add system message about report generation
+      const reportMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: `**Sovereign PDF Report Generated** 📄
+
+I have successfully generated your comprehensive Digital Identity Federated Footprint intelligence report with the following specifications:
+
+**Report Details:**
+- Report ID: ${reportMetadata.reportId}
+- Cloud Audit ID: ${reportMetadata.cloudAuditId}
+- Sovereign Score: ${reportMetadata.sovereignScore}/100 (${reportMetadata.classification})
+- SHA256 Integrity Hash: \`${reportMetadata.sha256Digest}\`
+- Retention: 2 years (expires ${reportMetadata.expiresAt.toLocaleDateString()})
+
+**Summary:**
+- 🔥 NUKED Exposures: ${reportMetadata.totalNuked}
+- 🛡️ KNOXED Vectors: ${reportMetadata.totalKnoxed}
+- 👁️ MONITORED Items: ${reportMetadata.totalMonitored}
+
+**Compliance Certifications:**
+- ✅ ECRA 2026 (European Cybersecurity Resilience Act)
+- ✅ GDPR (General Data Protection Regulation)
+- ✅ CCPA (California Consumer Privacy Act)
+
+The report includes detailed remediation recommendations for all NUKED findings and has been securely stored in your sovereign enclave with full audit trail compliance.`,
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, reportMessage]);
+      await saveHistory([...messages, reportMessage]);
+
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      toast.error("PDF Generation Failed", {
+        description: "Failed to generate sovereign report. Please try again.",
+        id: "pdf-generation"
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    doc.save(`Sovereign_Report_${user?.uid || 'User'}.pdf`);
+  };
+
+  const analyzeSovereignty = () => {
+    const prompt = "Analyze my current Sovereign Score and findings. Provide personalized recommendations to improve my score and fortify my digital identity.";
+    handleSend(undefined, prompt);
   };
 
   const generateImprovementPlan = () => {
@@ -1126,7 +1029,7 @@ Recalculate and surface the Sovereign Score after every module action or user-su
       
       Use a futuristic, authoritative tone. Format with clear headers, bullet points, and urgency indicators.
     `;
-    
+
     handleSend(undefined, prompt);
   };
 

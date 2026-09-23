@@ -4,7 +4,6 @@ import { Fingerprint, ArrowLeft, Shield, EyeOff } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { isPrivateBrowsing } from '../utils/incognitoDetector';
 import { DemoBypassButton } from './auth/DemoBypassButton';
-import { AuthBypassPanel, useMagicLinkRedirect, type FailedMethod } from './auth/AuthBypassPanel';
 
 // ── Brand palette ──────────────────────────────────────────────
 const C = {
@@ -154,16 +153,11 @@ const LoadingSpinner = () => {
 export const Login = () => {
   const { login, loginWithPasskey } = useAuth();
 
-  // Handle magic link redirect on page load (e.g. user clicked link from email)
-  useMagicLinkRedirect();
-
-  const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'passkey-no-cred' | 'creating'>('landing');
+  const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
   const [scanning, setScanning] = useState(false);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showBypass, setShowBypass] = useState(false);
-  const [failedMethod, setFailedMethod] = useState<FailedMethod>(null);
   const [isIncognito, setIsIncognito] = useState<boolean | null>(null); // null = detecting
   const [activeMethod, setActiveMethod] = useState<'google' | 'passkey' | null>(null);
 
@@ -199,7 +193,6 @@ export const Login = () => {
 
   const handleGoogleLogin = async () => {
     setAuthError(null);
-    setShowBypass(false);
     setScanning(true);
     setActiveMethod('google');
     try {
@@ -210,14 +203,11 @@ export const Login = () => {
       setScanning(false);
       setActiveMethod(null);
       setAuthError(formatError(err));
-      setFailedMethod('google');
-      setShowBypass(true);
     }
   };
 
   const handlePasskeyEmailNext = () => {
     setAuthError(null);
-    setShowBypass(false);
     if (!validateEmail(email)) {
       setEmailError('Enter a valid email to locate your passkey.');
       return;
@@ -228,7 +218,6 @@ export const Login = () => {
 
   const handlePasskeyLogin = async () => {
     setAuthError(null);
-    setShowBypass(false);
     setScanning(true);
     setActiveMethod('passkey');
     try {
@@ -238,43 +227,15 @@ export const Login = () => {
       setScanning(false);
       setActiveMethod(null);
       const msg = err instanceof Error ? err.message : 'Passkey authentication failed.';
-      setFailedMethod('passkey');
-
-      // No passkey registered for this email — offer registration path
-      if (msg.includes('No passkey') || msg.includes('No account found')) {
-        setStep('passkey-no-cred');
-        return;
-      }
-
       if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
         setAuthError('Passkey prompt was dismissed. Try again or use Google Sign-In.');
       } else if (msg.includes('User verification required') || msg.includes('could not be verified')) {
         setAuthError('Biometric verification failed. Ensure your device fingerprint/Face ID is working, or try Google Sign-In.');
+      } else if (msg.includes('No passkey') || msg.includes('No account found')) {
+        setAuthError(msg);
       } else {
         setAuthError(formatError(err));
       }
-      setShowBypass(true);
-      setStep('passkey-auth');
-    }
-  };
-
-  // Sign in with Google, then immediately trigger passkey binding
-  const handleGoogleThenPasskey = async () => {
-    setAuthError(null);
-    setScanning(true);
-    setActiveMethod('google');
-    try {
-      await login();
-      // After Google sign-in succeeds, the onAuthStateChanged listener will
-      // fire and load the user. The PasskeySetupPrompt will then appear
-      // automatically offering to bind a passkey on this device.
-      setStep('creating');
-    } catch (err: unknown) {
-      setScanning(false);
-      setActiveMethod(null);
-      setAuthError(formatError(err));
-      setFailedMethod('google');
-      setShowBypass(true);
       setStep('passkey-auth');
     }
   };
@@ -295,7 +256,7 @@ export const Login = () => {
     padding: '44px 40px 36px',
     textAlign: 'center',
     minWidth: 360,
-    maxWidth: 580,
+    maxWidth: 420,
     width: '100%',
   };
 
@@ -430,7 +391,7 @@ export const Login = () => {
             )}
           </AnimatePresence>
 
-          {/* ── Error + Bypass Panel ── */}
+          {/* ── Error ── */}
           <AnimatePresence>
             {authError && (
               <motion.div
@@ -438,7 +399,7 @@ export const Login = () => {
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 style={{
-                  marginBottom: showBypass ? 6 : 18, padding: '10px 14px',
+                  marginBottom: 18, padding: '10px 14px',
                   background: 'rgba(255,107,0,0.07)',
                   border: '1px solid rgba(255,107,0,0.3)',
                   borderRadius: 10, color: '#ffaa66',
@@ -448,25 +409,6 @@ export const Login = () => {
               >
                 ⚠ {authError}
               </motion.div>
-            )}
-          </AnimatePresence>
-          <AnimatePresence>
-            {showBypass && (
-              <AuthBypassPanel
-                failedMethod={failedMethod}
-                email={email}
-                onSwitchToGoogle={() => {
-                  setShowBypass(false);
-                  setAuthError(null);
-                  setStep('landing');
-                  handleGoogleLogin();
-                }}
-                onSwitchToPasskey={() => {
-                  setShowBypass(false);
-                  setAuthError(null);
-                  setStep('passkey-email');
-                }}
-              />
             )}
           </AnimatePresence>
 
@@ -490,67 +432,63 @@ export const Login = () => {
                   analysis. Your sovereignty begins here.
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'row', gap: 16, marginTop: 16 }}>
-                  {/* LEFT PANEL — Passkey */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'rgba(0,212,255,0.03)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                      <div style={{ background: 'rgba(0,212,255,0.1)', padding: 12, borderRadius: 12 }}>
-                        <Fingerprint size={28} color={C.blue} />
-                      </div>
-                      <div style={{ color: C.blue, fontSize: 13, fontWeight: 600, letterSpacing: '0.05em' }}>Passkey / WebAuthn</div>
-                      <div style={{ color: C.muted, fontSize: 10, textAlign: 'center', lineHeight: 1.4 }}>Device-bound · Local vault</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* PRIMARY — Google */}
+                  <motion.button
+                    whileHover={{ scale: 1.015, boxShadow: '0 6px 22px rgba(66,133,244,0.5)' }}
+                    whileTap={{ scale: 0.975 }}
+                    id="login-google-btn"
+                    onClick={handleGoogleLogin}
+                    style={{
+                      ...btnBase,
+                      backgroundColor: '#4285F4',
+                      padding: '2px 20px 2px 2px',
+                      boxShadow: '0 4px 14px rgba(66,133,244,0.35)',
+                      fontFamily: 'Roboto, Arial, sans-serif',
+                      fontWeight: 500,
+                      fontSize: 15,
+                      justifyContent: 'flex-start',
+                      gap: 0,
+                    }}
+                    aria-label="Sign in with Google"
+                  >
+                    <div style={{
+                      background: '#fff', borderRadius: 4, padding: 10,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      marginRight: 14, flexShrink: 0,
+                    }}>
+                      <GoogleIcon />
                     </div>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02, borderColor: `rgba(0,212,255,0.45)`, background: 'rgba(0,212,255,0.1)' }}
-                      whileTap={{ scale: 0.98 }}
-                      id="login-passkey-btn"
-                      onClick={() => setStep('passkey-email')}
-                      style={{
-                        ...btnBase,
-                        marginTop: 'auto',
-                        background: 'rgba(0,212,255,0.06)',
-                        border: `1px solid rgba(0,212,255,0.3)`,
-                        color: 'rgba(255,255,255,0.9)',
-                        fontSize: 13,
-                        padding: '10px 16px'
-                      }}
-                      aria-label="Sign in with Passkey"
-                    >
-                      Sign In
-                    </motion.button>
+                    <span style={{ flex: 1, textAlign: 'left', letterSpacing: '0.2px' }}>
+                      Sign in with Google
+                    </span>
+                  </motion.button>
+
+                  {/* DIVIDER */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'rgba(255,255,255,0.18)', fontSize: 10, letterSpacing: '0.1em', fontFamily: 'monospace' }}>
+                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+                    OR
+                    <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
                   </div>
 
-                  {/* RIGHT PANEL — Google */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, padding: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                      <div style={{ background: 'rgba(255,255,255,0.05)', padding: 12, borderRadius: 12 }}>
-                        <GoogleIcon />
-                      </div>
-                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, letterSpacing: '0.05em' }}>Google OAuth</div>
-                      <div style={{ color: C.muted, fontSize: 10, textAlign: 'center', lineHeight: 1.4 }}>Save reports to Google Drive</div>
-                    </div>
-                    
-                    <motion.button
-                      whileHover={{ scale: 1.02, boxShadow: '0 4px 16px rgba(66,133,244,0.3)' }}
-                      whileTap={{ scale: 0.98 }}
-                      id="login-google-btn"
-                      onClick={handleGoogleLogin}
-                      style={{
-                        ...btnBase,
-                        marginTop: 'auto',
-                        backgroundColor: '#4285F4',
-                        border: 'none',
-                        fontFamily: 'Roboto, Arial, sans-serif',
-                        fontWeight: 500,
-                        fontSize: 13,
-                        padding: '10px 16px'
-                      }}
-                      aria-label="Sign in with Google"
-                    >
-                      Sign In
-                    </motion.button>
-                  </div>
+                  {/* SECONDARY — Passkey */}
+                  <motion.button
+                    whileHover={{ scale: 1.01, borderColor: `rgba(0,212,255,0.45)`, background: 'rgba(0,212,255,0.07)' }}
+                    whileTap={{ scale: 0.975 }}
+                    id="login-passkey-btn"
+                    onClick={() => setStep('passkey-email')}
+                    style={{
+                      ...btnBase,
+                      background: 'rgba(0,212,255,0.04)',
+                      border: `1px solid rgba(0,212,255,0.2)`,
+                      color: 'rgba(255,255,255,0.7)',
+                      fontSize: 13,
+                    }}
+                    aria-label="Sign in with Passkey"
+                  >
+                    <Fingerprint size={18} color={C.blue} />
+                    Use a Passkey instead
+                  </motion.button>
                 </div>
 
                 {/* Trust logos — real brand marks */}
@@ -694,77 +632,11 @@ export const Login = () => {
                     Authenticate with Passkey
                   </motion.button>
                   <button
-                    onClick={() => { setStep('passkey-email'); setAuthError(null); setShowBypass(false); }}
+                    onClick={() => { setStep('passkey-email'); setAuthError(null); }}
                     id="passkey-auth-back-btn"
                     style={{ background: 'none', border: 'none', color: C.muted, fontSize: 11, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
                   >
                     <ArrowLeft size={10} /> Change email
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── No passkey registered for this email — offer registration ── */}
-            {step === 'passkey-no-cred' && !scanning && (
-              <motion.div
-                key="passkey-no-cred"
-                initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.28 }}
-              >
-                <motion.div
-                  animate={{ rotate: [0, -5, 5, 0] }}
-                  transition={{ duration: 0.5, delay: 0.15 }}
-                  style={{ fontSize: '2.4rem', marginBottom: 14 }}
-                >
-                  🔐
-                </motion.div>
-                <div style={{ color: C.orange, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 10 }}
-                >
-                  NO PASSKEY FOUND
-                </div>
-                <div style={{ color: C.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.65 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{email}</span>
-                </div>
-                <div style={{ color: C.muted, fontSize: 12, marginBottom: 22, lineHeight: 1.65 }}>
-                  No passkey is registered for this email. Sign in with Google first,
-                  then bind a passkey to any device you use.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <motion.button
-                    whileHover={{ scale: 1.015, boxShadow: '0 6px 22px rgba(66,133,244,0.4)' }}
-                    whileTap={{ scale: 0.975 }}
-                    id="passkey-no-cred-google-btn"
-                    onClick={handleGoogleThenPasskey}
-                    style={{
-                      width: '100%', padding: '2px 20px 2px 2px',
-                      borderRadius: 10, border: 'none',
-                      backgroundColor: '#4285F4',
-                      display: 'flex', alignItems: 'center',
-                      gap: 0, cursor: 'pointer',
-                      fontFamily: 'Roboto, Arial, sans-serif',
-                      fontWeight: 500, fontSize: 14,
-                      boxShadow: '0 4px 14px rgba(66,133,244,0.35)',
-                    }}
-                    aria-label="Sign in with Google to register passkey"
-                  >
-                    <div style={{ background: '#fff', borderRadius: 4, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 14, flexShrink: 0 }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                      </svg>
-                    </div>
-                    <span style={{ flex: 1, textAlign: 'left', color: '#fff', letterSpacing: '0.2px' }}>
-                      Sign in with Google → add passkey
-                    </span>
-                  </motion.button>
-                  <button
-                    onClick={() => { setStep('passkey-email'); setAuthError(null); }}
-                    id="passkey-no-cred-back-btn"
-                    style={{ background: 'none', border: 'none', color: C.muted, fontSize: 11, cursor: 'pointer', fontFamily: 'monospace', letterSpacing: '0.1em', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-                  >
-                    <ArrowLeft size={10} /> Try a different email
                   </button>
                 </div>
               </motion.div>

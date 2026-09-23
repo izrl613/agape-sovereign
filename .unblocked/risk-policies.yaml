@@ -1,0 +1,23 @@
+# .unblocked/risk-policies.yaml
+
+context: >
+  This repository includes customer authentication and billing code.
+
+policies:
+  - policy: Authentication changes
+    risk: highest
+    criteria: >
+      The PR changes sign-in, session management, permissions,
+      or authentication tokens.
+
+  - policy: Database changes
+    risk: high
+    criteria: >
+      The PR changes database schema, migrations, ORM models,
+      or destructive data operations.
+
+  - policy: Dependency updates
+    risk: medium
+    criteria: >
+      The PR updates runtime dependencies, lockfiles, build plugins,
+      or generated clients.
