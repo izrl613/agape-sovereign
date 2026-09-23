@@ -377,9 +377,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const handleLoginWithPasskey = async (email: string) => {
     const normalized = (email || '').trim().toLowerCase();
-    if (!normalized) {
-      toast.error('Please enter your email to login with passkey.');
-      throw new Error('Please enter your email to login with passkey.');
+    
+    // Allow empty email for resident key mode (direct passkey login)
+    const isResidentKeyMode = !normalized;
+
+    if (!isResidentKeyMode && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      toast.error('Please enter a valid email to login with passkey.');
+      throw new Error('Please enter a valid email to login with passkey.');
     }
 
     if (typeof window !== 'undefined' && !window.PublicKeyCredential) {
@@ -398,11 +402,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.setItem('sovereign_passkey_email', normalized);
 
       // 1. Get login options (same-origin → Hosting rewrite → authApi)
+      const requestBody = isResidentKeyMode 
+        ? { reauth: true }  // Resident key mode
+        : { email: normalized };  // Email-based mode
+
       const optionsRes = await fetch('/api/auth/login-options', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalized }),
+        body: JSON.stringify(requestBody),
       });
 
       const optionsBody = await optionsRes.json().catch(() => ({}));

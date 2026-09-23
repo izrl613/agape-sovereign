@@ -36,6 +36,13 @@ const RP_NAME = "Agape Sovereign";
 const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
 const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
 
+// Development fallback for local testing
+const isDevelopment = process.env.NODE_ENV === "development" || 
+                      process.env.FUNCTIONS_EMULATOR === "true";
+
+const DEV_RP_ID = "localhost";
+const DEV_ORIGIN = "http://localhost:5173";
+
 /**
  * Origins allowed for WebAuthn ceremony verification.
  * RP ID is derived per-origin so passkeys work on custom domain AND Firebase Hosting.
@@ -200,6 +207,15 @@ function getWebAuthnConfig(req: Request): {
     } catch {
       candidate = "";
     }
+  }
+
+  // Use development defaults for local testing
+  if (isDevelopment && (candidate.includes("localhost") || candidate.includes("127.0.0.1"))) {
+    return {
+      expectedOrigin: DEV_ORIGIN,
+      rpId: DEV_RP_ID,
+      allowedOrigins: [DEV_ORIGIN, "http://localhost:5000", "http://localhost:5173"],
+    };
   }
 
   if (candidate) {

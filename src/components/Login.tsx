@@ -206,6 +206,30 @@ export const Login = () => {
     }
   };
 
+  const handleDirectPasskeyLogin = async () => {
+    setAuthError(null);
+    setScanning(true);
+    setActiveMethod('passkey');
+    try {
+      // Use resident key mode for direct passkey login (no email required)
+      await loginWithPasskey('');
+      setStep('creating');
+    } catch (err: unknown) {
+      setScanning(false);
+      setActiveMethod(null);
+      const msg = err instanceof Error ? err.message : 'Passkey authentication failed.';
+      if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
+        setAuthError('Passkey prompt was dismissed. Try again or use Google Sign-In.');
+      } else if (msg.includes('User verification required') || msg.includes('could not be verified')) {
+        setAuthError('Biometric verification failed. Ensure your device fingerprint/Face ID is working, or try Google Sign-In.');
+      } else if (msg.includes('No passkey') || msg.includes('No account found')) {
+        setAuthError(msg);
+      } else {
+        setAuthError(formatError(err));
+      }
+    }
+  };
+
   const handlePasskeyEmailNext = () => {
     setAuthError(null);
     if (!validateEmail(email)) {
@@ -438,7 +462,7 @@ export const Login = () => {
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setStep('passkey-email')}
+                    onClick={handleDirectPasskeyLogin}
                     style={{
                       background: 'rgba(0,212,255,0.04)',
                       border: `1px solid rgba(0,212,255,0.2)`,
