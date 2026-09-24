@@ -1,5 +1,5 @@
 export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || process.env.VITE_OLLAMA_BASE_URL || 'http://localhost:11434';
-export const DEFAULT_MODEL = process.env.ARCHITECT_MODEL || process.env.VITE_ARCHITECT_MODEL || 'gemma4:e4b';
+export const DEFAULT_MODEL = process.env.ARCHITECT_MODEL || process.env.VITE_ARCHITECT_MODEL || 'nemotron-3-nano:4b-bf16';
 
 /**
  * @param {{

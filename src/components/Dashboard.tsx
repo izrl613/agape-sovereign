@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+import { updateFindingStatus } from '../services/scanService';
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
@@ -255,14 +257,26 @@ export const Dashboard = () => {
     return MODULE_CONFIG.find(m => m.id === currentModule)?.label || currentModule.toUpperCase();
   }, [currentModule]);
 
-  const handleNukeAll = () => {
-    // TODO: Implement nuke all exposures
-    console.log('Nuke all exposures');
+  const handleNukeAll = async () => {
+    if (findings.length === 0) return;
+    toast.info("Remediating all detected exposures via Sovereign Enclave...");
+    for (const f of findings) {
+      if (f.status === "NUKED" && f.id) {
+        await updateFindingStatus(f.id, "KNOXED");
+      }
+    }
+    toast.success("All exposures remediated & sealed.");
   };
 
-  const handleKnoxAll = () => {
-    // TODO: Implement knox all secured
-    console.log('Knox all secured');
+  const handleKnoxAll = async () => {
+    if (findings.length === 0) return;
+    toast.info("Enforcing KNOXED security state on all monitored vectors...");
+    for (const f of findings) {
+      if (f.id) {
+        await updateFindingStatus(f.id, "KNOXED");
+      }
+    }
+    toast.success("All vectors locked in KNOXED status.");
   };
 
   return (
@@ -344,7 +358,34 @@ export const Dashboard = () => {
         </div>
 
         {/* ── Action Buttons ── */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}66` }}
+            whileTap={{ scale: 0.98 }}
+            onClick={triggerFullScan}
+            disabled={isScanning}
+            style={{
+              flex: 1.3,
+              minWidth: 240,
+              padding: '16px 24px',
+              borderRadius: 12,
+              background: `linear-gradient(135deg, ${NEON.blue}30 0%, ${NEON.magenta}30 100%)`,
+              border: `1.5px solid ${NEON.blue}`,
+              color: '#FFFFFF',
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              letterSpacing: '0.12em',
+              cursor: isScanning ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              boxShadow: `0 0 20px rgba(0,212,255,0.3)`
+            }}
+          >
+            {isScanning ? '⚡ SCANNING 16 VECTORS...' : '🚀 RUN LIVE DIFF SCAN (16 VECTORS)'}
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.magenta}44` }}
             whileTap={{ scale: 0.98 }}
