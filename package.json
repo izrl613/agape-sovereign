@@ -95,7 +95,8 @@
     "protobufjs@6.11.6": true,
     "protobufjs@7.6.5": true,
     "re2@1.26.1": true,
-    "openclaw@2026.7.1-2": true
+    "openclaw@2026.7.1-2": true,
+    "firebase@11.10.0": true
   },
   "overrides": {
     "tar": "^7.5.21",

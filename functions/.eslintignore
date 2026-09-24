@@ -4,3 +4,5 @@ src/dataconnect-admin-generated/
 src/genkit-sample.ts
 index.js
 server.js
+**/*.test.ts
+**/*.spec.ts
