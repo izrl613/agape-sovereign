@@ -37,7 +37,7 @@ const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
 const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
 
 // Development fallback for local testing
-const isDevelopment = process.env.NODE_ENV === "development" || 
+const isDevelopment = process.env.NODE_ENV === "development" ||
                       process.env.FUNCTIONS_EMULATOR === "true";
 
 const DEV_RP_ID = "localhost";

@@ -14,15 +14,14 @@ module.exports = {
   ],
   parser: "@typescript-eslint/parser",
   parserOptions: {
-    project: ["./tsconfig.json", "./tsconfig.dev.json"],
+    project: ["tsconfig.json", "tsconfig.dev.json"],
     sourceType: "module",
   },
   ignorePatterns: [
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
-    "/src/**/*.test.ts", // Ignore test files.
-    "/vitest.config.ts", // Ignore vitest config.
-    "/security.config.ts", // Ignore security config.
+    "security.config.ts", // Root-level config, not in tsconfig project.
+    "vitest.config.ts", // Root-level config, not in tsconfig project.
   ],
   plugins: [
     "@typescript-eslint",
@@ -33,6 +32,9 @@ module.exports = {
     "import/no-unresolved": 0,
     "indent": ["error", 2],
     "max-len": ["error", {"code": 120}],
-    "@typescript-eslint/no-explicit-any": "warn",
+    "object-curly-spacing": "off",
+    "no-invalid-this": "off",
+    "space-before-function-paren": "off",
+    "require-jsdoc": "off",
   },
 };
