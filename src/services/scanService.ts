@@ -429,3 +429,32 @@ Provide an actionable, cyber-defense remediation plan with specific technical st
     ? "Agape Sovereign local AI is processing offline. Remediation protocol: Enforce hardware Passkeys, revoke public OAuth grants, and execute automated broker opt-out."
     : text;
 }
+
+/**
+ * calculateEnhancedSovereignScore
+ * Enhanced weighted calculation:
+ * KNOXED = +10pts, MONITORED = +6pts, NUKED = +0pts (already removed)
+ * Bonus: +5 base points if any KNOXED findings exist (proactive protection)
+ * Returns 0-100 integer. 100 = fully sovereign.
+ */
+export function calculateEnhancedSovereignScore(findings: ScanFinding[]): number {
+  if (findings.length === 0) return 100;
+  const weights = { KNOXED: 10, MONITORED: 6, NUKED: 0 } as const;
+  const baseScore = Math.round(
+    (findings.reduce((total, f) => total + weights[f.status], 0) /
+      (findings.length * 10)) * 100
+  );
+  const hasKnoxed = findings.some(f => f.status === 'KNOXED');
+  return Math.min(100, hasKnoxed ? baseScore + 5 : baseScore);
+}
+
+/**
+ * IDENTITY_VECTORS — alias for CANONICAL_VECTORS with extended metadata
+ * Shape expected by ArchitectAI and other consumers: { id, name, description }
+ */
+export const IDENTITY_VECTORS = CANONICAL_VECTORS.map(v => ({
+  id: v.vector,
+  name: v.label,
+  description: `Identity vector ${v.vector}: ${v.label}. Real-time privacy and security scanning module.`,
+  moduleId: v.id,
+}));

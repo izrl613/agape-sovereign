@@ -1,43 +1,62 @@
-# Changelog
+# Changelog — Agape Sovereign V2
 
-All notable changes to Agape Sovereign are documented here.
+> All notable changes to this project are documented in this file.
+> Format follows [Keep a Changelog](https://keepachangelog.com/) conventions.
 
 ---
 
-## v2.0.0 — 2026-07-12
+## [V2.1.0] — 2026-09-24 · Live 16-Vector Architecture
 
 ### Added
-- **16 Identity Vector modules** (V-01 through V-16) — each with dedicated route, scan engine, and Firestore collection
-- **Shield Platform (V-17)** — unified 5-pillar command center at `/dashboard/shield`
-- **DLP Shield** — Polymer-inspired adaptive data loss prevention (8 rules, REDACT/BLOCK/ALERT/REPLACE)
-- **Identity Guard** — Unosecur-inspired human/non-human identity discovery with one-tap remediation
-- **PII Anonymizer** — Nymiz-inspired AI-driven PII detection with 4 anonymization modes
-- **Privacy Monitor** — PrivacyProctor-inspired real-time alert feed across APP/WEB/API surfaces
-- **AI Armor** — Prisma AIRS-inspired AI security event log (INJECTION/EXFIL/MISUSE/BLOCK)
-- **Services**: `dlpService.ts`, `piiService.ts`, `identityRiskService.ts`
-- **Google Sign-In** button on landing page (OAuth branding compliant)
-- **Passkey login** (WebAuthn Level 2) via `@simplewebauthn`
-- Routes for V-08 through V-16 (`/location`, `/browser`, `/medical`, `/biometric`, `/iot`, `/darkweb`, `/behavioral`)
-- Comprehensive `DiffModules.tsx` factory with uniform module API
-
-### Changed
-- Dashboard grid updated to 17 modules (V-01–V-16 + Shield V-17)
-- LandingPage now public (satisfies Google OAuth homepage branding requirement)
-- App name aligned to `Agape Sovereign AI` across OAuth consent screen and homepage
+- 16 Canonical Identity Vectors fully implemented in scanService.ts
+  - V-01 Email Breach Scanner (HIBP + XposedOrNot k-anonymity)
+  - V-02 Social Media Footprint (GitHub, username enumeration)
+  - V-03 Device File Scan (hardware profiling, entropy analysis)
+  - V-04 Mobile Security Layer (WebAuthn/Passkey biometric status)
+  - V-05 Deep Web Exposure (pastebin signature monitoring)
+  - V-06 Data Broker Removal (CCPA/GDPR opt-out automation)
+  - V-07 Password Vault Analysis (SHA-1 k-anonymity, HIBP range API)
+  - V-08 Location Data Footprint (Geolocation API, EXIF GPS scrubbing)
+  - V-09 Browser & Cookie Tracker (Canvas2D hash, WebGL renderer, AudioContext entropy)
+  - V-10 Financial Identity Exposure (Luhn checksum, credit freeze guidance)
+  - V-11 Medical Data Footprint (HIPAA PHI safeguards)
+  - V-12 Voice & Biometric Data (Web Audio API acoustic entropy)
+  - V-13 IoT & Smart Device Scan (WebRTC LAN IP leak detection)
+  - V-14 Cloud Storage Exposure (S3/Drive/iCloud permission audit)
+  - V-15 Dark Web Monitoring (Tor feed, credential surveillance)
+  - V-16 Behavioral Profile Analysis (tracking pixel neutralization)
+- SplashEntry.tsx: SHA-256 live hash + Shannon entropy per keystroke
+- Dashboard.tsx: Live DIFF Scan trigger, real-time Firestore onSnapshot
+- Security fixes: npm audit fix applied -- 0 vulnerabilities
+- Firebase SDK v6+ import paths corrected
+- Git identity configured: agape@sovereign.nyc
+- Default local AI model: nemotron-3-nano:4b-bf16 via Ollama
 
 ### Fixed
-- Route conflict at `/dashboard/ai` (was shared by BiometricModule and AI route)
-- DiffModule numbering drift between Dashboard MODULE_CONFIG and exports
-- TypeScript ModuleProps interface extended with optional `pillar` and `techniques` fields
+- Firebase Functions import path errors (SDK 6.0.0+ breaking change)
+- Rebase conflict in scanService.ts preserved V2 implementation
+- node_modules install restored; 0 vulnerabilities after audit fix
 
 ---
 
-## v1.0.0 — 2026-04-20
+## [V2.0.0] — 2026-09-22 · Canonical Architecture Foundation
 
 ### Added
-- Initial PWA scaffolding (React 19, Vite, Firebase)
-- Basic dashboard with email/social/device modules
-- Google OAuth authentication
-- AEGIS dark theme (Obsidian/Magenta/Blue/Orange)
-- Architect AI integration
-- Firebase Hosting deployment at sovereign.nyc
+- Zero-knowledge encryption pipeline (encryptClientSide, generateSHA256)
+- Dual-backend local AI (LMStudio port 1234, Ollama port 11434 fallback)
+- WebAuthn/Passkey dual authentication
+- Zero-Trust Firestore security rules
+- ScanContext global findings state
+- EncryptedFooter tamper-evident SHA-256 seal
+- Sovereign Score computation
+- DiffModule generic 16-vector wrapper
+- Complete neon glassmorphism UI (Orbitron, Rajdhani, Share Tech Mono)
+
+---
+
+## [V1.0.0] — 2026-09 · Initial PWA Foundation
+
+- Firebase Hosting + Functions scaffold
+- React + Vite + TypeScript
+- Firebase Auth (Google Sign-In)
+- Basic Firestore integration
