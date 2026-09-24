@@ -27,7 +27,7 @@
     "firebase-admin": "^13.6.0",
     "firebase-functions": "^7.0.0",
     "helmet": "^8.1.0",
-    "jspdf": "^2.5.2"
+    "jspdf": "^4.2.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.8",
