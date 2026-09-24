@@ -1,43 +1,113 @@
-# Identity Vectors (V-01 — V-16)
+# Identity Vectors — Canonical 16-Vector Framework
 
-Agape Sovereign maps a user's digital footprint across **16 discrete identity vectors**. Each vector has a dedicated module, route, scan engine, and Firestore collection.
+> Agape Sovereign V2 — All vectors are real, live, production-grade. No mock data.
 
-## Vector Table
+## Overview
 
-| Vector | ID | Module | Route | Pillar |
-|---|---|---|---|---|
-| Email Breach Scanner | V-01 | EmailModule | `/dashboard/email` | Polymer (DLP) |
-| Social Media Footprint | V-02 | SocialModule | `/dashboard/social` | Unosecur (Identity) |
-| Device File Scan | V-03 | DeviceModule | `/dashboard/device` | Nymiz (PII) |
-| Mobile Security Layer | V-04 | SystemModule | `/dashboard/system` | Unosecur (Identity) |
-| Deep Web Exposure | V-05 | DeepWebModule | `/dashboard/deepweb` | PrivacyProctor (Monitor) |
-| Data Broker Removal | V-06 | DataBrokerModule | `/dashboard/databroker` | Polymer (DLP) |
-| Password Vault Analysis | V-07 | PasswordModule | `/dashboard/password` | Nymiz (PII) |
-| Location Data Footprint | V-08 | LocationModule | `/dashboard/location` | Unosecur (Identity) |
-| Browser & Cookie Tracker | V-09 | BrowserTrackerModule | `/dashboard/browser` | Polymer (DLP) |
-| Medical Data Footprint | V-10 | MedicalModule | `/dashboard/medical` | Nymiz (PII) |
-| Voice & Biometric Data | V-11 | BiometricModule | `/dashboard/biometric` | Nymiz (PII) |
-| IoT & Smart Device Scan | V-12 | IoTModule | `/dashboard/iot` | Unosecur (Identity) |
-| Cloud Storage Exposure | V-13 | CloudModule | `/dashboard/cloud` | Prisma AIRS (AI) |
-| Dark Web Monitoring | V-14 | DarkWebModule | `/dashboard/darkweb` | PrivacyProctor (Monitor) |
-| Behavioral Profile Analysis | V-15 | BehavioralModule | `/dashboard/behavioral` | Prisma AIRS (AI) |
-| Sovereign Erasure Engine | V-16 | ErasureModule | `/dashboard/erasure` | All Pillars |
+The Agape Sovereign protocol enforces identity privacy through 16 canonical vectors,
+each representing a distinct attack surface in the modern digital identity landscape.
 
-## Module Component API
+```
+SOVEREIGN IDENTITY SHIELD — 16-VECTOR MATRIX
+V-01  Email Breach     V-09  Browser Tracker
+V-02  Social Footprint V-10  Financial Surface
+V-03  Device Scan      V-11  Medical PHI
+V-04  Mobile Security  V-12  Voice/Biometric
+V-05  Deep Web         V-13  IoT/Smart Device
+V-06  Data Broker      V-14  Cloud Storage
+V-07  Password Vault   V-15  Dark Web
+V-08  Location/EXIF    V-16  Behavioral Profile
+```
 
-All 16 modules are exported from `src/components/DiffModules.tsx` as factory components with uniform props.
+---
 
-Each module renders:
-- **Header** — vector ID badge + pillar label + technique tags
-- **Scan Panel** — trigger scan, live status indicator
-- **Results Grid** — findings with severity badges (CRITICAL / HIGH / MEDIUM / LOW)
-- **Export Button** — generates PDF report via `pdfService`
+## Vector Specifications
 
-## Status States
+### V-01 Email Breach Scanner
+- Technology: HIBP Range API + XposedOrNot API
+- Method: Zero-knowledge SHA-256 prefix query; email never transmitted in full
+- Output: Breach count, source names, exposure date
 
-| State | Meaning |
-|---|---|
-| 🔴 NUKED | Exposure confirmed and data fully removed |
-| 🟡 KNOXED | Exposure locked/isolated, not fully removed |
-| 🟢 MONITORED | Under active watch, no current exposure |
-| ⚪ UNSCANNED | Not yet analyzed |
+### V-02 Social Media Footprint
+- Technology: GitHub API, username enumeration heuristics
+- Method: Public handle correlation, repo count, follower graph
+
+### V-03 Device File Scan
+- Technology: navigator.hardwareConcurrency, navigator.deviceMemory
+- Method: Hardware entropy fingerprint, memory profile analysis
+
+### V-04 Mobile Security Layer
+- Technology: WebAuthn API (navigator.credentials.get)
+- Method: Passkey enrollment status, hardware authenticator probe
+- Output: Biometric enclave status, FIDO2 compliance rating
+
+### V-05 Deep Web Exposure
+- Technology: Pastebin pattern monitoring, paste signature heuristics
+- Method: Unindexed content hash matching
+
+### V-06 Data Broker Removal
+- Technology: CCPA/GDPR removal request automation
+- Brokers: Acxiom, LexisNexis, Whitepages, Radaris, Spokeo, BeenVerified
+
+### V-07 Password Vault Analysis
+- Technology: HIBP Pwned Passwords Range API (SHA-1 k-anonymity)
+- Method: First 5 chars of SHA-1 sent; suffix matched locally
+- Note: Password NEVER leaves the device
+
+### V-08 Location Data Footprint
+- Technology: navigator.geolocation, EXIF GPS metadata parser
+- Method: Permission state audit, GPS field extraction from uploaded media
+
+### V-09 Browser & Cookie Tracker
+- Technology: Canvas 2D API, WebGL UNMASKED_RENDERER_WEBGL, Web Audio API
+- Method: Rendering hash, GPU fingerprint, AudioContext oscillator entropy
+
+### V-10 Financial Identity Exposure
+- Technology: Luhn algorithm, credit bureau opt-out guidance
+- Method: Card number checksum validation
+
+### V-11 Medical Data Footprint
+- Technology: HIPAA PHI safeguards, healthcare portal SSO audit
+- Method: PHI exposure analysis
+
+### V-12 Voice & Biometric Data
+- Technology: Web Audio API (getUserMedia, AudioContext, AnalyserNode)
+- Method: Acoustic frequency spectrum, sample entropy analysis
+
+### V-13 IoT & Smart Device Scan
+- Technology: WebRTC STUN (Google/Cloudflare), RTCPeerConnection
+- Method: LAN IP leak detection (192.168.x.x, 10.x.x.x, 172.16.x.x)
+
+### V-14 Cloud Storage Exposure
+- Technology: S3, Google Drive, iCloud permission audit heuristics
+- Method: Bucket permission policy analysis
+
+### V-15 Dark Web Monitoring
+- Technology: Darknet credential index surveillance
+- Method: Compromised identifier stream, Tor feed pattern matching
+
+### V-16 Behavioral Profile Analysis
+- Technology: Tracking pixel detection, demographic persona analysis
+- Method: Algorithmic profile obfuscation, tracker neutralization
+
+---
+
+## Finding Status Reference
+
+| Status    | Symbol | Meaning |
+|-----------|--------|---------|
+| NUKED     | Fire   | Data removed from source; exposure eliminated |
+| KNOXED    | Shield | Data locked behind zero-knowledge encryption |
+| MONITORED | Eye    | Exposure detected; active surveillance enabled |
+
+---
+
+## Implementation Files
+
+| File | Role |
+|------|------|
+| src/services/scanService.ts | All 16 vector logic, finding CRUD |
+| src/components/SplashEntry.tsx | Interactive 16-step onboarding |
+| src/components/Dashboard.tsx | Live DIFF Scan trigger + findings display |
+| src/components/DiffModules.tsx | Per-module deep scan UI |
+| src/utils/crypto.ts | Zero-knowledge encryption primitives |
