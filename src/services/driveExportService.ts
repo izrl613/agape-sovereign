@@ -1,3 +1,4 @@
+declare const gapi: any;
 /**
  * Google Drive Export Service
  * 
@@ -134,7 +135,7 @@ class DriveExportService {
     if (!this.accessToken) {
       await this.requestAccessToken();
     }
-    return this.accessToken;
+    return this.accessToken || "";
   }
 
   /**

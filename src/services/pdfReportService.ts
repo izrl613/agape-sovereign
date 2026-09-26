@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ScanFinding } from './scanService';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { doc as firestoreDoc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, addDoc, query, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateSHA256 } from '../utils/crypto';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
@@ -38,7 +38,7 @@ interface ReportGenerationOptions {
  * Generate SHA256 hash for PDF integrity verification
  */
 async function generatePDFIntegrityHash(pdfData: Uint8Array): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', pdfData);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', pdfData.buffer as ArrayBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   return hashHex;
@@ -98,7 +98,7 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
   
   doc.setFontSize(10);
   const scoreColor = classification === 'KNOXED' ? [0, 212, 255] : [255, 46, 159];
-  doc.setTextColor(...scoreColor);
+  doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
   doc.text(`CLASSIFICATION: ${classification}`, 25, 58);
   
   doc.setTextColor(200);
@@ -172,7 +172,7 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
       doc.setFontSize(8);
       doc.setTextColor(200);
       const remediationLines = doc.splitTextToSize(finding.remediation || 'No remediation provided', 180);
-      remediationLines.forEach((line) => {
+      remediationLines.forEach((line: string) => {
         doc.text(line, 15, yPos);
         yPos += 5;
       });
@@ -263,7 +263,7 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
       pdfStoragePath
     };
 
-    await setDoc(doc(db, 'diff_reports', reportId), {
+    await setDoc(firestoreDoc(db, 'diff_reports', reportId), {
       ...reportMetadata,
       generatedAt: serverTimestamp(),
       expiresAt: expiresAt
@@ -356,7 +356,7 @@ export async function cleanupExpiredReports(): Promise<number> {
       
       if (expiresAt && expiresAt < now) {
         // Delete from Firestore
-        await docSnapshot.ref.delete();
+        await deleteDoc(docSnapshot.ref);
         
         // Delete from Storage
         if (data.pdfStoragePath) {

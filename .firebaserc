@@ -2,5 +2,11 @@
   "projects": {
     "default": "agape-sovereign",
     "sovereign-nyc": "agape-sovereign"
+  },
+  "targets": {},
+  "etags": {
+    "agape-sovereign": {
+      "extensionInstances": {}
+    }
   }
 }

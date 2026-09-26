@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Fingerprint, ArrowLeft, Shield, EyeOff } from 'lucide-react';
+import { Fingerprint, ArrowLeft, Shield, EyeOff, ChevronRight, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { isPrivateBrowsing } from '../utils/incognitoDetector';
 import { DemoBypassButton } from './auth/DemoBypassButton';
@@ -48,7 +49,7 @@ const TRUST_LOGOS = [
 ];
 
 // ── Google logo (official spec) ────────────────────────────────
-const GoogleIcon = () => (
+const GoogleIcon = ({ style }: { style?: React.CSSProperties }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -151,7 +152,24 @@ const LoadingSpinner = () => {
 
 // ── Main Login component ───────────────────────────────────────
 export const Login = () => {
-  const { login, loginWithPasskey } = useAuth();
+  const { login, loginWithPasskey, user, demoMode, setDemoUser } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user || demoMode) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, demoMode, navigate]);
+
+  const handleDemoBypass = () => {
+    setAuthError(null);
+    setScanning(true);
+    setActiveMethod('passkey');
+    setDemoUser();
+    setTimeout(() => {
+      navigate('/dashboard', { replace: true });
+    }, 300);
+  };
 
   const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
   const [scanning, setScanning] = useState(false);
@@ -456,63 +474,127 @@ export const Login = () => {
                   analysis. Your sovereignty begins here.
                 </div>
 
-                {/* DUAL AUTH PANELS — Side by side */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                  {/* LEFT PANEL — Passkey */}
+                {/* ── 3-OPTION AUTHENTICATION SELECTION ── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                  {/* OPTION 1 — Passkey / WebAuthn */}
                   <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(0,212,255,0.45)' }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={handleDirectPasskeyLogin}
                     style={{
-                      background: 'rgba(0,212,255,0.04)',
-                      border: `1px solid rgba(0,212,255,0.2)`,
-                      borderRadius: 12,
-                      padding: '20px 16px',
+                      background: 'rgba(0,212,255,0.05)',
+                      border: '1px solid rgba(0,212,255,0.22)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
                       cursor: 'pointer',
-                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      textAlign: 'left',
                       transition: 'all 0.2s',
                     }}
                     aria-label="Sign in with Passkey"
                   >
-                    <Fingerprint size={24} color={C.blue} style={{ marginBottom: 8 }} />
-                    <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-                      Passkey / WebAuthn
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: 'rgba(0,212,255,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, border: '1px solid rgba(0,212,255,0.25)',
+                    }}>
+                      <Fingerprint size={20} color={C.blue} />
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
-                      Device-bound · Local vault
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2 }}>
+                        Passkey / WebAuthn
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                        Device-bound · Local encrypted vault
+                      </div>
                     </div>
+                    <ChevronRight size={16} color={C.blue} style={{ opacity: 0.7 }} />
                   </motion.div>
 
-                  {/* RIGHT PANEL — Google */}
+                  {/* OPTION 2 — Sign in with Google */}
                   <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(66,133,244,0.5)' }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={handleGoogleLogin}
                     style={{
-                      background: 'rgba(66,133,244,0.08)',
-                      border: `1px solid rgba(66,133,244,0.3)`,
-                      borderRadius: 12,
-                      padding: '20px 16px',
+                      background: 'rgba(66,133,244,0.07)',
+                      border: '1px solid rgba(66,133,244,0.25)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
                       cursor: 'pointer',
-                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      textAlign: 'left',
                       transition: 'all 0.2s',
                     }}
                     aria-label="Sign in with Google"
                   >
-                    <GoogleIcon style={{ marginBottom: 8 }} />
-                    <div style={{ color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-                      Sign in with Google
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: 'rgba(66,133,244,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, border: '1px solid rgba(66,133,244,0.25)',
+                    }}>
+                      <GoogleIcon style={{ width: 18, height: 18 }} />
                     </div>
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
-                      Save reports to Google Drive
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2 }}>
+                        Sign in with Google
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                        OAuth 2.0 · Sync to Google Drive
+                      </div>
                     </div>
+                    <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />
+                  </motion.div>
+
+                  {/* OPTION 3 — Demo Guest Sandbox */}
+                  <motion.div
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.5)' }}
+                    whileTap={{ scale: 0.985 }}
+                    onClick={handleDemoBypass}
+                    style={{
+                      background: 'rgba(255,122,24,0.06)',
+                      border: '1px solid rgba(255,122,24,0.3)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                    }}
+                    aria-label="Instant Demo Guest Sandbox"
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10,
+                      background: 'rgba(255,122,24,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, border: '1px solid rgba(255,122,24,0.3)',
+                    }}>
+                      <Sparkles size={18} color="#FF7A18" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: '#FF7A18', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2, fontFamily: "'Share Tech Mono', monospace" }}>
+                        Demo Guest Sandbox
+                      </div>
+                      <div style={{ color: 'rgba(255,122,24,0.65)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                        Instant PWA access · Zero setup
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color="#FF7A18" style={{ opacity: 0.7 }} />
                   </motion.div>
                 </div>
 
                 {/* Trust logos — real brand marks */}
                 <div style={{
                   display: 'flex', justifyContent: 'center', gap: 14,
-                  marginTop: 24, flexWrap: 'wrap',
+                  marginTop: 20, flexWrap: 'wrap',
                 }}>
                   {TRUST_LOGOS.map(b => (
                     <div key={b.label} title={b.label} style={{
@@ -524,9 +606,6 @@ export const Login = () => {
                     </div>
                   ))}
                 </div>
-
-                {/* Demo bypass — only visible in demo mode */}
-                <DemoBypassButton />
 
                 {/* OAuth-required links */}
                 <div style={{

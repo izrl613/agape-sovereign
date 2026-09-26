@@ -1,3 +1,12 @@
+const AuditLogsTab = () => (
+  <div className="space-y-4">
+    <GlassCard className="p-6">
+      <h3 className="text-sm font-mono text-white mb-2">Security Audit Stream</h3>
+      <p className="text-xs text-gray-400">Real-time audit log stream from Firestore audit logs collection.</p>
+    </GlassCard>
+  </div>
+);
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, GlassCard, NeonButton, NeonText } from './UI';

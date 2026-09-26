@@ -26,6 +26,11 @@ export const logExposureNuked = (module: string, findingId: string) => {
   logUserEvent('exposure_nuked', { module, finding_id: findingId });
 };
 
-export const logAIChatMessage = (messageLength: number) => {
-  logUserEvent('ai_chat_message', { message_length: messageLength });
+export const logAIChatMessage = (userPromptOrLength: string | number, responseText?: string, userId?: string) => {
+  const messageLength = typeof userPromptOrLength === 'number' ? userPromptOrLength : userPromptOrLength.length;
+  logUserEvent('ai_chat_message', {
+    message_length: messageLength,
+    response_length: responseText?.length || 0,
+    user_id: userId || 'anonymous',
+  });
 };

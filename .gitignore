@@ -62,3 +62,5 @@ openspec/.vector-search.db*
 # Auto-added by git-autorepair.sh
 .cursor/  # Cursor IDE
 .windsurf/  # Windsurf IDE
+**/package-lock 2.json
+**/node_modules 2/
