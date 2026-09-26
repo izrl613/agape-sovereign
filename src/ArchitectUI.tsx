@@ -780,6 +780,16 @@ const DashboardView = ({ diffModules, onModuleClick }) => {
 const ModuleDetailView = ({ diffModules, moduleId }: any) => {
   const { findings: liveFindings, isScanning, scanProgress, triggerModuleScan, currentSubTask, currentStep, totalSteps } = useScan();
 
+  // Real pipeline trail: every entry here is a status string the scan engine
+  // actually emitted. Stages are never inferred from the progress bar.
+  const [subTaskLog, setSubTaskLog] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!isScanning) { setSubTaskLog([]); return; }
+    if (!currentSubTask) return;
+    setSubTaskLog(prev => (prev[prev.length - 1] === currentSubTask ? prev : [...prev, currentSubTask]));
+  }, [isScanning, currentSubTask]);
+
   const m = diffModules.find((x: any) => x.id === moduleId);
   if (!m) return null;
   const sev = m.severity;
@@ -797,16 +807,6 @@ const ModuleDetailView = ({ diffModules, moduleId }: any) => {
 
   // Fallback if no live data is present and we're not scanning (optional, but requested no mock data so we just show empty or a placeholder if empty)
   // The user requested NO MOCK DATA. We will rely entirely on liveFindings.
-
-  const baseStages = [
-    "INITIALIZING SENSORS",
-    "ESTABLISHING SECURE CONNECTION",
-    `QUERYING ${m.label.toUpperCase()} REGISTRIES`,
-    "ANALYZING METADATA FOOTPRINT",
-    "CROSS-REFERENCING THREAT INTEL",
-    "COMPILING DIFF VECTORS",
-    "SCAN COMPLETE"
-  ];
 
   const handleScan = async () => {
     await triggerModuleScan(m.id || m.vector);
@@ -889,26 +889,30 @@ const ModuleDetailView = ({ diffModules, moduleId }: any) => {
             <div style={{ height: "100%", width: `${scanProgress}%`, background: `linear-gradient(90deg, ${NEON.blue}88, ${NEON.blue})`, boxShadow: `0 0 15px ${NEON.blue}`, transition: "width 0.6s ease" }} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 20px' }}>
-            {baseStages.map((stage, idx) => {
-              // Map the actual progress to these fake visual stages for effect
-              const stagePct = (idx + 1) / baseStages.length * 100;
-              const isCompleted = scanProgress >= stagePct;
-              const isActive = !isCompleted && scanProgress >= (idx / baseStages.length * 100);
-              
+          {/* Every line here is a status the scan engine actually reported.
+              There is no scripted stage list: if the engine has emitted one
+              status, exactly one status is shown. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {subTaskLog.length === 0 ? (
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.62rem", color: NEON.textMuted }}>
+                Awaiting first status from the {m.vector} Module Agent…
+              </div>
+            ) : subTaskLog.map((stage, idx) => {
+              const isActive = idx === subTaskLog.length - 1;
+              const isCompleted = !isActive;
+
               return (
-                <div key={idx} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 10, 
-                  opacity: isCompleted || isActive ? 1 : 0.3,
+                <div key={`${idx}-${stage}`} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
                   transition: 'all 0.3s ease'
                 }}>
-                  <div style={{ 
-                    width: 12, 
-                    height: 12, 
-                    borderRadius: '50%', 
-                    border: `1.5px solid ${isCompleted ? NEON.blue : isActive ? NEON.orange : 'rgba(255,255,255,0.2)'}`,
+                  <div style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    border: `1.5px solid ${isCompleted ? NEON.blue : NEON.orange}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -917,10 +921,10 @@ const ModuleDetailView = ({ diffModules, moduleId }: any) => {
                     {isCompleted && <span style={{ color: NEON.bg, fontSize: '0.5rem', fontWeight: 900 }}>✓</span>}
                     {isActive && <div style={{ width: 4, height: 4, borderRadius: '50%', background: NEON.orange, animation: 'pulse-border 1s infinite' }} />}
                   </div>
-                  <span style={{ 
-                    fontFamily: "'Share Tech Mono'", 
-                    fontSize: "0.62rem", 
-                    color: isActive ? NEON.orange : isCompleted ? NEON.blue : NEON.textMuted,
+                  <span style={{
+                    fontFamily: "'Share Tech Mono'",
+                    fontSize: "0.62rem",
+                    color: isActive ? NEON.orange : NEON.blue,
                     fontWeight: isActive ? 700 : 400
                   }}>
                     {stage}
