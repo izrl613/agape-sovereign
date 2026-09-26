@@ -1,20 +1,38 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { startFullScan, startModuleScan, getScanFindings, ScanFinding } from './services/scanService';
+import {
+  startFullScan,
+  startModuleScan,
+  ScanFinding,
+  ScanSession,
+} from './services/scanService';
 import { db } from './firebase';
 import { logEvent, AuditLogType } from './services/auditService';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
-import { DEMO_FINDINGS } from './data/demoData';
+import { toast } from 'sonner';
+import { MODULE_AGENTS } from './services/moduleAgentService';
 
-import { DIFF_MODULES, DiffModule } from './lib/diffModules';
+interface VectorState {
+  moduleId: string;
+  vector: string;
+  label: string;
+  icon: string;
+  nuked: number;
+  knoxed: number;
+  monitored: number;
+  /** SHA-256 ID of the sealed input backing this vector, when one exists. */
+  sha256Id: string | null;
+  thirdPartyVerified: boolean;
+  lastScanned: number | null;
+}
 
 interface ScanContextType {
   findings: ScanFinding[];
-  diffModules: DiffModule[];
+  vectors: VectorState[];
   isLoading: boolean;
   isScanning: boolean;
-  scanProgress: number; // 0 to 100
+  scanProgress: number;
   currentStep: number;
   totalSteps: number;
   currentModule: string | null;
@@ -27,10 +45,40 @@ interface ScanContextType {
 
 const ScanContext = createContext<ScanContextType | undefined>(undefined);
 
-import { toast } from 'sonner';
+const VECTOR_ICONS: Record<string, string> = {
+  email: '✉', social: '◈', device: '⬡', mobile: '◻', deepweb: '◉', broker: '⧫',
+  password: '⬟', location: '◎', browser: '◯', financial: '⬡', medical: '⊕',
+  biometric: '⊛', iot: '⊡', cloud: '⊞', darkweb: '◈', behavioral: '⊟',
+};
+
+/**
+ * Vector state is derived exclusively from real findings. Nothing is
+ * pre-populated: an unscanned vector shows zeroes and no hash.
+ */
+function deriveVectors(findings: ScanFinding[]): VectorState[] {
+  return MODULE_AGENTS.map(spec => {
+    const moduleFindings = findings.filter(f => f.module?.toLowerCase() === spec.moduleId);
+    const latest = moduleFindings.reduce<ScanFinding | null>(
+      (acc, f) => (!acc || f.timestamp > acc.timestamp ? f : acc),
+      null,
+    );
+    return {
+      moduleId: spec.moduleId,
+      vector: spec.vector,
+      label: spec.label,
+      icon: VECTOR_ICONS[spec.moduleId] || '⬡',
+      nuked: moduleFindings.filter(f => f.status === 'NUKED').length,
+      knoxed: moduleFindings.filter(f => f.status === 'KNOXED').length,
+      monitored: moduleFindings.filter(f => f.status === 'MONITORED').length,
+      sha256Id: latest?.sha256Id || null,
+      thirdPartyVerified: latest?.verification?.thirdPartyVerified === true,
+      lastScanned: latest ? latest.timestamp.getTime() : null,
+    };
+  });
+}
 
 export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, demoMode } = useAuth();
+  const { user, sovereignHash } = useAuth();
   const [findings, setFindings] = useState<ScanFinding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
@@ -40,49 +88,10 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentModule, setCurrentModule] = useState<string | null>(null);
   const [currentSubTask, setCurrentSubTask] = useState<string | null>(null);
   const [lastScanDate, setLastScanDate] = useState<Date | null>(null);
-  const [diffModules, setDiffModules] = useState<DiffModule[]>(DIFF_MODULES);
   const [error, setError] = useState<string | null>(null);
   const [notifiedFindingIds, setNotifiedFindingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (findings.length > 0) {
-      setDiffModules(prevModules =>
-        prevModules.map(mod => {
-          const modFindings = findings.filter(f =>
-            f.module?.toLowerCase() === mod.id.toLowerCase() ||
-            f.module?.toLowerCase() === mod.label.toLowerCase() ||
-            f.module?.toLowerCase().includes(mod.id.split('-')[0])
-          );
-          if (modFindings.length === 0) return mod;
-          const nuked = modFindings.filter(f => f.status === 'NUKED').length;
-          const knoxed = modFindings.filter(f => f.status === 'KNOXED').length;
-          const monitored = modFindings.filter(f => f.status === 'MONITORED').length;
-          const sevCalc = Math.max(0, 100 - (knoxed * 5) + (nuked * 15));
-          return {
-            ...mod,
-            nukedCount: nuked,
-            knoxedCount: knoxed,
-            monitoredCount: monitored,
-            severity: Math.min(100, Math.max(10, sevCalc)),
-            lastScanned: Date.now()
-          };
-        })
-      );
-    }
-  }, [findings]);
-
-  useEffect(() => {
-    // Demo mode: inject pre-populated findings without hitting Firestore
-    if (demoMode) {
-      setFindings(DEMO_FINDINGS);
-      const latest = DEMO_FINDINGS.reduce((prev, cur) =>
-        prev.timestamp > cur.timestamp ? prev : cur
-      );
-      setLastScanDate(latest.timestamp);
-      setIsLoading(false);
-      return;
-    }
-
     if (!user) {
       setFindings([]);
       setLastScanDate(null);
@@ -93,19 +102,18 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setIsLoading(true);
-    const q = query(collection(db, "diff_scans"), where("userId", "==", user.uid));
+    const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newFindings = snapshot.docs.map(d => ({ 
-        id: d.id, 
+      const newFindings = snapshot.docs.map(d => ({
+        id: d.id,
         ...d.data(),
-        timestamp: d.data().timestamp?.toDate() || new Date()
+        timestamp: d.data().timestamp?.toDate() || new Date(),
       } as ScanFinding));
-      
-      // Check for new NUKED findings to notify
+
       if (!isLoading) {
         newFindings.forEach(finding => {
           if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
-            toast.error(`CRITICAL EXPOSURE DETECTED`, {
+            toast.error('CRITICAL EXPOSURE DETECTED', {
               description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
               duration: 10000,
             });
@@ -113,17 +121,18 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         });
       } else {
-        // Initial load: just mark existing NUKED as notified so we don't spam on login
-        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
+        const initialNukedIds = new Set(
+          newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string),
+        );
         setNotifiedFindingIds(initialNukedIds);
       }
 
       setFindings(newFindings);
       setIsLoading(false);
-      
+
       if (newFindings.length > 0) {
-        const latest = newFindings.reduce((prev, current) => 
-          (prev.timestamp > current.timestamp) ? prev : current
+        const latest = newFindings.reduce((prev, current) =>
+          prev.timestamp > current.timestamp ? prev : current,
         );
         setLastScanDate(latest.timestamp);
       }
@@ -132,10 +141,28 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, [user, demoMode]);
+  }, [user]);
+
+  /**
+   * A Module Agent refuses to run without a valid session SHA-256 identity
+   * hash, so scans are blocked (not faked) until the Gatekeeper has issued one.
+   */
+  const requireSession = (): ScanSession | null => {
+    if (!user) return null;
+    if (!sovereignHash || !/^[0-9a-f]{64}$/.test(sovereignHash)) {
+      setError('Session SHA-256 identity hash is not available. Sign in again to re-issue it.');
+      toast.error('IDENTITY HASH MISSING', {
+        description: 'Scans are gated on a valid SHA-256 session identity. Re-authenticate to continue.',
+      });
+      return null;
+    }
+    return { uid: user.uid, email: user.email || '', sovereignHash };
+  };
 
   const triggerFullScan = React.useCallback(async () => {
-    if (!user) return;
+    const session = requireSession();
+    if (!session || !user) return;
+
     setIsScanning(true);
     setScanProgress(0);
     setCurrentStep(0);
@@ -145,7 +172,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     logEvent(AuditLogType.SCAN_INITIATED, `Full DIFF scan initiated by ${user.email}`, user.uid, user.email || undefined);
     try {
-      await startFullScan(user.uid, user.email!, (current, total, moduleName, subTask) => {
+      await startFullScan(session, (current, total, moduleName, subTask) => {
         setScanProgress(Math.round((current / total) * 100));
         setCurrentStep(current);
         setTotalSteps(total);
@@ -154,47 +181,69 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       logEvent(AuditLogType.SCAN_COMPLETED, `Full DIFF scan completed for ${user.email}`, user.uid, user.email || undefined);
     } catch (err) {
-      console.error("Scan failed:", err);
-      setError(err instanceof Error ? err.message : "Scan failed due to an unexpected error.");
+      console.error('Scan failed:', err);
+      setError(err instanceof Error ? err.message : 'Scan failed due to an unexpected error.');
     } finally {
       setIsScanning(false);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sovereignHash]);
 
   const triggerModuleScan = React.useCallback(async (module: string) => {
-    if (!user) return;
+    const session = requireSession();
+    if (!session || !user) return;
+
     setIsScanning(true);
     setScanProgress(0);
     setCurrentStep(0);
     setTotalSteps(1);
     setCurrentModule(module);
-    setCurrentSubTask("Initializing...");
+    setCurrentSubTask('Initializing Module Agent…');
     setError(null);
     logEvent(AuditLogType.SCAN_INITIATED, `${module.toUpperCase()} scan initiated by ${user.email}`, user.uid, user.email || undefined);
     try {
-      await startModuleScan(user.uid, user.email!, module, (current, total, moduleName, subTask) => {
-        setScanProgress(Math.round((current / total) * 100));
-        setCurrentStep(current);
-        setTotalSteps(total);
+      await startModuleScan(session, module, (_current, _total, _moduleName, subTask) => {
+        setScanProgress(50);
+        setCurrentStep(1);
         if (subTask) setCurrentSubTask(subTask);
       });
       setScanProgress(100);
-      setCurrentStep(1);
       logEvent(AuditLogType.SCAN_COMPLETED, `${module.toUpperCase()} scan completed for ${user.email}`, user.uid, user.email || undefined);
-      toast.success(`${module.toUpperCase()} Scan Complete`, {
-        description: `The Architect has finished analyzing your ${module} vector.`
+      toast.success(`${module.toUpperCase()} MODULE AGENT COMPLETE`, {
+        description: 'Result recorded with its SHA-256 ID and verification provenance.',
       });
     } catch (err) {
       console.error(`${module} scan failed:`, err);
       setError(err instanceof Error ? err.message : `${module} scan failed.`);
-      toast.error(`${module.toUpperCase()} Scan Failed`);
+      toast.error(`${module.toUpperCase()} SCAN FAILED`, {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setIsScanning(false);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, sovereignHash]);
+
+  const vectors = React.useMemo(() => deriveVectors(findings), [findings]);
 
   return (
-    <ScanContext.Provider value={{ findings, diffModules, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, currentSubTask, lastScanDate, error, triggerFullScan, triggerModuleScan }}>
+    <ScanContext.Provider
+      value={{
+        findings,
+        vectors,
+        isLoading,
+        isScanning,
+        scanProgress,
+        currentStep,
+        totalSteps,
+        currentModule,
+        currentSubTask,
+        lastScanDate,
+        error,
+        triggerFullScan,
+        triggerModuleScan,
+      }}
+    >
       {children}
     </ScanContext.Provider>
   );

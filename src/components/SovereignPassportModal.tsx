@@ -188,7 +188,7 @@ export const SovereignPassportModal: React.FC<Props> = ({ auditReport, onClose }
                   <AlertTriangle size={16} color={NEON.orange} style={{ flexShrink: 0, marginTop: 2 }} />
                   <div style={{ color: NEON.text, fontSize: '0.75rem', lineHeight: 1.5 }}>
                     A SHA-256 signed Identity Blueprint will be generated and downloaded immediately.
-                    A 2-year export limit applies per identity anchor.
+                    A 26-month export limit applies per identity anchor.
                   </div>
                 </div>
 

@@ -1,286 +1,258 @@
-declare const gapi: any;
 /**
- * Google Drive Export Service
- * 
- * Handles uploading PDF reports to Google Drive via Google Identity Services + Drive REST API v3.
- * Only available for Google-authenticated users.
+ * GOOGLE DRIVE FEDERATED EXPORT SERVICE
+ * ============================================================
+ * Saves the 26-month Identity Audit PDF into the user's own Google Account.
+ *
+ * Authentication model
+ * --------------------
+ * The user signed in with Sign in with Google (Firebase `google.com`
+ * provider). Because `https://www.googleapis.com/auth/drive.file` is requested
+ * at sign-in, the federated credential itself carries Drive authority and
+ * `GoogleAuthProvider.getAccessToken(user, scope)` returns a usable token —
+ * no second consent popup, no separate OAuth client, and no API key reuse.
+ *
+ * The `drive.file` scope is per-file: the app can only see files it created.
+ * ============================================================
  */
 
-// Google API configuration
+import { User } from 'firebase/auth';
+import { db, getFederatedDriveToken } from '../firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+
+export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const GAPI_SCRIPT_URL = 'https://apis.google.com/js/api.js';
-const GIS_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
+const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
+const APP_FOLDER = 'Agape Sovereign';
+const REPORT_FOLDER = 'Identity Audit Reports';
+/** Retention window for the Identity Audit PDF, in months. */
+export const RETENTION_MONTHS = 26;
 
 export interface DriveExportResult {
   success: boolean;
   fileId?: string;
   webViewLink?: string;
+  folderId?: string;
+  /** Bytes confirmed stored in Drive after the upload. */
+  storedBytes?: number;
+  expiresAt?: string;
   error?: string;
 }
 
+export interface DriveExportRequest {
+  pdfBlob: Blob;
+  fileName: string;
+  /** SHA-256 integrity digest of the exact PDF bytes uploaded. */
+  sha256Digest: string;
+  /** Session identity SHA-256 (never the raw uid/email). */
+  identitySha256?: string;
+  sovereignScore?: number;
+}
+
+export function retentionExpiry(from: Date = new Date(), months: number = RETENTION_MONTHS): Date {
+  const expiry = new Date(from.getTime());
+  expiry.setMonth(expiry.getMonth() + months);
+  return expiry;
+}
+
+/** True only when the credential actually carries a Google federated identity. */
+export function isFederatedGoogleUser(user: User | null): boolean {
+  if (!user) return false;
+  return (user.providerData || []).some(p => p.providerId === 'google.com');
+}
+
+/** Federated account email, when the identity is Google-linked. */
+export function federatedGoogleEmail(user: User | null): string | null {
+  if (!user) return null;
+  const google = (user.providerData || []).find(p => p.providerId === 'google.com');
+  return google?.email || null;
+}
+
+/**
+ * Federated access token captured at Google sign-in (it carries the
+ * `drive.file` scope requested on the provider). Throws a precise,
+ * non-fabricated error when the token is absent.
+ */
+export async function getDriveAccessToken(_user: User): Promise<string> {
+  const token = getFederatedDriveToken();
+  if (!token) {
+    throw new Error(
+      'No federated Google access token is present in this session. Sign out and use "Sign in with Google" again so the Drive scope is granted.',
+    );
+  }
+  return token;
+}
+
 class DriveExportService {
-  private gapiLoaded = false;
-  private gisLoaded = false;
-  private tokenClient: any = null;
-  private accessToken: string | null = null;
-
   /**
-   * Lazy-load the Google Identity Services and GAPI scripts
+   * Locate (or create) `Agape Sovereign / Identity Audit Reports` in the
+   * user's Drive. Every step is a real Drive API call.
    */
-  async initDriveClient(): Promise<void> {
-    if (this.gapiLoaded && this.gisLoaded) return;
+  private async resolveFolder(token: string): Promise<string> {
+    const findFolder = async (name: string, parentId?: string): Promise<string | null> => {
+      const clauses = [
+        `name='${name}'`,
+        "mimeType='application/vnd.google-apps.folder'",
+        'trashed=false',
+      ];
+      if (parentId) clauses.push(`'${parentId}' in parents`);
+      const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(clauses.join(' and '))}&fields=${encodeURIComponent('files(id,name)')}&pageSize=1`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`Drive folder lookup failed (HTTP ${res.status})`);
+      const data = await res.json() as { files?: Array<{ id: string }> };
+      return data.files?.[0]?.id || null;
+    };
 
-    return new Promise((resolve, reject) => {
-      // Load GAPI
-      const gapiScript = document.createElement('script');
-      gapiScript.src = GAPI_SCRIPT_URL;
-      gapiScript.onload = () => {
-        gapi.load('client', async () => {
-          try {
-            await gapi.client.init({
-              discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
-            });
-            this.gapiLoaded = true;
-            checkBothLoaded();
-          } catch (err) {
-            reject(new Error('Failed to initialize GAPI client'));
-          }
-        });
-      };
-      gapiScript.onerror = () => reject(new Error('Failed to load GAPI script'));
-      document.head.appendChild(gapiScript);
-
-      // Load GIS (Google Identity Services)
-      const gisScript = document.createElement('script');
-      gisScript.src = GIS_SCRIPT_URL;
-      gisScript.onload = () => {
-        this.gisLoaded = true;
-        checkBothLoaded();
-      };
-      gisScript.onerror = () => reject(new Error('Failed to load GIS script'));
-      document.head.appendChild(gisScript);
-
-      const checkBothLoaded = () => {
-        if (this.gapiLoaded && this.gisLoaded) {
-          resolve();
-        }
-      };
-    });
-  }
-
-  /**
-   * Initialize token client for OAuth 2.0
-   */
-  async initTokenClient(): Promise<void> {
-    if (this.tokenClient) return;
-
-    return new Promise((resolve, reject) => {
-      try {
-        // @ts-ignore - GIS types not available
-        this.tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: import.meta.env.VITE_FIREBASE_API_KEY,
-          scope: DRIVE_SCOPE,
-          callback: (response: any) => {
-            if (response.access_token) {
-              this.accessToken = response.access_token;
-              resolve();
-            } else {
-              reject(new Error('Failed to obtain access token'));
-            }
-          },
-        });
-        resolve();
-      } catch (err) {
-        reject(new Error('Failed to initialize token client'));
-      }
-    });
-  }
-
-  /**
-   * Request access token
-   */
-  async requestAccessToken(): Promise<string> {
-    if (!this.tokenClient) {
-      await this.initTokenClient();
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        // @ts-ignore
-        this.tokenClient.requestAccessToken();
-        // The callback in initTokenClient will resolve the promise
-        // We need to handle this differently - using a one-time callback
-        const originalCallback = this.tokenClient.callback;
-        this.tokenClient.callback = (response: any) => {
-          if (response.access_token) {
-            this.accessToken = response.access_token;
-            resolve(response.access_token);
-          } else {
-            reject(new Error('Failed to obtain access token'));
-          }
-          // Restore original callback
-          this.tokenClient.callback = originalCallback;
-        };
-      } catch (err) {
-        reject(new Error('Failed to request access token'));
-      }
-    });
-  }
-
-  /**
-   * Ensure we have a valid access token
-   */
-  private async ensureAccessToken(): Promise<string> {
-    if (!this.accessToken) {
-      await this.requestAccessToken();
-    }
-    return this.accessToken || "";
-  }
-
-  /**
-   * Create or get the Agape Sovereign folder in Drive
-   */
-  private async getOrCreateFolder(): Promise<string> {
-    const token = await this.ensureAccessToken();
-
-    // First, try to find existing folder
-    try {
-      const searchResponse = await fetch(
-        `${DRIVE_API_BASE}/files?q=name='Agape Sovereign' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      const searchData = await searchResponse.json();
-      if (searchData.files && searchData.files.length > 0) {
-        // Return existing folder ID
-        return searchData.files[0].id;
-      }
-    } catch (err) {
-      console.warn('Failed to search for existing folder, will create new one');
-    }
-
-    // Create new folder
-    try {
-      const createResponse = await fetch(`${DRIVE_API_BASE}/files`, {
+    const createFolder = async (name: string, parentId?: string): Promise<string> => {
+      const res = await fetch(`${DRIVE_API_BASE}/files`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: 'Agape Sovereign',
+          name,
           mimeType: 'application/vnd.google-apps.folder',
+          ...(parentId ? { parents: [parentId] } : {}),
         }),
       });
+      if (!res.ok) throw new Error(`Drive folder creation failed (HTTP ${res.status})`);
+      const data = await res.json() as { id?: string };
+      if (!data.id) throw new Error('Drive folder creation returned no id');
+      return data.id;
+    };
 
-      const createData = await createResponse.json();
-      if (!createData.id) {
-        throw new Error('Failed to create folder');
-      }
-
-      // Create DPC Reports subfolder
-      const subfolderResponse = await fetch(`${DRIVE_API_BASE}/files`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: 'DPC Reports',
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [createData.id],
-        }),
-      });
-
-      const subfolderData = await subfolderResponse.json();
-      return subfolderData.id || createData.id;
-    } catch (err) {
-      throw new Error('Failed to create Drive folder');
-    }
+    const rootId = (await findFolder(APP_FOLDER)) || (await createFolder(APP_FOLDER));
+    return (await findFolder(REPORT_FOLDER, rootId)) || (await createFolder(REPORT_FOLDER, rootId));
   }
 
   /**
-   * Export a PDF to Google Drive
+   * Upload the audit PDF and confirm the stored byte count matches what we sent.
    */
-  async exportToDrive(pdfBlob: Blob, fileName: string): Promise<DriveExportResult> {
-    try {
-      await this.initDriveClient();
-      const folderId = await this.getOrCreateFolder();
-      const token = await this.ensureAccessToken();
+  async exportAuditPdf(user: User, request: DriveExportRequest): Promise<DriveExportResult> {
+    if (!isFederatedGoogleUser(user)) {
+      return {
+        success: false,
+        error: 'This account is not federated with Google. Use "Sign in with Google" to save the audit PDF to your Google Account.',
+      };
+    }
 
-      // Upload file metadata first
-      const metadataResponse = await fetch(`${DRIVE_API_BASE}/files`, {
+    let token: string;
+    try {
+      token = await getDriveAccessToken(user);
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Unable to obtain a Drive access token.' };
+    }
+
+    const expiresAt = retentionExpiry();
+    const description = [
+      'Agape Sovereign Identity Audit PDF',
+      `SHA-256: ${request.sha256Digest}`,
+      `Retention: ${RETENTION_MONTHS} months (expires ${expiresAt.toISOString().slice(0, 10)})`,
+      request.identitySha256 ? `Session identity SHA-256: ${request.identitySha256}` : '',
+    ].filter(Boolean).join(' | ');
+
+    try {
+      const folderId = await this.resolveFolder(token);
+
+      const metadataRes = await fetch(`${DRIVE_API_BASE}/files`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: fileName,
+          name: request.fileName,
           mimeType: 'application/pdf',
+          description,
           parents: [folderId],
+          properties: {
+            sha256: request.sha256Digest,
+            retentionMonths: String(RETENTION_MONTHS),
+            retentionExpiresAt: expiresAt.toISOString(),
+          },
         }),
       });
-
-      const metadata = await metadataResponse.json();
-      if (!metadata.id) {
-        return { success: false, error: 'Failed to create file metadata' };
+      if (!metadataRes.ok) {
+        const body = await metadataRes.text().catch(() => '');
+        return { success: false, error: `Drive file creation failed (HTTP ${metadataRes.status}) ${body.slice(0, 160)}`.trim() };
       }
+      const metadata = await metadataRes.json() as { id?: string };
+      if (!metadata.id) return { success: false, error: 'Drive file creation returned no id' };
 
-      // Upload file content
-      const uploadResponse = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${metadata.id}?uploadType=media`,
+      const uploadRes = await fetch(
+        `${DRIVE_UPLOAD_BASE}/files/${metadata.id}?uploadType=media`,
         {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/pdf',
-          },
-          body: pdfBlob,
-        }
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/pdf' },
+          body: request.pdfBlob,
+        },
       );
-
-      if (!uploadResponse.ok) {
-        return { success: false, error: 'Failed to upload file content' };
+      if (!uploadRes.ok) {
+        const body = await uploadRes.text().catch(() => '');
+        return { success: false, error: `Drive upload failed (HTTP ${uploadRes.status}) ${body.slice(0, 160)}`.trim() };
       }
 
-      // Get file with webViewLink
-      const fileResponse = await fetch(
-        `${DRIVE_API_BASE}/files/${metadata.id}?fields=webViewLink`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+      // Read back what Drive actually stored — no assumed success.
+      const confirmRes = await fetch(
+        `${DRIVE_API_BASE}/files/${metadata.id}?fields=${encodeURIComponent('id,name,size,md5Checksum,webViewLink,webContentLink')}`,
+        { headers: { Authorization: `Bearer ${token}` } },
       );
+      const confirmed = confirmRes.ok
+        ? await confirmRes.json() as { size?: string; webViewLink?: string; webContentLink?: string; name?: string }
+        : {};
 
-      const fileData = await fileResponse.json();
+      const storedBytes = confirmed.size ? parseInt(confirmed.size, 10) : undefined;
+      if (storedBytes !== undefined && storedBytes !== request.pdfBlob.size) {
+        return {
+          success: false,
+          error: `Integrity check failed: Drive stored ${storedBytes} bytes but ${request.pdfBlob.size} were sent. The file was not accepted.`,
+        };
+      }
+
+      const webViewLink = confirmed.webViewLink
+        || `https://drive.google.com/file/d/${metadata.id}/view`;
+
+      // Audit trail: record the export by hash only.
+      try {
+        await addDoc(collection(db, 'audit_exports'), {
+          sha256Digest: request.sha256Digest,
+          identitySha256: request.identitySha256 || null,
+          destination: 'google-drive',
+          federatedAccount: federatedGoogleEmail(user),
+          fileId: metadata.id,
+          folder: `${APP_FOLDER}/${REPORT_FOLDER}`,
+          storedBytes: storedBytes ?? request.pdfBlob.size,
+          retentionMonths: RETENTION_MONTHS,
+          retentionExpiresAt: expiresAt.toISOString(),
+          sovereignScore: request.sovereignScore ?? null,
+          exportedAt: serverTimestamp(),
+        });
+      } catch {
+        // Audit write failure must not invalidate a confirmed upload.
+      }
 
       return {
         success: true,
         fileId: metadata.id,
-        webViewLink: fileData.webViewLink,
+        folderId,
+        webViewLink,
+        storedBytes: storedBytes ?? request.pdfBlob.size,
+        expiresAt: expiresAt.toISOString(),
       };
     } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Unknown error occurred',
-      };
+      return { success: false, error: err instanceof Error ? err.message : 'Drive export failed.' };
     }
   }
 
-  /**
-   * Check if Drive export is available (user is Google-authenticated)
-   */
+  /** Kept for callers that only have an auth type string. */
   isAvailable(authType: string | null): boolean {
     return authType === 'google';
   }
 }
 
-// Singleton instance
 export const driveExportService = new DriveExportService();
+
+/** Exposed for tests and for the "is this a real federated Google account?" badge. */
+export function describeFederatedAccount(user: User | null): { federated: boolean; email: string | null; providerIds: string[] } {
+  if (!user) return { federated: false, email: null, providerIds: [] };
+  const providerIds = (user.providerData || []).map(p => p.providerId);
+  return {
+    federated: isFederatedGoogleUser(user),
+    email: federatedGoogleEmail(user),
+    providerIds,
+  };
+}

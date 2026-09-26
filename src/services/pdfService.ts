@@ -25,7 +25,7 @@ export interface AuditReportData {
 
 /**
  * Generate a premium Lighthouse-style Identity Security PDF
- * and store it in Firestore for the 2-year audit trail.
+ * and store it in Firestore for the 26-month audit trail.
  */
 export const compileIdentityAuditReport = async (reportData: AuditReportData): Promise<string> => {
   const doc = new jsPDF({
@@ -128,7 +128,7 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
   doc.setTextColor(255, 255, 255);
   doc.text(`AUDIT ID: ${docId}`, 25, 58);
   doc.text(`SOVEREIGN IDENTITY: ${reportData.userName} (${maskedEmail})`, 25, 64);
-  doc.text(`RETENTION FRAMEWORK: ECRA 2026 §4.2 (2-YEAR RETENTION MANDATE)`, 25, 70);
+  doc.text(`RETENTION FRAMEWORK: ECRA 2026 §4.2 (26-MONTH ROLLING RETENTION)`, 25, 70);
   doc.text(`CUMULATIVE INTEGRITY SEAL: ${cumulativeSeal.substring(0, 32)}...`, 25, 76);
 
   // Google Lighthouse circular gauge

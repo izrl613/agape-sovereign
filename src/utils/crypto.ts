@@ -62,9 +62,12 @@ export const encryptClientSide = async (plaintext: string, secretSeed: string): 
     // Convert to base64
     return btoa(String.fromCharCode.apply(null, Array.from(combined)));
   } catch (error) {
-    console.error("Client-side encryption failed:", error);
-    // Secure fallback: simple obfuscation if Web Crypto fails in older browsers
-    return btoa(unescape(encodeURIComponent(plaintext)));
+    // There is NO safe fallback for encryption. Encoding plaintext as base64
+    // would persist it in the clear while the UI claimed zero-knowledge
+    // protection, so we fail loudly and let the caller refuse the write.
+    throw new Error(
+      `Client-side AES-256-GCM encryption failed — value was NOT stored: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 };
 
@@ -97,12 +100,11 @@ export const decryptClientSide = async (ciphertextBase64: string, secretSeed: st
     
     return new TextDecoder().decode(decrypted);
   } catch (error) {
+    // Never silently reinterpret ciphertext as plaintext — that would surface a
+    // corrupt or tampered value as if it were the user's data.
     console.error("Client-side decryption failed:", error);
-    // Secure fallback decode
-    try {
-      return decodeURIComponent(escape(atob(ciphertextBase64)));
-    } catch {
-      return "[DECRYPTION_ERROR: Integrity Seal Compromised]";
-    }
+    throw new Error(
+      `AES-256-GCM decryption failed — the stored value could not be authenticated: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 };

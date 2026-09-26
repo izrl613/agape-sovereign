@@ -1,7 +1,31 @@
-import { collection, doc, getDocs, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
+/**
+ * SCAN SERVICE — Identity Vector execution engine
+ * ============================================================
+ * Every vector result is produced by its Module Agent, which means it is
+ * either:
+ *   • THIRD-PARTY VERIFIED  — an external source answered the query, or
+ *   • ON-DEVICE MEASURED    — a real browser/hardware signal was read, or
+ *   • PENDING               — the module needs a sealed user input that has
+ *                             not been provided yet.
+ *
+ * Fabricated, mock or simulated findings are banned: no vector ever invents a
+ * status, a count, or an evidence string. When sources are unreachable the
+ * result is reported as UNVERIFIED with the reason attached.
+ * ============================================================
+ */
+
+import { collection, doc, getDoc, getDocs, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { handleFirestoreError, OperationType } from "../utils/firestoreErrorHandler";
 import { chatComplete } from "./localAIService";
+import { decryptClientSide } from "../utils/crypto";
+import {
+  MODULE_AGENT_INDEX,
+  MODULE_AGENTS,
+  ModuleAgentResult,
+  ModuleGateError,
+  runModuleAgent,
+} from "./moduleAgentService";
 
 export interface ScanFinding {
   id?: string;
@@ -13,329 +37,173 @@ export interface ScanFinding {
   details: string;
   severity?: number;
   remediation?: string;
-}
-
-export const CANONICAL_VECTORS = [
-  { id: "email", label: "Email Breach Scanner", vector: "V-01" },
-  { id: "social", label: "Social Media Footprint", vector: "V-02" },
-  { id: "device", label: "Device File Scan", vector: "V-03" },
-  { id: "mobile", label: "Mobile Security Layer", vector: "V-04" },
-  { id: "deepweb", label: "Deep Web Exposure", vector: "V-05" },
-  { id: "broker", label: "Data Broker Removal", vector: "V-06" },
-  { id: "password", label: "Password Vault Analysis", vector: "V-07" },
-  { id: "location", label: "Location Data Footprint", vector: "V-08" },
-  { id: "browser", label: "Browser & Cookie Tracker", vector: "V-09" },
-  { id: "financial", label: "Financial Identity Exposure", vector: "V-10" },
-  { id: "medical", label: "Medical Data Footprint", vector: "V-11" },
-  { id: "biometric", label: "Voice & Biometric Data", vector: "V-12" },
-  { id: "iot", label: "IoT & Smart Device Scan", vector: "V-13" },
-  { id: "cloud", label: "Cloud Storage Exposure", vector: "V-14" },
-  { id: "darkweb", label: "Dark Web Monitoring", vector: "V-15" },
-  { id: "behavioral", label: "Behavioral Profile Analysis", vector: "V-16" },
-];
-
-/** Helper: SHA-1 k-anonymity check */
-async function checkPwnedPasswordKAnonymity(pass: string): Promise<number> {
-  try {
-    const enc = new TextEncoder().encode(pass);
-    const hashBuf = await crypto.subtle.digest("SHA-1", enc);
-    const hashArr = Array.from(new Uint8Array(hashBuf));
-    const fullHash = hashArr.map(b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
-    const prefix = fullHash.substring(0, 5);
-    const suffix = fullHash.substring(5);
-
-    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      headers: { "Add-Padding": "true" }
-    });
-    if (!res.ok) return 0;
-    const text = await res.text();
-    for (const line of text.split("\n")) {
-      const [h, count] = line.trim().split(":");
-      if (h === suffix) {
-        return parseInt(count || "0", 10);
-      }
-    }
-    return 0;
-  } catch {
-    return 0;
-  }
-}
-
-/** Helper: real email breach query via XposedOrNot */
-async function checkEmailBreachReal(email: string): Promise<{ breached: boolean; breaches: string[]; details: string }> {
-  try {
-    const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(email)}`, {
-      signal: AbortSignal.timeout(5000)
-    });
-    if (res.status === 404) {
-      return {
-        breached: false,
-        breaches: [],
-        details: "Zero breach records detected in XposedOrNot global index."
-      };
-    }
-    if (res.ok) {
-      const data = await res.json();
-      const breaches: string[] = data?.breaches?.[0] || data?.breaches || [];
-      return {
-        breached: breaches.length > 0,
-        breaches,
-        details: breaches.length > 0
-          ? `Detected in ${breaches.length} historical database breaches: ${breaches.slice(0, 5).join(", ")}.`
-          : "Zero breach occurrences detected."
-      };
-    }
-  } catch {
-    // network or timeout
-  }
-  return {
-    breached: false,
-    breaches: [],
-    details: "Checked against live threat repositories with zero-knowledge verification."
+  /** SHA-256 ID of the sealed input this finding was derived from. */
+  sha256Id?: string;
+  /** Integrity seal binding the finding to the session. */
+  seal?: string;
+  /** Provenance: how the result was established. */
+  verification?: {
+    thirdPartyVerified: boolean;
+    statement: string;
+    sources: Array<{ source: string; outcome: string; verified: boolean; checkedAt: string }>;
   };
 }
 
-/** Helper: real social media profile check */
-async function checkSocialProfileReal(username: string): Promise<{ exists: boolean; details: string }> {
-  try {
-    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
-      signal: AbortSignal.timeout(4000)
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return {
-        exists: true,
-        details: `Public profile active: ${data.public_repos} public repos, followers: ${data.followers}, bio: "${data.bio || "None"}"`
-      };
-    }
-  } catch {}
-  return {
-    exists: false,
-    details: `No exposed public GitHub API footprint found for handle "${username}".`
-  };
+export interface ScanSession {
+  uid: string;
+  email: string;
+  /** Session SHA-256 identity hash — the gate key for every Module Agent. */
+  sovereignHash: string;
 }
 
-/** Helper: Browser & Hardware fingerprint calculation */
-async function inspectBrowserEntropy(): Promise<{ canvasHash: string; vendor: string; audioHz: number }> {
-  let canvasHash = "CANVAS_UNAVAILABLE";
-  let vendor = "GENERIC_GPU";
-  let audioHz = 44100;
+export const CANONICAL_VECTORS = MODULE_AGENTS.map(spec => ({
+  id: spec.moduleId,
+  label: spec.label,
+  vector: spec.vector,
+}));
 
+/**
+ * Load the sealed (encrypted) value a user previously committed to a module
+ * and decrypt it locally with the session identity hash. Returns null when no
+ * value has been sealed — never a substitute value.
+ */
+async function loadSealedModuleValue(session: ScanSession, moduleId: string): Promise<{ value: string; sha256Id: string } | null> {
   try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 200;
-    canvas.height = 50;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.textBaseline = "top";
-      ctx.font = "14px Orbitron";
-      ctx.fillStyle = "#FF2E9F";
-      ctx.fillText("AGAPE_SOVEREIGN_V2", 2, 2);
-      ctx.fillStyle = "#00D4FF";
-      ctx.fillRect(50, 20, 40, 20);
-      const dataUrl = canvas.toDataURL();
-      const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(dataUrl));
-      canvasHash = Array.from(new Uint8Array(hashBuf)).slice(0, 8).map(b => b.toString(16).padStart(2, "0")).join("");
-    }
-
-    const gl = document.createElement("canvas").getContext("webgl");
-    if (gl) {
-      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-      if (debugInfo) {
-        vendor = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || vendor;
-      }
-    }
-
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (AudioContextClass) {
-      const actx = new AudioContextClass();
-      audioHz = actx.sampleRate;
-      await actx.close();
-    }
-  } catch {}
-
-  return { canvasHash, vendor, audioHz };
+    const snap = await getDoc(doc(db, "users", session.uid, "module_data", "active"));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    const cipher = data?.data?.[moduleId];
+    if (!cipher) return null;
+    const value = await decryptClientSide(cipher, session.sovereignHash);
+    return { value, sha256Id: data?.hashes?.[`${moduleId}Hash`] || "" };
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, `users/${session.uid}/module_data/active`);
+    return null;
+  }
 }
 
 /**
- * Execute real scan for an individual vector
+ * Build the PENDING finding used when a module requires a sealed input the
+ * user has not provided. This is a factual state, not a simulated result.
  */
-export async function startModuleScan(
-  userId: string,
-  email: string,
-  module: string,
-  onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void,
-): Promise<ScanFinding> {
-  onProgress?.(0, 1, module, "Initializing vector telemetry...");
-
-  let findingText = "";
-  let status: "NUKED" | "KNOXED" | "MONITORED" = "KNOXED";
-  let detailsText = "";
-
-  const normModule = module.toLowerCase();
-
-  if (normModule.includes("email") || normModule === "v-01") {
-    onProgress?.(1, 1, "Email Breach Scanner", "Querying XposedOrNot live breach registry...");
-    const res = await checkEmailBreachReal(email);
-    if (res.breached) {
-      status = "NUKED";
-      findingText = `Exposed in ${res.breaches.length} Public Breaches`;
-      detailsText = res.details;
-    } else {
-      status = "KNOXED";
-      findingText = "Zero Public Breaches Detected";
-      detailsText = `Analyzed ${email} against live threat feeds. No active breaches found.`;
-    }
-  } else if (normModule.includes("social") || normModule === "v-02") {
-    onProgress?.(1, 1, "Social Media Footprint", "Enumerating public API endpoints...");
-    const handle = email.split("@")[0];
-    const res = await checkSocialProfileReal(handle);
-    if (res.exists) {
-      status = "MONITORED";
-      findingText = `Public Social Profile Detected (@${handle})`;
-      detailsText = res.details;
-    } else {
-      status = "KNOXED";
-      findingText = "No Correlated Public Handle Exposure";
-      detailsText = res.details;
-    }
-  } else if (normModule.includes("device") || normModule === "v-03") {
-    onProgress?.(1, 1, "Device File Scan", "Auditing hardware concurrency & storage entropy...");
-    const cores = navigator.hardwareConcurrency || 4;
-    const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
-    const platform = navigator.platform || "Desktop";
-    status = "KNOXED";
-    findingText = `Device Enclave Sealed: ${platform} (${cores} Cores, ${mem}GB RAM)`;
-    detailsText = `Local hardware security verification complete. No unprotected file system handles exposed.`;
-  } else if (normModule.includes("mobile") || normModule.includes("system") || normModule === "v-04") {
-    onProgress?.(1, 1, "Mobile Security Layer", "Testing WebAuthn biometric platform authenticator...");
-    const hasWebAuthn = !!window.PublicKeyCredential;
-    let hasBiometrics = false;
-    if (hasWebAuthn && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-      hasBiometrics = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false);
-    }
-    status = hasBiometrics ? "KNOXED" : "MONITORED";
-    findingText = hasBiometrics ? "Hardware Passkey Enclave Verified" : "Software Authenticator Active";
-    detailsText = `WebAuthn: ${hasWebAuthn ? "Supported" : "Disabled"}. Biometric Secure Enclave: ${hasBiometrics ? "Available & Active" : "Requires Device Passkey Enrollment"}.`;
-  } else if (normModule.includes("deepweb") || normModule === "v-05") {
-    onProgress?.(1, 1, "Deep Web Exposure", "Checking pastebins & unindexed pattern registries...");
-    status = "MONITORED";
-    findingText = "Zero Unindexed Pastebin Signatures";
-    detailsText = "No raw credential dumps or private keys matching user cryptographic envelope found in monitored paste repositories.";
-  } else if (normModule.includes("broker") || normModule === "v-06") {
-    onProgress?.(1, 1, "Data Broker Removal", "Synthesizing CCPA/GDPR removal requests...");
-    status = "MONITORED";
-    findingText = "6 Data Broker Opt-Out Vectors Prepared";
-    detailsText = "Generated automated opt-out dispatches for Acxiom, LexisNexis, Whitepages, Spokeo, Radaris, and BeenVerified.";
-  } else if (normModule.includes("password") || normModule === "v-07") {
-    onProgress?.(1, 1, "Password Vault Analysis", "Running SHA-1 k-anonymity verification...");
-    // Test common password pattern for user feedback
-    const sampleExposure = await checkPwnedPasswordKAnonymity("Password123!");
-    status = "KNOXED";
-    findingText = "Zero-Knowledge k-Anonymity Guard Active";
-    detailsText = `Local SHA-1 prefix truncation verified against Cloudflare k-anonymity index. Baseline test confirmed ${sampleExposure > 0 ? "active cloud detection" : "clean"}. No passwords leave device.`;
-  } else if (normModule.includes("location") || normModule === "v-08") {
-    onProgress?.(1, 1, "Location Data Footprint", "Auditing Geolocation permission state & EXIF scrubbing...");
-    let perm = "prompt";
-    if (navigator.permissions && navigator.permissions.query) {
-      try {
-        const p = await navigator.permissions.query({ name: "geolocation" as PermissionName });
-        perm = p.state;
-      } catch {}
-    }
-    status = perm === "granted" ? "MONITORED" : "KNOXED";
-    findingText = perm === "granted" ? "Browser Geolocation Permission Granted" : "Location Permission Sealed";
-    detailsText = `Geolocation state: ${perm}. EXIF GPS scrubbing engine active for all local media uploads.`;
-  } else if (normModule.includes("browser") || normModule === "v-09") {
-    onProgress?.(1, 1, "Browser & Cookie Tracker", "Generating Canvas & WebGL entropy profile...");
-    const { canvasHash, vendor, audioHz } = await inspectBrowserEntropy();
-    status = "MONITORED";
-    findingText = `Canvas Hash: ${canvasHash} · GPU: ${vendor.slice(0, 24)}`;
-    detailsText = `AudioContext: ${audioHz}Hz. Third-party cookie blocking active. Fingerprint entropy calculated locally.`;
-  } else if (normModule.includes("financial") || normModule === "v-10") {
-    onProgress?.(1, 1, "Financial Identity Exposure", "Checking Luhn verification & credit freeze status...");
-    status = "KNOXED";
-    findingText = "Financial Privacy Guard Active";
-    detailsText = "No plain PANs or bank tokens stored. Credit bureau direct opt-out guidance (OptOutPrescreen & AnnualCreditReport) linked.";
-  } else if (normModule.includes("medical") || normModule === "v-11") {
-    onProgress?.(1, 1, "Medical Data Footprint", "Assessing HIPAA PHI privacy safeguards...");
-    status = "KNOXED";
-    findingText = "HIPAA Enclave Shield Active";
-    detailsText = "Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.";
-  } else if (normModule.includes("biometric") || normModule === "v-12") {
-    onProgress?.(1, 1, "Voice & Biometric Data", "Probing Web Audio acoustic sample frequency...");
-    status = "KNOXED";
-    findingText = "Acoustic Biometric Guard Active";
-    detailsText = "Microphone stream protected. No voice recognition biometric samples stored in unencrypted storage.";
-  } else if (normModule.includes("iot") || normModule === "v-13") {
-    onProgress?.(1, 1, "IoT & Smart Device Scan", "Probing WebRTC local network IP leakage...");
-    let leakedIp = false;
-    try {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel("");
-      await pc.createOffer().then(o => pc.setLocalDescription(o));
-      pc.onicecandidate = (e) => {
-        if (e.candidate && /192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\./.test(e.candidate.candidate)) {
-          leakedIp = true;
-        }
-      };
-      setTimeout(() => pc.close(), 1000);
-    } catch {}
-    status = leakedIp ? "MONITORED" : "KNOXED";
-    findingText = leakedIp ? "WebRTC Local LAN Candidate Detected" : "WebRTC IP Leak Shield Sealed";
-    detailsText = leakedIp ? "Local LAN IP candidate visible to browser peers. Recommended: Disable WebRTC local IP exposure." : "Zero internal IP leaks detected via WebRTC.";
-  } else if (normModule.includes("cloud") || normModule === "v-14") {
-    onProgress?.(1, 1, "Cloud Storage Exposure", "Auditing public bucket naming & link sharing permissions...");
-    status = "KNOXED";
-    findingText = "Zero Public Storage Buckets Exposed";
-    detailsText = "Google Drive & AWS S3 public sharing policy audited. Restricted to device-bound local vault storage.";
-  } else if (normModule.includes("darkweb") || normModule === "v-15") {
-    onProgress?.(1, 1, "Dark Web Monitoring", "Checking darknet credential indexing feeds...");
-    status = "MONITORED";
-    findingText = "Darknet Exposure Feed Active";
-    detailsText = "Monitoring onion index feeds for compromised credential patterns matching verified user identifiers.";
-  } else {
-    // V-16 Behavioral
-    onProgress?.(1, 1, "Behavioral Profile Analysis", "Computing digital footprint entropy...");
-    status = "KNOXED";
-    findingText = "Behavioral Profiling Persona Shielded";
-    detailsText = "Cross-site tracking pixels blocked. Inferred demographic metadata mapped to zero-knowledge synthetic identifier.";
-  }
-
-  const finding: ScanFinding = {
-    userId,
-    module,
-    finding: findingText,
-    status,
+function pendingFinding(session: ScanSession, moduleId: string): ScanFinding {
+  const spec = MODULE_AGENT_INDEX[moduleId];
+  const label = spec?.label || moduleId;
+  return {
+    userId: session.uid,
+    module: moduleId,
+    finding: `${spec?.vector || moduleId} awaiting sealed input`,
+    status: "MONITORED",
     timestamp: new Date(),
-    details: detailsText
+    details: `${label} requires "${spec?.inputLabel || "a value"}" before any evidence can be gathered. Nothing was queried and no result was assumed. Open the module and seal a value to run it.`,
+    verification: {
+      thirdPartyVerified: false,
+      statement: "Not executed — required input is missing.",
+      sources: [],
+    },
   };
+}
 
+function toFinding(session: ScanSession, moduleId: string, result: ModuleAgentResult): ScanFinding {
+  return {
+    userId: session.uid,
+    module: moduleId,
+    finding: result.finding.finding,
+    status: result.finding.status,
+    timestamp: new Date(),
+    details: result.finding.details,
+    sha256Id: result.sha256Id,
+    seal: result.seal,
+    verification: {
+      thirdPartyVerified: result.finding.thirdPartyVerified,
+      statement: result.verification.statement,
+      sources: result.verification.reports.map(r => ({
+        source: r.source,
+        outcome: r.outcome,
+        verified: r.verified,
+        checkedAt: r.checkedAt,
+      })),
+    },
+  };
+}
+
+async function persistFinding(finding: ScanFinding): Promise<ScanFinding> {
   try {
     const docRef = await addDoc(collection(db, "diff_scans"), {
       ...finding,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
     });
     finding.id = docRef.id;
   } catch (err) {
-    // Fallback: save to localStorage if offline/demo
-    try {
-      const stored = JSON.parse(localStorage.getItem(`diff_scans_${userId}`) || "[]");
-      finding.id = "local_" + Date.now();
-      stored.unshift(finding);
-      localStorage.setItem(`diff_scans_${userId}`, JSON.stringify(stored.slice(0, 50)));
-    } catch {}
+    handleFirestoreError(err, OperationType.CREATE, "diff_scans");
   }
-
   return finding;
 }
 
 /**
- * Execute full scan across all 16 canonical vectors
+ * Execute one Identity Vector through its Module Agent.
+ */
+export async function startModuleScan(
+  session: ScanSession,
+  moduleId: string,
+  onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void,
+): Promise<ScanFinding> {
+  const spec = MODULE_AGENT_INDEX[moduleId];
+  if (!spec) {
+    throw new Error(`Unknown identity vector "${moduleId}".`);
+  }
+
+  onProgress?.(0, 1, spec.label, `Gating ${spec.vector} through its Module Agent…`);
+
+  // Resolve the value the agent will operate on.
+  let value = "";
+  if (moduleId === "email") {
+    value = session.email || "";
+  } else {
+    const sealed = await loadSealedModuleValue(session, moduleId);
+    value = sealed?.value || "";
+  }
+
+  if (spec.required && !value) {
+    const finding = await persistFinding(pendingFinding(session, moduleId));
+    onProgress?.(1, 1, spec.label, `${spec.vector} awaiting sealed input.`);
+    return finding;
+  }
+
+  onProgress?.(0, 1, spec.label, `Querying registered third-party sources for ${spec.vector}…`);
+
+  try {
+    const result = await runModuleAgent({
+      session: { user: { uid: session.uid, email: session.email }, sovereignHash: session.sovereignHash },
+      moduleId,
+      rawValue: value,
+    });
+    const finding = await persistFinding(toFinding(session, moduleId, result));
+    onProgress?.(1, 1, spec.label, `${spec.vector} ${result.finding.thirdPartyVerified ? "third-party verified" : "reported UNVERIFIED"}.`);
+    return finding;
+  } catch (err) {
+    if (err instanceof ModuleGateError) {
+      const finding = await persistFinding({
+        userId: session.uid,
+        module: moduleId,
+        finding: `${spec.vector} blocked by Module Agent gate`,
+        status: "MONITORED",
+        timestamp: new Date(),
+        details: `Gate refused the run (${err.code}): ${err.message} No data was written and no result was generated.`,
+        verification: { thirdPartyVerified: false, statement: `Gate refusal: ${err.code}`, sources: [] },
+      });
+      onProgress?.(1, 1, spec.label, `${spec.vector} gate refused.`);
+      return finding;
+    }
+    throw err;
+  }
+}
+
+/**
+ * Execute every Identity Vector through its Module Agent.
  */
 export async function startFullScan(
-  userId: string,
-  email: string,
+  session: ScanSession,
   onProgress?: (current: number, total: number, moduleName?: string, subTask?: string) => void,
 ): Promise<ScanFinding[]> {
   const results: ScanFinding[] = [];
@@ -343,23 +211,21 @@ export async function startFullScan(
 
   for (let i = 0; i < total; i++) {
     const vec = CANONICAL_VECTORS[i];
-    onProgress?.(i + 1, total, vec.label, `Scanning vector ${vec.vector}: ${vec.label}...`);
+    onProgress?.(i + 1, total, vec.label, `Vector ${vec.vector}: ${vec.label}`);
     try {
-      const f = await startModuleScan(userId, email, vec.id, onProgress);
-      results.push(f);
+      results.push(await startModuleScan(session, vec.id));
     } catch (err) {
-      console.error(`Vector ${vec.id} scan failed:`, err);
+      console.error(`Vector ${vec.id} failed:`, err);
     }
-    // Brief yield for smooth UI animation
-    await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 150));
   }
 
-  onProgress?.(total, total, "DIFF Finalized", "All 16 vectors sealed in Sovereign Enclave.");
+  onProgress?.(total, total, "DIFF finalized", `${results.length} of ${total} vectors sealed.`);
   return results;
 }
 
 export function calculateScore(findings: ScanFinding[]): number {
-  if (findings.length === 0) return 100;
+  if (findings.length === 0) return 0;
   const weights = { KNOXED: 10, MONITORED: 6, NUKED: 0 } as const;
   return Math.round(
     (findings.reduce((total, finding) => total + weights[finding.status], 0) /
@@ -396,18 +262,9 @@ export async function getScanFindings(userId: string): Promise<ScanFinding[]> {
         } as ScanFinding;
       });
     }
+    return [];
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, "diff_scans");
-  }
-
-  // Fallback to localStorage
-  try {
-    const stored = JSON.parse(localStorage.getItem(`diff_scans_${userId}`) || "[]");
-    return stored.map((item: any) => ({
-      ...item,
-      timestamp: new Date(item.timestamp)
-    }));
-  } catch {
     return [];
   }
 }
@@ -417,52 +274,66 @@ export async function recalculateSovereignScore(userId: string): Promise<number>
 }
 
 export async function generateSuspiciousReport(finding: ScanFinding): Promise<string> {
+  const provenance = finding.verification
+    ? `Verification: ${finding.verification.statement}\nSources: ${finding.verification.sources.map(s => `${s.source} [${s.outcome}]`).join(", ") || "none"}`
+    : "Verification: provenance not recorded for this finding.";
+
   const { text, offline } = await chatComplete(
-    `Analyze this verified identity security telemetry. Model: nemotron-3-nano:4b-bf16.
+    `Analyze this identity security telemetry and produce a remediation plan.
 Vector: ${finding.module}
 Finding: ${finding.finding}
 Status: ${finding.status}
 Details: ${finding.details}
+${provenance}
 
-Provide an actionable, cyber-defense remediation plan with specific technical steps.`,
-    "You are the Agape Sovereign AI Orchestrator running on local Nemotron-3-Nano (4B-BF16). Deliver zero-fluff, highly technical personal cybersecurity defense advice."
+Rules: never invent facts that are not in the telemetry above. If the finding is marked UNVERIFIED, say so and recommend the verification step first.`,
+    "You are the Agape Sovereign AI Orchestrator. Deliver zero-fluff, technical personal cybersecurity defence advice grounded strictly in the supplied telemetry. Never fabricate evidence.",
   );
   return offline
-    ? "Agape Sovereign local AI is processing offline. Remediation protocol: Enforce hardware Passkeys, revoke public OAuth grants, and execute automated broker opt-out."
+    ? "Local model unavailable — no report generated. The finding above is the only evidence on record; re-run the module to retry remediation guidance."
     : text;
 }
 
 /**
- * calculateEnhancedSovereignScore
- * Enhanced weighted calculation:
- * KNOXED = +10pts, MONITORED = +6pts, NUKED = +0pts (already removed)
- * Bonus: +5 base points if any KNOXED findings exist (proactive protection)
- * Returns 0-100 integer. 100 = fully sovereign.
+ * Weighted score. With no findings the score is 0 — an unmeasured identity is
+ * not a protected identity.
  */
 export function calculateEnhancedSovereignScore(findings: ScanFinding[]): number {
-  if (findings.length === 0) return 100;
+  if (findings.length === 0) return 0;
   const weights = { KNOXED: 10, MONITORED: 6, NUKED: 0 } as const;
   const baseScore = Math.round(
     (findings.reduce((total, f) => total + weights[f.status], 0) /
-      (findings.length * 10)) * 100
+      (findings.length * 10)) *
+      100,
   );
-  const hasKnoxed = findings.some(f => f.status === 'KNOXED');
-  return Math.min(100, hasKnoxed ? baseScore + 5 : baseScore);
+  // Bonus only for findings that an external source actually confirmed.
+  const verifiedClean = findings.some(
+    f => f.status === "KNOXED" && f.verification?.thirdPartyVerified === true,
+  );
+  return Math.min(100, verifiedClean ? baseScore + 5 : baseScore);
 }
 
-export function calculateSovereignScoreWithDetails(findings: ScanFinding[]): { score: number; classification: 'SOVEREIGN' | 'KNOXED' | 'EXPOSED' } {
+export function calculateSovereignScoreWithDetails(findings: ScanFinding[]): {
+  score: number;
+  classification: "SOVEREIGN" | "KNOXED" | "EXPOSED" | "UNMEASURED";
+  thirdPartyVerified: number;
+} {
   const score = calculateEnhancedSovereignScore(findings);
-  const classification = score >= 90 ? 'SOVEREIGN' : score >= 70 ? 'KNOXED' : 'EXPOSED';
-  return { score, classification };
+  const thirdPartyVerified = findings.filter(f => f.verification?.thirdPartyVerified === true).length;
+  if (findings.length === 0) return { score: 0, classification: "UNMEASURED", thirdPartyVerified };
+  const classification = score >= 90 ? "SOVEREIGN" : score >= 70 ? "KNOXED" : "EXPOSED";
+  return { score, classification, thirdPartyVerified };
 }
 
 /**
- * IDENTITY_VECTORS — alias for CANONICAL_VECTORS with extended metadata
- * Shape expected by ArchitectAI and other consumers: { id, name, description }
+ * IDENTITY_VECTORS — extended metadata consumed by Architect AI.
  */
-export const IDENTITY_VECTORS = CANONICAL_VECTORS.map(v => ({
-  id: v.vector,
-  name: v.label,
-  description: `Identity vector ${v.vector}: ${v.label}. Real-time privacy and security scanning module.`,
-  moduleId: v.id,
-}));
+export const IDENTITY_VECTORS = CANONICAL_VECTORS.map(v => {
+  const spec = MODULE_AGENT_INDEX[v.id];
+  return {
+    id: v.vector,
+    name: v.label,
+    description: `${v.vector} ${v.label}: ${spec?.description || ""} Third-party chain: ${spec?.verificationChain.length ? spec.verificationChain.join(", ") : "none registered (UNVERIFIED results only)"}.`,
+    moduleId: v.id,
+  };
+});

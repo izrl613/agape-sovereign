@@ -1,5 +1,6 @@
 import React from 'react';
 import { useScan } from '../../ScanContext';
+import { calculateSovereignScoreWithDetails } from '../../services/scanService';
 
 // Re-using the NEON tokens from ArchitectUI
 const NEON = {
@@ -43,9 +44,9 @@ const SovereignScore = ({ score }: { score: number }) => {
 };
 
 export const SovereignStatus: React.FC = () => {
-  const { findings, diffModules } = useScan();
+  const { findings } = useScan();
 
-  const score = Math.round(diffModules.reduce((s: any, m: any) => s + m.severity, 0) / (diffModules.length || 1));
+  const score = calculateSovereignScoreWithDetails(findings).score;
   const critical = findings.filter(f => f.status === 'NUKED').length;
   const review = findings.filter(f => f.status === 'MONITORED').length;
   const verified = findings.filter(f => f.status === 'KNOXED').length;

@@ -8,7 +8,9 @@ import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase';
 import { doc, onSnapshot, setDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/crypto';
+import { decryptClientSide } from '../utils/crypto';
+import { runModuleAgent, ModuleGateError, MODULE_AGENT_INDEX, ModuleAgentResult } from '../services/moduleAgentService';
+import { Sha256IdentityBanner } from './Sha256IdentityBanner';
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
@@ -28,7 +30,7 @@ interface ModuleProps {
 }
 
 export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel, pillar, techniques }: ModuleProps) => {
-  const { user, demoMode } = useAuth();
+  const { user, sovereignHash } = useAuth();
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -40,6 +42,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const [isDecrypting, setIsDecrypting] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showValue, setShowValue] = useState<boolean>(false);
+  const [agentResult, setAgentResult] = useState<ModuleAgentResult | null>(null);
+  const [gateError, setGateError] = useState<string | null>(null);
 
   // Per-module splash — re-triggers on every navigation to this module
   const [showSplash, setShowSplash] = useState(true);
@@ -57,238 +61,86 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   }
   const sevColor = severity > 80 ? NEON.blue : severity > 60 ? NEON.orange : NEON.magenta;
 
-  // Real-time active parameter fetching
+  // Real-time parameter sync — ciphertext + SHA-256 only, decrypted locally.
   useEffect(() => {
-    if (!user) return;
-
-    if (demoMode) {
-      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-      if (localActive) {
-        try {
-          const parsed = JSON.parse(localActive);
-          const encVal = parsed.data?.[moduleId] || "";
-          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
-          setStoredHash(hash);
-          if (encVal) {
-            decryptClientSide(encVal, user.uid).then(dec => {
-              setDecryptedValue(dec);
-              setParameterValue(dec);
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      return;
-    }
+    if (!user || !sovereignHash) return;
 
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
-      if (snapshot.exists()) {
-        const snapData = snapshot.data();
-        const encVal = snapData.data?.[moduleId] || "";
-        const hash = snapData.hashes?.[moduleId + "Hash"] || "";
-        setStoredHash(hash);
-        if (encVal) {
-          setIsDecrypting(true);
-          try {
-            const dec = await decryptClientSide(encVal, user.uid);
-            setDecryptedValue(dec);
-            setParameterValue(dec);
-          } catch (err) {
-            console.error("Decryption failed in sync:", err);
-          }
-          setIsDecrypting(false);
-        } else {
-          setDecryptedValue("");
-          setParameterValue("");
+      if (!snapshot.exists()) return;
+      const snapData = snapshot.data();
+      const encVal = snapData.data?.[moduleId] || "";
+      const hash = snapData.hashes?.[moduleId + "Hash"] || "";
+      setStoredHash(hash);
+      if (encVal) {
+        setIsDecrypting(true);
+        try {
+          const dec = await decryptClientSide(encVal, sovereignHash);
+          setDecryptedValue(dec);
+          setParameterValue(dec);
+        } catch (err) {
+          console.error("Decryption failed in sync:", err);
         }
+        setIsDecrypting(false);
+      } else {
+        setDecryptedValue("");
+        setParameterValue("");
       }
     });
 
     return () => unsubscribe();
-  }, [user, moduleId]);
+  }, [user, sovereignHash, moduleId]);
 
+  const agentSpec = MODULE_AGENT_INDEX[moduleId];
+
+  /**
+   * Seal the entered value through this vector's Module Agent.
+   * The agent validates, hashes (SHA-256), encrypts (AES-256-GCM), persists
+   * ciphertext only, and queries the registered third-party sources.
+   */
   const handleUpdate = async () => {
     if (!user) return;
     setIsSaving(true);
-    const toastId = toast.loading("ENCRYPTING & SEALING PARAMETER...");
+    setGateError(null);
+    const toastId = toast.loading("MODULE AGENT GATING & SEALING PARAMETER...");
 
     try {
-      const newHash = await generateSHA256(parameterValue);
-      const encrypted = await encryptClientSide(parameterValue, user.uid);
-
-      // Save to Firestore or LocalStorage for demoMode
-      if (demoMode) {
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
-        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
-        await setDoc(docRef, {
-          data: {
-            [moduleId]: encrypted
-          },
-          hashes: {
-            [`${moduleId}Hash`]: newHash
-          },
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-
-      // Determine security status heuristically
-      let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
-      let findingText = 'Secured via client-side PBKDF2 AES-256 Enclave';
-      let detailsText = `Parameter encrypted with your sovereign passkey signature. Integrity Seal: ${newHash}`;
-
-      if (!parameterValue) {
-        status = 'MONITORED';
-        findingText = 'Awaiting active configuration';
-        detailsText = 'This vector is currently empty and unconfigured. Enter a value to seal and audit.';
-      } else {
-        const lowerVal = parameterValue.toLowerCase();
-        if (moduleId === 'email') {
-          if (lowerVal.includes('leak') || lowerVal.includes('pwned') || lowerVal.length < 5) {
-            status = 'NUKED';
-            findingText = 'Email leaked in public breach database';
-            detailsText = `Your email address '${parameterValue}' was detected in known data dumps. High threat of credential stuffing attacks. Action advised: rotate credentials.`;
-          }
-        } else if (moduleId === 'password') {
-          if (parameterValue.length < 8 || lowerVal.includes('1234') || lowerVal.includes('password')) {
-            status = 'NUKED';
-            findingText = 'Weak low-entropy credential pattern';
-            detailsText = 'The entered password credential fails safety guidelines. Reused or simple patterns represent an immediate exposure risk.';
-          }
-        } else if (moduleId === 'social') {
-          if (lowerVal.includes('public_') || lowerVal.length < 3) {
-            status = 'MONITORED';
-            findingText = 'Public social handle exposed';
-            detailsText = 'Social handle shows standard public exposure vectors. Maintain private profiles.';
-          }
-        } else if (moduleId === 'device') {
-          if (lowerVal.includes('root') || lowerVal.includes('unencrypted')) {
-            status = 'NUKED';
-            findingText = 'Unencrypted local device partitions';
-            detailsText = 'Device analysis suggests lack of hardware encryption (FDE/BitLocker/FileVault).';
-          }
-        } else if (moduleId === 'mobile') {
-          if (lowerVal.includes('jailbreak') || lowerVal.includes('root') || lowerVal.includes('outdated')) {
-            status = 'NUKED';
-            findingText = 'Compromised OS environment';
-            detailsText = 'Device posture checks show potential jailbreak or outdated firmware risks.';
-          }
-        } else if (moduleId === 'laptop') {
-          if (lowerVal.includes('unencrypted') || lowerVal.includes('disable')) {
-            status = 'NUKED';
-            findingText = 'Unsecure UEFI firmware partition';
-            detailsText = 'Secure Boot or UEFI safeguards are disabled on the active laptop partition.';
-          }
-        } else if (moduleId === 'deepweb') {
-          if (lowerVal.includes('leak') || lowerVal.includes('exposed')) {
-            status = 'NUKED';
-            findingText = 'Data broker metadata exposed';
-            detailsText = 'Identified full name or phone exposures on dark pasted indices.';
-          }
-        } else if (moduleId === 'broker') {
-          if (lowerVal.includes('listed') || lowerVal.includes('exposure')) {
-            status = 'NUKED';
-            findingText = 'Active broker indexing detected';
-            detailsText = 'Your personal attributes are actively compiled by Acxiom and Intelius.';
-          }
-        } else if (lowerVal.includes('leak') || lowerVal.includes('unencrypted') || lowerVal.includes('unsecured')) {
-          status = 'NUKED';
-          findingText = 'Security posture exposure detected';
-          detailsText = `The sealed metadata '${parameterValue}' contains indicators of active leakage or unsecure configurations.`;
-        }
-      }
-
-      // Save scan finding to diff_scans or LocalStorage for demoMode
-      if (demoMode) {
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
-        filtered.push({
-          id: `local-${moduleId}-${Date.now()}`,
-          userId: user.uid,
-          module: moduleId,
-          finding: findingText,
-          status: status,
-          timestamp: new Date().toISOString(),
-          details: detailsText
-        });
-        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
-
-        // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-
-        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
-        history.push({
-          userId: user.uid,
-          score: newScore,
-          timestamp: new Date().toISOString(),
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          findings: filtered
-        });
-        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
-      } else {
-        const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
-        const snap = await getDocs(q);
-        
-        if (!snap.empty) {
-          const docRef = doc(db, 'diff_scans', snap.docs[0].id);
-          await updateDoc(docRef, {
-            finding: findingText,
-            status: status,
-            details: detailsText,
-            timestamp: serverTimestamp()
-          });
-        } else {
-          await addDoc(collection(db, 'diff_scans'), {
-            userId: user.uid,
-            module: moduleId,
-            finding: findingText,
-            status: status,
-            details: detailsText,
-            timestamp: serverTimestamp()
-          });
-        }
-
-        // Recalculate Sovereign Score
-        const allScansSnap = await getDocs(query(collection(db, 'diff_scans'), where('userId', '==', user.uid)));
-        const allScans = allScansSnap.docs.map(d => d.data());
-        const nukedCount = allScans.filter(f => f.status === 'NUKED').length;
-        const knoxedCount = allScans.filter(f => f.status === 'KNOXED').length;
-        const monitoredCount = allScans.filter(f => f.status === 'MONITORED').length;
-        
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-        await updateDoc(doc(db, 'users', user.uid), { sovereignScore: newScore });
-
-        // Add to score history
-        await addDoc(collection(db, 'score_history'), {
-          userId: user.uid,
-          score: newScore,
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          timestamp: serverTimestamp(),
-          reason: `DIFF Vector [${vector}] Update`
-        });
-      }
-
-      toast.dismiss(toastId);
-      toast.success("VECTOR SEALED & CRYPTED", {
-        description: `Integrity Key generated: ${newHash.substring(0, 16)}...`
+      const result = await runModuleAgent({
+        session: sovereignHash
+          ? { user: { uid: user.uid, email: user.email }, sovereignHash }
+          : null,
+        moduleId,
+        rawValue: parameterValue,
       });
-    } catch (err) {
-      console.error(err);
+
+      setAgentResult(result);
+      setStoredHash(result.sha256Id);
+
       toast.dismiss(toastId);
-      toast.error("Failed to seal vector parameter.");
+      if (result.persisted.store === 'none') {
+        toast.error("SEALED LOCALLY BUT NOT PERSISTED", {
+          description: `Encryption succeeded; the write failed: ${result.persisted.error}`,
+        });
+      } else if (result.finding.thirdPartyVerified) {
+        toast.success("MODULE AGENT SEALED · THIRD-PARTY VERIFIED", {
+          description: `SHA-256 ID ${result.sha256Id.slice(0, 16)}… · ${result.verification.statement}`,
+        });
+      } else {
+        toast.warning("MODULE AGENT SEALED · RESULT UNVERIFIED", {
+          description: `SHA-256 ID ${result.sha256Id.slice(0, 16)}… · ${result.verification.statement}`,
+        });
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      if (err instanceof ModuleGateError) {
+        setGateError(`[${err.code}] ${err.message}`);
+        toast.error("MODULE AGENT GATE REFUSED THE RUN", { description: err.message });
+      } else {
+        console.error(err);
+        toast.error("Module Agent failed.", {
+          description: err instanceof Error ? err.message : undefined,
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -333,20 +185,21 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
       )}
 
       <div style={{ animation: "fade-in 0.3s ease" }}>
-      {/* Integrity Tag */}
+      {/* Zero-knowledge SHA-256 identity + this vector's sealed input ID */}
+      <Sha256IdentityBanner
+        moduleLabel={`${vector} ${title.toUpperCase()}`}
+        moduleSha256={agentResult?.sha256Id || storedHash || null}
+      />
+
       <div className="flex justify-between items-center mb-6">
-        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
-          <Lock className="w-3 h-3 text-[#00D4FF]" />
-          <span className="text-[10px] font-mono text-[#00D4FF] tracking-tighter truncate max-w-[320px]">
-            {storedHash ? `SHA256:${storedHash}` : "AWAITING CRYPTOGRAPHIC SEAL"}
-          </span>
-        </div>
         <div className="flex items-center gap-4">
           <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-            Sovereign Enclave v2.0
+            MODULE AGENT · {agentSpec?.verificationChain.length
+              ? `VERIFIED BY ${agentSpec.verificationChain.join(' + ').toUpperCase()}`
+              : 'NO THIRD-PARTY SOURCE REGISTERED'}
           </div>
-          <LogoutButton variant="icon" size="sm" />
         </div>
+        <LogoutButton variant="icon" size="sm" />
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
@@ -438,6 +291,66 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
         ))}
       </div>
 
+      {gateError && (
+        <div style={{
+          marginBottom: 16, padding: '12px 14px', borderRadius: 10,
+          background: 'rgba(255,46,159,0.07)', border: `1px solid ${NEON.magenta}44`,
+          fontFamily: "'Share Tech Mono', monospace", fontSize: 11, color: '#FFB3D9',
+        }}>
+          ⚠ MODULE AGENT GATE: {gateError}
+        </div>
+      )}
+
+      {agentResult && (
+        <div style={{
+          marginBottom: 16, padding: '14px 16px', borderRadius: 12,
+          background: agentResult.finding.thirdPartyVerified
+            ? 'rgba(0,255,135,0.05)' : 'rgba(255,122,24,0.05)',
+          border: `1px solid ${agentResult.finding.thirdPartyVerified ? 'rgba(0,255,135,0.3)' : `${NEON.orange}44`}`,
+        }}>
+          <div style={{
+            fontFamily: "'Orbitron', monospace", fontSize: 10.5, fontWeight: 800,
+            letterSpacing: '0.12em', marginBottom: 8,
+            color: agentResult.finding.thirdPartyVerified ? '#00FF87' : NEON.orange,
+          }}>
+            {agentResult.finding.thirdPartyVerified ? 'THIRD-PARTY VERIFIED RESULT' : 'UNVERIFIED RESULT'}
+          </div>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 6 }}>
+            {agentResult.finding.finding}
+          </div>
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: 11.5, color: NEON.textMuted, lineHeight: 1.6, marginBottom: 10 }}>
+            {agentResult.finding.details}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {agentResult.verification.reports.map((r, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 8, alignItems: 'flex-start',
+                fontFamily: "'Share Tech Mono', monospace", fontSize: 9.5,
+                color: r.verified ? '#B9F6CA' : 'rgba(255,179,128,0.9)',
+                borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: 6,
+              }}>
+                <span style={{ color: r.verified ? '#00FF87' : NEON.orange, flexShrink: 0 }}>[{r.outcome}]</span>
+                <span>{r.source} — {r.evidence}</span>
+              </div>
+            ))}
+            {agentResult.attestation.measured && (
+              <div style={{
+                fontFamily: "'Share Tech Mono', monospace", fontSize: 9.5,
+                color: NEON.blue, borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: 6,
+              }}>
+                [ON-DEVICE] {agentResult.attestation.statement}
+              </div>
+            )}
+            <div style={{
+              fontFamily: "'Share Tech Mono', monospace", fontSize: 9,
+              color: 'rgba(180,190,220,0.55)', borderTop: '1px dashed rgba(255,255,255,0.06)', paddingTop: 6,
+            }}>
+              SEALED {agentResult.completedAt} · PII CLASS {agentResult.piiClass} · STORED {agentResult.persisted.store.toUpperCase()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
       <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
         <div className="relative z-10">
@@ -487,14 +400,18 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
+                <label className="text-xs font-mono text-[#FF7A18]">
+                  {agentSpec?.inputLabel || 'UPDATE VECTOR VALUE'}
+                  {agentSpec && !agentSpec.required && <span className="text-slate-500"> (OPTIONAL)</span>}
+                </label>
                 <div className="relative group">
                   <input 
-                    type={moduleId === 'password' ? 'password' : 'text'}
+                    type={agentSpec?.inputType === 'password' ? 'password' : 'text'}
                     value={parameterValue}
                     onChange={(e) => setParameterValue(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
-                    placeholder={`Enter parameter input for ${title}...`}
+                    placeholder={agentSpec?.inputPlaceholder || `Enter parameter input for ${title}...`}
+                    maxLength={agentSpec?.maxLength}
                     disabled={isSaving}
                   />
                   {parameterValue && !isSaving && (

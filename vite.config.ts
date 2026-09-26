@@ -12,7 +12,16 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // The app entry is /src/main.tsx. The legacy `frontend/` folder is not part
+    // of the app graph — keep Vite's dependency scan on the real entry.
+    optimizeDeps: {
+      entries: ['index.html', 'src/main.tsx'],
+    },
     server: {
+      // Bind on all interfaces so the app is reachable through the preview
+      // proxy host, and accept any Host header (dev server only).
+      host: '0.0.0.0',
+      allowedHosts: true,
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api/mcp': {

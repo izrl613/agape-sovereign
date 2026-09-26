@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Fingerprint, ArrowLeft, Shield, EyeOff, ChevronRight, Sparkles } from 'lucide-react';
+import { Fingerprint, ArrowLeft, Shield, EyeOff, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { isPrivateBrowsing } from '../utils/incognitoDetector';
-import { DemoBypassButton } from './auth/DemoBypassButton';
 
 // ── Brand palette ──────────────────────────────────────────────
 const C = {
@@ -152,24 +151,14 @@ const LoadingSpinner = () => {
 
 // ── Main Login component ───────────────────────────────────────
 export const Login = () => {
-  const { login, loginWithPasskey, user, demoMode, setDemoUser } = useAuth();
+  const { login, loginWithPasskey, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user || demoMode) {
+    if (user) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, demoMode, navigate]);
-
-  const handleDemoBypass = () => {
-    setAuthError(null);
-    setScanning(true);
-    setActiveMethod('passkey');
-    setDemoUser();
-    setTimeout(() => {
-      navigate('/dashboard', { replace: true });
-    }, 300);
-  };
+  }, [user, navigate]);
 
   const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
   const [scanning, setScanning] = useState(false);
@@ -474,7 +463,7 @@ export const Login = () => {
                   analysis. Your sovereignty begins here.
                 </div>
 
-                {/* ── 3-OPTION AUTHENTICATION SELECTION ── */}
+                {/* ── TWO AUTHENTICATION METHODS ── */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                   {/* OPTION 1 — Passkey / WebAuthn */}
                   <motion.div
@@ -546,49 +535,15 @@ export const Login = () => {
                         Sign in with Google
                       </div>
                       <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        OAuth 2.0 · Sync to Google Drive
+                        Federated OAuth 2.0 · Dual protection with passkey
+                      </div>
+                      <div style={{ color: 'rgba(138,180,248,0.75)', fontSize: 9.5, fontFamily: 'monospace', letterSpacing: '0.03em', marginTop: 3 }}>
+                        Saves your 26-month Identity Audit PDF to your Google Account
                       </div>
                     </div>
                     <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />
                   </motion.div>
 
-                  {/* OPTION 3 — Demo Guest Sandbox */}
-                  <motion.div
-                    whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.5)' }}
-                    whileTap={{ scale: 0.985 }}
-                    onClick={handleDemoBypass}
-                    style={{
-                      background: 'rgba(255,122,24,0.06)',
-                      border: '1px solid rgba(255,122,24,0.3)',
-                      borderRadius: 14,
-                      padding: '14px 16px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      textAlign: 'left',
-                      transition: 'all 0.2s',
-                    }}
-                    aria-label="Instant Demo Guest Sandbox"
-                  >
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 10,
-                      background: 'rgba(255,122,24,0.12)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, border: '1px solid rgba(255,122,24,0.3)',
-                    }}>
-                      <Sparkles size={18} color="#FF7A18" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ color: '#FF7A18', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2, fontFamily: "'Share Tech Mono', monospace" }}>
-                        Demo Guest Sandbox
-                      </div>
-                      <div style={{ color: 'rgba(255,122,24,0.65)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        Instant PWA access · Zero setup
-                      </div>
-                    </div>
-                    <ChevronRight size={16} color="#FF7A18" style={{ opacity: 0.7 }} />
-                  </motion.div>
                 </div>
 
                 {/* Trust logos — real brand marks */}

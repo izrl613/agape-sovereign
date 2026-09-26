@@ -5,6 +5,9 @@ import { db } from '../firebase';
 import { doc as firestoreDoc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, addDoc, query, getDocs } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { generateSHA256 } from '../utils/crypto';
+
+/** Identity Audit PDF retention window, in months. */
+export const AUDIT_RETENTION_MONTHS = 26;
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
 interface ReportMetadata {
@@ -72,7 +75,8 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
   const reportId = `RPT-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`.toUpperCase();
   const cloudAuditId = generateCloudAuditId();
   const generatedAt = new Date();
-  const expiresAt = new Date(generatedAt.getTime() + (2 * 365 * 24 * 60 * 60 * 1000)); // 2 years
+  const expiresAt = new Date(generatedAt);
+  expiresAt.setMonth(expiresAt.getMonth() + AUDIT_RETENTION_MONTHS);
 
   // Statistics
   const totalNuked = findings.filter(f => f.status === 'NUKED').length;
@@ -200,7 +204,7 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
       '• Zero-Knowledge Architecture - User data encrypted client-side',
       '• SHA-256 Integrity Verification',
       '• Immutable Audit Trail',
-      '• 2-Year Retention Policy',
+      `• ${AUDIT_RETENTION_MONTHS}-Month Rolling Retention Policy`,
       '',
       `Report ID: ${reportId}`,
       `Cloud Audit ID: ${cloudAuditId}`,

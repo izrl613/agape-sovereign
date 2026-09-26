@@ -111,9 +111,47 @@ export const messaging = typeof window !== 'undefined'
   ? isMessagingSupported().then(yes => yes ? getMessaging(app) : null)
   : Promise.resolve(null);
 
+/**
+ * Federated Google access token for this tab session.
+ *
+ * Firebase only hands the OAuth access token back at the moment of sign-in
+ * (`GoogleAuthProvider.credentialFromResult`), so it is captured there and
+ * kept for the lifetime of the tab. It is cleared on sign-out and never
+ * written to persistent storage or transmitted anywhere except Google's own
+ * Drive endpoints.
+ */
+const FEDERATED_TOKEN_KEY = 'sovereign_federated_drive_token';
+
+export function setFederatedDriveToken(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(FEDERATED_TOKEN_KEY, token);
+    else sessionStorage.removeItem(FEDERATED_TOKEN_KEY);
+  } catch {
+    // sessionStorage unavailable (private browsing) — token stays in memory only
+  }
+}
+
+let federatedDriveTokenMemory: string | null = null;
+
+export function getFederatedDriveToken(): string | null {
+  if (federatedDriveTokenMemory) return federatedDriveTokenMemory;
+  try {
+    return sessionStorage.getItem(FEDERATED_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
+/**
+ * Federated Drive authority. Requesting this at sign-in means the Google
+ * credential itself can save the 26-month Identity Audit PDF into the user's
+ * own Drive — no second consent popup and no separate OAuth client.
+ * `drive.file` is per-file: the app only ever sees files it created.
+ */
+googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 
 /**
  * Build Google OAuth custom parameters.
@@ -196,6 +234,17 @@ export const loginWithGoogle = async () => {
     }
 
     const result = await signInWithPopup(auth, googleProvider);
+
+    // Capture the federated access token (carries the drive.file scope) so the
+    // 26-month Identity Audit PDF can be saved to the user's Google Account.
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const accessToken = credential?.accessToken || null;
+    federatedDriveTokenMemory = accessToken;
+    setFederatedDriveToken(accessToken);
+    if (!accessToken) {
+      console.warn('[AUTH] Google credential returned no access token — Drive save will require re-sign-in.');
+    }
+
     // Persist email as login_hint so the next sign-in can skip the account picker
     try {
       if (result.user.email) {
@@ -240,6 +289,8 @@ export const logout = async () => {
     await signOut(auth);
     // Clear the login_hint so a different account can be chosen next time
     try { localStorage.removeItem('sovereign_login_hint'); } catch { /* ignore */ }
+    federatedDriveTokenMemory = null;
+    setFederatedDriveToken(null);
   } catch (error) {
     console.error('Error signing out', error);
     throw error;

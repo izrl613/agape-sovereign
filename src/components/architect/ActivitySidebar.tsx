@@ -36,7 +36,7 @@ const StatusBadge = ({ type }: any) => {
 };
 
 export const ActivitySidebar: React.FC = () => {
-  const { findings, isScanning, currentModule, currentSubTask, diffModules } = useScan();
+  const { findings, isScanning, currentModule, currentSubTask, vectors } = useScan();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
@@ -57,13 +57,15 @@ export const ActivitySidebar: React.FC = () => {
               <div style={{ fontFamily: 'Share Tech Mono', fontSize: '0.6rem', color: NEON.textMuted }}>{currentSubTask || 'Analyzing vectors...'}</div>
             </div>
           ) : (
-            diffModules.slice(0, 6).map((m: any) => (
-              <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(0,212,255,0.05)' }}>
+            vectors.slice(0, 6).map((m: any) => (
+              <div key={m.moduleId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(0,212,255,0.05)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ color: NEON.blue, fontSize: '0.9rem' }}>{m.icon}</span>
                   <span style={{ fontFamily: 'Rajdhani', fontSize: '0.75rem', color: NEON.text }}>{m.label}</span>
                 </div>
-                <span style={{ fontFamily: 'Share Tech Mono', fontSize: '0.6rem', color: NEON.textMuted }}>Monitoring</span>
+                <span style={{ fontFamily: 'Share Tech Mono', fontSize: '0.6rem', color: m.lastScanned ? (m.thirdPartyVerified ? '#00FF87' : NEON.orange) : NEON.textMuted }}>
+                  {m.lastScanned ? (m.thirdPartyVerified ? 'Verified' : 'Unverified') : 'Not scanned'}
+                </span>
               </div>
             ))
           )}

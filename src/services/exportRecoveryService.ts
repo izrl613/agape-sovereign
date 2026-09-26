@@ -53,7 +53,7 @@ export interface PassportManifest {
 
 
 /**
- * Check if the 2-year export limit has been exceeded for this identity hash.
+ * Check if the 26-month export limit has been exceeded for this identity hash.
  */
 async function checkExportLimit(sha256Id: string): Promise<{ exceeded: boolean; lastExport?: string }> {
   try {
@@ -109,7 +109,7 @@ export async function generateSovereignPassport(
     };
   }
 
-  // 1. Enforce 2-year export limit
+  // 1. Enforce 26-month export limit
   const limitCheck = await checkExportLimit(sha256Id);
   if (limitCheck.exceeded) {
     return {
@@ -119,7 +119,7 @@ export async function generateSovereignPassport(
       publicFingerprint: '',
       manifestFile: '',
       instructions: '',
-      reason: `Export limit exceeded. Your 2-year sovereign export window opened on ${limitCheck.lastExport}. Contact admin to reset.`,
+      reason: `Export limit exceeded. Your 26-month sovereign export window opened on ${limitCheck.lastExport}. Contact admin to reset.`,
     };
   }
 
@@ -148,7 +148,7 @@ export async function generateSovereignPassport(
     instructions:
       '1. Store this passportManifest.json in a physically secure location.\n' +
       '2. Your SHA-256 Identity Anchor and Public Fingerprint are your cryptographic proof of sovereignty.\n' +
-      '3. You have 2 years from first export to regenerate. After that, request an admin reset.\n' +
+      '3. You have 26 months from first export to regenerate. After that, request an admin reset.\n' +
       '4. Agape Sovereign — One Love.',
   };
 

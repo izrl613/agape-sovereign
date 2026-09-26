@@ -21,20 +21,15 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   style = {},
   onClick,
 }) => {
-  const { logout, demoMode, clearDemoUser } = useAuth();
+  const { logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      if (demoMode) {
-        clearDemoUser();
-        toast.info('Demo session ended. Your temporary identity has been cleared.');
-      } else {
-        await logout();
-        toast.info('Session disconnected. You have been signed out.');
-      }
+      await logout();
+      toast.info('Session disconnected. You have been signed out.');
       onClick?.();
     } catch (error) {
       toast.error('Failed to disconnect session.');

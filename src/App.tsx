@@ -40,7 +40,7 @@ import {
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, demoMode } = useAuth();
+  const { user, loading } = useAuth();
   
   if (loading) {
     return (
@@ -50,7 +50,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  if (!user && !demoMode) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -83,7 +83,7 @@ import { ContactPage } from './components/ContactPage';
 import { OfflinePage } from './components/OfflinePage';
 
 const AppRoutes = () => {
-  const { user, setupComplete, setSetupComplete, demoMode } = useAuth();
+  const { user, setupComplete, setSetupComplete } = useAuth();
 
   if (user && !setupComplete) {
     return <SplashEntry onComplete={() => setSetupComplete(true)} />;
@@ -99,7 +99,7 @@ const AppRoutes = () => {
       <Route path="/offline" element={<OfflinePage />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
-      <Route path="/login" element={(user || demoMode) ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
       {/* Protected app — all authenticated routes live under /dashboard */}
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
@@ -141,7 +141,6 @@ const AppRoutes = () => {
 
 import { Toaster } from 'sonner';
 import { PasskeySetupPrompt } from './components/auth/PasskeySetupPrompt';
-import { DemoBanner } from './components/auth/DemoBanner';
 import { UIDesignProvider, useUIDesign } from './UIDesignContext';
 import ArchitectUI from './ArchitectUI';
 
@@ -159,7 +158,6 @@ const MainAppContent = () => {
 
   return (
     <BrowserRouter>
-      <DemoBanner />
       <AppRoutes />
       <Toaster position="top-right" theme="dark" richColors closeButton />
       {/* Passkey onboarding: appears once after first Google login on capable devices */}

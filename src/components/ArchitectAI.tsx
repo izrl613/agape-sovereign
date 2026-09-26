@@ -58,19 +58,21 @@ export const ArchitectAI = () => {
   const getDefaultMessage = (): Message => ({
     id: '1',
     role: 'model',
-    text: `Greetings, Sovereign ${user?.displayName || 'User'}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.
+    text: `Greetings, Sovereign ${user?.displayName || 'User'}. I am Architect AI — your privacy and security intelligence engine for the Agape Sovereign enclave.
 
-I have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${sovereignScore}/100** (${sovereignScore >= 70 ? 'KNOXED' : 'NUKED'}).
+**State on record:** ${new Set(findings.map(f => f.module)).size} of 16 identity vectors have been executed. ${findings.length === 0
+      ? 'No vector has been scanned yet, so no score or exposure is claimed — run the DIFF scan or open a module to seal an input.'
+      : `Sovereign Score: **${sovereignScore}/100**. ${findings.filter(f => f.verification?.thirdPartyVerified === true).length} result(s) are third-party VERIFIED; ${findings.length - findings.filter(f => f.verification?.thirdPartyVerified === true).length} are UNVERIFIED.`}
 
-**Intelligence Summary:**
-- 🔥 **${stats.nuked} NUKED** exposures identified across data brokers and breach databases
-- 🛡️ **${stats.knoxed} KNOXED** vectors hardened and secured  
-- 👁️ **${stats.monitored} MONITORED** vectors under active surveillance
-
-**Active Identity Vectors:**
+${findings.length > 0 ? `**Intelligence Summary:**
+- 🔥 **${stats.nuked} NUKED** exposures
+- 🛡️ **${stats.knoxed} KNOXED** vectors
+- 👁️ **${stats.monitored} MONITORED** vectors
+` : ''}
+**Identity Vector Modules (each gated by its own Module Agent):**
 ${IDENTITY_VECTORS.slice(0, 8).map(v => `- **${v.id} ${v.name}**: ${v.description}`).join('\n')}
 
-What aspect of your digital sovereignty would you like to reclaim today?`,
+Ask me anything about your privacy or security posture — I will answer only from evidence on record, and I will tell you when something has not been verified.`, 
     timestamp: new Date()
   });
 
@@ -656,11 +658,31 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     logAIChatMessage(messageText.length);
 
     try {
-      const detailedBreakdown = {
-        nuked: findings.filter(f => f.status === 'NUKED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),
-        knoxed: findings.filter(f => f.status === 'KNOXED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),
-        monitored: findings.filter(f => f.status === 'MONITORED').map(f => `- [${f.module}] ${f.finding} (ID: ${f.id})`).join('\n'),
+      // Every finding carries its provenance: which third-party source answered,
+      // or an explicit statement that nothing did. Architect AI is forbidden from
+      // upgrading an UNVERIFIED result into a confirmed exposure.
+      const provenanceOf = (f: ScanFinding): string => {
+        const sources = f.verification?.sources || [];
+        if (f.verification?.thirdPartyVerified && sources.length > 0) {
+          return `VERIFIED by ${sources.filter(x => x.verified).map(x => `${x.source} [${x.outcome}]`).join(', ')}`;
+        }
+        if (sources.length > 0) {
+          return `UNVERIFIED (${sources.map(x => `${x.source} did not answer: ${x.outcome}`).join('; ')})`;
+        }
+        return 'UNVERIFIED (no third-party source is registered for this vector)';
       };
+      const line = (f: ScanFinding) =>
+        `- [${f.module}] ${f.finding} (ID: ${f.id})\n    SHA-256 ID: ${f.sha256Id || 'not sealed'} | ${provenanceOf(f)}\n    Evidence: ${f.details}`;
+
+      const detailedBreakdown = {
+        nuked: findings.filter(f => f.status === 'NUKED').map(line).join('\n'),
+        knoxed: findings.filter(f => f.status === 'KNOXED').map(line).join('\n'),
+        monitored: findings.filter(f => f.status === 'MONITORED').map(line).join('\n'),
+      };
+
+      const verifiedCount = findings.filter(f => f.verification?.thirdPartyVerified === true).length;
+      const unverifiedCount = findings.length - verifiedCount;
+      const vectorsExecuted = new Set(findings.map(f => f.module)).size;
 
       const activeThreats = threatFeed.map(t => `- [${t.severity}] ${t.title} (${t.source})`).join('\n');
 
@@ -671,6 +693,9 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
               - NUKED (Critical Exposures): ${stats.nuked}
               - KNOXED (Hardened Vectors): ${stats.knoxed}
               - MONITORED (Active Surveillance): ${stats.monitored}
+              - Vectors executed: ${vectorsExecuted} of 16
+              - Third-party VERIFIED results: ${verifiedCount}
+              - UNVERIFIED results: ${unverifiedCount}
               
               [ACTIVE THREAT INTELLIGENCE]
               ${activeThreats || 'No immediate global threats detected.'}
@@ -753,6 +778,18 @@ You must operate under strict zero-knowledge architecture principles at all time
 | \`admin\` | All above + Admin Portal, system stats, audit logs | OAuth + Passkey bound to idin@agape.nyc or agape@sovereign.nyc |
 
 You must enforce this role model in every response. If a non-admin user requests admin-level information, respond: *"That section is secured behind the Admin Enclave. Access requires a registered admin passkey."*
+
+---
+
+## ██ EVIDENCE & VERIFICATION MANDATE (ABSOLUTE)
+
+You answer privacy and security questions from **evidence on record only**. The context block above lists every finding with its SHA-256 ID and its verification provenance.
+
+1. **Never invent findings, counts, breach names, CVE IDs, or exposures.** If the evidence is not in the context, say it is not on record and offer to run the module.
+2. **Never upgrade an UNVERIFIED result.** If a finding is marked UNVERIFIED, you must say so in your answer and recommend the verification step first. An unverified result is not a confirmed exposure.
+3. **Name the source when you cite one.** Third-party verification is attributable — quote the source and its outcome exactly as recorded.
+4. **No mock, sample, placeholder or simulated data is ever acceptable.** This platform runs at zero cost with real sources only; if a source is unavailable, the correct answer is "verification did not complete", not a guess.
+5. **Prefer the user's own sealed data.** Values are referenced by their SHA-256 ID; never ask the user to re-type sensitive values that are already sealed in a module.
 
 ---
 
@@ -967,7 +1004,7 @@ I have successfully generated your comprehensive Digital Identity Federated Foot
 - Cloud Audit ID: ${reportMetadata.cloudAuditId}
 - Sovereign Score: ${reportMetadata.sovereignScore}/100 (${reportMetadata.classification})
 - SHA256 Integrity Hash: \`${reportMetadata.sha256Digest}\`
-- Retention: 2 years (expires ${reportMetadata.expiresAt.toLocaleDateString()})
+- Retention: 26 months (expires ${reportMetadata.expiresAt.toLocaleDateString()})
 
 **Summary:**
 - 🔥 NUKED Exposures: ${reportMetadata.totalNuked}

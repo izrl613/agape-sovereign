@@ -247,9 +247,42 @@ const BASE_MODULES = [
   { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis", vector: "V-16" },
 ];
 
+/**
+ * Baseline module metadata. `measured: false` means no vector has executed —
+ * nothing is assumed to be protected. Severity is derived from real findings.
+ */
 const DEFAULT_MODULE_DATA = BASE_MODULES.map(m => ({
-  ...m, nuked: 0, knoxed: 0, monitored: 0, severity: 100, findings: []
+  ...m, nuked: 0, knoxed: 0, monitored: 0, severity: 0, measured: false,
+  sha256Id: null, thirdPartyVerified: false, findings: []
 }));
+
+/** Fold live, evidence-backed findings into the module list. */
+function deriveModuleState(modules: any[], findings: any[]): any[] {
+  return modules.map((m) => {
+    const mf = findings.filter(
+      (f: any) => f.module?.toLowerCase() === m.id || f.module === m.vector,
+    );
+    const nuked = mf.filter((f: any) => f.status === "NUKED").length;
+    const knoxed = mf.filter((f: any) => f.status === "KNOXED").length;
+    const monitored = mf.filter((f: any) => f.status === "MONITORED").length;
+    const total = nuked + knoxed + monitored;
+    const latest = mf.reduce(
+      (acc: any, f: any) => (!acc || f.timestamp > acc.timestamp ? f : acc),
+      null,
+    );
+    return {
+      ...m,
+      nuked,
+      knoxed,
+      monitored,
+      measured: total > 0,
+      severity: total > 0 ? Math.round(((knoxed * 10) + (monitored * 6)) / (total * 10) * 100) : 0,
+      sha256Id: latest?.sha256Id || null,
+      thirdPartyVerified: latest?.verification?.thirdPartyVerified === true,
+      findings: mf,
+    };
+  });
+}
 
 const ADMIN_EMAILS = ["idin@agape.nyc", "agape@sovereign.nyc"];
 
@@ -670,10 +703,13 @@ const TopHeader = ({ user, onAdmin, onProfile, isCloudMode, setIsCloudMode }: an
 
 // ─── Dashboard View ───────────────────────────────────────────
 const DashboardView = ({ diffModules, onModuleClick }) => {
-  const sovereignScore = Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1));
+  const measuredModules = diffModules.filter((m: any) => m.measured);
+  const sovereignScore = measuredModules.length > 0
+    ? Math.round(measuredModules.reduce((s: number, m: any) => s + m.severity, 0) / measuredModules.length)
+    : 0;
   const totalExposures = diffModules.reduce((s, m) => s + m.nuked + m.monitored, 0);
   const totalSecured = diffModules.reduce((s, m) => s + m.knoxed, 0);
-  const criticalModules = diffModules.filter(m => m.severity < 60);
+  const criticalModules = diffModules.filter((m: any) => m.measured && m.severity < 60);
 
   return (
     <div style={{ padding: "24px", overflowY: "auto", height: "100%", animation: "fade-in 0.4s ease" }}>
@@ -917,7 +953,15 @@ const ModuleDetailView = ({ diffModules, moduleId }: any) => {
 
 // ─── Architect AI Chat ────────────────────────────────────────
 const ArchitectAIView = ({ user, diffModules, isCloudMode }: { user: any, diffModules: any[], isCloudMode: boolean }) => {
-  const initialGreeting = `Greetings, ${user?.displayName || "Sovereign"}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.\n\nI have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1))}/100**.\n\n🔥 **${diffModules.reduce((s, m) => s + m.nuked, 0)} NUKED** exposures identified across data brokers and breach databases.\n🛡️ **${diffModules.reduce((s, m) => s + m.knoxed, 0)} KNOXED** vectors hardened and secured.\n\nWhat aspect of your digital sovereignty would you like to reclaim today?`;
+  const executedVectors = diffModules.filter((m: any) => m.measured).length;
+  const verifiedVectors = diffModules.filter((m: any) => m.thirdPartyVerified).length;
+  const measuredForGreeting = diffModules.filter((m: any) => m.measured);
+  const greetingScore = measuredForGreeting.length > 0
+    ? Math.round(measuredForGreeting.reduce((s: number, m: any) => s + m.severity, 0) / measuredForGreeting.length)
+    : 0;
+  const initialGreeting = `Greetings, ${user?.displayName || "Sovereign"}. I am Architect AI — your privacy and security intelligence engine.\n\n**State on record:** ${executedVectors} of 16 identity vectors have been executed. ${executedVectors === 0
+    ? "No vector has been scanned yet, so no score or exposure is claimed — run the DIFF scan or open a module to seal an input."
+    : `Sovereign Score: **${greetingScore}/100** across measured vectors. ${verifiedVectors} vector(s) are third-party VERIFIED; ${executedVectors - verifiedVectors} are UNVERIFIED.`}\n\n🔥 **${diffModules.reduce((s: number, m: any) => s + m.nuked, 0)} NUKED** · 🛡️ **${diffModules.reduce((s: number, m: any) => s + m.knoxed, 0)} KNOXED** · 👁️ **${diffModules.reduce((s: number, m: any) => s + m.monitored, 0)} MONITORED**\n\nAsk me anything about your privacy or security posture — I answer only from evidence on record, and I will tell you when something is unverified.`;
 
   const [messages, setMessages] = useState([
     { role: "assistant", content: initialGreeting }
@@ -1069,7 +1113,10 @@ const ReportView = ({ diffModules }: { diffModules: any[] }) => {
   const [generated, setGenerated] = useState(false);
   const totalNuked = diffModules.reduce((s, m) => s + m.nuked, 0);
   const totalKnoxed = diffModules.reduce((s, m) => s + m.knoxed, 0);
-  const avgScore = Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1));
+  const measuredForReport = diffModules.filter((m: any) => m.measured);
+  const avgScore = measuredForReport.length > 0
+    ? Math.round(measuredForReport.reduce((s: number, m: any) => s + m.severity, 0) / measuredForReport.length)
+    : 0;
 
   const handleGenerate = () => {
     setGenerating(true);
@@ -1316,7 +1363,9 @@ export default function ArchitectUI() {
 
   const [user, setUser] = useState<any>(null);
 
-  const [diffModules, setDiffModules] = useState<any[]>(DEFAULT_MODULE_DATA);
+  const [moduleMeta, setModuleMeta] = useState<any[]>(DEFAULT_MODULE_DATA);
+  // Module state is always derived from real findings — never a stored baseline.
+  const diffModules = deriveModuleState(moduleMeta, findings);
   const [activeSection, setActiveSection] = useState<any>("dashboard");
   const [activeModule, setActiveModule] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
@@ -1344,16 +1393,16 @@ export default function ArchitectUI() {
         const profileRef = doc(db, "users", authUser.uid, "diff", "profile");
         const unsubscribeDb = onSnapshot(profileRef, (docSnap) => {
           if (docSnap.exists() && docSnap.data().modules) {
-            setDiffModules(docSnap.data().modules);
+            // Keep only the static metadata; all counts/severity come from findings.
+            setModuleMeta(docSnap.data().modules.map((m: any) => ({ ...m, measured: false })));
           } else {
-            // Initialize fresh modules for a new user if none exist
-            setDoc(profileRef, { modules: DEFAULT_MODULE_DATA, initializedAt: new Date().toISOString() });
-            setDiffModules(DEFAULT_MODULE_DATA);
+            setDoc(profileRef, { modules: BASE_MODULES, initializedAt: new Date().toISOString() });
+            setModuleMeta(DEFAULT_MODULE_DATA);
           }
         });
         return () => unsubscribeDb();
       } else {
-        setDiffModules(DEFAULT_MODULE_DATA);
+        setModuleMeta(DEFAULT_MODULE_DATA);
         setShowPasskeyPrompt(false);
         setShowAnonUpgrade(false);
       }

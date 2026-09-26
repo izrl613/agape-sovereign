@@ -326,7 +326,7 @@ async function localSynthesize(
     '',
     '## Sovereign Assessment',
     '- Encrypted client-side processing. Zero external billing.',
-    '- Compliance: ECRA 2026 §4.2 (2-year retention mandate).',
+    '- Compliance: ECRA 2026 §4.2 (26-month rolling retention).',
     '- Offline-first PWA architecture — data remains on device.',
   ];
   return lines.join('\n');

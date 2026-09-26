@@ -1,6 +1,5 @@
 import React from 'react';
 import { useScan } from '../../ScanContext';
-import { DIFF_MODULES } from '../../lib/diffModules';
 
 const NEON = {
   magenta: "#FF2E9F",
@@ -12,7 +11,7 @@ const NEON = {
 };
 
 export const VectorFooter: React.FC = () => {
-  const { diffModules } = useScan();
+  const { vectors } = useScan();
 
   return (
     <div style={{
@@ -29,15 +28,17 @@ export const VectorFooter: React.FC = () => {
       maxWidth: '1200px',
       margin: '0 auto'
     }}>
-      {DIFF_MODULES.map((m) => {
-        const currentData = diffModules.find((dm: any) => dm.id === m.id || dm.vector === m.vector);
-        const severity = currentData?.severity ?? m.severity;
-        const sevColor = severity > 80 ? NEON.blue : severity > 60 ? NEON.orange : NEON.magenta;
+      {vectors.map((m) => {
+        const measured = m.nuked + m.knoxed + m.monitored > 0;
+        const severity = measured
+          ? Math.round(((m.knoxed * 10) + (m.monitored * 6)) / ((m.nuked + m.knoxed + m.monitored) * 10) * 100)
+          : 0;
+        const sevColor = !measured ? NEON.textMuted : severity > 80 ? NEON.blue : severity > 60 ? NEON.orange : NEON.magenta;
 
         return (
           <div
-            key={m.id}
-            title={`${m.label} (${m.vector})`}
+            key={m.moduleId}
+            title={`${m.label} (${m.vector}) — ${measured ? (m.thirdPartyVerified ? 'third-party verified' : 'unverified') : 'not scanned'}`}
             style={{
               display: 'flex',
               flexDirection: 'column',

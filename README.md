@@ -22,9 +22,11 @@ Built entirely on **Firebase free-tier infrastructure** + **Google AI services**
 | **Sovereign Score** | Lighthouse-style 0–100 privacy health metric (KNOXED / NUKED classification) |
 | **Architect AI** | Conversational AI privacy assistant powered by Gemini |
 | **Passkey Auth** | FIDO2 WebAuthn device-bound authentication (no passwords) |
-| **Google OAuth 2.0** | Primary authentication with Apple ID federation |
-| **Zero-Knowledge Encryption** | AES-256-GCM client-side encryption — your data never leaves your device unencrypted |
-| **Compliance Reports** | SHA256-signed PDF reports with 2-year retention (ECRA 2026, GDPR, CCPA) |
+| **Google OAuth 2.0** | Sign-in method #2 — federated identity, dual protection with a passkey, and the `drive.file` scope used to save the audit PDF into your own Google Account |
+| **Module Agents** | Each of the 16 Identity Vector Modules is gated by its own agent: validate → SHA-256 → AES-256-GCM encrypt → seal → persist ciphertext → verify |
+| **Third-Party Verification** | Module results are confirmed by external, zero-cost, key-less APIs — or explicitly reported UNVERIFIED. Fabricated results are impossible by construction |
+| **Zero-Knowledge Encryption** | AES-256-GCM client-side encryption — your data never leaves your device unencrypted. Encryption has no fallback: if WebCrypto fails, the write is refused |
+| **Identity Audit PDF** | SHA-256-signed 26-month audit report, downloadable or saved to your federated Google Account |
 | **Admin Portal** | Infrastructure monitoring, audit trail querying, WebAuthn logs |
 
 ---
@@ -49,6 +51,36 @@ Built entirely on **Firebase free-tier infrastructure** + **Google AI services**
 | 14 | Cloud Storage Exposure | V-14 | Google Drive, OneDrive, iCloud analysis |
 | 15 | Dark Web Monitoring | V-15 | Dark web credential indexing |
 | 16 | Behavioral Profile Analysis | V-16 | Inferred demographic mapping |
+
+---
+
+## Evidence & Verification Model
+
+This platform runs at **zero cost** and **bans mock, placeholder, in-place and simulated data**. Every vector result is one of three things, and the UI/PDF/AI all say which:
+
+| Result class | Meaning |
+|---|---|
+| **THIRD-PARTY VERIFIED** | An external source answered the query and its evidence is recorded with the source name, outcome and timestamp |
+| **ON-DEVICE MEASURED** | A real browser/hardware signal was read (WebAuthn enclave, permission state, WebRTC candidates, canvas entropy, storage quota) |
+| **UNVERIFIED / PENDING** | No source answered, or the module still needs a sealed input. Nothing is inferred |
+
+### Zero-cost third-party sources
+
+| Source | Cost / key | Used by |
+|---|---|---|
+| Have I Been Pwned — Pwned Passwords (k-anonymity, 5 hex chars leave the device) | Free, no key | V-07 Password, V-15 Dark Web |
+| XposedOrNot breach index | Free, no key | V-01 Email |
+| Google Public DNS (DNS-over-HTTPS) — MX / SPF / DMARC | Free, no key | V-01 Email, V-09 Network |
+| crt.sh Certificate Transparency | Free, no key | V-02 Social, V-05 Deep Web |
+| GitHub Public User API | Free, no key | V-02 Social |
+| Mozilla HTTP Observatory | Free, no key | V-09 Browser |
+| NIST NVD | Free, no key | V-13 IoT |
+| abuse.ch URLhaus | Free, no key | V-05 Deep Web |
+| HIBP v3 | Paid key, opt-in via `VITE_HIBP_API_KEY` | V-01 Email (reports `NOT_CONFIGURED` when absent) |
+
+### SHA-256 identity
+
+The session is identified **only** by a 64-hex SHA-256 digest produced at sign-in. It is displayed on the dashboard and inside every module, and it lights up green only when it is a genuine digest — a missing or placeholder hash renders red and blocks Module Agents from running. Every value you enter gets its own SHA-256 ID, shown beside the module and printed into the audit PDF.
 
 ---
 
@@ -293,7 +325,7 @@ npm run logs             # View Cloud Functions logs
 - **GDPR** — Data minimization, consent, right to deletion
 - **CCPA** — California Privacy Rights Act
 
-PDF reports include SHA256 fingerprint, Cloud Audit ID, and 2-year retention in Firebase Storage.
+PDF reports include SHA256 fingerprint, Cloud Audit ID, and 26-month rolling retention.
 
 ---
 

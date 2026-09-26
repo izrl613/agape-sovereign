@@ -12,7 +12,7 @@ import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, demoMode } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,22 +33,7 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      if (demoMode) {
-        const localKey = `reports_history_${user.uid}`;
-        const existing = localStorage.getItem(localKey);
-        const list = existing ? JSON.parse(existing) : [];
-        const formatted = list.map((item: any) => ({
-          ...item,
-          id: item.reportId,
-          generatedAtDate: item.generatedAt ? new Date(item.generatedAt) : null
-        }));
-        formatted.sort((a: any, b: any) => {
-          const timeA = a.generatedAtDate?.getTime() || 0;
-          const timeB = b.generatedAtDate?.getTime() || 0;
-          return timeB - timeA;
-        });
-        setReports(formatted);
-      } else {
+      {
         const reportsRef = collection(db, 'users', user.uid, 'reports');
         const q = query(reportsRef, orderBy('generatedAt', 'desc'));
         const querySnapshot = await getDocs(q);
@@ -459,7 +444,7 @@ export const UserProfileSettings = () => {
             </div>
 
             <p className="text-xs text-slate-400 font-mono leading-relaxed mb-6">
-              Under the <span className="text-[#00D4FF]">ECRA 2026 §4.2 Privacy Standard</span>, your generated identity audit reports are cryptographically sealed with SHA-256 integrity keys and retained securely for exactly <span className="text-[#FF7A18] font-bold">2 years</span>. Only you can retrieve or download these zero-knowledge records.
+              Under the <span className="text-[#00D4FF]">ECRA 2026 §4.2 Privacy Standard</span>, your generated identity audit reports are cryptographically sealed with SHA-256 integrity keys and retained securely for exactly <span className="text-[#FF7A18] font-bold">26 months</span>. Only you can retrieve or download these zero-knowledge records.
             </p>
 
             <div className="space-y-4">

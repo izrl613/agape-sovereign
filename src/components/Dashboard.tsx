@@ -12,32 +12,18 @@ import { EncryptedFooter } from './EncryptedFooter';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
-import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
-
-const MODULE_CONFIG = [
-  { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
-  { id: "social",     icon: "◈", label: "Social Media Footprint",       vector: "V-02" },
-  { id: "device",     icon: "⬡", label: "Device File Scan",             vector: "V-03" },
-  { id: "mobile",     icon: "◻", label: "Mobile Security Layer",        vector: "V-04" },
-  { id: "laptop",     icon: "💻", label: "Laptop System Security",      vector: "V-05" },
-  { id: "deepweb",    icon: "◉", label: "Deep Web Exposure",            vector: "V-06" },
-  { id: "broker",     icon: "⧫", label: "Data Broker Removal",          vector: "V-07" },
-  { id: "password",   icon: "⬟", label: "Password Vault Analysis",      vector: "V-08" },
-  { id: "network",    icon: "◎", label: "Network & DNS Security",       vector: "V-09" },
-  { id: "cloud",      icon: "⊞", label: "Cloud Storage Exposure",       vector: "V-10" },
-  { id: "comm",       icon: "💬", label: "Communication Privacy",        vector: "V-11" },
-  { id: "financial",  icon: "⬡", label: "Financial Identity Surface",   vector: "V-12" },
-  { id: "docs",       icon: "📄", label: "Identity Document Exposure",  vector: "V-13" },
-  { id: "oauth",      icon: "🔑", label: "Third-Party OAuth Audit",     vector: "V-14" },
-  { id: "legal",      icon: "⚖", label: "Public Records & Legal",       vector: "V-15" },
-  { id: "ai",         icon: "⊛", label: "AI & Biometric Exposure",      vector: "V-16" },
-];
+import { calculateSovereignScoreWithDetails } from '../services/scanService';
+import { Sha256IdentityBanner } from './Sha256IdentityBanner';
+import { IdentityAuditExport } from './IdentityAuditExport';
+import { MODULE_AGENTS } from '../services/moduleAgentService';
 
 const MODULE_ROUTES: Record<string, string> = {
-  email: "/email", social: "/social", device: "/device", mobile: "/system",
-  laptop: "/system", deepweb: "/deepweb", broker: "/databroker", password: "/password",
-  network: "/network", cloud: "/cloud", comm: "/communication", financial: "/financial",
-  docs: "/documents", oauth: "/oauth", legal: "/legal", ai: "/ai",
+  email: '/dashboard/email', social: '/dashboard/social', device: '/dashboard/device',
+  mobile: '/dashboard/system', deepweb: '/dashboard/deepweb', broker: '/dashboard/databroker',
+  password: '/dashboard/password', location: '/dashboard/location', browser: '/dashboard/browser',
+  financial: '/dashboard/financial', medical: '/dashboard/medical', biometric: '/dashboard/biometric',
+  iot: '/dashboard/iot', cloud: '/dashboard/cloud', darkweb: '/dashboard/darkweb',
+  behavioral: '/dashboard/behavioral',
 };
 
 const StatusCard = ({ label, count, color, glow, classification }: { label: string; count: number; color: string; glow: string; classification?: string }) => (
@@ -214,8 +200,8 @@ const FindingCard = ({ finding }: { finding: any }) => {
 };
 
 export const Dashboard = () => {
-  const { user, sovereignScore, sovereignHash, demoMode } = useAuth();
-  const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
+  const { user, sovereignScore } = useAuth();
+  const { findings, vectors, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
 
@@ -237,24 +223,11 @@ export const Dashboard = () => {
     return calculateSovereignScoreWithDetails(findings);
   }, [findings]);
 
-  const modules = useMemo(() => {
-    return MODULE_CONFIG.map(config => {
-      const moduleFindings = findings.filter(f => f.module === config.id);
-      const nuked = moduleFindings.filter(f => f.status === 'NUKED').length;
-      const knoxed = moduleFindings.filter(f => f.status === 'KNOXED').length;
-      const monitored = moduleFindings.filter(f => f.status === 'MONITORED').length;
-      let severity = 100;
-      if (moduleFindings.length > 0) {
-        const points = knoxed * 10 + monitored * 5;
-        severity = Math.round((points / (moduleFindings.length * 10)) * 100);
-      }
-      return { ...config, nuked, knoxed, monitored, severity };
-    });
-  }, [findings]);
+  const modules = useMemo(() => vectors, [vectors]);
 
   const currentModuleLabel = useMemo(() => {
     if (!currentModule) return "";
-    return MODULE_CONFIG.find(m => m.id === currentModule)?.label || currentModule.toUpperCase();
+    return MODULE_AGENTS.find(m => m.moduleId === currentModule)?.label || currentModule.toUpperCase();
   }, [currentModule]);
 
   const handleNukeAll = async () => {
@@ -289,6 +262,12 @@ export const Dashboard = () => {
         transition: 'filter 0.3s ease',
         pointerEvents: isLocked ? 'none' : 'auto',
       }}>
+        {/* ── Zero-knowledge SHA-256 identity ── */}
+        <Sha256IdentityBanner />
+
+        {/* ── 26-month Identity Audit PDF ── */}
+        <IdentityAuditExport />
+
         {/* ── Status Cards ── */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
           <StatusCard label="NUKED" count={stats.nuked} color={NEON.magenta} glow={`${NEON.magenta}22`} />
@@ -508,7 +487,7 @@ export const Dashboard = () => {
             fontSize: '0.65rem',
             color: NEON.textMuted,
           }}>
-            {MODULE_CONFIG.length}
+            {MODULE_AGENTS.length}
           </span>
         </div>
 
@@ -519,13 +498,16 @@ export const Dashboard = () => {
           marginBottom: 24,
         }}>
           {modules.map((m, idx) => {
-            const sev = m.severity;
-            const sevColor = sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
-            const route = MODULE_ROUTES[m.id] || '/';
+            const measured = m.nuked + m.knoxed + m.monitored > 0;
+            const sev = measured
+              ? Math.round(((m.knoxed * 10) + (m.monitored * 6)) / ((m.nuked + m.knoxed + m.monitored) * 10) * 100)
+              : 0;
+            const sevColor = !measured ? NEON.textMuted : sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
+            const route = MODULE_ROUTES[m.moduleId] || '/dashboard';
 
             return (
               <motion.div
-                key={m.id}
+                key={m.moduleId}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: idx * 0.03 }}
@@ -571,7 +553,28 @@ export const Dashboard = () => {
                     color: NEON.textMuted,
                     marginTop: 2,
                   }}>
-                    {m.vector} · {m.nuked}🔥 {m.knoxed}🛡️
+                    {m.vector} · {m.nuked}🔥 {m.knoxed}🛡️ {m.monitored}👁️
+                  </div>
+                  <div style={{
+                    fontFamily: "'Share Tech Mono'",
+                    fontSize: '0.55rem',
+                    marginTop: 3,
+                    color: m.sha256Id ? NEON.blue : NEON.textMuted,
+                    opacity: m.sha256Id ? 0.95 : 0.55,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                    <span style={{
+                      width: 5, height: 5, borderRadius: '50%',
+                      background: m.sha256Id ? '#00FF87' : 'rgba(255,255,255,0.2)',
+                      boxShadow: m.sha256Id ? '0 0 6px #00FF87' : 'none',
+                      display: 'inline-block',
+                    }} />
+                    {m.sha256Id
+                      ? `SHA-256 ${m.sha256Id.slice(0, 8)}…${m.sha256Id.slice(-6)}`
+                      : 'NO SHA-256 — INPUT NOT SEALED'}
+                    <span style={{ color: m.thirdPartyVerified ? '#00FF87' : NEON.orange, letterSpacing: '0.08em' }}>
+                      {m.thirdPartyVerified ? '· VERIFIED' : m.lastScanned ? '· UNVERIFIED' : ''}
+                    </span>
                   </div>
                 </div>
                 <div style={{
@@ -588,7 +591,7 @@ export const Dashboard = () => {
                     color: sevColor,
                     fontWeight: 700,
                   }}>
-                    {sev}
+                    {measured ? sev : '—'}
                   </span>
                 </div>
               </motion.div>

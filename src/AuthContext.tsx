@@ -11,11 +11,10 @@ import { toast } from 'sonner';
 import { signInWithCustomToken } from 'firebase/auth';
 // OPERATION FRAMEWORK: Sovereign Pipeline
 import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
-import { generateSessionNonce } from './services/sovereignHashService';
-import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
+import { generateSessionNonce, hashGoogleIdentity, isValidSHA256 } from './services/sovereignHashService';
 import { calculateEnhancedSovereignScore, getScanFindings } from './services/scanService';
 import { localVaultService } from './services/localVaultService';
-import { driveExportService } from './services/driveExportService';
+import { driveExportService, isFederatedGoogleUser, DriveExportResult, RETENTION_MONTHS } from './services/driveExportService';
 
 interface AuthContextType {
   user: User | null;
@@ -28,103 +27,47 @@ interface AuthContextType {
   setupComplete: boolean;
   vaultReady: boolean;
   loading: boolean;
-  demoMode: boolean;
+  /** Federated Google account linked to this session, when present. */
+  googleLinked: boolean;
+  /** Passkey bound to this account — the second factor of dual protection. */
+  passkeyBound: boolean;
   login: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
-  setDemoUser: () => void;
-  clearDemoUser: () => void;
   saveToVault: (pdfBlob: Blob, metadata: any) => Promise<string>;
-  exportToDrive: (pdfBlob: Blob, fileName: string) => Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string }>;
+  /** Save the 26-month Identity Audit PDF to the federated Google Account. */
+  exportAuditToDrive: (args: {
+    pdfBlob: Blob;
+    fileName: string;
+    sha256Digest: string;
+    sovereignScore?: number;
+  }) => Promise<DriveExportResult>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const DEMO_SESSION_KEY = 'sovereign_demo_mode';
-const DEMO_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
-interface DemoSession {
-  active: boolean;
-  expiresAt: number;
-}
-
-function readDemoSession(): DemoSession | null {
-  try {
-    const raw = sessionStorage.getItem(DEMO_SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as DemoSession;
-  } catch {
-    return null;
-  }
-}
-
-function writeDemoSession() {
-  sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({
-    active: true,
-    expiresAt: Date.now() + DEMO_TTL_MS,
-  }));
-}
-
-function clearDemoSession() {
-  sessionStorage.removeItem(DEMO_SESSION_KEY);
-}
-
-const DEMO_USER_OBJECT = {
-  uid: 'demo-user',
-  email: 'demo@sovereign.nyc',
-  displayName: 'Demo Explorer',
-  isAnonymous: true,
-} as unknown as User;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [sovereignScore, setSovereignScore] = useState(100);
+  const [sovereignScore, setSovereignScore] = useState(0);
   // OPERATION FRAMEWORK: SHA-256 identity hash (the sole session identifier)
   const [sovereignHash, setSovereignHash] = useState<string | null>(null);
   const [authType, setAuthType] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [vaultReady, setVaultReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
-  // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
-  // without being recreated every time demoMode changes.
-  const demoModeRef = React.useRef(false);
-  React.useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
-
-  // Restore demo session on mount (handles page refresh within TTL)
-  useEffect(() => {
-    const session = readDemoSession();
-    if (session?.active && session.expiresAt > Date.now()) {
-      demoModeRef.current = true;
-      setDemoMode(true);
-      setUser(DEMO_USER_OBJECT);
-      setUserData(DEMO_USER_DATA);
-      setSovereignScore(DEMO_SOVEREIGN_SCORE);
-      setSetupCompleteState(true);
-      setLoading(false);
-    } else if (session) {
-      clearDemoSession();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [googleLinked, setGoogleLinked] = useState(false);
+  const [passkeyBound, setPasskeyBound] = useState(false);
 
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       try {
-        // Don't evict an active demo session when Firebase confirms no real auth.
-        // demoMode is read from the ref below so the closure always sees current value.
-        if (!currentUser && demoModeRef.current) {
-          setLoading(false);
-          return;
-        }
-
         setUser(currentUser);
         if (currentUser) {
           // Initialize Remote Config for the user
@@ -151,6 +94,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               resolvedAuthType = 'passkey';
             }
             setAuthType(resolvedAuthType);
+
+            // DUAL SECURITY PROTECTION — a Google federated identity plus a
+            // device-bound passkey. Both facts are read from the credential,
+            // never assumed.
+            const providers = currentUser.providerData.map(p => p.providerId);
+            setGoogleLinked(providers.includes('google.com'));
+            setPasskeyBound(providers.includes('webauthn') || providers.includes('password') === false && sessionStorage.getItem('sovereign_passkey_credential') !== null);
 
             // Initialize local vault for passkey users
             if (resolvedAuthType === 'passkey') {
@@ -192,8 +142,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
                 setSovereignHash(fallback);
               } catch {
-                // Last resort stable marker so Login timeouts do not fire forever
-                setSovereignHash(`degraded_${currentUser.uid}`);
+                // Never display a placeholder identity hash — derive a real
+                // SHA-256 from the federated identity claims instead.
+                const derived = await hashGoogleIdentity(
+                  currentUser.uid,
+                  currentUser.email || currentUser.uid,
+                  resolvedAuthType,
+                );
+                setSovereignHash(derived);
               }
             }
 
@@ -436,23 +392,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (backendErr) {
-        console.warn('[AUTH] WebAuthn backend endpoint unavailable, switching to local vault session:', backendErr);
+        console.warn('[AUTH] WebAuthn verification endpoint unavailable:', backendErr);
       }
 
       if (verified && token) {
         await signInWithCustomToken(auth, token);
         toast.success('Authenticated successfully with Passkey.');
       } else {
-        // Local Vault Passkey session — resilient fallback when backend is offline
-        const localCredId = sessionStorage.getItem('sovereign_passkey_credential') || `passkey_${sessionNonce.slice(0, 16)}`;
-        sessionStorage.setItem('sovereign_passkey_credential', localCredId);
-
-        await loginAnonymously();
-        try {
-          await localVaultService.init();
-          setVaultReady(true);
-        } catch { /* non-fatal */ }
-        toast.success('Authenticated with Local Passkey Vault.');
+        // A passkey assertion that the server could not verify is NOT a
+        // passkey login. We refuse rather than presenting an unverified
+        // session as authenticated — no simulated authentication.
+        sessionStorage.removeItem('sovereign_passkey_auth');
+        sessionStorage.removeItem('sovereign_passkey_nonce');
+        sessionStorage.removeItem('sovereign_passkey_credential');
+        sessionStorage.removeItem('sovereign_passkey_email');
+        const err = new Error(
+          'Passkey verification service is unavailable. Your assertion could not be verified, so no session was created. Try again, or use Sign in with Google.',
+        );
+        toast.error('PASSKEY NOT VERIFIED', { description: err.message, duration: 8000 });
+        throw err;
       }
     } catch (error: any) {
       console.error('WebAuthn Login Error:', error);
@@ -509,27 +467,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleSetDemoUser = () => {
-    writeDemoSession();
-    setDemoMode(true);
-    demoModeRef.current = true;
-    setUser(DEMO_USER_OBJECT);
-    setUserData(DEMO_USER_DATA);
-    setSovereignScore(DEMO_SOVEREIGN_SCORE);
-    setSovereignHash('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
-    setAuthType('anonymous');
-    setSetupCompleteState(true);
-    setLoading(false);
-  };
-
-  const handleClearDemoUser = () => {
-    clearDemoSession();
-    setDemoMode(false);
-    setUser(null);
-    setUserData(null);
-    setSetupCompleteState(false);
-  };
-
   const handleSaveToVault = async (pdfBlob: Blob, metadata: any): Promise<string> => {
     if (!user) {
       throw new Error('You must be logged in to save to vault');
@@ -547,22 +484,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleExportToDrive = async (pdfBlob: Blob, fileName: string): Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string }> => {
-    if (!user || authType !== 'google') {
-      return { success: false, error: 'Google Drive export is only available for Google-authenticated users' };
+  const handleExportAuditToDrive = async (args: {
+    pdfBlob: Blob;
+    fileName: string;
+    sha256Digest: string;
+    sovereignScore?: number;
+  }): Promise<DriveExportResult> => {
+    if (!user) {
+      return { success: false, error: 'Sign in first — the audit PDF is saved to your own account.' };
     }
-    
+    if (!isFederatedGoogleUser(user)) {
+      return {
+        success: false,
+        error: 'This session is not federated with Google. Use "Sign in with Google" to save the Identity Audit PDF to your Google Account.',
+      };
+    }
+    if (!sovereignHash || !isValidSHA256(sovereignHash)) {
+      return { success: false, error: 'A valid SHA-256 session identity is required before an audit PDF can be exported.' };
+    }
+
     try {
-      const result = await driveExportService.exportToDrive(pdfBlob, fileName);
+      const result = await driveExportService.exportAuditPdf(user, {
+        pdfBlob: args.pdfBlob,
+        fileName: args.fileName,
+        sha256Digest: args.sha256Digest,
+        identitySha256: sovereignHash,
+        sovereignScore: args.sovereignScore,
+      });
       if (result.success) {
-        toast.success('Report exported to Google Drive');
-        logEvent(AuditLogType.SECURITY_EVENT, 'Report exported to Google Drive', user.uid, user.email || undefined);
+        toast.success('AUDIT PDF SAVED TO YOUR GOOGLE ACCOUNT', {
+          description: `${RETENTION_MONTHS}-month retention · SHA-256 ${args.sha256Digest.slice(0, 16)}…`,
+          duration: 6000,
+        });
+        logEvent(AuditLogType.SECURITY_EVENT, `Identity audit PDF exported to federated Google Drive (${args.sha256Digest.slice(0, 16)}…)`, user.uid, user.email || undefined);
       } else {
-        toast.error(result.error || 'Failed to export to Google Drive');
+        toast.error(result.error || 'Drive export failed');
       }
       return result;
     } catch (error) {
-      console.error('Failed to export to Drive:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to export to Drive: ${errorMessage}`);
       return { success: false, error: errorMessage };
@@ -581,17 +540,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupComplete,
       vaultReady,
       loading,
-      demoMode,
+      googleLinked,
+      passkeyBound,
       login: handleLogin,
       loginWithPasskey: handleLoginWithPasskey,
       logout: handleLogout,
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
       updateProfile: handleUpdateProfile,
-      setDemoUser: handleSetDemoUser,
-      clearDemoUser: handleClearDemoUser,
       saveToVault: handleSaveToVault,
-      exportToDrive: handleExportToDrive,
+      exportAuditToDrive: handleExportAuditToDrive,
     }}>
       {children}
     </AuthContext.Provider>

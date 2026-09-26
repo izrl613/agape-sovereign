@@ -891,7 +891,7 @@ interface PreGenModalProps {
 }
 
 const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
-  const { user, sovereignScore, demoMode } = useAuth();
+  const { user, sovereignScore, sovereignHash } = useAuth();
   const { findings } = useScan();
   const [loading, setLoading] = useState(true);
   const [modulesData, setModulesData] = useState<any[]>([]);
@@ -915,7 +915,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         let activeData: Record<string, string> = {};
         let hashes: Record<string, string> = {};
         
-        if (demoMode || user.isAnonymous) {
+        if (user.isAnonymous) {
           const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
           if (localActive) {
             const parsed = JSON.parse(localActive);
@@ -935,18 +935,20 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         const compiledModules = await Promise.all(DIFF_MODULES.map(async (m) => {
           const encVal = activeData[m.id] || "";
           let decrypted = "";
-          if (encVal) {
+          if (encVal && sovereignHash) {
             try {
-              decrypted = await decryptClientSide(encVal, user.uid);
+              // Module Agents key encryption on the session SHA-256 identity.
+              decrypted = await decryptClientSide(encVal, sovereignHash);
             } catch (err) {
+              // A value that cannot be authenticated is not displayed as data.
               console.error(`Failed to decrypt module ${m.id}:`, err);
+              decrypted = "";
             }
           }
-          
-          let hash = hashes[`${m.id}Hash`] || "";
-          if (!hash) {
-            hash = await generateSHA256(decrypted);
-          }
+
+          // Only the SHA-256 the Module Agent sealed is authoritative. A value
+          // that failed to decrypt must not be re-hashed into a fake seal.
+          const hash = hashes[`${m.id}Hash`] || (decrypted ? await generateSHA256(decrypted) : "");
           
           const moduleFindings = findings.filter(f => f.module === m.id);
           const primaryFinding = moduleFindings[0];
@@ -1004,7 +1006,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
       "[SALTING_HASHES] Validating cryptographic individual integrity signatures...",
       "[CALCULATING_SEAL] Sealing report with cumulative SHA-256 validation seal...",
       "[PDF_GENERATOR] Launching Lighthouse report compilation service...",
-      "[SYNCING_CLOUD] Synchronizing 2-year retention audit logs to Firebase subcollection...",
+      "[SYNCING_CLOUD] Synchronizing 26-month retention audit logs to Firebase subcollection...",
       "[SEALED] Enclave report successfully generated. Committing download trigger."
     ];
 
@@ -1329,7 +1331,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
                     className="hover:scale-[1.02] active:scale-[0.98] transition-transform py-3 flex items-center justify-center gap-2"
                   >
                     <Download className="w-4 h-4" />
-                    COMPILE SECURE PDF REPORT (2-YEAR LOCK)
+                    COMPILE SECURE PDF REPORT (26-MONTH LOCK)
                   </button>
                 </div>
               </div>
