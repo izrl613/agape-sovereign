@@ -650,6 +650,9 @@ export async function runModuleAgent(input: ModuleAgentRunInput): Promise<Module
   let audited = false;
   try {
     await addDoc(collection(db, 'module_agent_audit'), {
+      // Owner uid is stored so security rules can scope the record to its
+      // owner. No user-entered value is ever written here — hash only.
+      ownerUid: session.user.uid,
       sha256Id,
       identitySha256: session.sovereignHash,
       moduleId: spec.moduleId,

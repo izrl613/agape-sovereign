@@ -1,13 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Safety Net: Default Deny All
+
+    // Global Safety Net: Default Deny All.
+    // Anything not matched below stays unreachable.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Reusable global security primitives
+    // ── Reusable security primitives ────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -16,16 +17,56 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    /** Owner-scoped top-level collections that carry a `userId` field. */
+    function ownsRecord() {
+      return isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
-    // Sovereign user accounts & private sandboxes
+    function ownedExisting() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    /** Owner-scoped audit collections that carry an `ownerUid` field. */
+    function ownsAudit() {
+      return isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    function ownedAuditExisting() {
+      return isSignedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    function isHash(value) {
+      return value is string && value.size() == 64 && value.matches('^[0-9a-f]{64}$');
+    }
+
+    // ── Sovereign user accounts & private sandboxes ─────────────────
     match /users/{userId} {
       allow get, write: if isOwner(userId);
 
       // Identity Sandbox Partition Modules Subcollection
       match /modules/{moduleId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Sealed Module Agent values: ciphertext + SHA-256 digests only.
+      // Plaintext is never written by the client, so nothing here is readable
+      // by the platform — only by the owner who holds the session key.
+      match /module_data/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Integrity seals exported by the sovereign hash service
+      match /integritySeals/{sealId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Per-user generated report metadata
+      match /reports/{reportId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Architect UI vector profile (static metadata only)
+      match /diff/{docId} {
         allow read, write: if isOwner(userId);
       }
 
@@ -53,6 +94,111 @@ service cloud.firestore {
       match /auditLogs/{logId} {
         allow read, write: if isOwner(userId);
       }
+    }
+
+    // ── Identity Vector scan results ────────────────────────────────
+    // Each document records the finding plus the SHA-256 ID of the sealed
+    // input it was derived from. Owners may read and write their own; nobody
+    // may delete an evidence record.
+    match /diff_scans/{scanId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update: if ownedExisting() && ownsRecord();
+      allow delete: if false;
+    }
+
+    // ── Module Agent audit trail (immutable, hash-only) ─────────────
+    match /module_agent_audit/{auditId} {
+      allow read: if ownedAuditExisting();
+      allow create: if ownsAudit() && isHash(request.resource.data.sha256Id);
+      allow update, delete: if false;
+    }
+
+    // ── Identity Audit PDF export receipts (immutable) ──────────────
+    match /audit_exports/{exportId} {
+      allow read: if ownedAuditExisting();
+      allow create: if ownsAudit() && isHash(request.resource.data.sha256Digest);
+      allow update, delete: if false;
+    }
+
+    // ── Sovereign score history ─────────────────────────────────────
+    match /score_history/{entryId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update, delete: if false;
+    }
+
+    // ── Generated PDF report metadata ───────────────────────────────
+    match /diff_reports/{reportId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update: if ownedExisting() && ownsRecord();
+      allow delete: if false;
+    }
+
+    // ── Platform audit log ──────────────────────────────────────────
+    match /audit_logs/{logId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update, delete: if false;
+    }
+
+    // ── Architect AI conversation sessions (doc id == uid) ──────────
+    match /chat_sessions/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── Per-user vector status rollups (doc id == uid) ──────────────
+    match /user_vector_statuses/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── AI feedback (carries userId) ────────────────────────────────
+    match /ai_feedback/{feedbackId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update, delete: if false;
+    }
+
+    // ── IVM sovereign audit payloads (document id IS the SHA-256) ───
+    // Hash-addressed by design: no uid or email appears in the document.
+    match /sovereign_audits/{sha256Id} {
+      allow read, write: if isSignedIn() && isHash(sha256Id);
+    }
+
+    // ── Monitoring registries keyed by user (doc id == uid) ─────────
+    match /monitored_emails/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /identity_risks/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /pipeline_runs/{runId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── Scan-derived detail collections (owner-scoped) ──────────────
+    match /pii_scans/{scanId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update: if ownedExisting() && ownsRecord();
+      allow delete: if false;
+    }
+
+    match /dlp_violations/{violationId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update: if ownedExisting() && ownsRecord();
+      allow delete: if false;
+    }
+
+    match /findings/{findingId} {
+      allow read: if ownedExisting();
+      allow create: if ownsRecord();
+      allow update: if ownedExisting() && ownsRecord();
+      allow delete: if false;
     }
   }
 }

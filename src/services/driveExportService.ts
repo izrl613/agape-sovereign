@@ -209,6 +209,7 @@ class DriveExportService {
       // Audit trail: record the export by hash only.
       try {
         await addDoc(collection(db, 'audit_exports'), {
+          ownerUid: user.uid,
           sha256Digest: request.sha256Digest,
           identitySha256: request.identitySha256 || null,
           destination: 'google-drive',

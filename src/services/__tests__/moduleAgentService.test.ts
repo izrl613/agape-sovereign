@@ -194,6 +194,11 @@ describe('runModuleAgent end-to-end', () => {
     const audit = addDocMock.mock.calls[0][1] as Record<string, any>;
     expect(audit.sha256Id).toBe(result.sha256Id);
     expect(JSON.stringify(audit)).not.toContain('Sup3r-Secret-Passphrase!');
+    // firestore.rules scopes this collection by ownerUid and requires a
+    // 64-char lowercase hex digest, so both must be present or the write
+    // is rejected by the platform.
+    expect(audit.ownerUid).toBe(session.user.uid);
+    expect(audit.sha256Id).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('runs the registered third-party chain and reports provenance', async () => {
