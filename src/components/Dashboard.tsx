@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useScan } from '../ScanContext';
 import { NEON } from './UI';
+import { SovereignHashBadge } from './SovereignHashBadge';
+import { MODULE_AGENTS, AgentGateRecord, getLocalAgentGates, agentProviderMeta, shortSeal } from '../services/moduleAgentService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PasskeyLockOverlay } from './auth/PasskeyLockOverlay';
 import { passkeyLockService } from '../services/passkeyLockService';
@@ -34,10 +36,19 @@ const MODULE_CONFIG = [
 ];
 
 const MODULE_ROUTES: Record<string, string> = {
-  email: "/email", social: "/social", device: "/device", mobile: "/system",
-  laptop: "/system", deepweb: "/deepweb", broker: "/databroker", password: "/password",
-  network: "/network", cloud: "/cloud", comm: "/communication", financial: "/financial",
-  docs: "/documents", oauth: "/oauth", legal: "/legal", ai: "/ai",
+  email: "/dashboard/email", social: "/dashboard/social", device: "/dashboard/device", mobile: "/dashboard/system",
+  laptop: "/dashboard/laptop", deepweb: "/dashboard/deepweb", broker: "/dashboard/databroker", password: "/dashboard/password",
+  network: "/dashboard/network", cloud: "/dashboard/cloud", comm: "/dashboard/communication", financial: "/dashboard/financial",
+  docs: "/dashboard/documents", oauth: "/dashboard/oauth", legal: "/dashboard/legal", ai: "/dashboard/ai",
+};
+
+// Canonical agent → route mapping for the MODULE AGENT MESH (V-01…V-16)
+const AGENT_ROUTES: Record<string, string> = {
+  email: "/dashboard/email", social: "/dashboard/social", device: "/dashboard/device", mobile: "/dashboard/system",
+  deepweb: "/dashboard/deepweb", broker: "/dashboard/databroker", password: "/dashboard/password",
+  location: "/dashboard/location", browser: "/dashboard/browser", financial: "/dashboard/financial",
+  medical: "/dashboard/medical", biometric: "/dashboard/biometric", iot: "/dashboard/iot",
+  cloud: "/dashboard/cloud", darkweb: "/dashboard/darkweb", behavioral: "/dashboard/behavioral",
 };
 
 const StatusCard = ({ label, count, color, glow, classification }: { label: string; count: number; color: string; glow: string; classification?: string }) => (
@@ -213,17 +224,45 @@ const FindingCard = ({ finding }: { finding: any }) => {
   );
 };
 
+// Canonical mesh icons (aligned to the README V-01…V-16 vector registry)
+const AGENT_ICONS: Record<string, string> = {
+  email: '✉', social: '◈', device: '⬡', mobile: '◻', deepweb: '◉', broker: '⧫',
+  password: '⬟', location: '📍', browser: '◯', financial: '⬡', medical: '⊕',
+  biometric: '⊛', iot: '⊡', cloud: '⊞', darkweb: '◈', behavioral: '⊟',
+};
+
 export const Dashboard = () => {
   const { user, sovereignScore, sovereignHash, demoMode } = useAuth();
   const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
+  const [agentGates, setAgentGates] = useState<Record<string, AgentGateRecord>>({});
 
   useEffect(() => {
     return passkeyLockService.subscribe(state => {
       setIsLocked(state.identityLocked && state.identityEnabled);
     });
   }, []);
+
+  // Live Module Agent gate state — Firestore `agent_gates` subcollection for
+  // authenticated users; localStorage sync for the demo sandbox. Every gate
+  // record is written only through sealModuleValue() (real SHA-256 + AES-GCM).
+  useEffect(() => {
+    if (!user?.uid) { setAgentGates({}); return; }
+    if (demoMode) {
+      const sync = () => setAgentGates(getLocalAgentGates(user.uid));
+      sync();
+      window.addEventListener('sovereign-agent-gate-update', sync);
+      return () => window.removeEventListener('sovereign-agent-gate-update', sync);
+    }
+    const gatesRef = collection(db, 'users', user.uid, 'agent_gates');
+    const unsub = onSnapshot(gatesRef, (snap) => {
+      const map: Record<string, AgentGateRecord> = {};
+      snap.forEach(d => { map[d.id] = d.data() as AgentGateRecord; });
+      setAgentGates(map);
+    }, () => { /* rules pending deploy — mesh renders OPEN state */ });
+    return () => unsub();
+  }, [user?.uid, demoMode]);
 
   const stats = useMemo(() => {
     const nuked = findings.filter(f => f.status === 'NUKED').length;
@@ -289,6 +328,14 @@ export const Dashboard = () => {
         transition: 'filter 0.3s ease',
         pointerEvents: isLocked ? 'none' : 'auto',
       }}>
+        {/* ── LIT SHA-256 ID — zero-knowledge guarantee banner ── */}
+        <div style={{ marginBottom: 20 }}>
+          <SovereignHashBadge
+            variant="banner"
+            contextLabel="Every value you enter passes its Module Agent: validated → SHA-256 sealed → AES-256-GCM encrypted → bound to this ID. Nobody — not even the admin — can read it."
+          />
+        </div>
+
         {/* ── Status Cards ── */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
           <StatusCard label="NUKED" count={stats.nuked} color={NEON.magenta} glow={`${NEON.magenta}22`} />
@@ -301,6 +348,149 @@ export const Dashboard = () => {
             glow={sovereignScoreData.classification === 'KNOXED' ? `${NEON.blue}22` : `${NEON.magenta}22`}
             classification={sovereignScoreData.classification}
           />
+        </div>
+
+        {/* ── MODULE AGENT MESH — 16 gated enforcers, real state ── */}
+        <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            color: NEON.green,
+            letterSpacing: '0.12em',
+          }}>
+            MODULE AGENT MESH
+          </span>
+          <div style={{ flex: 1, height: 1, background: `${NEON.green}33` }} />
+          <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.62rem', color: `${NEON.green}AA` }}>
+            {Object.values(agentGates).filter(g => g?.state === 'SEALED').length}/16 SEALED
+          </span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 10,
+          marginBottom: 26,
+        }}>
+          {MODULE_AGENTS.filter(a => AGENT_ROUTES[a.moduleId]).map((agent, idx) => {
+            const gate = agentGates[agent.moduleId];
+            const sealed = gate?.state === 'SEALED';
+            const gateColor = sealed ? NEON.green : 'rgba(255,255,255,0.28)';
+            const meta = agentProviderMeta(agent.moduleId);
+            const isThirdParty = meta.type === 'THIRD_PARTY_API';
+            const route = AGENT_ROUTES[agent.moduleId];
+
+            return (
+              <motion.div
+                key={agent.moduleId}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: idx * 0.02 }}
+                whileHover={{ y: -2, boxShadow: `0 6px 22px ${gateColor}22` }}
+                onClick={() => navigate(route)}
+                title={sealed
+                  ? `${agent.agentName} — SEALED · bound to your SHA-256 ID · click to open module`
+                  : `${agent.agentName} — gate OPEN · enter a real value in the module to seal it`}
+                style={{
+                  cursor: 'pointer',
+                  padding: '11px 13px',
+                  borderRadius: 10,
+                  background: sealed
+                    ? `linear-gradient(135deg, rgba(0,255,135,0.06) 0%, rgba(255,255,255,0.01) 70%)`
+                    : 'rgba(255,255,255,0.02)',
+                  border: `1px solid ${sealed ? 'rgba(0,255,135,0.25)' : 'rgba(255,255,255,0.07)'}`,
+                  boxShadow: sealed ? '0 0 14px rgba(0,255,135,0.06)' : 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {/* Row 1 — agent identity */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{
+                    width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: `${gateColor}12`,
+                    border: `1px solid ${gateColor}30`,
+                    color: gateColor, fontSize: '0.8rem',
+                  }}>
+                    {AGENT_ICONS[agent.moduleId] || '⬡'}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: "'Share Tech Mono'", fontSize: '0.52rem',
+                      color: NEON.textMuted, letterSpacing: '0.12em',
+                    }}>
+                      {agent.vector} GATE
+                    </div>
+                    <div style={{
+                      fontFamily: "'Rajdhani', sans-serif", fontSize: '0.78rem',
+                      fontWeight: 700, color: '#fff',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {agent.agentName}
+                    </div>
+                  </div>
+                  {/* Gate state chip — LIT when sealed */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                    padding: '2px 8px', borderRadius: 100,
+                    background: sealed ? 'rgba(0,255,135,0.08)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${sealed ? 'rgba(0,255,135,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                  }}>
+                    {sealed && (
+                      <motion.span
+                        animate={{ opacity: [1, 0.4, 1], scale: [1, 1.35, 1] }}
+                        transition={{ duration: 1.8, repeat: Infinity }}
+                        style={{ width: 5, height: 5, borderRadius: '50%', background: NEON.green, boxShadow: `0 0 6px ${NEON.green}` }}
+                      />
+                    )}
+                    <span style={{
+                      fontFamily: "'Share Tech Mono'", fontSize: '0.52rem',
+                      color: sealed ? NEON.green : NEON.textMuted, letterSpacing: '0.1em',
+                    }}>
+                      {sealed ? 'SEALED' : 'OPEN'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Row 2 — verification provider (real, zero-cost) */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span style={{
+                    fontFamily: "'Share Tech Mono'", fontSize: '0.5rem',
+                    color: isThirdParty ? `${NEON.blue}BB` : 'rgba(255,255,255,0.3)',
+                    letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {meta.provider.toUpperCase()}
+                  </span>
+                  <span style={{
+                    fontFamily: "'Share Tech Mono'", fontSize: '0.46rem', flexShrink: 0,
+                    color: isThirdParty ? NEON.blue : 'rgba(255,255,255,0.35)',
+                    border: `1px solid ${isThirdParty ? 'rgba(0,212,255,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                    background: isThirdParty ? 'rgba(0,212,255,0.06)' : 'transparent',
+                    borderRadius: 4, padding: '1px 5px', letterSpacing: '0.08em',
+                  }}>
+                    {isThirdParty ? '3RD-PARTY VERIFIED' : 'ENCLAVE SENSOR'}
+                  </span>
+                </div>
+
+                {/* Row 3 — seal binding (only when sealed) */}
+                {sealed && gate && (
+                  <div style={{
+                    fontFamily: "'Share Tech Mono'", fontSize: '0.5rem',
+                    color: 'rgba(0,255,135,0.55)', letterSpacing: '0.06em',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    SEAL {shortSeal(gate.moduleSeal, 6)} · ID {shortSeal(gate.sha256Id, 5)}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* ── Intelligence Findings ── */}

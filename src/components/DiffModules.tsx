@@ -7,12 +7,20 @@ import { generateSuspiciousReport, ScanFinding } from '../services/scanService';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/crypto';
+import { doc, onSnapshot, updateDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { decryptClientSide } from '../utils/crypto';
 import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
 import { LogoutButton } from './auth/LogoutButton';
+import { SovereignHashBadge } from './SovereignHashBadge';
+import {
+  sealModuleValue,
+  getAgentGate,
+  getAgentForModule,
+  agentProviderMeta,
+  AgentGateRecord,
+} from '../services/moduleAgentService';
 
 interface ModuleProps {
   title: string;
@@ -28,11 +36,11 @@ interface ModuleProps {
 }
 
 export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel, pillar, techniques }: ModuleProps) => {
-  const { user, demoMode } = useAuth();
+  const { user, demoMode, sovereignHash } = useAuth();
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  
+
   // Real-time parameter sync state
   const [parameterValue, setParameterValue] = useState<string>('');
   const [decryptedValue, setDecryptedValue] = useState<string>('');
@@ -40,6 +48,11 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const [isDecrypting, setIsDecrypting] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showValue, setShowValue] = useState<boolean>(false);
+
+  // Module Agent gate state — the agent that owns this vector
+  const agent = getAgentForModule(moduleId);
+  const providerMeta = agentProviderMeta(moduleId);
+  const [agentGate, setAgentGate] = useState<AgentGateRecord | null>(null);
 
   // Per-module splash — re-triggers on every navigation to this module
   const [showSplash, setShowSplash] = useState(true);
@@ -109,39 +122,53 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     return () => unsubscribe();
   }, [user, moduleId]);
 
+  // Load the Module Agent gate record for this vector (real state only)
+  useEffect(() => {
+    if (!user?.uid) return;
+    let active = true;
+    const load = () => getAgentGate(user.uid, moduleId, demoMode).then(g => { if (active) setAgentGate(g); });
+    load();
+    if (demoMode) {
+      const sync = () => load();
+      window.addEventListener('sovereign-agent-gate-update', sync);
+      return () => { active = false; window.removeEventListener('sovereign-agent-gate-update', sync); };
+    }
+    return () => { active = false; };
+  }, [user?.uid, moduleId, demoMode]);
+
   const handleUpdate = async () => {
     if (!user) return;
     setIsSaving(true);
-    const toastId = toast.loading("ENCRYPTING & SEALING PARAMETER...");
+    const toastId = toast.loading(`${agent.agentName}: VALIDATE → VERIFY → SHA-256 → AES-256-GCM → BIND…`);
 
     try {
-      const newHash = await generateSHA256(parameterValue);
-      const encrypted = await encryptClientSide(parameterValue, user.uid);
+      // ── MODULE AGENT GATE ────────────────────────────────────────────
+      // Everything flows through the agent: input validation, real
+      // third-party/enclave verification, SHA-256 digest, AES-256-GCM
+      // client-side encryption, binding to the session SHA-256 ID, and an
+      // immutable hash-only audit event. No mock data anywhere in this path.
+      const seal = await sealModuleValue({
+        moduleId,
+        value: parameterValue,
+        uid: user.uid,
+        sha256Id: sovereignHash,
+        demoMode,
+        userEmail: user.email || undefined,
+      });
+      setAgentGate(seal.gate);
+      setStoredHash(seal.dataHash);
+      const newHash = seal.dataHash;
 
-      // Save to Firestore or LocalStorage for demoMode
-      if (demoMode) {
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
-        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
-        await setDoc(docRef, {
-          data: {
-            [moduleId]: encrypted
-          },
-          hashes: {
-            [`${moduleId}Hash`]: newHash
-          },
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-
-      // Determine security status heuristically
-      let status: 'NUKED' | 'KNOXED' | 'MONITORED' = 'KNOXED';
-      let findingText = 'Secured via client-side PBKDF2 AES-256 Enclave';
-      let detailsText = `Parameter encrypted with your sovereign passkey signature. Integrity Seal: ${newHash}`;
+      // Determine security status — agent verification verdict first,
+      // heuristics as refinement for unverifiable vectors.
+      let status: 'NUKED' | 'KNOXED' | 'MONITORED' = seal.verdict;
+      let findingText = seal.verification?.summary || 'Secured via client-side PBKDF2 AES-256 Enclave';
+      let detailsText = [
+        seal.verification?.evidence || 'Parameter encrypted with your sovereign passkey signature.',
+        `Agent: ${agent.agentName} · Provider: ${providerMeta.provider}`,
+        `Module Seal: ${seal.moduleSeal}`,
+        `Bound SHA-256 ID: ${seal.gate.sha256Id}`,
+      ].join('\n');
 
       if (!parameterValue) {
         status = 'MONITORED';
@@ -215,7 +242,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           finding: findingText,
           status: status,
           timestamp: new Date().toISOString(),
-          details: detailsText
+          details: detailsText,
+          verification: seal.verification || null,
+          moduleSeal: seal.moduleSeal,
         });
         localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
 
@@ -246,6 +275,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             finding: findingText,
             status: status,
             details: detailsText,
+            verification: seal.verification || null,
+            moduleSeal: seal.moduleSeal,
+            sha256Id: seal.gate.sha256Id,
             timestamp: serverTimestamp()
           });
         } else {
@@ -255,6 +287,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
             finding: findingText,
             status: status,
             details: detailsText,
+            verification: seal.verification || null,
+            moduleSeal: seal.moduleSeal,
+            sha256Id: seal.gate.sha256Id,
             timestamp: serverTimestamp()
           });
         }
@@ -282,13 +317,13 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       }
 
       toast.dismiss(toastId);
-      toast.success("VECTOR SEALED & CRYPTED", {
-        description: `Integrity Key generated: ${newHash.substring(0, 16)}...`
+      toast.success(`${agent.agentName}: GATE SEALED`, {
+        description: `SHA-256 ${newHash.substring(0, 20)}… · bound to your lit SHA-256 ID · ${providerMeta.provider}`,
       });
     } catch (err) {
       console.error(err);
       toast.dismiss(toastId);
-      toast.error("Failed to seal vector parameter.");
+      toast.error(err instanceof Error ? err.message : "Failed to seal vector parameter.");
     } finally {
       setIsSaving(false);
     }
@@ -333,13 +368,31 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
       )}
 
       <div style={{ animation: "fade-in 0.3s ease" }}>
-      {/* Integrity Tag */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
-          <Lock className="w-3 h-3 text-[#00D4FF]" />
-          <span className="text-[10px] font-mono text-[#00D4FF] tracking-tighter truncate max-w-[320px]">
-            {storedHash ? `SHA256:${storedHash}` : "AWAITING CRYPTOGRAPHIC SEAL"}
-          </span>
+      {/* Agent Gate + Integrity strip — every module is agent-gated */}
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Agent identity chip */}
+          <div className={`px-3 py-1 rounded-full flex items-center gap-2 border ${agentGate?.state === 'SEALED' ? 'bg-[#00FF87]/5 border-[#00FF87]/25' : 'bg-white/5 border-white/10'}`}>
+            {agentGate?.state === 'SEALED' ? (
+              <span className="relative flex w-2 h-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00FF87] opacity-60"></span>
+                <span className="relative inline-flex rounded-full w-2 h-2 bg-[#00FF87]"></span>
+              </span>
+            ) : (
+              <Lock className="w-3 h-3 text-slate-500" />
+            )}
+            <span className={`text-[10px] font-mono tracking-tighter ${agentGate?.state === 'SEALED' ? 'text-[#00FF87]' : 'text-slate-400'}`}>
+              {agent.agentName} · {agentGate?.state === 'SEALED' ? 'GATE SEALED' : 'GATE OPEN'}
+            </span>
+          </div>
+          {/* Verification provider chip */}
+          <div className={`px-3 py-1 rounded-full flex items-center gap-2 border ${providerMeta.type === 'THIRD_PARTY_API' ? 'bg-[#00D4FF]/5 border-[#00D4FF]/20' : 'bg-white/5 border-white/10'}`}>
+            <span className={`text-[10px] font-mono tracking-tighter ${providerMeta.type === 'THIRD_PARTY_API' ? 'text-[#00D4FF]' : 'text-slate-400'}`}>
+              {providerMeta.provider.toUpperCase()} · {providerMeta.type === 'THIRD_PARTY_API' ? '3RD-PARTY' : 'ENCLAVE'}
+            </span>
+          </div>
+          {/* Lit session SHA-256 ID binding */}
+          <SovereignHashBadge variant="inline" />
         </div>
         <div className="flex items-center gap-4">
           <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
@@ -347,6 +400,12 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
           </div>
           <LogoutButton variant="icon" size="sm" />
         </div>
+      </div>
+      <div className="flex items-center gap-2 mb-6 px-3 py-1.5 bg-black/30 border border-[#00D4FF]/10 rounded-lg">
+        <Lock className="w-3 h-3 text-[#00D4FF] flex-shrink-0" />
+        <span className="text-[10px] font-mono text-[#00D4FF] tracking-tighter truncate">
+          {storedHash ? `SHA-256 SEAL: ${storedHash}` : "AWAITING CRYPTOGRAPHIC SEAL — enter a real value below and the Module Agent will seal it"}
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
@@ -487,14 +546,19 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
+                <label className="text-xs font-mono text-[#FF7A18]">
+                  {agent.agentName} — GATED INPUT
+                </label>
+                <div className="text-[10px] font-mono text-slate-500 -mt-1">
+                  validate → third-party verify (zero-cost) → SHA-256 → AES-256-GCM → bind to your lit SHA-256 ID
+                </div>
                 <div className="relative group">
-                  <input 
+                  <input
                     type={moduleId === 'password' ? 'password' : 'text'}
                     value={parameterValue}
                     onChange={(e) => setParameterValue(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
-                    placeholder={`Enter parameter input for ${title}...`}
+                    placeholder={`${agent.fieldLabel}…`}
                     disabled={isSaving}
                   />
                   {parameterValue && !isSaving && (
@@ -520,12 +584,12 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
               {isSaving ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin mr-2 inline" />
-                  SEALING & CRYPTING...
+                  AGENT GATE SEALING…
                 </>
               ) : (
                 <>
                   <Key className="w-3.5 h-3.5 mr-2 inline" />
-                  UPDATE & SEAL VECTOR
+                  SEAL VIA {agent.agentName}
                 </>
               )}
             </NeonButton>

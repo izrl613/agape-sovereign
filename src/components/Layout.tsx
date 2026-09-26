@@ -8,7 +8,8 @@ import { LogOut, User as UserIcon, Settings, Search, Shield, ChevronDown, FileTe
 import { checkBackendHealth } from '../services/functionsService';
 import { toast } from 'sonner';
 import { decryptClientSide, generateSHA256 } from '../utils/crypto';
-import { compileIdentityAuditReport } from '../services/pdfService';
+import { compileIdentityAuditReport, CompiledAuditReport, AUDIT_RETENTION_MONTHS } from '../services/pdfService';
+import { SovereignHashBadge } from './SovereignHashBadge';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { EncryptedFooter } from './EncryptedFooter';
@@ -284,22 +285,22 @@ const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onC
 
 
 const DIFF_MODULES = [
-  { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
-  { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/social" },
-  { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/device" },
-  { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/system" },
-  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/system" },
-  { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/deepweb" },
-  { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/databroker" },
-  { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/password" },
-  { id: "network", icon: "◎", label: "Network & DNS Security", vector: "V-09", to: "/network" },
-  { id: "cloud", icon: "⊞", label: "Cloud Storage Security", vector: "V-10", to: "/cloud" },
-  { id: "comm", icon: "💬", label: "Communication Privacy", vector: "V-11", to: "/communication" },
-  { id: "financial", icon: "⬡", label: "Financial Identity Surface", vector: "V-12", to: "/financial" },
-  { id: "docs", icon: "📄", label: "Identity Document Exposure", vector: "V-13", to: "/documents" },
-  { id: "oauth", icon: "🔑", label: "Third-Party OAuth Audit", vector: "V-14", to: "/oauth" },
-  { id: "legal", icon: "⚖", label: "Public Records & Legal", vector: "V-15", to: "/legal" },
-  { id: "ai", icon: "⊛", label: "AI & Biometric Exposure", vector: "V-16", to: "/ai" },
+  { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/dashboard/email" },
+  { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/dashboard/social" },
+  { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/dashboard/device" },
+  { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/dashboard/system" },
+  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/dashboard/laptop" },
+  { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/dashboard/deepweb" },
+  { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/dashboard/databroker" },
+  { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/dashboard/password" },
+  { id: "network", icon: "◎", label: "Network & DNS Security", vector: "V-09", to: "/dashboard/network" },
+  { id: "cloud", icon: "⊞", label: "Cloud Storage Security", vector: "V-10", to: "/dashboard/cloud" },
+  { id: "comm", icon: "💬", label: "Communication Privacy", vector: "V-11", to: "/dashboard/communication" },
+  { id: "financial", icon: "⬡", label: "Financial Identity Surface", vector: "V-12", to: "/dashboard/financial" },
+  { id: "docs", icon: "📄", label: "Identity Document Exposure", vector: "V-13", to: "/dashboard/documents" },
+  { id: "oauth", icon: "🔑", label: "Third-Party OAuth Audit", vector: "V-14", to: "/dashboard/oauth" },
+  { id: "legal", icon: "⚖", label: "Public Records & Legal", vector: "V-15", to: "/dashboard/legal" },
+  { id: "ai", icon: "⊛", label: "AI & Biometric Exposure", vector: "V-16", to: "/dashboard/ai" },
 ];
 
 const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
@@ -307,15 +308,15 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
   const { findings } = useScan();
   const { isAdmin } = useAuth();
   const sections = [
-    { id: "dashboard", icon: "⬡", label: "DASHBOARD", to: "/" },
-    { id: "architect", icon: "◈", label: "ARCHITECT AI", to: "/architect" },
-    { id: "security", icon: "🛡️", label: "SECURITY TIPS", to: "/security-tips" },
-    { id: "settings", icon: "⚙", label: "SETTINGS", to: "/settings" },
+    { id: "dashboard", icon: "⬡", label: "DASHBOARD", to: "/dashboard" },
+    { id: "architect", icon: "◈", label: "ARCHITECT AI", to: "/dashboard/architect" },
+    { id: "security", icon: "🛡️", label: "SECURITY TIPS", to: "/dashboard/security-tips" },
+    { id: "settings", icon: "⚙", label: "SETTINGS", to: "/dashboard/settings" },
     { id: "report", icon: "⊟", label: "IDENTITY AUDIT REPORT", to: "#" },
   ];
 
   if (isAdmin) {
-    sections.push({ id: "admin", icon: "⬢", label: "ADMIN PORTAL", to: "/admin" });
+    sections.push({ id: "admin", icon: "⬢", label: "ADMIN PORTAL", to: "/dashboard/admin" });
   }
 
   const totalNuked = findings.filter(f => f.status === 'NUKED').length;
@@ -680,6 +681,11 @@ const Header = () => {
         </span>
       </div>
 
+      {/* Lit SHA-256 Session ID — the zero-knowledge identity anchor */}
+      <SovereignHashBadge variant="header" />
+
+      <div style={{ height: 20, width: 1, background: "rgba(0,212,255,0.2)" }} />
+
       {/* Time */}
       <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.7rem", color: NEON.blue }}>
         {time.toLocaleTimeString("en-US", { hour12: false })} UTC
@@ -779,7 +785,7 @@ const Header = () => {
 
       {/* Admin portal button - only shown for admins */}
       {isAdmin && (
-        <NavLink to="/admin" style={{ textDecoration: 'none' }}>
+        <NavLink to="/dashboard/admin" style={{ textDecoration: 'none' }}>
           <NeonButton color={NEON.orange} size="sm">⬡ ADMIN</NeonButton>
         </NavLink>
       )}
@@ -829,14 +835,14 @@ const Header = () => {
             </div>
             <div className="p-2 border-b border-white/5">
               <button 
-                onClick={() => { navigate('/settings'); setIsProfileOpen(false); }}
+                onClick={() => { navigate('/dashboard/settings'); setIsProfileOpen(false); }}
                 className="w-full flex items-center gap-3 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
               >
                 <UserIcon className="w-4 h-4 text-[#00D4FF]" />
                 Profile Settings
               </button>
               <button 
-                onClick={() => { navigate('/settings'); setIsProfileOpen(false); }}
+                onClick={() => { navigate('/dashboard/settings'); setIsProfileOpen(false); }}
                 className="w-full flex items-center gap-3 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
               >
                 <History className="w-4 h-4 text-[#FF2E9F]" />
@@ -891,7 +897,7 @@ interface PreGenModalProps {
 }
 
 const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
-  const { user, sovereignScore, demoMode } = useAuth();
+  const { user, sovereignScore, demoMode, authType, sovereignHash, exportToDrive, saveToVault } = useAuth();
   const { findings } = useScan();
   const [loading, setLoading] = useState(true);
   const [modulesData, setModulesData] = useState<any[]>([]);
@@ -899,16 +905,31 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
   const [knoxedCount, setKnoxedCount] = useState(0);
   const [monitoredCount, setMonitoredCount] = useState(0);
   const [cumulativeSeal, setCumulativeSeal] = useState('');
-  
+
   // Compilation states
   const [isCompiling, setIsCompiling] = useState(false);
   const [compileProgress, setCompileProgress] = useState(0);
   const [compilationLogs, setCompilationLogs] = useState<string[]>([]);
   const [isCompleted, setIsCompleted] = useState(false);
 
+  // Post-compile export states (federated Drive + 26-month vault)
+  const [compiledReport, setCompiledReport] = useState<CompiledAuditReport | null>(null);
+  const [driveExportState, setDriveExportState] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  const [driveLink, setDriveLink] = useState<string | null>(null);
+  const [vaultState, setVaultState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
+
   useEffect(() => {
     if (!isOpen || !user) return;
-    
+
+    // Reset compile/export state on every open so a previous session's
+    // completed artifact is never reused.
+    setIsCompiling(false);
+    setIsCompleted(false);
+    setCompiledReport(null);
+    setDriveExportState('idle');
+    setDriveLink(null);
+    setVaultState('idle');
+
     const loadAndDecryptData = async () => {
       setLoading(true);
       try {
@@ -996,15 +1017,19 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
     setCompileProgress(0);
     setCompilationLogs([]);
     setIsCompleted(false);
+    setCompiledReport(null);
+    setDriveExportState('idle');
+    setDriveLink(null);
+    setVaultState('idle');
 
     const logMessages = [
       "[SECURE_HANDSHAKE] Handshake established. Zero-knowledge enclave mapping engaged.",
-      "[AUDIT_INITIATED] Aligned with 2026 ECRA Sovereign Privacy framework.",
+      "[AUDIT_INITIATED] Aligned with 2026 ECRA Sovereign Privacy framework (26-month).",
       "[DECRYPT_VERIFY] Confirming client-side GCM integrity checks on 16 vectors...",
       "[SALTING_HASHES] Validating cryptographic individual integrity signatures...",
       "[CALCULATING_SEAL] Sealing report with cumulative SHA-256 validation seal...",
       "[PDF_GENERATOR] Launching Lighthouse report compilation service...",
-      "[SYNCING_CLOUD] Synchronizing 2-year retention audit logs to Firebase subcollection...",
+      "[BINDING_IDENTITY] Cumulative seal bound to session SHA-256 ID.",
       "[SEALED] Enclave report successfully generated. Committing download trigger."
     ];
 
@@ -1014,7 +1039,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         const next = prev + Math.floor(Math.random() * 8) + 4;
         if (next >= 100) {
           clearInterval(interval);
-          
+
           const reportData = {
             userId: user.uid,
             userEmail: user.email || 'anonymous@sovereign.nyc',
@@ -1026,19 +1051,21 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
             modulesData
           };
 
-          compileIdentityAuditReport(reportData).then(() => {
+          compileIdentityAuditReport(reportData).then((compiled) => {
+            setCompiledReport(compiled);
+            // Preserve original behavior: instant local download of the sealed PDF.
+            compiled.doc.save(compiled.fileName);
             setCompilationLogs(prevLogs => [...prevLogs, "[SUCCESS] Local file transfer verified. Enclave lockdown."]);
+            toast.success("SOVEREIGN REPORT EXPORTED", {
+              description: "26-Month Identity Audit PDF compiled and downloaded."
+            });
             setIsCompleted(true);
-            setTimeout(() => {
-              setIsCompiling(false);
-              onClose();
-            }, 3000);
           }).catch(err => {
             console.error(err);
             toast.error("Compilation error in jsPDF engine.");
             setIsCompiling(false);
           });
-          
+
           return 100;
         }
 
@@ -1051,6 +1078,37 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
         return next;
       });
     }, 150);
+  };
+
+  const handleDriveExport = async () => {
+    if (!compiledReport) return;
+    setDriveExportState('uploading');
+    const result = await exportToDrive(compiledReport.blob, compiledReport.fileName);
+    if (result.success) {
+      setDriveExportState('done');
+      if (result.webViewLink) setDriveLink(result.webViewLink);
+    } else {
+      setDriveExportState('error');
+      toast.error(result.error || 'Drive export failed');
+      setTimeout(() => setDriveExportState('idle'), 3200);
+    }
+  };
+
+  const handleVaultSave = async () => {
+    if (!compiledReport || !user) return;
+    setVaultState('saving');
+    try {
+      await saveToVault(compiledReport.blob, {
+        fileName: compiledReport.fileName,
+        generatedAt: new Date(),
+        sovereignScore,
+        findingsCount: findings.length,
+      });
+      setVaultState('done');
+    } catch {
+      setVaultState('error');
+      setTimeout(() => setVaultState('idle'), 3200);
+    }
   };
 
   const copyCumulativeHash = () => {
@@ -1178,10 +1236,87 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
                 ) : (
                   <div className="flex gap-2 items-center text-[#00D4FF] font-bold font-mono">
                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span>DOWNLOAD TRIGGERED. AUDIT SUCCESSFUL. LOCKING SESSION.</span>
+                    <span>DOWNLOAD TRIGGERED. AUDIT SUCCESSFUL. ENCLAVE SEALED.</span>
                   </div>
                 )}
               </div>
+
+              {/* ── Post-compile export actions: federated Drive + 26-month vault ── */}
+              {isCompleted && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {authType === 'google' && (
+                    <button
+                      onClick={handleDriveExport}
+                      disabled={driveExportState === 'uploading' || driveExportState === 'done'}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                        padding: '13px 20px',
+                        borderRadius: 11,
+                        background: driveExportState === 'done'
+                          ? 'rgba(74,222,128,0.12)'
+                          : 'linear-gradient(90deg, rgba(66,133,244,0.25), rgba(15,157,88,0.2))',
+                        border: `1px solid ${driveExportState === 'done' ? 'rgba(74,222,128,0.5)' : 'rgba(66,133,244,0.5)'}`,
+                        color: driveExportState === 'done' ? '#4ade80' : '#8ab4f8',
+                        fontFamily: "'Orbitron', monospace",
+                        fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em',
+                        cursor: driveExportState === 'uploading' || driveExportState === 'done' ? 'default' : 'pointer',
+                        opacity: driveExportState === 'uploading' ? 0.7 : 1,
+                      }}
+                    >
+                      {driveExportState === 'uploading' ? (
+                        <><LoaderIcon className="w-4 h-4 animate-spin" /> FEDERATING TO GOOGLE DRIVE…</>
+                      ) : driveExportState === 'done' ? (
+                        <><CheckCircle2 className="w-4 h-4" /> SEALED PDF IN YOUR GOOGLE DRIVE ✓</>
+                      ) : driveExportState === 'error' ? (
+                        <>⚠ DRIVE EXPORT FAILED — RETRY</>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4" style={{ transform: 'rotate(90deg)' }} />
+                          SAVE {AUDIT_RETENTION_MONTHS}-MONTH AUDIT PDF TO FEDERATED GOOGLE DRIVE
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {driveLink && (
+                    <a
+                      href={driveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        textAlign: 'center', fontFamily: "'Share Tech Mono', monospace",
+                        fontSize: '0.6rem', color: '#4ade80', letterSpacing: '0.08em',
+                        textDecoration: 'underline', opacity: 0.85,
+                      }}
+                    >
+                      OPEN IN GOOGLE DRIVE ↗
+                    </a>
+                  )}
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={handleVaultSave}
+                      disabled={vaultState === 'saving' || vaultState === 'done'}
+                      className="flex-1 px-4 py-3 border border-[#00D4FF]/30 rounded-xl text-[#00D4FF] font-mono text-xs bg-[#00D4FF]/5 hover:bg-[#00D4FF]/10 transition-all disabled:opacity-60"
+                      style={{ letterSpacing: '0.08em' }}
+                    >
+                      {vaultState === 'saving'
+                        ? `SEALING TO ${AUDIT_RETENTION_MONTHS}-MO VAULT…`
+                        : vaultState === 'done'
+                        ? `✓ IN ${AUDIT_RETENTION_MONTHS}-MO ENCRYPTED VAULT`
+                        : `SEAL TO LOCAL ${AUDIT_RETENTION_MONTHS}-MO VAULT`}
+                    </button>
+                    <button
+                      onClick={() => { setIsCompiling(false); setIsCompleted(false); }}
+                      className="flex-1 px-4 py-3 border border-white/10 rounded-xl text-slate-300 font-mono text-xs hover:bg-white/5 transition-all hover:text-white"
+                      style={{ letterSpacing: '0.08em' }}
+                    >
+                      BACK TO PREVIEW
+                    </button>
+                  </div>
+                  <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.55rem', color: 'rgba(255,255,255,0.35)', textAlign: 'center', letterSpacing: '0.08em' }}>
+                    PDF compiled locally — Drive & vault exports happen only on your explicit action.
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }} className="flex flex-col lg:flex-row">
@@ -1329,7 +1464,7 @@ const SovereignPdfPreGenModal = ({ isOpen, onClose }: PreGenModalProps) => {
                     className="hover:scale-[1.02] active:scale-[0.98] transition-transform py-3 flex items-center justify-center gap-2"
                   >
                     <Download className="w-4 h-4" />
-                    COMPILE SECURE PDF REPORT (2-YEAR LOCK)
+                    COMPILE SEALED IDENTITY AUDIT PDF ({AUDIT_RETENTION_MONTHS}-MONTH LOCK)
                   </button>
                 </div>
               </div>

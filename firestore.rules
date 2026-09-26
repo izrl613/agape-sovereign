@@ -1,13 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Global Safety Net: Default Deny All
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    // Reusable global security primitives
+    // ── Reusable security primitives ────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -16,43 +11,139 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    // Hardware-bound admin elevation (custom claim, same as AuthContext)
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.admin == true;
     }
 
-    // Sovereign user accounts & private sandboxes
+    function isDocOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    function isIncomingOwner() {
+      return isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // ── Sovereign user accounts & private subcollections ────────────────────
     match /users/{userId} {
+      // Owner manages their own doc; the admin can list profiles for the
+      // monitoring portal (zero-knowledge payloads are ciphertext anyway).
       allow get, write: if isOwner(userId);
+      allow get, list: if isAdmin();
 
       // Identity Sandbox Partition Modules Subcollection
-      match /modules/{moduleId} {
-        allow read, write: if isOwner(userId);
-      }
-
+      match /modules/{doc}          { allow read, write: if isOwner(userId); }
       // Symmetrically ciphered password keychains
-      match /passwords/{passwordId} {
-        allow read, write: if isOwner(userId);
-      }
-
+      match /passwords/{doc}        { allow read, write: if isOwner(userId); }
       // E2EE encrypted chats/messages logs
-      match /messages/{messageId} {
-        allow read, write: if isOwner(userId);
-      }
-
+      match /messages/{doc}         { allow read, write: if isOwner(userId); }
       // Sovereign Secure Document Vault
-      match /vault/{vaultId} {
-        allow read, write: if isOwner(userId);
-      }
-
+      match /vault/{doc}            { allow read, write: if isOwner(userId); }
       // Intercepted trackers metrics log
-      match /trackers/{trackerId} {
-        allow read, write: if isOwner(userId);
-      }
-
+      match /trackers/{doc}         { allow read, write: if isOwner(userId); }
       // Dynamic Security Audit Logs
-      match /auditLogs/{logId} {
-        allow read, write: if isOwner(userId);
-      }
+      match /auditLogs/{doc}        { allow read, write: if isOwner(userId); }
+      // Zero-knowledge encrypted vector payloads (AES-256-GCM ciphertext only)
+      match /module_data/{doc}      { allow read, write: if isOwner(userId); }
+      // Module Agent gate records — seal state for the 16 gated vectors
+      match /agent_gates/{doc}      { allow read, write: if isOwner(userId); }
+      // Integrity seal registry exports (SHA-256 seals, no PII)
+      match /integritySeals/{doc}   { allow read, write: if isOwner(userId); }
+      // WebAuthn passkey credential registry (server-managed, owner-visible)
+      match /passkeyCredentials/{doc} { allow read: if isOwner(userId); allow write: if false; }
+
+      // Default deny anything else under a user tree
+      match /{sub=**}               { allow read, write: if false; }
+    }
+
+    // ── DIFF scan findings — owner-keyed by userId field ────────────────────
+    match /diff_scans/{doc} {
+      allow get, list: if isDocOwner() || isAdmin();
+      allow create: if isIncomingOwner();
+      allow update: if isDocOwner() && isIncomingOwner();
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    // ── Score history — append-only timeline ────────────────────────────────
+    match /score_history/{doc} {
+      allow get, list: if isDocOwner() || isAdmin();
+      allow create: if isIncomingOwner();
+      allow update, delete: if false;
+    }
+
+    // ── Architect AI chat sessions (per-user document) ──────────────────────
+    match /chat_sessions/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // ── Feedback / model quality signals ────────────────────────────────────
+    match /ai_feedback/{doc} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if false;
+    }
+
+    // ── Immutable audit trail — append only; admin can query the trail ──────
+    match /audit_logs/{doc} {
+      allow get: if isDocOwner() || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    // ── DIFF report metadata (PDF artifacts live in Storage, never content) ─
+    match /diff_reports/{doc} {
+      allow get, list: if isDocOwner();
+      allow create: if isIncomingOwner();
+      allow update, delete: if isDocOwner();
+    }
+
+    // ── DLP + identity-risk telemetry, owner-keyed ──────────────────────────
+    match /dlp_violations/{doc} {
+      allow get, list: if isDocOwner();
+      allow create: if isIncomingOwner();
+      allow update, delete: if false;
+    }
+
+    match /identity_risks/{doc} {
+      allow get, list: if isDocOwner();
+      allow create: if isIncomingOwner();
+      allow update, delete: if isDocOwner();
+    }
+
+    match /pii_scans/{doc} {
+      allow get, list: if isDocOwner();
+      allow create: if isIncomingOwner();
+      allow update, delete: if isDocOwner();
+    }
+
+    match /pipeline_runs/{doc} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── Sovereign audits — capability-addressed by 256-bit SHA-256 ID.
+    //    Documents contain NO raw PII (hash-keyed vectors only). An attacker
+    //    would need the exact 256-bit identity hash to address a document.
+    match /sovereign_audits/{hashId} {
+      allow read, write: if isSignedIn()
+        && hashId is string
+        && hashId.size() == 64
+        && hashId.matches('^[0-9a-f]{64}$');
+    }
+
+    // ── Global capacity counter — single doc, transactional ─────────────────
+    match /system/capacity {
+      allow read, write: if isSignedIn();
+    }
+
+    // ── Test connectivity probe doc ──────────────────────────────────────────
+    match /test/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Global Safety Net: Default Deny All ──────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

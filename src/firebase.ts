@@ -114,6 +114,10 @@ export const messaging = typeof window !== 'undefined'
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
+// drive.file: federated Google Account vault for the 26-Month Identity Audit PDF.
+// This single consent at sign-in (dual security protection) means the user can
+// archive SHA-256-sealed PDFs into their own Google Drive with zero extra setup.
+googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 
 /**
  * Build Google OAuth custom parameters.
@@ -206,6 +210,18 @@ export const loginWithGoogle = async () => {
     } catch {
       // Non-fatal — localStorage may be blocked in private mode
     }
+    // Capture the federated OAuth access token (carries drive.file scope) for
+    // Drive vault-sync of the 26-Month Identity Audit PDF. Token lives in
+    // memory only — never persisted, never logged.
+    try {
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        const { driveExportService } = await import('./services/driveExportService');
+        driveExportService.setFirebaseAccessToken(credential.accessToken);
+      }
+    } catch {
+      // Non-fatal — Drive export will offer re-auth at export time
+    }
     return result.user;
   } catch (error: unknown) {
     const code = authErrorCode(error);
@@ -240,6 +256,11 @@ export const logout = async () => {
     await signOut(auth);
     // Clear the login_hint so a different account can be chosen next time
     try { localStorage.removeItem('sovereign_login_hint'); } catch { /* ignore */ }
+    // Drop any in-memory federated Drive token
+    try {
+      const { driveExportService } = await import('./services/driveExportService');
+      driveExportService.clear();
+    } catch { /* ignore */ }
   } catch (error) {
     console.error('Error signing out', error);
     throw error;

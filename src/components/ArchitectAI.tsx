@@ -45,7 +45,7 @@ interface ScanHistoryItem {
 }
 
 export const ArchitectAI = () => {
-  const { user, sovereignScore } = useAuth();
+  const { user, sovereignScore, sovereignHash } = useAuth();
   const { findings, triggerFullScan, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask, currentStep, totalSteps } = useScan();
   const [notifiedThreats, setNotifiedThreats] = useState<Set<string>>(new Set());
   
@@ -664,14 +664,25 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
 
       const activeThreats = threatFeed.map(t => `- [${t.severity}] ${t.title} (${t.source})`).join('\n');
 
+      const verifiedFindings = findings
+        .filter(f => (f as any).verification)
+        .map(f => {
+          const v = (f as any).verification;
+          return `- [${f.module}] ${v.provider} (${v.providerType}) @ ${v.verifiedAt} → verdict ${v.verdict}: ${v.summary}${v.evidence ? ` | evidence: ${v.evidence}` : ''}`;
+        }).join('\n');
+
       let promptText = `
               [SECURITY CONTEXT]
               Current Sovereign Score: ${sovereignScore}/100
+              Session SHA-256 ID (zero-knowledge identity anchor, UXF display-safe): ${sovereignHash ? sovereignHash.slice(0, 16) + '…' : 'not yet computed'}
               Security Posture Summary:
               - NUKED (Critical Exposures): ${stats.nuked}
               - KNOXED (Hardened Vectors): ${stats.knoxed}
               - MONITORED (Active Surveillance): ${stats.monitored}
-              
+
+              [THIRD-PARTY VERIFIED RESULTS — real zero-cost providers, never mocked]
+              ${verifiedFindings || 'No third-party verification has run yet this session. When it exists, cite the provider name exactly.'}
+
               [ACTIVE THREAT INTELLIGENCE]
               ${activeThreats || 'No immediate global threats detected.'}
 

@@ -23,11 +23,24 @@ export interface AuditReportData {
   }[];
 }
 
+export interface CompiledAuditReport {
+  seal: string;      // cumulative SHA-256 seal over all 16 vector seals
+  blob: Blob;        // the compiled PDF bytes (for Drive / vault export)
+  fileName: string;  // deterministic filename
+  doc: jsPDF;        // raw jsPDF instance if callers need more output formats
+}
+
+// ECRA-aligned rolling retention for the Identity Audit PDF — 26 months.
+export const AUDIT_RETENTION_MONTHS = 26;
+
 /**
- * Generate a premium Lighthouse-style Identity Security PDF
- * and store it in Firestore for the 2-year audit trail.
+ * Generate a premium Lighthouse-style Identity Security PDF.
+ * Returns the compiled blob so callers can (a) trigger a local download,
+ * (b) archive to the 26-month encrypted local vault, and/or (c) federate
+ * the PDF to the user's own Google Drive. No cloud copy is created
+ * implicitly — export only to destinations the user explicitly selects.
  */
-export const compileIdentityAuditReport = async (reportData: AuditReportData): Promise<string> => {
+export const compileIdentityAuditReport = async (reportData: AuditReportData): Promise<CompiledAuditReport> => {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -128,7 +141,7 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
   doc.setTextColor(255, 255, 255);
   doc.text(`AUDIT ID: ${docId}`, 25, 58);
   doc.text(`SOVEREIGN IDENTITY: ${reportData.userName} (${maskedEmail})`, 25, 64);
-  doc.text(`RETENTION FRAMEWORK: ECRA 2026 §4.2 (2-YEAR RETENTION MANDATE)`, 25, 70);
+  doc.text(`RETENTION FRAMEWORK: ECRA 2026 §4.2 (${AUDIT_RETENTION_MONTHS}-MONTH ROLLING RETENTION)`, 25, 70);
   doc.text(`CUMULATIVE INTEGRITY SEAL: ${cumulativeSeal.substring(0, 32)}...`, 25, 76);
 
   // Google Lighthouse circular gauge
@@ -370,14 +383,27 @@ export const compileIdentityAuditReport = async (reportData: AuditReportData): P
   doc.setTextColor(0, 212, 255);
   doc.text(`CUMULATIVE REPORT HASH: ${cumulativeSeal}`, 20, finalY + 28);
   doc.text(`VERIFICATION TIMESTAMP: ${dateStr} ${timeStr} UTC`, 20, finalY + 34);
-  doc.text(`RETENTION LOCK ACTIVE: 2 YEARS (EXPIRY: ${timestamp.getFullYear() + 2}-${(timestamp.getMonth()+1).toString().padStart(2, '0')}-${timestamp.getDate().toString().padStart(2, '0')})`, 20, finalY + 40);
+  const expiryDate = new Date(timestamp);
+  expiryDate.setMonth(expiryDate.getMonth() + AUDIT_RETENTION_MONTHS);
+  const expiryStr = `${expiryDate.getFullYear()}-${(expiryDate.getMonth()+1).toString().padStart(2, '0')}-${expiryDate.getDate().toString().padStart(2, '0')}`;
+  doc.text(`RETENTION LOCK ACTIVE: ${AUDIT_RETENTION_MONTHS} MONTHS (EXPIRY: ${expiryStr})`, 20, finalY + 40);
 
   // Reports may contain sensitive, user-supplied evidence. Do not create a
-  // cloud copy implicitly; export only to the user's selected local location.
-  doc.save(`Agape_Sovereign_DIFF_Audit_${timestamp.getTime()}.pdf`);
+  // cloud copy implicitly; export only to destinations the user selects.
+  const fileName = `Agape_Sovereign_26Month_Identity_Audit_${timestamp.getTime()}.pdf`;
+  const blob = doc.output('blob');
+
+  return { seal: cumulativeSeal, blob, fileName, doc };
+};
+
+/**
+ * Convenience: compile AND immediately download the PDF locally.
+ */
+export const downloadIdentityAuditReport = async (reportData: AuditReportData): Promise<CompiledAuditReport> => {
+  const compiled = await compileIdentityAuditReport(reportData);
+  compiled.doc.save(compiled.fileName);
   toast.success("SOVEREIGN REPORT EXPORTED", {
     description: "The report was created and saved on this device only."
   });
-
-  return cumulativeSeal;
+  return compiled;
 };

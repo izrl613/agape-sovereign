@@ -546,7 +546,7 @@ export const Login = () => {
                         Sign in with Google
                       </div>
                       <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        OAuth 2.0 · Sync to Google Drive
+                        Dual-layer security · 26-mo Audit PDF → your Drive
                       </div>
                     </div>
                     <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />
