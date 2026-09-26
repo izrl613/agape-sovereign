@@ -22,6 +22,7 @@ import { getFeatureFlag } from '../services/remoteConfigService';
 import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from '../config/aiModel.js';
 import { chatComplete } from '../services/localAIService';
 import { generateSovereignReport, getUserReports } from '../services/pdfReportService';
+import { fetchThreatFeed, ThreatItem } from '../services/threatIntelService';
 
 interface Message {
   id: string;
@@ -82,8 +83,9 @@ Ask me anything about your privacy or security posture — I will answer only fr
   const [isLoading, setIsLoading] = useState(false);
   const [attachment, setAttachment] = useState<{name: string, content: string} | null>(null);
   const [showNukedBanner, setShowNukedBanner] = useState(true);
-  const [threatFeed, setThreatFeed] = useState<{ title: string; severity: 'Critical' | 'High' | 'Medium' | 'Low'; source: string; time: string; vector: string; description: string }[]>([]);
+  const [threatFeed, setThreatFeed] = useState<ThreatItem[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [alertedThreats, setAlertedThreats] = useState<string[]>([]);
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
@@ -277,51 +279,24 @@ Ask me anything about your privacy or security posture — I will answer only fr
     scrollToBottom();
   }, [messages]);
 
-  // Fetch Threat Intelligence Feed
+  // Live threat intelligence. Every item is a real, third-party published
+  // advisory. When the source cannot be reached the feed is empty and the
+  // reason is shown — no intelligence is ever invented to fill the panel.
   useEffect(() => {
-    const fetchThreatFeed = async () => {
-      setIsFeedLoading(true);
-      try {
-        const res = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(buildOllamaChatPayload({
-            stream: false,
-            format: "json",
-            messages: [
-              {
-                role: "system",
-                content: "You are a cyberthreat intelligence feed. Generate 4-5 realistic, high-impact cybersecurity threats or data breaches. Return a JSON array of objects with: title, severity (Critical/High/Medium/Low), source (news outlet or firm), time (e.g. '2h ago'), vector (email, social, device, mobile, deepweb, broker, password, location, browser, financial, medical, biometric, iot, cloud, darkweb, behavioral), and description (short summary)."
-              },
-              {
-                role: "user",
-                content: "Generate the latest cyberthreat feed items."
-              }
-            ]
-          }))
-        });
+    let cancelled = false;
 
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const feedData = JSON.parse(data.message?.content || "[]");
-        setThreatFeed(feedData);
-      } catch (error) {
-        console.error("Failed to fetch threat feed:", error);
-        // Fallback data if search fails
-        setThreatFeed([
-          { title: "Zero-day exploit in major data broker API detected", severity: "High", source: "Sovereign Intel", time: "1h ago", vector: "broker", description: "A critical vulnerability in a leading data broker's API allows unauthorized access to consumer profiles." },
-          { title: "New phishing campaign targeting ECRA 2026 credentials", severity: "Medium", source: "Global Threat Map", time: "3h ago", vector: "email", description: "Malicious emails are circulating that mimic official ECRA communications to steal login credentials." },
-          { title: "Data breach at 'IdentityGuard' exposes 2M records", severity: "High", source: "DarkWeb Monitor", time: "5h ago", vector: "financial", description: "A major identity protection service has suffered a breach, leaking sensitive financial information." },
-          { title: "Update: GDPR-2 enforcement protocols tightened", severity: "Low", source: "EU Privacy Board", time: "8h ago", vector: "browser", description: "New regulations regarding browser tracking and cookie consent are being strictly enforced." }
-        ]);
-      } finally {
-        setIsFeedLoading(false);
-      }
+    const loadFeed = async () => {
+      setIsFeedLoading(true);
+      const result = await fetchThreatFeed({ perPage: 8 });
+      if (cancelled) return;
+      setThreatFeed(result.items);
+      setFeedError(result.ok ? '' : (result.error || 'Threat intelligence feed unavailable.'));
+      setIsFeedLoading(false);
     };
 
-    fetchThreatFeed();
-    const interval = setInterval(fetchThreatFeed, 300000); // Refresh every 5 mins
-    return () => clearInterval(interval);
+    loadFeed();
+    const interval = setInterval(loadFeed, 300000); // Refresh every 5 mins
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   // Proactive Alert Mechanism: Re-evaluate findings against threat feed
@@ -1658,13 +1633,25 @@ The report includes detailed remediation recommendations for all NUKED findings 
                   </div>
                 </motion.div>
               ))
-            ) : (
+            ) : isFeedLoading ? (
               // Skeleton loading
               [1, 2, 3].map(i => (
                 <div key={i} style={{ flex: "0 0 260px", height: 120, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Loader2 size={24} className="animate-spin opacity-20" color={NEON.blue} />
                 </div>
               ))
+            ) : (
+              // Honest empty state. The feed is populated only by real,
+              // third-party published advisories; when the source does not
+              // answer we say so instead of inventing intelligence.
+              <div style={{ flex: "1 1 auto", minHeight: 120, padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: NEON.textMuted, letterSpacing: '0.08em', fontFamily: "'Orbitron', sans-serif" }}>
+                  NO LIVE ADVISORIES
+                </div>
+                <div style={{ fontSize: "0.7rem", color: NEON.textMuted, lineHeight: 1.5 }}>
+                  {feedError || 'The threat intelligence source returned no advisories. Nothing is simulated to fill this panel.'}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -2324,8 +2311,8 @@ The report includes detailed remediation recommendations for all NUKED findings 
                   <div key={i} style={{ height: 60, background: "rgba(255,255,255,0.03)", borderRadius: 8, animation: "pulse 2s infinite" }} />
                 ))}
               </div>
-            ) : (
-              threatFeed
+            ) : (() => {
+              const visibleThreats = threatFeed
                 .filter(threat => {
                   const matchesSearch = threat.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                                        threat.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2333,7 +2320,26 @@ The report includes detailed remediation recommendations for all NUKED findings 
                   const matchesModule = !selectedModule || threat.vector.toLowerCase() === selectedModule.toLowerCase();
                   const matchesSeverity = selectedSeverity === 'ALL' || threat.severity === selectedSeverity;
                   return matchesSearch && matchesModule && matchesSeverity;
-                })
+                });
+
+              if (visibleThreats.length === 0) {
+                // Honest empty state: this list is fed only by real,
+                // third-party published advisories.
+                return (
+                  <div style={{ padding: 16, background: "rgba(255,255,255,0.02)", borderRadius: 8, border: `1px solid ${NEON.textMuted}22` }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 700, color: NEON.textMuted, letterSpacing: '0.08em', marginBottom: 6, fontFamily: "'Orbitron', sans-serif" }}>
+                      NO MATCHING ADVISORIES
+                    </div>
+                    <div style={{ fontSize: "0.72rem", color: NEON.textMuted, lineHeight: 1.5 }}>
+                      {threatFeed.length === 0
+                        ? (feedError || 'The threat intelligence source returned no advisories. Nothing is simulated to fill this panel.')
+                        : 'No published advisory matches the current filter.'}
+                    </div>
+                  </div>
+                );
+              }
+
+              return visibleThreats
                 .map((threat, idx) => {
                   const isTopThreat = idx < 3 && !searchTerm && !selectedModule && selectedSeverity === 'ALL';
                   const severityColor = threat.severity === 'High' ? NEON.magenta : threat.severity === 'Medium' ? NEON.orange : NEON.blue;
@@ -2396,8 +2402,8 @@ The report includes detailed remediation recommendations for all NUKED findings 
                       </div>
                     </motion.div>
                   );
-                })
-            )}
+                });
+            })()}
           </div>
 
           <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${NEON.textMuted}22`, display: "flex", alignItems: "center", gap: 8 }}>
