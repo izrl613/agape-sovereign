@@ -62,6 +62,16 @@ export async function gatekeeperStage(params: {
     return hashPasskeyIdentity(credentialId, sessionNonce);
   }
 
+  if (authType === 'passkey' || authType === 'anonymous') {
+    const credId = credentialId || 'cred_' + (uid || 'guest');
+    const nonce = sessionNonce || 'nonce_' + (uid || 'guest');
+    return hashPasskeyIdentity(credId, nonce);
+  }
+
+  if (uid) {
+    return hashGoogleIdentity(uid, email || uid);
+  }
+
   throw new Error('[GATEKEEPER] Insufficient identity claims for hashing.');
 }
 

@@ -12,7 +12,7 @@ import { EncryptedFooter } from './EncryptedFooter';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
-import { calculateEnhancedSovereignScore } from '../services/scanService';
+import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
@@ -234,7 +234,7 @@ export const Dashboard = () => {
 
   // Enhanced sovereign score calculation with classification
   const sovereignScoreData = useMemo(() => {
-    return calculateEnhancedSovereignScore(findings);
+    return calculateSovereignScoreWithDetails(findings);
   }, [findings]);
 
   const modules = useMemo(() => {

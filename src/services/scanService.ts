@@ -11,6 +11,8 @@ export interface ScanFinding {
   status: "NUKED" | "KNOXED" | "MONITORED";
   timestamp: Date;
   details: string;
+  severity?: number;
+  remediation?: string;
 }
 
 export const CANONICAL_VECTORS = [
@@ -446,6 +448,12 @@ export function calculateEnhancedSovereignScore(findings: ScanFinding[]): number
   );
   const hasKnoxed = findings.some(f => f.status === 'KNOXED');
   return Math.min(100, hasKnoxed ? baseScore + 5 : baseScore);
+}
+
+export function calculateSovereignScoreWithDetails(findings: ScanFinding[]): { score: number; classification: 'SOVEREIGN' | 'KNOXED' | 'EXPOSED' } {
+  const score = calculateEnhancedSovereignScore(findings);
+  const classification = score >= 90 ? 'SOVEREIGN' : score >= 70 ? 'KNOXED' : 'EXPOSED';
+  return { score, classification };
 }
 
 /**
