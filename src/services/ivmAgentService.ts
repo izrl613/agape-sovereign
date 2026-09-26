@@ -43,10 +43,14 @@ export interface IVMPayload {
   status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
 }
 
+// Canonical Identity Vector Module ids. Must mirror
+// moduleAgentService.MODULE_AGENTS — the IVM agent reads the vector map that
+// the Module Agents wrote, so a divergent id here silently drops a vector.
 const IVM_MODULES = [
-  'email', 'social', 'device', 'system', 'laptop', 'deepweb',
-  'databroker', 'password', 'network', 'cloud', 'communication',
-  'financial', 'document', 'oauth', 'legal', 'biometric',
+  'email', 'social', 'device', 'mobile',
+  'deepweb', 'broker', 'password', 'location',
+  'browser', 'financial', 'medical', 'biometric',
+  'iot', 'cloud', 'darkweb', 'behavioral',
 ] as const;
 
 /**

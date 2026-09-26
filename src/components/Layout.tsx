@@ -283,23 +283,33 @@ const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onC
 };
 
 
+// Canonical Identity Vector Module vocabulary. These ids are the single
+// source of truth for every layer: the Module Agent seals values under them,
+// Firestore stores them at users/{uid}/module_data/active, findings reference
+// them, and the sidebar routes to them. They must match
+// moduleAgentService.MODULE_AGENTS exactly.
+// Canonical Identity Vector Module vocabulary. These ids are the single
+// source of truth for every layer: the Module Agent seals values under them,
+// Firestore stores them at users/{uid}/module_data/active, findings reference
+// them, and the sidebar routes to them. They mirror
+// moduleAgentService.MODULE_AGENTS exactly.
 const DIFF_MODULES = [
   { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
   { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/social" },
   { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/device" },
-  { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/system" },
-  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/system" },
-  { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/deepweb" },
-  { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/databroker" },
-  { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/password" },
-  { id: "network", icon: "◎", label: "Network & DNS Security", vector: "V-09", to: "/network" },
-  { id: "cloud", icon: "⊞", label: "Cloud Storage Security", vector: "V-10", to: "/cloud" },
-  { id: "comm", icon: "💬", label: "Communication Privacy", vector: "V-11", to: "/communication" },
-  { id: "financial", icon: "⬡", label: "Financial Identity Surface", vector: "V-12", to: "/financial" },
-  { id: "docs", icon: "📄", label: "Identity Document Exposure", vector: "V-13", to: "/documents" },
-  { id: "oauth", icon: "🔑", label: "Third-Party OAuth Audit", vector: "V-14", to: "/oauth" },
-  { id: "legal", icon: "⚖", label: "Public Records & Legal", vector: "V-15", to: "/legal" },
-  { id: "ai", icon: "⊛", label: "AI & Biometric Exposure", vector: "V-16", to: "/ai" },
+  { id: "mobile", icon: "◻", label: "Mobile Security Layer", vector: "V-04", to: "/system" },
+  { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-05", to: "/deepweb" },
+  { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-06", to: "/databroker" },
+  { id: "password", icon: "⬟", label: "Password Vault Analysis", vector: "V-07", to: "/password" },
+  { id: "location", icon: "◎", label: "Location Data Footprint", vector: "V-08", to: "/location" },
+  { id: "browser", icon: "◯", label: "Browser & Cookie Tracker", vector: "V-09", to: "/browser" },
+  { id: "financial", icon: "⬡", label: "Financial Identity Exposure", vector: "V-10", to: "/financial" },
+  { id: "medical", icon: "⊕", label: "Medical Data Footprint", vector: "V-11", to: "/medical" },
+  { id: "biometric", icon: "⊛", label: "Voice & Biometric Data", vector: "V-12", to: "/biometric" },
+  { id: "iot", icon: "⊡", label: "IoT & Smart Device Scan", vector: "V-13", to: "/iot" },
+  { id: "cloud", icon: "⊞", label: "Cloud Storage Exposure", vector: "V-14", to: "/cloud" },
+  { id: "darkweb", icon: "◈", label: "Dark Web Monitoring", vector: "V-15", to: "/darkweb" },
+  { id: "behavioral", icon: "⊟", label: "Behavioral Profile Analysis", vector: "V-16", to: "/behavioral" },
 ];
 
 const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
