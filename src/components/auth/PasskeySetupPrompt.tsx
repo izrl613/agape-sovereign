@@ -17,23 +17,22 @@ const STORAGE_KEY = 'agape_passkey_prompt_dismissed';
 export const PasskeySetupPrompt: React.FC = () => {
   const { user, bindPasskey } = useAuth();
   const [visible, setVisible] = useState(false);
-  const [platformAvailable, setPlatformAvailable] = useState(false);
+  const [passkeyBound, setPasskeyBound] = useState<boolean | null>(null);
+  const [passkeySupported, setPasskeySupported] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    if (!user || user.isAnonymous) return;
-    if (localStorage.getItem(STORAGE_KEY)) return;
-
-    // Only show if platform authenticator is available
+    if (!user || user.isAnonymous) {
+      setVisible(false);
+      return;
+    }
     if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(ok => {
-        if (ok) setPlatformAvailable(true);
-        // Delay slightly so it doesn't appear before the app settles
-        setTimeout(() => setVisible(ok), 1200);
-      }).catch(() => {});
+      setPasskeySupported(true);
     }
   }, [user]);
+
+  const openPrompt = () => setVisible(true);
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
@@ -59,10 +58,24 @@ export const PasskeySetupPrompt: React.FC = () => {
     }
   };
 
-  if (!platformAvailable) return null;
+  if (!passkeySupported) return null;
 
   return (
-    <AnimatePresence>
+    <>
+      <button
+        onClick={openPrompt}
+        aria-label="Set up a passkey"
+        style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 9998,
+          border: '1px solid rgba(0,212,255,0.35)', borderRadius: 12,
+          padding: '10px 14px', background: 'rgba(11,16,32,0.96)',
+          color: NEON_BLUE, fontWeight: 700, cursor: 'pointer',
+        }}
+      >
+        <Fingerprint size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
+        Set Up Passkey
+      </button>
+      <AnimatePresence>
       {visible && (
         <motion.div
           initial={{ opacity: 0, y: 80, scale: 0.95 }}
@@ -180,6 +193,7 @@ export const PasskeySetupPrompt: React.FC = () => {
           )}
         </motion.div>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   );
 };

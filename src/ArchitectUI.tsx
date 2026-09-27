@@ -5,6 +5,7 @@ import { onAuthStateChanged, signInWithCustomToken, linkWithPopup, GoogleAuthPro
 import { doc, getDoc, onSnapshot, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { startRegistration } from "@simplewebauthn/browser";
 import { httpsCallable } from "firebase/functions";
+import { useScan } from "./ScanContext";
 import { ArchitectLayout } from "./components/architect/ArchitectLayout";
 import { SovereignStatus } from "./components/architect/SovereignStatus";
 import { ActivitySidebar } from "./components/architect/ActivitySidebar";

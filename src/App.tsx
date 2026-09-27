@@ -40,7 +40,7 @@ import {
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, demoMode } = useAuth();
+  const { user, loading, demoMode, setupComplete, setSetupComplete } = useAuth();
   
   if (loading) {
     return (
@@ -52,6 +52,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!user && !demoMode) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user && !setupComplete) {
+    return <SplashEntry onComplete={() => setSetupComplete(true)} />;
   }
 
   return <>{children}</>;
@@ -85,10 +89,6 @@ import { OfflinePage } from './components/OfflinePage';
 const AppRoutes = () => {
   const { user, setupComplete, setSetupComplete, demoMode } = useAuth();
 
-  if (user && !setupComplete) {
-    return <SplashEntry onComplete={() => setSetupComplete(true)} />;
-  }
-
   return (
     <Routes>
       {/* Public routes — no auth required */}
@@ -99,9 +99,10 @@ const AppRoutes = () => {
       <Route path="/offline" element={<OfflinePage />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
-      <Route path="/login" element={(user || demoMode) ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/login" element={<Login />} />
 
       {/* Protected app — all authenticated routes live under /dashboard */}
+      <Route path="/architect" element={<ProtectedRoute><ArchitectUI /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="email" element={<EmailModule />} />
@@ -142,31 +143,17 @@ const AppRoutes = () => {
 import { Toaster } from 'sonner';
 import { PasskeySetupPrompt } from './components/auth/PasskeySetupPrompt';
 import { DemoBanner } from './components/auth/DemoBanner';
-import { UIDesignProvider, useUIDesign } from './UIDesignContext';
+import { UIDesignProvider } from './UIDesignContext';
 import ArchitectUI from './ArchitectUI';
 
-const MainAppContent = () => {
-  const { currentDesign } = useUIDesign();
-
-  if (currentDesign === 'architect') {
-    return (
-      <>
-        <ArchitectUI />
-        <Toaster position="top-right" theme="dark" richColors closeButton />
-      </>
-    );
-  }
-
-  return (
-    <BrowserRouter>
-      <DemoBanner />
-      <AppRoutes />
-      <Toaster position="top-right" theme="dark" richColors closeButton />
-      {/* Passkey onboarding: appears once after first Google login on capable devices */}
-      <PasskeySetupPrompt />
-    </BrowserRouter>
-  );
-};
+const MainAppContent = () => (
+  <BrowserRouter>
+    <DemoBanner />
+    <AppRoutes />
+    <Toaster position="top-right" theme="dark" richColors closeButton />
+    <PasskeySetupPrompt />
+  </BrowserRouter>
+);
 
 export default function App() {
   return (

@@ -10,17 +10,13 @@ interface UIDesignContextType {
 const UIDesignContext = createContext<UIDesignContextType | undefined>(undefined);
 
 export const UIDesignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentDesign, setCurrentDesign] = useState<DesignType>(() => {
-    const saved = localStorage.getItem('ui_design_preference');
-    return (saved === 'agape' || saved === 'architect') ? saved : 'architect';
-  });
+  // The standard Agape experience is the default. The standalone Architect
+  // enclave is reachable only through the explicit /architect route.
+  const [currentDesign, setCurrentDesign] = useState<DesignType>('agape');
 
   const toggleDesign = () => {
-    setCurrentDesign(prev => {
-      const next = prev === 'agape' ? 'architect' : 'agape';
-      localStorage.setItem('ui_design_preference', next);
-      return next;
-    });
+    setCurrentDesign('agape');
+    window.location.assign('/dashboard');
   };
 
   return (

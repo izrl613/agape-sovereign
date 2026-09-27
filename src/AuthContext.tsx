@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, db, loginWithGoogle, logout, loginAnonymously } from './firebase';
+import { auth, db, loginWithGoogle, logout } from './firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 import { logEvent, AuditLogType } from './services/auditService';
@@ -378,10 +378,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleLoginWithPasskey = async (email: string) => {
     const normalized = (email || '').trim().toLowerCase();
     
-    // Allow empty email for resident key mode (direct passkey login)
-    const isResidentKeyMode = !normalized;
-
-    if (!isResidentKeyMode && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
       toast.error('Please enter a valid email to login with passkey.');
       throw new Error('Please enter a valid email to login with passkey.');
     }
@@ -401,66 +398,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.setItem('sovereign_passkey_nonce', sessionNonce);
       sessionStorage.setItem('sovereign_passkey_email', normalized);
 
-      const requestBody = isResidentKeyMode 
-        ? { reauth: true }
-        : { email: normalized };
+      const requestBody = { email: normalized };
 
-      let verified = false;
-      let token: string | null = null;
+      const optionsRes = await fetch('/api/auth/login-options', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
 
-      try {
-        const optionsRes = await fetch('/api/auth/login-options', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-        });
-
-        const optionsBody = await optionsRes.json().catch(() => ({}));
-        if (optionsRes.ok && optionsBody.challenge) {
-          const assertionResponse = await startAuthentication({ optionsJSON: optionsBody });
-          const credentialId = assertionResponse.id || assertionResponse.rawId;
-          sessionStorage.setItem('sovereign_passkey_credential', String(credentialId));
-
-          const verifyRes = await fetch('/api/auth/verify-login', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(assertionResponse),
-          });
-
-          const verifyBody = await verifyRes.json().catch(() => ({}));
-          if (verifyRes.ok && verifyBody.verified && verifyBody.token) {
-            verified = true;
-            token = verifyBody.token;
-          }
-        }
-      } catch (backendErr) {
-        console.warn('[AUTH] WebAuthn backend endpoint unavailable, switching to local vault session:', backendErr);
+      const optionsBody = await optionsRes.json().catch(() => ({}));
+      if (!optionsRes.ok || !optionsBody.challenge) {
+        throw new Error(optionsBody.error || `Unable to begin passkey sign-in (${optionsRes.status}).`);
       }
 
-      if (verified && token) {
-        await signInWithCustomToken(auth, token);
-        toast.success('Authenticated successfully with Passkey.');
-      } else {
-        // Local Vault Passkey session — resilient fallback when backend is offline
-        const localCredId = sessionStorage.getItem('sovereign_passkey_credential') || `passkey_${sessionNonce.slice(0, 16)}`;
-        sessionStorage.setItem('sovereign_passkey_credential', localCredId);
+      const assertionResponse = await startAuthentication({ optionsJSON: optionsBody });
+      const credentialId = assertionResponse.id || assertionResponse.rawId;
+      sessionStorage.setItem('sovereign_passkey_credential', String(credentialId));
 
-        await loginAnonymously();
-        try {
-          await localVaultService.init();
-          setVaultReady(true);
-        } catch { /* non-fatal */ }
-        toast.success('Authenticated with Local Passkey Vault.');
+      const verifyRes = await fetch('/api/auth/verify-login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assertionResponse),
+      });
+
+      const verifyBody = await verifyRes.json().catch(() => ({}));
+      if (!verifyRes.ok || !verifyBody.verified || !verifyBody.token) {
+        throw new Error(verifyBody.error || `Passkey verification failed (${verifyRes.status}).`);
       }
+
+      // Auth state listener consumes these values to assign the passkey session context.
+      await signInWithCustomToken(auth, verifyBody.token);
+      toast.success('Authenticated successfully with Passkey.');
     } catch (error: any) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('sovereign_passkey_auth');
+        sessionStorage.removeItem('sovereign_passkey_nonce');
+        sessionStorage.removeItem('sovereign_passkey_credential');
+        sessionStorage.removeItem('sovereign_passkey_email');
+      }
       console.error('WebAuthn Login Error:', error);
-      // Clean up sessionStorage on failure so stale state doesn't persist
-      sessionStorage.removeItem('sovereign_passkey_auth');
-      sessionStorage.removeItem('sovereign_passkey_nonce');
-      sessionStorage.removeItem('sovereign_passkey_credential');
-      sessionStorage.removeItem('sovereign_passkey_email');
       if (error?.name === 'NotAllowedError') {
         toast.error('Passkey login cancelled.');
       } else if (error?.message?.includes('User verification required') || error?.message?.includes('could not be verified')) {
