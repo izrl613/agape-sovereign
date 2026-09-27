@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
-import { auth, db, loginWithGoogle, logout } from './firebase';
+import { User, onAuthStateChanged, GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
+import { auth, db, loginWithGoogle, loginAnonymously, logout } from './firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 import { logEvent, AuditLogType } from './services/auditService';
@@ -30,6 +30,8 @@ interface AuthContextType {
   loading: boolean;
   demoMode: boolean;
   login: () => Promise<void>;
+  loginAnonymously: () => Promise<void>;
+  upgradeAnonymousWithGoogle: () => Promise<void>;
   loginWithPasskey: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   bindPasskey: () => Promise<void>;
@@ -283,10 +285,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const handleLogin = async () => {
+    if (auth.currentUser?.isAnonymous) {
+      await handleUpgradeAnonymousWithGoogle();
+      return;
+    }
     const userOrNull = await loginWithGoogle();
     // Redirect flow leaves the page; no further client work until return.
     if (userOrNull === null) {
       return;
+    }
+  };
+
+  const handleLoginAnonymously = async () => {
+    try {
+      const anonymousUser = await loginAnonymously();
+      setAuthType('anonymous');
+      setUser(anonymousUser);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Anonymous sign-in failed.');
+      throw error;
+    }
+  };
+
+  const handleUpgradeAnonymousWithGoogle = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser?.isAnonymous) {
+      throw new Error('Sign in anonymously first to link a Google account.');
+    }
+    const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      const result = await linkWithPopup(currentUser, provider);
+      const linkedUser = result.user;
+      await setDoc(doc(db, 'users', linkedUser.uid), {
+        uid: linkedUser.uid,
+        email: linkedUser.email || '',
+        displayName: linkedUser.displayName || '',
+        authType: 'google',
+        upgradedFromAnonymousAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      setUser(linkedUser);
+      setUserData((previous: any) => ({ ...(previous || {}), uid: linkedUser.uid, email: linkedUser.email || '', displayName: linkedUser.displayName || '', authType: 'google' }));
+      setAuthType('google');
+      toast.success('Google linked. The same Firebase UID and account data are preserved.');
+    } catch (error: any) {
+      if (error?.code === 'auth/credential-already-in-use' || error?.code === 'auth/email-already-in-use') {
+        const conflict = new Error('This Google account already has an Agape account. Your anonymous account is unchanged; no accounts were merged. Sign out and sign in to the existing Google account instead.');
+        toast.error(conflict.message);
+        throw conflict;
+      }
+      toast.error(error instanceof Error ? error.message : 'Could not link Google to this anonymous account.');
+      throw error;
     }
   };
 
@@ -353,7 +405,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logEvent(AuditLogType.SECURITY_EVENT, 'Passkey bound to device', currentUser.uid, currentUser.email || undefined);
         try {
           const userRef = doc(db, 'users', currentUser.uid);
-          await updateDoc(userRef, { hasPasskey: true, authType: 'passkey' });
+          await updateDoc(userRef, { hasPasskey: true, passkeyBound: true, authType: 'passkey' });
         } catch {
           // non-fatal
         }
@@ -561,6 +613,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       demoMode,
       login: handleLogin,
+      loginAnonymously: handleLoginAnonymously,
+      upgradeAnonymousWithGoogle: handleUpgradeAnonymousWithGoogle,
       loginWithPasskey: handleLoginWithPasskey,
       logout: handleLogout,
       bindPasskey: handleBindPasskey,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Fingerprint, ArrowLeft, Shield, EyeOff, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Fingerprint, ArrowLeft, Shield, EyeOff, ChevronRight, UserRound } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { isPrivateBrowsing } from '../utils/incognitoDetector';
 
@@ -151,8 +151,15 @@ const LoadingSpinner = () => {
 
 // ── Main Login component ───────────────────────────────────────
 export const Login = () => {
-  const { login, loginWithPasskey, user, demoMode, setDemoUser } = useAuth();
+  const { login, loginAnonymously, upgradeAnonymousWithGoogle, loginWithPasskey, user, demoMode } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.pathname === '/register-passkey' || new URLSearchParams(location.search).get('intent') === 'register-passkey') {
+      setStep('register-passkey');
+    }
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (user || demoMode) {
@@ -160,18 +167,28 @@ export const Login = () => {
     }
   }, [user, demoMode, navigate]);
 
-  const handleDemoBypass = () => {
-    setDemoUser();
-    navigate('/dashboard', { replace: true });
+  const handleAnonymousLogin = async () => {
+    setAuthError(null);
+    setScanning(true);
+    setActiveMethod('anonymous');
+    try {
+      await loginAnonymously();
+      setStep('creating');
+    } catch (err: unknown) {
+      setScanning(false);
+      setActiveMethod(null);
+      setAuthError(formatError(err));
+    }
   };
 
-  const [step, setStep] = useState<'landing' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
+  const [step, setStep] = useState<'landing' | 'register-passkey' | 'passkey-email' | 'passkey-auth' | 'creating'>('landing');
   const [scanning, setScanning] = useState(false);
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isIncognito, setIsIncognito] = useState<boolean | null>(null); // null = detecting
-  const [activeMethod, setActiveMethod] = useState<'google' | 'passkey' | null>(null);
+  const [activeMethod, setActiveMethod] = useState<'google' | 'passkey' | 'anonymous' | null>(null);
+  const [upgradingAnonymous, setUpgradingAnonymous] = useState(false);
 
   // Detect private browsing on mount
   useEffect(() => {
@@ -208,14 +225,28 @@ export const Login = () => {
     setScanning(true);
     setActiveMethod('google');
     try {
+      if (user?.isAnonymous) {
+        setUpgradingAnonymous(true);
+        await upgradeAnonymousWithGoogle();
+        setUpgradingAnonymous(false);
+        setScanning(false);
+        setStep('landing');
+        navigate('/dashboard', { replace: true });
+        return;
+      }
       await login();
-      // Redirect fallback navigates away; if we are still here, session is ready.
       setStep('creating');
     } catch (err: unknown) {
       setScanning(false);
+      setUpgradingAnonymous(false);
       setActiveMethod(null);
       setAuthError(formatError(err));
     }
+  };
+  const handleRegisterPasskey = () => {
+    setAuthError(null);
+    setEmailError(null);
+    setStep('register-passkey');
   };
 
   const handleDirectPasskeyLogin = () => {
@@ -351,7 +382,7 @@ export const Login = () => {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         style={gradientBorder}
       >
-        <div style={cardInner}>
+              <div style={{ ...cardInner, width: 'min(420px, calc(100vw - 32px))', minWidth: 0, padding: '32px 28px' }}>
 
           {/* ── Logo block ── */}
           <ShieldPulse />
@@ -451,7 +482,7 @@ export const Login = () => {
                 </div>
 
                 {/* ── Dual authentication options ── */}
-                <div className="auth-options" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 16 }}>
+                <div className="auth-options" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                   {/* OPTION 1 — Passkey / WebAuthn */}
                   <motion.div
                     whileHover={{ scale: 1.015, borderColor: 'rgba(0,212,255,0.45)' }}
@@ -528,45 +559,59 @@ export const Login = () => {
                     <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />
                   </motion.div>
 
-                  {/* OPTION 3 — Demo Guest Sandbox */}
-                  {import.meta.env.DEV && (
-                    <motion.div
-                      whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.5)' }}
-                      whileTap={{ scale: 0.985 }}
-                      onClick={handleDemoBypass}
-                      style={{
-                        background: 'rgba(255,122,24,0.06)',
-                        border: '1px solid rgba(255,122,24,0.3)',
-                        borderRadius: 14,
-                        padding: '14px 16px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 14,
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                      }}
-                      aria-label="Development demo sandbox"
-                    >
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 10,
-                        background: 'rgba(255,122,24,0.12)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0, border: '1px solid rgba(255,122,24,0.3)',
-                      }}>
-                        <span aria-hidden="true">DEV</span>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ color: '#FF7A18', fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
-                          Development sandbox
-                        </div>
-                        <div style={{ color: 'rgba(255,122,24,0.65)', fontSize: 10, fontFamily: 'monospace' }}>
-                          Simulated findings · Never use for real assessments
-                        </div>
-                      </div>
-                      <ChevronRight size={16} color="#FF7A18" style={{ opacity: 0.7 }} />
-                    </motion.div>
-                  )}
+                  {/* OPTION 3 — Continue anonymously (real Firebase anonymous account) */}
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.5)' }}
+                    whileTap={{ scale: 0.985 }}
+                    onClick={handleAnonymousLogin}
+                    style={{
+                      gridColumn: '1 / -1',
+                      width: '100%',
+                      background: 'rgba(255,122,24,0.06)',
+                      border: '1px solid rgba(255,122,24,0.3)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 14,
+                      textAlign: 'left',
+                    }}
+                    aria-label="Continue anonymously"
+                  >
+                    <UserRound size={19} color={C.orange} />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Continue anonymously</span>
+                      <span style={{ display: 'block', color: 'rgba(255,255,255,0.55)', fontSize: 10, fontFamily: 'monospace' }}>
+                        Link Google from your profile later to keep the same account. Passkey registration becomes available once your anonymous account is linked.
+                      </span>
+                    </span>
+                    <ChevronRight size={16} color={C.orange} />
+                  </motion.button>
+
+                  {/* Registration is account setup, separate from the three entry paths. */}
+                  <button
+                    type="button"
+                    onClick={handleRegisterPasskey}
+                    style={{
+                      gridColumn: '1 / -1', width: '100%', marginTop: 8,
+                      background: 'rgba(0,255,135,0.045)', border: '1px solid rgba(0,255,135,0.22)',
+                      borderRadius: 12, padding: '12px 14px', color: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                    }}
+                    aria-label="Register a passkey"
+                  >
+                    <Fingerprint size={19} color={C.green} />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Register a passkey</span>
+                      <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace' }}>
+                        Authenticate first, then add a device passkey
+                      </span>
+                    </span>
+                    <ChevronRight size={16} color={C.green} />
+                  </button>
                 </div>
 
                 {/* Trust logos — real brand marks */}
@@ -602,6 +647,50 @@ export const Login = () => {
                     onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.25)')}>
                     Terms of Service
                   </a>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── Register a passkey: verified account required ── */}
+            {step === 'register-passkey' && !scanning && (
+              <motion.div
+                key="register-passkey"
+                initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.28 }}
+              >
+                <div style={{ color: C.green, fontFamily: "'Share Tech Mono', monospace", fontSize: 11, letterSpacing: '0.15em', marginBottom: 8 }}>
+                  REGISTER A PASSKEY
+                </div>
+                <div style={{ color: C.muted, fontSize: 12, marginBottom: 20, lineHeight: 1.65 }}>
+                  Link Google if you want to keep this session on another device. Passkey enrollment is available after your anonymous account is linked to Google.
+                </div>
+                {authError && <div role="alert" style={{ color: '#fca5a5', fontSize: 12, marginBottom: 14 }}>{authError}</div>}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <motion.button
+                    whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.975 }}
+                    id="register-passkey-google-btn"
+                    onClick={handleGoogleLogin}
+                    disabled={scanning || upgradingAnonymous}
+                    style={{ ...btnBase, background: '#4285F4', color: '#fff', opacity: upgradingAnonymous ? 0.7 : 1 }}
+                  >
+                    <GoogleIcon style={{ width: 18, height: 18 }} />
+                    {upgradingAnonymous ? 'Linking Google to this account…' : user?.isAnonymous ? 'Link Google · keep this session' : 'Sign in with Google'}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.015 }} whileTap={{ scale: 0.975 }}
+                    id="register-passkey-anonymous-btn"
+                    onClick={handleAnonymousLogin}
+                    style={{ ...btnBase, background: 'rgba(255,122,24,0.08)', border: '1px solid rgba(255,122,24,0.3)', color: C.orange }}
+                  >
+                    <UserRound size={18} />
+                    Continue anonymously for now
+                  </motion.button>
+                  <button
+                    onClick={() => { setStep('landing'); setAuthError(null); }}
+                    style={{ background: 'none', border: 'none', color: C.muted, fontSize: 11, cursor: 'pointer', fontFamily: 'monospace', marginTop: 4 }}
+                  >
+                    <ArrowLeft size={10} /> Back to sign-in options
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -734,9 +823,11 @@ export const Login = () => {
                   INITIALIZING ARCHITECT AI…
                 </div>
                 <div style={{ color: C.muted, fontSize: 11, marginTop: 8 }}>
-                  {activeMethod === 'passkey'
-                    ? 'Passkey session verified · Preparing your DIFF sovereignty console'
-                    : 'Google identity verified · Preparing your DIFF sovereignty console'}
+                  {activeMethod === 'anonymous'
+                    ? 'Anonymous Firebase session · Preparing your DIFF console'
+                    : activeMethod === 'passkey'
+                      ? 'Passkey session verified · Preparing your DIFF sovereignty console'
+                      : 'Google identity verified · Preparing your DIFF sovereignty console'}
                 </div>
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -746,7 +837,7 @@ export const Login = () => {
                   borderRadius: 100, padding: '4px 12px',
                   fontFamily: 'monospace',
                 }}>
-                  {activeMethod === 'passkey' ? '⬡ FIDO2 PASSKEY' : 'G GOOGLE OAUTH'}
+                  {activeMethod === 'anonymous' ? 'FIREBASE ANONYMOUS SESSION' : activeMethod === 'passkey' ? '⬡ FIDO2 PASSKEY' : 'G GOOGLE OAUTH'}
                 </div>
               </motion.div>
             )}

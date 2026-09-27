@@ -599,12 +599,15 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
 };
 
 const Header = () => {
-  const { user, isAdmin, isAnonymous, logout, sovereignScore, bindPasskey } = useAuth();
+  const { user, isAdmin, isAnonymous, authType, logout, sovereignScore, bindPasskey, upgradeAnonymousWithGoogle } = useAuth();
   const { isScanning } = useScan();
   const [time, setTime] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isUpgradingAccount, setIsUpgradingAccount] = useState(false);
+  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [accountNotice, setAccountNotice] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [docSealModal, setDocSealModal] = useState<'TERMS' | 'PRIVACY' | null>(null);
   const navigate = useNavigate();
@@ -633,6 +636,35 @@ const Header = () => {
     const t = setInterval(() => setTime(new Date()), 1000); 
     return () => clearInterval(t); 
   }, []);
+
+  const handleUpgradeAnonymous = async () => {
+    setIsUpgradingAccount(true);
+    try {
+      await upgradeAnonymousWithGoogle();
+      setAccountNotice('Google linked. Same account and UID retained; you can now register a passkey.');
+      setIsProfileOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not link Google to this session.';
+      setAccountNotice(message);
+      toast.error(message);
+    } finally {
+      setIsUpgradingAccount(false);
+    }
+  };
+
+  const handleRegisterPasskey = async () => {
+    setIsRegisteringPasskey(true);
+    try {
+      await bindPasskey();
+      setAccountNotice('Passkey registered to your verified account.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Passkey registration failed.';
+      setAccountNotice(message);
+      toast.error(message);
+    } finally {
+      setIsRegisteringPasskey(false);
+    }
+  };
 
   const filteredModules = DIFF_MODULES.filter(m => 
     m.label.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -786,13 +818,19 @@ const Header = () => {
 
       {/* Profile button */}
       <div className="flex items-center gap-3 pl-6 border-l border-white/10 relative">
-        {isAnonymous && (
-          <button 
-            onClick={bindPasskey}
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#FF7A18]/10 border border-[#FF7A18]/30 rounded-lg text-[#FF7A18] text-[10px] font-bold tracking-tighter hover:bg-[#FF7A18]/20 transition-all mr-2"
+      {isAnonymous && accountNotice && (
+              <div role="status" className="fixed bottom-20 right-6 z-50 max-w-sm rounded-lg border border-[#FF7A18]/40 bg-[#0B1020] px-4 py-3 text-xs text-white shadow-xl">
+                {accountNotice}
+              </div>
+            )}
+            {isAnonymous && (
+          <button
+            onClick={handleUpgradeAnonymous}
+            disabled={isUpgradingAccount}
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#FF7A18]/10 border border-[#FF7A18]/30 rounded-lg text-[#FF7A18] text-[10px] font-bold tracking-tighter hover:bg-[#FF7A18]/20 transition-all mr-2 disabled:opacity-50"
           >
             <Shield className="w-3 h-3" />
-            BIND PASSKEY
+            {isUpgradingAccount ? 'LINKING GOOGLE…' : 'LINK GOOGLE · KEEP ACCOUNT'}
           </button>
         )}
         <div 
@@ -845,12 +883,23 @@ const Header = () => {
             </div>
             <div className="p-2">
               {isAnonymous && (
-                <button 
-                  onClick={bindPasskey}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#FF7A18] hover:bg-[#FF7A18]/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer mb-1"
+                <button
+                  onClick={handleUpgradeAnonymous}
+                  disabled={isUpgradingAccount}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#FF7A18] hover:bg-[#FF7A18]/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer mb-1 disabled:opacity-50"
                 >
                   <Shield className="w-4 h-4" />
-                  Bind Google Passkey
+                  {isUpgradingAccount ? 'Linking Google…' : 'Link Google · keep this account'}
+                </button>
+              )}
+              {!isAnonymous && authType === 'google' && (
+                <button
+                  onClick={handleRegisterPasskey}
+                  disabled={isRegisteringPasskey}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-[#00D4FF] hover:bg-[#00D4FF]/5 rounded-lg transition-colors border-none bg-transparent cursor-pointer mb-1 disabled:opacity-50"
+                >
+                  <Shield className="w-4 h-4" />
+                  {isRegisteringPasskey ? 'Registering passkey…' : 'Register a passkey'}
                 </button>
               )}
               <button
