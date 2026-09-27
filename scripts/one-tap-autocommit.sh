@@ -10,7 +10,7 @@
 # Flow: repair all git errors → AI-style commit message → push → notify + speak
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
-REPO="$HOME/Documents/agape-sovereign"
+REPO="$HOME/Documents/agape-sovereign-alpha"
 LOG=$(mktemp -t autocommit)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,10 +78,28 @@ MSG="${PREFIX}(${SCOPE}): ${TIMESTAMP} — ${TOP_FILES}"
 BODY="Changes: +${ADDED} added  ~${MODIFIED} modified  -${DELETED} deleted on ${BRANCH}"
 
 # ── 5. Commit ─────────────────────────────────────────────────────────────────
-git commit -m "$MSG" -m "$BODY" >> "$LOG" 2>&1 \
+GIT_EDITOR=true git commit -m "$MSG" -m "$BODY" >> "$LOG" 2>&1 \
   || bail "git commit failed. See Antigravity IDE terminal for details."
 
-# ── 6. Push ───────────────────────────────────────────────────────────────────
+# ── 6. Sync with remote (fetch + rebase) to prevent diverged branch errors ────
+notify "🔄 Agape Auto-Commit" "Syncing with GitHub..." "Morse"
+git fetch origin "$BRANCH" >> "$LOG" 2>&1 || true   # non-fatal if offline
+
+if git log "origin/${BRANCH}" > /dev/null 2>&1; then
+  # Remote exists — rebase our commit(s) on top of it
+  if ! GIT_EDITOR=true git rebase --autostash origin/"$BRANCH" >> "$LOG" 2>&1; then
+    # Rebase conflict: abort and warn (local commit is safe, push manually)
+    git rebase --abort >> "$LOG" 2>&1 || true
+    notify "⚠️ Agape Sync Conflict" "Auto-rebase failed — resolve in Antigravity IDE then push." "Sosumi"
+    speak "Sync conflict detected. Please resolve in Antigravity I D E then push manually."
+    echo ""
+    echo "⚠️ Commit saved locally. Push manually after resolving conflict."
+    cat "$LOG"
+    exit 0
+  fi
+fi
+
+# ── 7. Push ───────────────────────────────────────────────────────────────────
 notify "🚀 Agape Auto-Commit" "Pushing to GitHub..." "Morse"
 
 if git push origin "$BRANCH" >> "$LOG" 2>&1; then

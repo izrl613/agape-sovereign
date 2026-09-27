@@ -7,8 +7,3 @@ index.js
 server.js
 **/*.test.ts
 **/*.spec.ts
-# Ignore macOS duplicate files (contain " 2" suffix)
-**/* 2.js
-**/* 2.ts
-**/* 2.json
-budget-enforcement/index 2.js
