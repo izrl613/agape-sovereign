@@ -44,7 +44,10 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        ".runtimeconfig.json"
       ],
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint",
@@ -61,13 +64,20 @@
     "backendId": "agape-sovereign",
     "rootDir": "/",
     "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions"
+      "**/node_modules/**",
+      "**/.git/**",
+      "firebase-debug*.log",
+      "functions/**",
+      "dist/**",
+      "build/**",
+      ".next/**",
+      ".agents/**",
+      ".agent/**",
+      "*.png",
+      "*.PDF",
+      "*.pages"
     ],
-    "alwaysDeployFromSource": true
+    "alwaysDeployFromSource": false
   },
   "emulators": {
     "apphosting": {
