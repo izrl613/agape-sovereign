@@ -29,7 +29,13 @@ if (!getApps().length) {
 
 const db = getFirestore(getApp(), "agape-sovereign");
 const auth = getAuth();
-const errors = new ErrorReporting({reportMode: "always"});
+const isProductionEnv = process.env.NODE_ENV === "production" ||
+  process.env.K_SERVICE !== undefined ||
+  process.env.FUNCTION_TARGET !== undefined;
+
+const errors = new ErrorReporting({
+  reportMode: isProductionEnv ? "production" : "never",
+});
 const RP_NAME = "Agape Sovereign";
 
 /** Primary production RP (custom domain). */

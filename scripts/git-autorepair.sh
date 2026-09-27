@@ -41,9 +41,11 @@ echo "────────────────────────�
 info "Checking JSON file validity..."
 JSON_ERRORS=0
 while IFS= read -r -d '' f; do
-  if ! node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" 2>/dev/null; then
-    warn "Invalid JSON: $f"
-    ((JSON_ERRORS++)) || true
+  if [[ -f "$f" ]]; then
+    if ! node -e "const fs=require('fs'); JSON.parse(fs.readFileSync(process.argv[1],'utf8'))" "$f" 2>/dev/null; then
+      warn "Invalid JSON: $f"
+      ((JSON_ERRORS++)) || true
+    fi
   fi
 done < <(git ls-files -z '*.json' 2>/dev/null)
 
@@ -113,11 +115,9 @@ fi
 # ── 4. Remove already-tracked files that should now be ignored ───────────────
 info "Checking for tracked files that should be gitignored..."
 SHOULD_IGNORE=()
-while IFS= read -r f; do
-  if git check-ignore -q "$f" 2>/dev/null; then
-    SHOULD_IGNORE+=("$f")
-  fi
-done < <(git ls-files 2>/dev/null)
+while IFS= read -r -d '' f; do
+  [[ -n "$f" ]] && SHOULD_IGNORE+=("$f")
+done < <(git ls-files -z -i --exclude-standard 2>/dev/null)
 
 if [[ ${#SHOULD_IGNORE[@]} -eq 0 ]]; then
   ok "No tracked files violate .gitignore"
@@ -134,11 +134,11 @@ fi
 # ── 5. Abort if there are unresolved merge conflicts ─────────────────────────
 info "Checking for merge conflict markers..."
 CONFLICT_FILES=()
-while IFS= read -r f; do
-  if grep -qlP '^(<{7}|={7}|>{7})' "$f" 2>/dev/null; then
+while IFS= read -r -d '' f; do
+  if [[ -f "$f" ]] && grep -qE '^(<{7}|={7}|>{7})' "$f" 2>/dev/null; then
     CONFLICT_FILES+=("$f")
   fi
-done < <(git diff --name-only --diff-filter=U 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null)
+done < <(git diff --name-only -z --diff-filter=U 2>/dev/null; git ls-files -z --others --exclude-standard 2>/dev/null)
 
 if [[ ${#CONFLICT_FILES[@]} -eq 0 ]]; then
   ok "No merge conflict markers detected"

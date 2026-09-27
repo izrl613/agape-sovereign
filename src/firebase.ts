@@ -22,7 +22,7 @@ import { getFunctions } from 'firebase/functions';
 import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging';
 import { getRemoteConfig } from 'firebase/remote-config';
 import { getDatabase } from 'firebase/database';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
@@ -30,21 +30,20 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize App Check with reCAPTCHA v3 (requires App Check API enabled in Firebase Console)
+// Firebase App Check uses the production reCAPTCHA Enterprise score key registered
+// to this Firebase web app. This is a public site key (not a server secret).
+const appCheckSiteKey = (import.meta as any).env?.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY ||
+  '6Ld9cnAtAAAAAMkuGPJvIvp5S2cuWKlVzxxzyK4h';
+
 if (typeof window !== 'undefined') {
   try {
-    const recaptchaKey = (import.meta as any).env?.VITE_RECAPTCHA_SITE_KEY || '';
-    if (recaptchaKey) {
-      initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(recaptchaKey),
-        isTokenAutoRefreshEnabled: true,
-      });
-      console.info('[FIREBASE] App Check initialized with reCAPTCHA v3');
-    } else {
-      console.info('[FIREBASE] App Check skipped - no reCAPTCHA site key configured (VITE_RECAPTCHA_SITE_KEY)');
-    }
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+    console.info('[FIREBASE] App Check initialized with reCAPTCHA Enterprise');
   } catch (error) {
-    console.warn('[FIREBASE] App Check initialization skipped:', error);
+    console.error('[FIREBASE] App Check initialization failed:', error);
   }
 }
 

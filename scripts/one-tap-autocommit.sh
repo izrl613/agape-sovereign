@@ -10,7 +10,7 @@
 # Flow: repair all git errors → AI-style commit message → push → notify + speak
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
-REPO="$HOME/Documents/agape-sovereign"
+REPO="$(git rev-parse --show-toplevel 2>/dev/null || echo "$HOME/Documents/agape-sovereign-alpha")"
 LOG=$(mktemp -t autocommit)
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
