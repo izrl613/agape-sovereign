@@ -15,24 +15,43 @@ const NEON_ORANGE = '#FF6B00';
 const STORAGE_KEY = 'agape_passkey_prompt_dismissed';
 
 export const PasskeySetupPrompt: React.FC = () => {
-  const { user, bindPasskey } = useAuth();
+  const { user, bindPasskey, authType } = useAuth();
   const [visible, setVisible] = useState(false);
-  const [passkeyBound, setPasskeyBound] = useState<boolean | null>(null);
   const [passkeySupported, setPasskeySupported] = useState(false);
+  const [hasPasskey, setHasPasskey] = useState<boolean | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     if (!user || user.isAnonymous) {
       setVisible(false);
+      setHasPasskey(null);
       return;
     }
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      setPasskeySupported(true);
-    }
+    let cancelled = false;
+    setHasPasskey(null);
+    if (typeof window !== 'undefined' && window.PublicKeyCredential) setPasskeySupported(true);
+
+    user.getIdToken().then(async (idToken) => {
+      const response = await fetch('/api/auth/has-passkey', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${idToken}` },
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!cancelled && response.ok && typeof body.hasPasskey === 'boolean') {
+        setHasPasskey(body.hasPasskey);
+      }
+    }).catch(() => {
+      if (!cancelled) setHasPasskey(null);
+    });
+
+    return () => { cancelled = true; };
   }, [user]);
 
-  const openPrompt = () => setVisible(true);
+  const openPrompt = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setVisible(true);
+  };
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
@@ -58,7 +77,7 @@ export const PasskeySetupPrompt: React.FC = () => {
     }
   };
 
-  if (!passkeySupported) return null;
+  if (!passkeySupported || !user || user.isAnonymous || authType === 'anonymous' || hasPasskey === true) return null;
 
   return (
     <>
@@ -74,6 +93,9 @@ export const PasskeySetupPrompt: React.FC = () => {
       >
         <Fingerprint size={16} style={{ verticalAlign: 'middle', marginRight: 8 }} />
         Set Up Passkey
+          {hasPasskey === null && (
+            <span style={{ marginLeft: 8, fontSize: 9, opacity: 0.65 }}>CHECK STATUS</span>
+          )}
       </button>
       <AnimatePresence>
       {visible && (

@@ -24,9 +24,9 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
       return (
         <div className="min-h-screen bg-[#0B1020] flex items-center justify-center p-4">
           <div className="neon-border p-8 max-w-lg w-full text-center">
-            <h2 className="text-2xl font-bold text-[#FF2E9F] mb-4 font-display">System Breach Detected</h2>
+            <h2 className="text-2xl font-bold text-[#FF2E9F] mb-4 font-display">Sign-In Options</h2>
             <p className="text-slate-300 mb-6">
-              A critical error occurred in the Architect AI matrix.
+              A critical error occurred while loading this page. Please retry; the error details are shown below.
             </p>
             <div className="bg-black/50 p-4 rounded-lg text-left overflow-auto max-h-48 text-sm font-mono text-red-400 mb-6">
               {(() => {

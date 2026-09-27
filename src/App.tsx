@@ -99,6 +99,7 @@ const AppRoutes = () => {
       <Route path="/offline" element={<OfflinePage />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
+      <Route path="/register-passkey" element={<Navigate to="/login?intent=register-passkey" replace />} />
       <Route path="/login" element={<Login />} />
 
       {/* Protected app — all authenticated routes live under /dashboard */}
