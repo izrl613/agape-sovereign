@@ -5,7 +5,6 @@ import { normalizeEmail, rpIdForOrigin, encodeCredentialId } from "./auth";
 vi.mock("firebase-admin/app", () => ({
   initializeApp: vi.fn(),
   getApps: vi.fn(() => []),
-  getApp: vi.fn(() => ({})),
 }));
 
 vi.mock("firebase-admin/firestore", () => ({

@@ -1,6 +1,6 @@
 import {onRequest} from "firebase-functions/https";
 import {logger} from "firebase-functions";
-import {initializeApp, getApps, getApp} from "firebase-admin/app";
+import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
 import {getAppCheck} from "firebase-admin/app-check";
@@ -27,7 +27,7 @@ if (!getApps().length) {
   initializeApp();
 }
 
-const db = getFirestore(getApp(), "agape-sovereign");
+const db = getFirestore();
 const auth = getAuth();
 const isProductionEnv = process.env.NODE_ENV === "production" ||
   process.env.K_SERVICE !== undefined ||
@@ -273,8 +273,8 @@ function setSessionCookie(res: Response, sessionData: object): void {
     httpOnly: true,
     secure: isSecure,
     signed: true,
-    maxAge: 15 * 60_000,
-    sameSite: "lax",
+    maxAge: 15 * 60_000, // 15 minutes for better UX while maintaining security
+    sameSite: isSecure ? "strict" : "lax", // strict in production for CSRF protection
     path: "/",
     priority: "high",
     domain: isSecure ? (process.env.COOKIE_DOMAIN || undefined) : undefined,
@@ -356,23 +356,6 @@ async function requireRegisteredUser(
   return {uid: decoded.uid, email: tokenEmail};
 }
 
-router.post("/has-passkey", authLimiter, async (req: Request, res: Response) => {
-  try {
-    const authorization = req.get("authorization");
-    if (!authorization?.startsWith("Bearer ")) {
-      res.status(401).json({error: "Authentication is required."});
-      return;
-    }
-    const decoded = await auth.verifyIdToken(authorization.slice("Bearer ".length));
-    const credentials = await db.collection("users").doc(decoded.uid)
-      .collection("passkeyCredentials").limit(1).get();
-    res.json({hasPasskey: !credentials.empty});
-  } catch (error) {
-    logger.error("Has Passkey Error:", error);
-    res.status(401).json({error: "Unable to verify passkey status."});
-  }
-});
-
 // POST /register-options
 router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
@@ -414,9 +397,9 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
       attestationType: "none",
       excludeCredentials,
       authenticatorSelection: {
-        residentKey: "required",
-        userVerification: "required",
-        // Discoverable credentials support passkey-first sign-in without an email prompt.
+        residentKey: "preferred",
+        userVerification: "preferred",
+        // Omit authenticatorAttachment so platform + roaming authenticators both work
       },
     });
 
@@ -457,12 +440,6 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
 
     const expectedChallenge = sessionData.registrationChallenge as string | undefined;
     const userId = (sessionData.authUserId as string | undefined) || body.userId;
-    const email = normalizeEmail(body.email || "");
-    const registeredUser = await requireRegisteredUser(req, email);
-    if (!userId || registeredUser.uid !== userId || (body.userId && body.userId !== userId)) {
-      res.status(403).json({error: "Passkey registration does not match the signed-in account."});
-      return;
-    }
     if (!expectedChallenge || !userId) {
       res.status(400).json({error: "Challenge expired or missing. Retry passkey setup."});
       return;
@@ -477,7 +454,6 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
       expectedChallenge,
       expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
       expectedRPID: [rpId, DEFAULT_RP_ID],
-      requireUserVerification: true,
     });
 
     if (verification.verified && verification.registrationInfo) {
@@ -541,7 +517,7 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
       const options = await generateAuthenticationOptions({
         rpID: rpId,
         allowCredentials: [], // discoverable — authenticator selects the key
-        userVerification: "required",
+        userVerification: "preferred",
       });
 
       // We don't know the userId yet; it will be resolved during verify-login
@@ -605,7 +581,7 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
     const options = await generateAuthenticationOptions({
       rpID: rpId,
       allowCredentials,
-      userVerification: "required",
+      userVerification: "preferred",
     });
 
     setSessionCookie(res, {
@@ -698,13 +674,11 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
         counter: typeof credData.counter === "number" ? credData.counter : 0,
         transports: credData.transports,
       },
-      requireUserVerification: true,
     });
 
     if (verification.verified) {
-      const counter = verification.authenticationInfo.newCounter;
       await credDoc.ref.update({
-        counter,
+        counter: verification.authenticationInfo.newCounter,
         lastUsedAt: FieldValue.serverTimestamp(),
       });
       const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});

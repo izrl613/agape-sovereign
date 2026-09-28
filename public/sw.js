@@ -6,7 +6,7 @@
  * Cache versioned — old caches purged on activate.
  */
 
-const CACHE_VERSION = 'agape-sovereign-v4';
+const CACHE_VERSION = 'agape-sovereign-v2';
 const OFFLINE_URL = '/offline.html';
 
 const APP_SHELL = [
@@ -15,6 +15,7 @@ const APP_SHELL = [
   '/manifest.json',
   '/agape-logo-120.png',
   '/agape-logo-oauth.png',
+  OFFLINE_URL,
 ];
 
 // ── Install: pre-cache app shell ────────────────────────────────────────────
@@ -50,15 +51,12 @@ self.addEventListener('fetch', event => {
   if (request.url.includes('firebase')) return;
   if (request.url.includes('/api/')) return;
 
-  // Always use the latest deployed app shell; do not serve a cached JS bundle.
-  if (request.mode === 'navigate' || request.destination === 'script' || request.destination === 'style') {
+  // Navigation requests — serve from cache with network fallback
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request, { cache: 'no-store' }).catch(() => {
-        if (request.mode === 'navigate') {
-          return caches.match('/index.html').then(response => response || caches.match(OFFLINE_URL));
-        }
-        return caches.match(request);
-      })
+      fetch(request).catch(() =>
+        caches.match('/index.html').then(r => r || caches.match(OFFLINE_URL))
+      )
     );
     return;
   }

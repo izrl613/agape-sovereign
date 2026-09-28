@@ -26,9 +26,6 @@ import {setGlobalOptions} from "firebase-functions";
 // this will be the maximum concurrent request count.
 setGlobalOptions({maxInstances: 10});
 
-// Export the WebAuthn API so Firebase Hosting can rewrite /api/auth/** to it.
-export {authApi} from "./auth";
-
 // export const helloWorld = onRequest((request, response) => {
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
