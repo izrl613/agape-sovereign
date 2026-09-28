@@ -1,19 +1,12 @@
 {
   "hosting": {
-    "public": "dist",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/api/auth/**",
-        "function": {
-          "functionId": "authApi",
-          "region": "us-central1"
-        }
-      },
       {
         "source": "**",
         "destination": "/index.html"
