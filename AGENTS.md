@@ -351,16 +351,16 @@ firebase functions:log --only api --lines=50
 
 ## Cline + LM Studio Configuration (Antigravity IDE)
 
-**Status**: Cline extension recommended in `.vscode/extensions.json`, configured to use LM Studio with `nemotron-3-nano:9b` model.
+**Status**: Cline extension recommended in `.vscode/extensions.json`, configured to use LM Studio with `nemotron-3-nano:4b` model.
 ### Setup Complete:
 1. **Cline extension** added to recommended extensions: `saoudrizwan.claude-dev`
 2. **LM Studio endpoint**: `http://localhost:1234/v1` (verified running with gemma model)
 3. **Default provider**: `lmstudio` 
-4. **Default model**: `nemotron-3-nano:9b`
+4. **Default model**: `nemotron-3-nano:4b`
 
 ### Fallback Hierarchy (enforced via .clinerules):
 1. Antigravity IDE default model (cloud, quota-limited)
-2. **LM Studio** `nemotron-3-nano:9b` @ `http://localhost:1234/v1` (PRIMARY LOCAL FALLBACK)
+2. **LM Studio** `nemotron-3-nano:4b` @ `http://localhost:1234/v1` (PRIMARY LOCAL FALLBACK)
 3. If LM Studio unavailable → **STOP and notify user** (no cloud overflow)
 
 ### To activate:
@@ -369,7 +369,7 @@ firebase functions:log --only api --lines=50
 3. Open Cline panel (Cmd+Shift+P → "Cline: Open")
 4. Select "LM Studio" as provider, model auto-selected
 
-**LM Studio verified running** on port 1234 with `nemotron-3-nano:9b` ✓
+**LM Studio verified running** on port 1234 with `nemotron-3-nano:4b` ✓
 
 ---
 
