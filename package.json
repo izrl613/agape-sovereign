@@ -47,6 +47,7 @@
     "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.475.0",
     "openclaw": "^2026.7.1-2",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.0.1",
@@ -84,19 +85,18 @@
     "vulnerabilityResolution": "Updated firebase-admin to 14.2.0, firebase-tools to 15.25.1, tar to 7.5.21, uuid to 11.1.1, jsonwebtoken to 9.0.0, protobufjs to 7.6.5, @grpc/grpc-js to 1.10.0, @grpc/proto-loader to 0.7.0, google-gax to 4.6.1, @opentelemetry/core to 2.8.0. React Router v7.18.2 is used. The reported GHSA-qwww-vcr4-c8h2 vulnerability (RSC Mode CSRF Bypass) only affects unstable RSC APIs which are not used in this application. The complete fix requires react-router 8.3.0 but react-router-dom 8.x is not yet available on npm. Monitor for react-router-dom 8.x release to fully resolve this advisory. Note: npm audit fix --force was attempted but downgraded to 7.11.0 which introduced older vulnerabilities. 7.18.2 is the latest stable v7.x and has the best security profile for the current application. Reviewed 2026-07-21: still no react-router-dom v8.x stable release. Risk accepted — RSC Mode CSRF requires unstable RSC APIs not used in this codebase."
   },
   "allowScripts": {
-    "@firebase/util@1.12.1": true,
-    "@firebase/util@1.15.2": true,
-    "@google/genai@2.13.0": true,
-    "@google/genai@2.15.0": true,
-    "core-js@3.49.0": true,
     "esbuild@0.25.12": true,
     "fsevents@2.3.3": true,
     "grpc@0.14.1": true,
-    "protobufjs@6.11.6": true,
-    "protobufjs@7.6.5": true,
     "re2@1.26.1": true,
-    "openclaw@2026.7.1-2": true,
-    "firebase@11.10.0": true
+    "firebase@11.10.0": true,
+    "core-js@3.50.0": true,
+    "koffi@3.2.1": true,
+    "openclaw@2026.9.6": true,
+    "protobufjs@7.6.6": true,
+    "@google/genai@2.24.0": true,
+    "@google/genai@2.22.0": true,
+    "@firebase/util@1.15.3": true
   },
   "overrides": {
     "tar": "^7.5.21",
