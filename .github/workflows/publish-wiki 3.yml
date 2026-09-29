@@ -1,0 +1,48 @@
+name: Publish Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wiki/**'
+  workflow_dispatch: {}
+
+jobs:
+  publish-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Push wiki/ contents to GitHub wiki
+        run: |
+          # Clone the wiki repo. If it has never been initialised a git clone will
+          # fail with a fatal error. We catch that and skip publishing rather than
+          # hard-failing the whole workflow — the wiki can be initialised manually
+          # via the GitHub UI (Settings → Wiki → "Create the first page") and the
+          # next push will succeed automatically.
+          if ! git clone \
+            "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" \
+            wiki-repo 2>&1; then
+            echo "::warning::GitHub wiki has not been initialised yet."
+            echo "::warning::Create the first page at https://github.com/${{ github.repository }}/wiki"
+            echo "::warning::then push again to trigger this workflow."
+            exit 0
+          fi
+
+          cp wiki/*.md wiki-repo/
+          cd wiki-repo
+
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to publish."
+          else
+            git commit -m "Sync wiki from main repo [skip ci]"
+            git push
+            echo "Wiki published successfully."
+          fi
