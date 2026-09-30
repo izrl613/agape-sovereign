@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -174,19 +174,9 @@ const AnimatedStat = ({ value, label }: { value: string; label: string }) => {
 // ── Main component ─────────────────────────────────────────────
 export const LandingPage = () => {
   const navigate = useNavigate();
-  const { login, user } = useAuth();
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  const handleGoogleSignIn = async () => {
-    setAuthError(null);
-    setGoogleLoading(true);
-    try {
-      await login();
-    } catch {
-      setGoogleLoading(false);
-      navigate('/login');
-    }
+  const { user } = useAuth();
+  const handleGoogleSignIn = () => {
+    navigate('/login');
   };
 
   // Scroll-restoration for hash links
@@ -294,7 +284,6 @@ export const LandingPage = () => {
               <GoogleSignInButton
                 id="nav-google-btn"
                 onClick={handleGoogleSignIn}
-                loading={googleLoading}
               />
             </>
           )}
@@ -379,21 +368,6 @@ export const LandingPage = () => {
             ))}
           </motion.div>
 
-          {/* Error */}
-          {authError && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-              style={{
-                maxWidth: 360, margin: '0 auto 16px',
-                padding: '10px 14px', background: 'rgba(255,107,0,0.08)',
-                border: '1px solid rgba(255,107,0,0.3)', borderRadius: 10,
-                color: '#ffaa66', fontSize: 12, fontFamily: 'monospace',
-              }}
-            >
-              ⚠ {authError}
-            </motion.div>
-          )}
-
           {/* CTA group */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, maxWidth: 360, margin: '0 auto' }}>
             {user ? (
@@ -418,7 +392,6 @@ export const LandingPage = () => {
                 <GoogleSignInButton
                   id="hero-google-btn"
                   onClick={handleGoogleSignIn}
-                  loading={googleLoading}
                   fullWidth
                 />
 
@@ -633,7 +606,6 @@ export const LandingPage = () => {
               <GoogleSignInButton
                 id="cta-google-btn"
                 onClick={handleGoogleSignIn}
-                loading={googleLoading}
               />
               <motion.button
                 whileHover={{ scale: 1.03, borderColor: 'rgba(0,212,255,0.45)' }}
