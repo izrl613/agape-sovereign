@@ -64,3 +64,39 @@ openspec/.vector-search.db*
 .windsurf/  # Windsurf IDE
 **/package-lock 2.json
 **/node_modules 2/
+
+# --- Bloat cleanup 2026-09-30 ---
+# Python virtualenvs (never commit)
+**/venv/
+**/.venv/
+scripts/venv/
+
+# IDE / agent local tooling dumps (keep curated docs; ignore bulk caches)
+.agents/
+.agent/
+.pi/
+.gemini/
+.augment/
+.claude/
+.unsloth_tool_output/
+.skills/
+
+# Accidental screenshots / binary dumps at repo root
+/*.png
+/*.pages
+/*.docx
+Screenshot*.png
+OPERATION FRAMEWORK.PDF
+
+# Built frontend bundles checked into public by mistake
+public/assets/*.js
+public/assets/*.css
+public/Neon Sovereign Identity Dashboard.png
+
+# OCR / extraction scratch
+ocr_output/
+extracted_files/
+output/
+
+# Local duplicate worktrees
+agape-sovereign/
