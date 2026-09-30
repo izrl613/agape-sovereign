@@ -25,7 +25,10 @@
     "autocommit": "bash scripts/autocommit.sh",
     "repair": "bash scripts/git-autorepair.sh",
     "repair:check": "bash scripts/git-autorepair.sh --check",
-    "postinstall": "bash scripts/install-hooks.sh 2>/dev/null || true"
+    "postinstall": "bash scripts/install-hooks.sh 2>/dev/null || true",
+    "gcp:enable": "bash scripts/gcp/enable-apis.sh",
+    "gcp:bootstrap": "bash scripts/gcp/bootstrap-project.sh",
+    "gcp:status": "bash scripts/gcp/status.sh"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
@@ -82,7 +85,7 @@
     "node": ">=20.0.0"
   },
   "securityNotes": {
-    "vulnerabilityResolution": "Updated firebase-admin to 14.2.0, firebase-tools to 15.25.1, tar to 7.5.21, uuid to 11.1.1, jsonwebtoken to 9.0.0, protobufjs to 7.6.5, @grpc/grpc-js to 1.10.0, @grpc/proto-loader to 0.7.0, google-gax to 4.6.1, @opentelemetry/core to 2.8.0. React Router v7.18.2 is used. The reported GHSA-qwww-vcr4-c8h2 vulnerability (RSC Mode CSRF Bypass) only affects unstable RSC APIs which are not used in this application. The complete fix requires react-router 8.3.0 but react-router-dom 8.x is not yet available on npm. Monitor for react-router-dom 8.x release to fully resolve this advisory. Note: npm audit fix --force was attempted but downgraded to 7.11.0 which introduced older vulnerabilities. 7.18.2 is the latest stable v7.x and has the best security profile for the current application. Reviewed 2026-07-21: still no react-router-dom v8.x stable release. Risk accepted — RSC Mode CSRF requires unstable RSC APIs not used in this codebase."
+    "vulnerabilityResolution": "Updated firebase-admin to 14.2.0, firebase-tools to 15.25.1, tar to 7.5.21, uuid to 11.1.1, jsonwebtoken to 9.0.0, protobufjs to 7.6.5, @grpc/grpc-js to 1.10.0, @grpc/proto-loader to 0.7.0, google-gax to 4.6.1, @opentelemetry/core to 2.8.0. React Router v7.18.2 is used. The reported GHSA-qwww-vcr4-c8h2 vulnerability (RSC Mode CSRF Bypass) only affects unstable RSC APIs which are not used in this application. The complete fix requires react-router 8.3.0 but react-router-dom 8.x is not yet available on npm. Monitor for react-router-dom 8.x release to fully resolve this advisory. Note: npm audit fix --force was attempted but downgraded to 7.11.0 which introduced older vulnerabilities. 7.18.2 is the latest stable v7.x and has the best security profile for the current application. Reviewed 2026-07-21: still no react-router-dom v8.x stable release. Risk accepted \u2014 RSC Mode CSRF requires unstable RSC APIs not used in this codebase."
   },
   "allowScripts": {
     "esbuild@0.25.12": true,
