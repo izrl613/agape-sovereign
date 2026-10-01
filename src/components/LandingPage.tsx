@@ -655,15 +655,116 @@ export const LandingPage = () => {
         </div>
       </motion.section>
 
+{/* ── Testimonials ── */}
+<motion.section
+  initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ once: true }} transition={{ duration: 0.6 }}
+  style={{
+    position: 'relative', zIndex: 1,
+    padding: '80px 48px', maxWidth: 1100, margin: '0 auto',
+    textAlign: 'center',
+  }}
+>
+  <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', fontWeight: 800, color: '#fff', marginBottom: 32 }}>
+    What our users say
+  </h2>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'center' }}>
+    {[
+      { quote: "Agape saved my identity from countless data leaks. The AI assistant is like a personal security guard.", author: "— Maya L., Startup Founder" },
+      { quote: "Zero‑knowledge encryption means I truly own my data. No more worrying about breaches.", author: "— Daniel K., Cybersecurity Analyst" },
+      { quote: "Passkey login is seamless and feels futuristic. I love the sleek UI!", author: "— Priya R., Designer" },
+    ].map((t, i) => (
+      <motion.blockquote
+        key={i}
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: i * 0.15, duration: 0.5 }}
+        style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, maxWidth: 560, margin: 0 }}
+      >
+        “{t.quote}”<br />
+        <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{t.author}</span>
+      </motion.blockquote>
+    ))}
+  </div>
+</motion.section>
+
+{/* ── Pricing ── */}
+<motion.section
+  initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ once: true }} transition={{ duration: 0.6 }}
+  style={{
+    position: 'relative', zIndex: 1,
+    padding: '80px 48px', maxWidth: 1100, margin: '0 auto',
+    textAlign: 'center',
+  }}
+>
+  <h2 style={{ fontSize: 'clamp(24px, 4vw, 34px)', fontWeight: 800, color: '#fff', marginBottom: 24 }}>
+    Simple pricing for every owner
+  </h2>
+  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 24 }}>
+    {[
+      { name: 'Free', price: '$0', features: ['Basic monitoring', 'Passkey login', 'Limited vault'] },
+      { name: 'Pro', price: '$9/mo', features: ['All monitoring', 'Unlimited vault', 'AI assistant', 'Priority support'] },
+      { name: 'Enterprise', price: 'Custom', features: ['Dedicated security auditor', 'On‑prem SaaS', 'SLAs & compliance'] },
+    ].map((plan, i) => (
+      <motion.div
+        key={plan.name}
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: i * 0.2, duration: 0.5 }}
+        style={{{
+          background: C.surface,
+          border: `1px solid ${C.border}`,
+          borderRadius: 12,
+          padding: '24px 20px',
+          width: 260,
+        }}}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.blue, marginBottom: 8 }}>{plan.name}</div>
+        <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', marginBottom: 12 }}>{plan.price}</div>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, textAlign: 'left', marginBottom: 16 }}>
+          {plan.features.map((f, idx) => (
+            <li key={idx} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 }}>· {f}</li>
+          ))}
+        </ul>
+        <motion.button
+          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          style={{
+            width: '100%', padding: '10px 0', background: 'rgba(0,212,255,0.07)',
+            border: `1px solid rgba(0,212,255,0.3)`, borderRadius: 8,
+            color: '#fff', fontWeight: 600, fontSize: 13,
+          }}
+        >
+          Get Started
+        </motion.button>
+      </motion.div>
+    ))}
+  </div>
+</motion.section>
+
+{/* Footer continues */}
+<footer style={{
+  position: 'relative', zIndex: 1,
+  borderTop: '1px solid rgba(255,255,255,0.06)',
+  padding: '22px 48px',
+  display: 'flex', alignItems: 'center',
+  justifyContent: 'space-between', flexWrap: 'wrap', gap: 14,
+  backdropFilter: 'blur(12px)',
+  background: 'rgba(4,8,18,0.6)',
+}}>
+
+
       {/* ── Footer (OAuth-compliant) ── */}
-      <footer style={{
-        position: 'relative', zIndex: 1,
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '22px 48px',
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', flexWrap: 'wrap', gap: 14,
-        backdropFilter: 'blur(12px)',
-        background: 'rgba(4,8,18,0.6)',
+   
+    
+     
+     
+
+     
+
+     
       }}>
         {/* Links */}
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>

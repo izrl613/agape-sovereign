@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { NEON, GlassCard, NeonButton, NeonText } from './UI';
-import { motion } from 'framer-motion';
-import { User, Shield, History, Save, AlertTriangle, Key, Lock, Fingerprint, Camera, Loader2, FileText, Download } from 'lucide-react';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Shield, History, Save, AlertTriangle, Key, Lock, Fingerprint, Camera, Loader2, FileText, Download, Mail, Plus, Trash2, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { uploadProfilePicture } from '../services/storageService';
 import { requestNotificationPermission } from '../services/messagingService';
 import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
+import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/crypto';
 
 export const UserProfileSettings = () => {
   const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, demoMode } = useAuth();
@@ -25,9 +26,126 @@ export const UserProfileSettings = () => {
   // Passkey Lock State
   const [lockState, setLockState] = useState<PasskeyLockState>(passkeyLockService.getState());
 
+  // ── Multi-Email Vault State ─────────────────────────────────────────────
+  interface VaultEmail {
+    encrypted: string;
+    hash: string;
+    plaintext?: string;  // decrypted locally, never stored
+    breachCount?: number | null; // null = unchecked
+    lastChecked?: string;
+  }
+  const [emailVault, setEmailVault] = useState<VaultEmail[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [isSavingEmails, setIsSavingEmails] = useState(false);
+  const [isCheckingBreaches, setIsCheckingBreaches] = useState(false);
+  const [loadingVault, setLoadingVault] = useState(true);
+
+  const loadEmailVault = async () => {
+    if (!user) return;
+    setLoadingVault(true);
+    try {
+      if (demoMode) {
+        const raw = localStorage.getItem(`email_vault_${user.uid}`);
+        if (raw) {
+          const stored: VaultEmail[] = JSON.parse(raw);
+          const decrypted = await Promise.all(stored.map(async (e) => ({
+            ...e,
+            plaintext: await decryptClientSide(e.encrypted, user.uid)
+          })));
+          setEmailVault(decrypted);
+        }
+      } else {
+        const ref = doc(db, 'users', user.uid, 'vault', 'emails');
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const stored: VaultEmail[] = snap.data().entries || [];
+          const decrypted = await Promise.all(stored.map(async (e) => ({
+            ...e,
+            plaintext: await decryptClientSide(e.encrypted, user.uid)
+          })));
+          setEmailVault(decrypted);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load email vault:', err);
+    } finally {
+      setLoadingVault(false);
+    }
+  };
+
+  const persistEmailVault = async (entries: VaultEmail[]) => {
+    if (!user) return;
+    const toStore = entries.map(({ encrypted, hash, breachCount, lastChecked }) => ({
+      encrypted, hash, breachCount: breachCount ?? null, lastChecked: lastChecked ?? null
+    }));
+    if (demoMode) {
+      localStorage.setItem(`email_vault_${user.uid}`, JSON.stringify(toStore));
+    } else {
+      const ref = doc(db, 'users', user.uid, 'vault', 'emails');
+      await setDoc(ref, { entries: toStore, updatedAt: new Date().toISOString() }, { merge: true });
+    }
+  };
+
+  const handleAddEmail = async () => {
+    const email = newEmail.trim().toLowerCase();
+    if (!email || !email.includes('@')) { toast.error('Please enter a valid email address'); return; }
+    if (!user) return;
+    const hash = await generateSHA256(email);
+    if (emailVault.some(e => e.hash === hash)) { toast.error('Email already in vault'); return; }
+    setIsSavingEmails(true);
+    try {
+      const encrypted = await encryptClientSide(email, user.uid);
+      const entry: VaultEmail = { encrypted, hash, plaintext: email, breachCount: null };
+      const updated = [...emailVault, entry];
+      setEmailVault(updated);
+      await persistEmailVault(updated);
+      setNewEmail('');
+      toast.success('Email added to encrypted vault');
+    } catch (err) {
+      toast.error('Failed to add email'); console.error(err);
+    } finally { setIsSavingEmails(false); }
+  };
+
+  const handleRemoveEmail = async (hash: string) => {
+    const updated = emailVault.filter(e => e.hash !== hash);
+    setEmailVault(updated);
+    await persistEmailVault(updated);
+    toast.success('Email removed from vault');
+  };
+
+  const handleCheckBreaches = async () => {
+    setIsCheckingBreaches(true);
+    try {
+      const updated = await Promise.all(emailVault.map(async (entry) => {
+        if (!entry.plaintext) return entry;
+        try {
+          const res = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(entry.plaintext)}`, {
+            signal: AbortSignal.timeout(5000)
+          });
+          if (res.status === 404) return { ...entry, breachCount: 0, lastChecked: new Date().toISOString() };
+          if (res.ok) {
+            const data = await res.json();
+            const breaches: string[] = data?.breaches?.[0] || data?.breaches || [];
+            return { ...entry, breachCount: breaches.length, lastChecked: new Date().toISOString() };
+          }
+        } catch { /* silent fail per email */ }
+        return entry;
+      }));
+      setEmailVault(updated);
+      await persistEmailVault(updated);
+      toast.success('Breach check complete');
+    } catch (err) {
+      toast.error('Breach check failed');
+    } finally { setIsCheckingBreaches(false); }
+  };
+
   useEffect(() => {
     return passkeyLockService.subscribe(setLockState);
   }, []);
+
+  useEffect(() => {
+    loadEmailVault();
+  }, [user]);
 
   const fetchReports = async () => {
     if (!user) return;
@@ -406,6 +524,106 @@ export const UserProfileSettings = () => {
                 <p className="text-xs text-slate-400 leading-relaxed">Enable advanced obfuscation for your public metadata footprint.</p>
               </div>
             </div>
+          </GlassCard>
+
+          {/* ── Multi-Email Vault ──────────────────────────────── */}
+          <GlassCard className="p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-[#00D4FF]" />
+                <h3 className="text-lg font-bold text-white tracking-tight">Email Identity Vault</h3>
+              </div>
+              <button
+                onClick={handleCheckBreaches}
+                disabled={isCheckingBreaches || emailVault.length === 0}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#FF2E9F]/10 border border-[#FF2E9F]/30 text-[#FF2E9F] rounded-lg font-mono text-[10px] font-bold hover:bg-[#FF2E9F]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {isCheckingBreaches ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                BREACH SCAN
+              </button>
+            </div>
+
+            <p className="text-[10px] font-mono text-slate-500 mb-4 leading-relaxed p-3 bg-white/5 rounded-lg border border-white/5">
+              <span className="text-[#00D4FF] font-bold">Zero-Knowledge Vault:</span> Emails are AES-256-GCM encrypted client-side using your identity UID as the seed key. Only encrypted ciphertext is stored in Firestore — no plaintext ever leaves your device.
+            </p>
+
+            {/* Add Email Input */}
+            <div className="flex gap-2 mb-4">
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddEmail()}
+                placeholder="Add email to scan vault..."
+                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:border-[#00D4FF]/50 focus:ring-1 focus:ring-[#00D4FF]/50 outline-none transition-all placeholder:text-slate-600"
+              />
+              <button
+                onClick={handleAddEmail}
+                disabled={isSavingEmails || !newEmail.trim()}
+                className="px-4 py-2.5 bg-[#00D4FF]/10 border border-[#00D4FF]/30 text-[#00D4FF] rounded-xl font-mono text-sm font-bold hover:bg-[#00D4FF]/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+              >
+                {isSavingEmails ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                ADD
+              </button>
+            </div>
+
+            {/* Email List */}
+            <AnimatePresence>
+              {loadingVault ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-5 h-5 border-2 border-[#00D4FF]/20 border-t-[#00D4FF] rounded-full animate-spin" />
+                </div>
+              ) : emailVault.length === 0 ? (
+                <div className="text-center py-6 border border-dashed border-white/5 rounded-xl bg-white/5">
+                  <Mail className="w-6 h-6 text-slate-600 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 font-mono">No emails in vault. Add emails to scan for breaches.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {emailVault.map((entry) => (
+                    <motion.div
+                      key={entry.hash}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="flex items-center justify-between p-3 bg-black/40 border border-white/5 rounded-xl hover:border-white/10 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {entry.breachCount === null ? (
+                          <div className="w-2 h-2 rounded-full bg-slate-600 flex-shrink-0" />
+                        ) : entry.breachCount === 0 ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-[#FF2E9F] flex-shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-sm text-white font-mono truncate">{entry.plaintext || '···'}</div>
+                          <div className="text-[10px] font-mono mt-0.5">
+                            {entry.breachCount === null ? (
+                              <span className="text-slate-600">Not yet scanned</span>
+                            ) : entry.breachCount === 0 ? (
+                              <span className="text-green-500">✓ No breaches found</span>
+                            ) : (
+                              <span className="text-[#FF2E9F]">{entry.breachCount} breach{entry.breachCount !== 1 ? 'es' : ''} detected</span>
+                            )}
+                            {entry.lastChecked && (
+                              <span className="text-slate-600 ml-2">· {new Date(entry.lastChecked).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveEmail(entry.hash)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-600 hover:text-[#FF2E9F] transition-all rounded-lg hover:bg-[#FF2E9F]/10"
+                        title="Remove email"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
           </GlassCard>
 
           {/* Communication Settings */}

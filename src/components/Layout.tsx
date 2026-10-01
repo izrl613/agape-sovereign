@@ -284,22 +284,22 @@ const DocumentSealModal: React.FC<DocumentSealModalProps> = ({ docType, uid, onC
 
 
 const DIFF_MODULES = [
-  { id: "email", icon: "✉", label: "Email Breach Scanner", vector: "V-01", to: "/email" },
-  { id: "social", icon: "◈", label: "Social Media Footprint", vector: "V-02", to: "/social" },
-  { id: "device", icon: "⬡", label: "Device File Scan", vector: "V-03", to: "/device" },
-  { id: "mobile", icon: "◻", label: "Mobile System Security", vector: "V-04", to: "/system" },
-  { id: "laptop", icon: "💻", label: "Laptop System Security", vector: "V-05", to: "/system" },
-  { id: "deepweb", icon: "◉", label: "Deep Web Exposure", vector: "V-06", to: "/deepweb" },
-  { id: "broker", icon: "⧫", label: "Data Broker Removal", vector: "V-07", to: "/databroker" },
-  { id: "password", icon: "⬟", label: "Password Vault Audit", vector: "V-08", to: "/password" },
-  { id: "network", icon: "◎", label: "Network & DNS Security", vector: "V-09", to: "/network" },
-  { id: "cloud", icon: "⊞", label: "Cloud Storage Security", vector: "V-10", to: "/cloud" },
-  { id: "comm", icon: "💬", label: "Communication Privacy", vector: "V-11", to: "/communication" },
-  { id: "financial", icon: "⬡", label: "Financial Identity Surface", vector: "V-12", to: "/financial" },
-  { id: "docs", icon: "📄", label: "Identity Document Exposure", vector: "V-13", to: "/documents" },
-  { id: "oauth", icon: "🔑", label: "Third-Party OAuth Audit", vector: "V-14", to: "/oauth" },
-  { id: "legal", icon: "⚖", label: "Public Records & Legal", vector: "V-15", to: "/legal" },
-  { id: "ai", icon: "⊛", label: "AI & Biometric Exposure", vector: "V-16", to: "/ai" },
+  { id: "email",      icon: "✉",  label: "Email Breach Scanner",        vector: "V-01", to: "/dashboard/email" },
+  { id: "social",    icon: "◈",  label: "Social Media Footprint",       vector: "V-02", to: "/dashboard/social" },
+  { id: "device",    icon: "⬡",  label: "Device File Scan",             vector: "V-03", to: "/dashboard/device" },
+  { id: "mobile",    icon: "◻",  label: "Mobile System Security",       vector: "V-04", to: "/dashboard/system" },
+  { id: "laptop",    icon: "💻", label: "Laptop System Security",       vector: "V-05", to: "/dashboard/laptop" },
+  { id: "deepweb",   icon: "◉",  label: "Deep Web Exposure",            vector: "V-06", to: "/dashboard/deepweb" },
+  { id: "broker",    icon: "⧫",  label: "Data Broker Removal",          vector: "V-07", to: "/dashboard/databroker" },
+  { id: "password",  icon: "⬟",  label: "Password Vault Audit",         vector: "V-08", to: "/dashboard/password" },
+  { id: "network",   icon: "◎",  label: "Network & DNS Security",       vector: "V-09", to: "/dashboard/network" },
+  { id: "cloud",     icon: "⊞",  label: "Cloud Storage Security",       vector: "V-10", to: "/dashboard/cloud" },
+  { id: "comm",      icon: "💬", label: "Communication Privacy",        vector: "V-11", to: "/dashboard/communication" },
+  { id: "financial", icon: "⬡",  label: "Financial Identity Surface",   vector: "V-12", to: "/dashboard/financial" },
+  { id: "docs",      icon: "📄", label: "Identity Document Exposure",   vector: "V-13", to: "/dashboard/documents" },
+  { id: "oauth",     icon: "🔑", label: "Third-Party OAuth Audit",      vector: "V-14", to: "/dashboard/oauth" },
+  { id: "legal",     icon: "⚖",  label: "Public Records & Legal",       vector: "V-15", to: "/dashboard/legal" },
+  { id: "ai",        icon: "⊛",  label: "AI & Biometric Exposure",      vector: "V-16", to: "/dashboard/ai" },
 ];
 
 const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
@@ -307,15 +307,16 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
   const { findings } = useScan();
   const { isAdmin } = useAuth();
   const sections = [
-    { id: "dashboard", icon: "⬡", label: "DASHBOARD", to: "/" },
-    { id: "architect", icon: "◈", label: "ARCHITECT AI", to: "/architect" },
-    { id: "security", icon: "🛡️", label: "SECURITY TIPS", to: "/security-tips" },
-    { id: "settings", icon: "⚙", label: "SETTINGS", to: "/settings" },
-    { id: "report", icon: "⊟", label: "IDENTITY AUDIT REPORT", to: "#" },
+    { id: "dashboard",  icon: "⬡",  label: "DASHBOARD",            to: "/dashboard" },
+    { id: "architect",  icon: "◈",  label: "ARCHITECT AI",          to: "/dashboard/architect" },
+    { id: "shield",     icon: "🛡️", label: "SHIELD PROTOCOL",       to: "/dashboard/shield" },
+    { id: "security",   icon: "💡", label: "SECURITY TIPS",         to: "/dashboard/security-tips" },
+    { id: "settings",   icon: "⚙",  label: "SETTINGS",             to: "/dashboard/settings" },
+    { id: "report",     icon: "⊟",  label: "IDENTITY AUDIT REPORT", to: "#" },
   ];
 
   if (isAdmin) {
-    sections.push({ id: "admin", icon: "⬢", label: "ADMIN PORTAL", to: "/admin" });
+    sections.push({ id: "admin", icon: "⬢", label: "ADMIN PORTAL", to: "/dashboard/admin" });
   }
 
   const totalNuked = findings.filter(f => f.status === 'NUKED').length;
@@ -399,6 +400,7 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
             <NavLink 
               key={s.id} 
               to={s.to}
+              end={s.id === 'dashboard'}
               className={({ isActive: isLinkActive }) => `nav-item ${isLinkActive ? "active" : ""}`}
               style={{ 
                 padding: "10px 12px", 
