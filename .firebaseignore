@@ -22,6 +22,7 @@ dataconnect/
 .github/
 .vscode/
 .agents/
+skills/
 .firebase/
 .DS_Store
 
