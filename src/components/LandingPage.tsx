@@ -714,13 +714,13 @@ export const LandingPage = () => {
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
         transition={{ delay: i * 0.2, duration: 0.5 }}
-        style={{{
+        style={{
           background: C.surface,
           border: `1px solid ${C.border}`,
           borderRadius: 12,
           padding: '24px 20px',
           width: 260,
-        }}}
+        }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, color: C.blue, marginBottom: 8 }}>{plan.name}</div>
         <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', marginBottom: 12 }}>{plan.price}</div>
@@ -744,7 +744,7 @@ export const LandingPage = () => {
   </div>
 </motion.section>
 
-{/* Footer continues */}
+{/* ── Footer (OAuth-compliant) ── */}
 <footer style={{
   position: 'relative', zIndex: 1,
   borderTop: '1px solid rgba(255,255,255,0.06)',
@@ -754,9 +754,6 @@ export const LandingPage = () => {
   backdropFilter: 'blur(12px)',
   background: 'rgba(4,8,18,0.6)',
 }}>
-
-
-      {/* ── Footer (OAuth-compliant) ── */}
    
     
      
@@ -765,7 +762,7 @@ export const LandingPage = () => {
      
 
      
-      }}>
+
         {/* Links */}
         <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
           <a

@@ -90,9 +90,16 @@ async function probeOllama(): Promise<boolean> {
       signal: AbortSignal.timeout(2000)
     });
     if (res.ok) {
+      const data = await res.json();
+      const models: string[] = (data?.models ?? []).map((m: { name: string }) => m.name);
+      
       ACTIVE_BACKEND = 'ollama';
       ACTIVE_PROXY_URL = LOCAL_OLLAMA_URL;
-      ACTIVE_MODEL = OLLAMA_MODEL;
+      
+      // Prioritize qwen3-vl / qwen3.5-vl:4b requested by user
+      const qwenVlModel = models.find(m => m.includes('qwen3-vl') || m.includes('qwen3.5-vl') || m.includes('qwen3.5'));
+      ACTIVE_MODEL = qwenVlModel ?? (models.length > 0 ? models[0] : OLLAMA_MODEL);
+      
       return true;
     }
   } catch {
