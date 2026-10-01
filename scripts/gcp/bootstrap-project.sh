@@ -28,6 +28,14 @@ if ! gcloud iam service-accounts describe "$SA_EMAIL" --project="$PROJECT_ID" >/
     --project="$PROJECT_ID"
 fi
 
+# IAM eventual consistency after SA create
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if gcloud iam service-accounts describe "$SA_EMAIL" --project="$PROJECT_ID" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
 for ROLE in \
   roles/run.invoker \
   roles/secretmanager.secretAccessor \

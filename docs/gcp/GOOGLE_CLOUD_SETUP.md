@@ -53,3 +53,19 @@ gcloud builds submit --config cloudbuild.yaml
 
 Copy `.env.example` → `.env` and point Firebase/GCP vars at `agape-sovereign`.
 Never commit `.env` or service-account JSON keys.
+
+## Repo history cleanup (2026-09-30)
+
+Git history was rewritten locally to drop SDK tarballs, `node_modules`, `.venv`, media, and other binary dumps.
+
+- Local pack: **~676 MiB → ~43 MiB**
+- Cleaned tip pushed to branch: `chore/history-bloat-purge`
+- Tag: `cleaned/history-2026-09-30`
+- **Default `main` is branch-protected and rejected force-push.** To finish cleanup on GitHub:
+  1. Temporarily allow force pushes on `main`, or merge via admin override.
+  2. `git push --force origin 6a8465ad9c37b06e35a6000cc22f139eca71ee6b:main`
+  3. Re-lock branch protection.
+  4. Ask collaborators to re-clone (old SHAs are orphaned).
+
+Until then GitHub still reports the old ~664 MiB repo size on `main`.
+

@@ -100,3 +100,8 @@ output/
 
 # Local duplicate worktrees
 agape-sovereign/
+
+# Media dumps
+*.mp4
+*.mov
+reference_ui*
