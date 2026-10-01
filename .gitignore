@@ -105,3 +105,12 @@ agape-sovereign/
 *.mp4
 *.mov
 reference_ui*
+
+# Finder duplicate copies (macOS "foo 2.ext" / "foo 3.ext")
+**/* 2.*
+**/* 3.*
+**/* 2
+**/* 3
+*.bak
+ARCHITECTURE 2.md
+*.docx
