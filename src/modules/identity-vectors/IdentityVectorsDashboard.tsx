@@ -117,9 +117,9 @@ export const IdentityVectorsDashboard: React.FC = () => {
           <h3>Agent Processing Logs</h3>
           <div className="iv-logs">
             {activeLogs.map((log, index) => (
-              <div key={index} className="log-entry">> {log}</div>
+              <div key={index} className="log-entry">&gt; {log}</div>
             ))}
-            {activeLogs.length === 0 && <div className="log-entry empty">> Waiting for agent activation...</div>}
+            {activeLogs.length === 0 && <div className="log-entry empty">&gt; Waiting for agent activation...</div>}
           </div>
         </div>
       </div>
