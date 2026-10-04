@@ -6,7 +6,7 @@ import { RetentionModuleAgent } from './RetentionModule';
 import { BiometricAgent } from './agents/BiometricAgent';
 import { LocationAgent } from './agents/LocationAgent';
 import { PrivacyAgent } from './agents/PrivacyAgent';
-import { useAuth } from '../../AuthContext';
+import './IdentityVectorsDashboard.css';
 
 
 const VECTORS: IdentityVector[] = [
