@@ -78,7 +78,7 @@ const renderSidePanel = () => {
       </div>
     </div>
   );
-
+};
 
   const handleCardClick = (id: string) => {
     const vec = vectors.find(v => v.id === id) || null;
