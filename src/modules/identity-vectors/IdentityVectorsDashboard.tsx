@@ -7,6 +7,15 @@ import { BiometricAgent } from './agents/BiometricAgent';
 import { LocationAgent } from './agents/LocationAgent';
 import { PrivacyAgent } from './agents/PrivacyAgent';
 import './IdentityVectorsDashboard.css';
+import { useAuth } from '../../AuthContext';
+import { Shield, Fingerprint, Activity, MapPin, Users, Briefcase, GraduationCap, ShoppingBag, Smartphone, Brain, BookOpen, Scale, Clock, Dna, CreditCard, Trash2, Lock } from 'lucide-react';
+import { IdentityVector } from './types';
+import { EncryptionAgent } from './EncryptionAgent';
+import { RetentionModuleAgent } from './RetentionModule';
+import { BiometricAgent } from './agents/BiometricAgent';
+import { LocationAgent } from './agents/LocationAgent';
+import { PrivacyAgent } from './agents/PrivacyAgent';
+import './IdentityVectorsDashboard.css';
 
 const VECTORS: IdentityVector[] = [
   { id: 'v1', name: 'BiometricVector', description: 'Fingerprint, facial, and voice hash encryption.', encryptionLevel: 'Quantum-Resistant', status: 'Idle', agentId: 'agent_bio', icon: 'Fingerprint' },
@@ -47,7 +56,27 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export const IdentityVectorsDashboard: React.FC = () => {
-  const [vectors, setVectors] = useState<IdentityVector[]>(VECTORS);
+  const { user, authType, login, loginWithPasskey, bindPasskey } = useAuth();
+
+  // Helper for passkey login – prompts for email
+  const handlePasskeyLogin = async () => {
+    const email = window.prompt('Enter your email to sign in with a passkey');
+    if (!email) return;
+    try {
+      await loginWithPasskey(email);
+    } catch (e) {
+      console.error('Passkey login failed', e);
+    }
+  };
+
+  // Helper for binding a passkey to the current account
+  const handleBindPasskey = async () => {
+    try {
+      await bindPasskey();
+    } catch (e) {
+      console.error('Bind passkey failed', e);
+    }
+  };
   const [selectedVector, setSelectedVector] = useState<IdentityVector | null>(null);
   const [activeLogs, setActiveLogs] = useState<string[]>([]);
   const closePanel = () => setSelectedVector(null);
@@ -113,6 +142,24 @@ export const IdentityVectorsDashboard: React.FC = () => {
   return (
     <div className="iv-dashboard-container">
       <header className="iv-header">
+        <div className="iv-header-title">
+          <Shield size={36} className="text-cyan" />
+          <h1>Sovereign Identity Encryption Matrix</h1>
+        </div>
+        <p>16-Vector Sub-Agent Data Processing & Privacy Retention</p>
+        <div className="auth-controls">
+          {/* Show auth type */}
+          <span className="auth-status">Auth: {authType ?? 'None'}</span>
+          {/* If no user, show passkey login button */}
+          {!user && (
+            <button className="action-btn" onClick={handlePasskeyLogin}>Login with Passkey</button>
+          )}
+          {/* If user exists but not using passkey, allow bind */}
+          {user && authType !== 'passkey' && (
+            <button className="action-btn" onClick={handleBindPasskey}>Bind Passkey</button>
+          )}
+        </div>
+      </header>
         <div className="iv-header-title">
           <Shield size={36} className="text-cyan" />
           <h1>Sovereign Identity Encryption Matrix</h1>
