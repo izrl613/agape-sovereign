@@ -34,10 +34,22 @@ const MODULE_CONFIG = [
 ];
 
 const MODULE_ROUTES: Record<string, string> = {
-  email: "/email", social: "/social", device: "/device", mobile: "/system",
-  laptop: "/system", deepweb: "/deepweb", broker: "/databroker", password: "/password",
-  network: "/network", cloud: "/cloud", comm: "/communication", financial: "/financial",
-  docs: "/documents", oauth: "/oauth", legal: "/legal", ai: "/ai",
+  email:     "/dashboard/email",
+  social:    "/dashboard/social",
+  device:    "/dashboard/device",
+  mobile:    "/dashboard/system",
+  laptop:    "/dashboard/laptop",
+  deepweb:   "/dashboard/deepweb",
+  broker:    "/dashboard/databroker",
+  password:  "/dashboard/password",
+  network:   "/dashboard/network",
+  cloud:     "/dashboard/cloud",
+  comm:      "/dashboard/communication",
+  financial: "/dashboard/financial",
+  docs:      "/dashboard/documents",
+  oauth:     "/dashboard/oauth",
+  legal:     "/dashboard/legal",
+  ai:        "/dashboard/ai",
 };
 
 const StatusCard = ({ label, count, color, glow, classification }: { label: string; count: number; color: string; glow: string; classification?: string }) => (
