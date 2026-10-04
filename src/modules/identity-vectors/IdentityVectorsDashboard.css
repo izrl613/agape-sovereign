@@ -95,7 +95,7 @@
 }
 
 .iv-card:hover {
-  transform: translateY(-5px) scale(1.02) rotate(0.3deg);
+  transform: translateY(-5px);
   border-color: var(--iv-cyan);
   box-shadow: 0 10px 30px -10px rgba(0, 240, 255, 0.2);
 }
@@ -244,9 +244,6 @@
   display: flex;
   justify-content: flex-end;
   z-index: 1000;
-  opacity: 0;
-  backdrop-filter: blur(5px);
-  animation: fadeInOverlay 0.25s ease forwards;
 }
 .side-panel {
   background: var(--iv-card-bg);
