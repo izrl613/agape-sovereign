@@ -38,6 +38,7 @@ import {
   DarkWebModule,
   BehavioralModule,
 } from './components/DiffModules';
+import { IdentityVectorsDashboard } from './modules/identity-vectors';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, demoMode, setupComplete, setSetupComplete } = useAuth();
@@ -131,6 +132,7 @@ const AppRoutes = () => {
         <Route path="iot"        element={<IoTModule />} />
         <Route path="darkweb"    element={<DarkWebModule />} />
         <Route path="behavioral" element={<BehavioralModule />} />
+        <Route path="identity-vectors" element={<IdentityVectorsDashboard />} />
         <Route path="shield" element={<ShieldModule />} />
         <Route path="architect" element={<ArchitectAI />} />
         <Route path="security-tips" element={<SecurityTips />} />

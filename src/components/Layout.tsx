@@ -308,6 +308,7 @@ const Sidebar = ({ onOpenReport }: { onOpenReport: () => void }) => {
   const { isAdmin } = useAuth();
   const sections = [
     { id: "dashboard",  icon: "⬡",  label: "DASHBOARD",            to: "/dashboard" },
+    { id: "identity",   icon: "🧬", label: "IDENTITY VECTORS",      to: "/dashboard/identity-vectors" },
     { id: "architect",  icon: "◈",  label: "ARCHITECT AI",          to: "/dashboard/architect" },
     { id: "shield",     icon: "🛡️", label: "SHIELD PROTOCOL",       to: "/dashboard/shield" },
     { id: "security",   icon: "💡", label: "SECURITY TIPS",         to: "/dashboard/security-tips" },
