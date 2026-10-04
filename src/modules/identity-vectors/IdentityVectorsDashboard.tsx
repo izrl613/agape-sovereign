@@ -59,7 +59,7 @@ export const IdentityVectorsDashboard: React.FC = () => {
       <div className="side-panel-overlay" onClick={closePanel}>
         <div className="side-panel" onClick={e => e.stopPropagation()}>
           <button className="close-btn" onClick={closePanel}>✕</button>
-          <h2>{selectedVector.name}</hh2>
+          <h2>{selectedVector.name}</h2>
           <p>{selectedVector.description}</p>
           <p><strong>Encryption Level:</strong> {selectedVector.encryptionLevel}</p>
           <button className="action-btn" onClick={() => processVector(selectedVector.id)}>
