@@ -6,16 +6,8 @@ import { RetentionModuleAgent } from './RetentionModule';
 import { BiometricAgent } from './agents/BiometricAgent';
 import { LocationAgent } from './agents/LocationAgent';
 import { PrivacyAgent } from './agents/PrivacyAgent';
-import './IdentityVectorsDashboard.css';
 import { useAuth } from '../../AuthContext';
-import { Shield, Fingerprint, Activity, MapPin, Users, Briefcase, GraduationCap, ShoppingBag, Smartphone, Brain, BookOpen, Scale, Clock, Dna, CreditCard, Trash2, Lock } from 'lucide-react';
-import { IdentityVector } from './types';
-import { EncryptionAgent } from './EncryptionAgent';
-import { RetentionModuleAgent } from './RetentionModule';
-import { BiometricAgent } from './agents/BiometricAgent';
-import { LocationAgent } from './agents/LocationAgent';
-import { PrivacyAgent } from './agents/PrivacyAgent';
-import './IdentityVectorsDashboard.css';
+
 
 const VECTORS: IdentityVector[] = [
   { id: 'v1', name: 'BiometricVector', description: 'Fingerprint, facial, and voice hash encryption.', encryptionLevel: 'Quantum-Resistant', status: 'Idle', agentId: 'agent_bio', icon: 'Fingerprint' },
@@ -56,48 +48,37 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export const IdentityVectorsDashboard: React.FC = () => {
-  const { user, authType, login, loginWithPasskey, bindPasskey } = useAuth();
-
-  // Helper for passkey login – prompts for email
-  const handlePasskeyLogin = async () => {
-    const email = window.prompt('Enter your email to sign in with a passkey');
-    if (!email) return;
-    try {
-      await loginWithPasskey(email);
-    } catch (e) {
-      console.error('Passkey login failed', e);
-    }
-  };
-
-  // Helper for binding a passkey to the current account
-  const handleBindPasskey = async () => {
-    try {
-      await bindPasskey();
-    } catch (e) {
-      console.error('Bind passkey failed', e);
-    }
-  };
+  const [vectors, setVectors] = useState<IdentityVector[]>(VECTORS);
   const [selectedVector, setSelectedVector] = useState<IdentityVector | null>(null);
   const [activeLogs, setActiveLogs] = useState<string[]>([]);
-  const closePanel = () => setSelectedVector(null);
+  const { loginWithPasskey, authType, bindPasskey } = useAuth();
 
 
-  const renderSidePanel = () => {
-    if (!selectedVector) return null;
-    return (
-      <div className="side-panel-overlay" onClick={closePanel}>
-        <div className="side-panel" onClick={e => e.stopPropagation()}>
-          <button className="close-btn" onClick={closePanel}>✕</button>
-          <h2>{selectedVector.name}</h2>
-          <p>{selectedVector.description}</p>
-          <p><strong>Encryption Level:</strong> {selectedVector.encryptionLevel}</p>
-          <button className="action-btn" onClick={() => processVector(selectedVector.id)}>
-            Run {selectedVector.name}
+
+  // Helper to close side panel
+const closePanel = () => setSelectedVector(null);
+
+const renderSidePanel = () => {
+  if (!selectedVector) return null;
+  return (
+    <div className="side-panel-overlay" onClick={closePanel}>
+      <div className="side-panel" onClick={e => e.stopPropagation()}>
+        <button className="close-btn" onClick={closePanel}>✕</button>
+        <h2>{selectedVector.name}</h2>
+        <p>{selectedVector.description}</p>
+        <p><strong>Encryption Level:</strong> {selectedVector.encryptionLevel}</p>
+        <button className="action-btn" onClick={() => processVector(selectedVector.id)}>
+          Run {selectedVector.name}
+        </button>
+        {authType !== 'passkey' && (
+          <button className="bind-passkey-btn" onClick={bindPasskey}>
+            Bind Passkey
           </button>
-        </div>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
+
 
   const handleCardClick = (id: string) => {
     const vec = vectors.find(v => v.id === id) || null;
@@ -145,24 +126,14 @@ export const IdentityVectorsDashboard: React.FC = () => {
         <div className="iv-header-title">
           <Shield size={36} className="text-cyan" />
           <h1>Sovereign Identity Encryption Matrix</h1>
-        </div>
-        <p>16-Vector Sub-Agent Data Processing & Privacy Retention</p>
-        <div className="auth-controls">
-          {/* Show auth type */}
-          <span className="auth-status">Auth: {authType ?? 'None'}</span>
-          {/* If no user, show passkey login button */}
-          {!user && (
-            <button className="action-btn" onClick={handlePasskeyLogin}>Login with Passkey</button>
+          {authType !== 'passkey' && (
+            <button className="login-passkey-btn" onClick={async () => {
+              const email = window.prompt('Enter your email for Passkey login:');
+              if (email) await loginWithPasskey(email);
+            }}>
+              Login with Passkey
+            </button>
           )}
-          {/* If user exists but not using passkey, allow bind */}
-          {user && authType !== 'passkey' && (
-            <button className="action-btn" onClick={handleBindPasskey}>Bind Passkey</button>
-          )}
-        </div>
-      </header>
-        <div className="iv-header-title">
-          <Shield size={36} className="text-cyan" />
-          <h1>Sovereign Identity Encryption Matrix</h1>
         </div>
         <p>16-Vector Sub-Agent Data Processing & Privacy Retention</p>
       </header>
@@ -189,6 +160,7 @@ export const IdentityVectorsDashboard: React.FC = () => {
                   {vector.encryptionLevel}
                 </span>
                 <span className={`status ${vector.status.toLowerCase()}`}>{vector.status}</span>
+                  <span className="auth-badge">{authType}</span>
               </div>
             </div>
           ))}
