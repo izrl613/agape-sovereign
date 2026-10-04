@@ -3,12 +3,15 @@ import { Shield, Fingerprint, Activity, MapPin, Users, Briefcase, GraduationCap,
 import { IdentityVector } from './types';
 import { EncryptionAgent } from './EncryptionAgent';
 import { RetentionModuleAgent } from './RetentionModule';
+import { BiometricAgent } from './agents/BiometricAgent';
+import { LocationAgent } from './agents/LocationAgent';
+import { PrivacyAgent } from './agents/PrivacyAgent';
 import './IdentityVectorsDashboard.css';
 
 const VECTORS: IdentityVector[] = [
   { id: 'v1', name: 'BiometricVector', description: 'Fingerprint, facial, and voice hash encryption.', encryptionLevel: 'Quantum-Resistant', status: 'Idle', agentId: 'agent_bio', icon: 'Fingerprint' },
   { id: 'v2', name: 'GenomicVector', description: 'DNA/RNA sequence data privacy preservation.', encryptionLevel: 'Quantum-Resistant', status: 'Idle', agentId: 'agent_geno', icon: 'Dna' },
-  { id: 'v3', name: 'FinancialVector', description: 'Payment, banking, and wealth data obfuscation.', encryptionLevel: 'High', status: 'Idle', agentId: 'agent_fin', icon: 'CreditCard' },
+  { id: 'v3', name: 'PrivacyVector', description: 'Optery‑style privacy retention & data erasure.', encryptionLevel: 'High', status: 'Idle', agentId: 'agent_privacy', icon: 'Trash2' },
   { id: 'v4', name: 'HealthVector', description: 'Medical records and vitals encryption.', encryptionLevel: 'High', status: 'Idle', agentId: 'agent_health', icon: 'Activity' },
   { id: 'v5', name: 'PsychometricVector', description: 'Personality profiles and sentiment logs.', encryptionLevel: 'Standard', status: 'Idle', agentId: 'agent_psy', icon: 'Brain' },
   { id: 'v6', name: 'LocationVector', description: 'Spatial-temporal coordinates and geofencing.', encryptionLevel: 'Standard', status: 'Idle', agentId: 'agent_loc', icon: 'MapPin' },
@@ -45,8 +48,33 @@ const iconMap: Record<string, React.ReactNode> = {
 
 export const IdentityVectorsDashboard: React.FC = () => {
   const [vectors, setVectors] = useState<IdentityVector[]>(VECTORS);
+  const [selectedVector, setSelectedVector] = useState<IdentityVector | null>(null);
   const [activeLogs, setActiveLogs] = useState<string[]>([]);
+  const closePanel = () => setSelectedVector(null);
 
+
+  const renderSidePanel = () => {
+    if (!selectedVector) return null;
+    return (
+      <div className="side-panel-overlay" onClick={closePanel}>
+        <div className="side-panel" onClick={e => e.stopPropagation()}>
+          <button className="close-btn" onClick={closePanel}>✕</button>
+          <h2>{selectedVector.name}</hh2>
+          <p>{selectedVector.description}</p>
+          <p><strong>Encryption Level:</strong> {selectedVector.encryptionLevel}</p>
+          <button className="action-btn" onClick={() => processVector(selectedVector.id)}>
+            Run {selectedVector.name}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const handleCardClick = (id: string) => {
+    const vec = vectors.find(v => v.id === id) || null;
+    setSelectedVector(vec);
+    processVector(id);
+  };
   const addLog = (log: string) => {
     setActiveLogs(prev => [log, ...prev].slice(0, 5));
   };
@@ -66,7 +94,12 @@ export const IdentityVectorsDashboard: React.FC = () => {
         setVectors(prev => prev.map(v => v.id === id ? { ...v, status: 'Idle' } : v));
       }, 2000);
     } else {
-      const agent = new EncryptionAgent(vector.agentId, vector.name);
+      let agent = new EncryptionAgent(vector.agentId, vector.name);
+      
+      if (vector.id === 'v1') agent = new BiometricAgent();
+      else if (vector.id === 'v3') agent = new PrivacyAgent();
+      else if (vector.id === 'v6') agent = new LocationAgent();
+
       addLog(`[${vector.name}] Processing data stream...`);
       const encryptedData = await agent.processAndEncrypt({ dummy: 'data' });
       addLog(`[${vector.name}] Payload encrypted: ${encryptedData}`);
@@ -90,14 +123,15 @@ export const IdentityVectorsDashboard: React.FC = () => {
       <div className="iv-main-content">
         <div className="iv-grid">
           {vectors.map(vector => (
-            <div 
-              key={vector.id} 
-              className={`iv-card ${vector.status === 'Processing' || vector.status === 'Purging' ? 'pulse' : ''} ${vector.status === 'Active' ? 'active-border' : ''} ${vector.id === 'v16' ? 'retention-card' : ''}`}
-              onClick={() => processVector(vector.id)}
+            <div
+              key={vector.id}
+              className={`iv-card module-card ${vector.status === 'Processing' || vector.status === 'Purging' ? 'pulse' : ''} ${vector.status === 'Active' ? 'active-border' : ''} ${vector.id === 'v16' ? 'retention-card' : ''}`}
+              onClick={() => handleCardClick(vector.id)}
             >
               <div className="iv-card-icon">
                 {iconMap[vector.icon] || <Shield size={24} />}
               </div>
+              <span className="tooltip">{vector.description}</span>
               <div className="iv-card-content">
                 <h3>{vector.name}</h3>
                 <p>{vector.description}</p>
@@ -123,6 +157,7 @@ export const IdentityVectorsDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {renderSidePanel()}
     </div>
   );
 };
