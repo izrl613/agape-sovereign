@@ -14,6 +14,26 @@ import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
 
+// Header component for neon title
+const Header = () => (
+  <motion.div
+    initial={{ opacity: 0, y: -20 }}
+    animate={{ opacity: 1, y: 0 }}
+    style={{
+      marginBottom: 32,
+      textAlign: 'center',
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '2.5rem',
+      fontWeight: 900,
+      color: '#fff',
+      textShadow: `0 0 20px ${NEON.magenta}, 0 0 40px ${NEON.magenta}`,
+      letterSpacing: '0.15em',
+    }}
+  >
+    SOVEREIGN DASHBOARD
+  </motion.div>
+);
+
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
   { id: "social",     icon: "◈", label: "Social Media Footprint",       vector: "V-02" },
@@ -59,58 +79,42 @@ const StatusCard = ({ label, count, color, glow, classification }: { label: stri
     style={{
       flex: 1,
       minWidth: 180,
-      padding: '24px 20px',
-      borderRadius: 14,
-      background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`,
-      border: `1.5px solid ${color}44`,
-      boxShadow: `0 0 30px ${glow}`,
-      textAlign: 'center',
       position: 'relative',
-      overflow: 'hidden',
+      background: `${color}11`,
+      border: `1px solid ${color}44`,
+      borderTop: `4px solid ${color}`,
+      boxShadow: `inset 0 0 20px ${color}11, 0 4px 20px ${glow}`,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '32px 20px',
+      clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
     }}
   >
     <div style={{
-      position: 'absolute', inset: 0,
-      background: `radial-gradient(circle at 50% 0%, ${color}12 0%, transparent 70%)`,
-      pointerEvents: 'none',
-    }} />
-    <div style={{
       fontFamily: "'Orbitron', monospace",
-      fontSize: '2.2rem',
+      fontSize: '3.5rem',
       fontWeight: 900,
-      color,
-      textShadow: `0 0 20px ${color}88`,
+      color: '#fff',
+      textShadow: `0 0 20px ${color}`,
       lineHeight: 1,
-      marginBottom: 8,
+      marginBottom: 12,
       position: 'relative',
     }}>
       {count}
     </div>
     <div style={{
       fontFamily: "'Orbitron', monospace",
-      fontSize: '0.65rem',
-      fontWeight: 700,
+      fontSize: '0.9rem',
+      fontWeight: 800,
       color,
-      letterSpacing: '0.15em',
-      opacity: 0.9,
+      letterSpacing: '0.25em',
       position: 'relative',
+      textTransform: 'uppercase'
     }}>
       {label}
     </div>
-    {classification && (
-      <div style={{
-        fontFamily: "'Orbitron', monospace",
-        fontSize: '0.55rem',
-        fontWeight: 600,
-        color,
-        letterSpacing: '0.1em',
-        marginTop: 4,
-        position: 'relative',
-        opacity: 0.8,
-      }}>
-        {classification}
-      </div>
-    )}
   </motion.div>
 );
 
@@ -123,102 +127,112 @@ const FindingCard = ({ finding }: { finding: any }) => {
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       style={{
-        padding: '20px 24px',
-        borderRadius: 12,
-        background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
-        border: `1px solid ${statusColor}22`,
-        borderLeft: `4px solid ${statusColor}`,
-        boxShadow: finding.status === 'NUKED' ? `0 0 20px ${statusColor}15` : 'none',
+        padding: '24px 32px',
+        position: 'relative',
+        background: `linear-gradient(90deg, ${statusColor}22 0%, rgba(11,16,32,0.6) 100%)`,
+        border: `1px solid ${statusColor}55`,
+        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)',
+        boxShadow: `0 4px 15px rgba(0,0,0,0.3)`,
+        marginBottom: 16,
         transition: 'all 0.3s ease',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <div style={{
+            fontFamily: "'Rajdhani', sans-serif",
+            fontSize: '1.25rem',
+            fontWeight: 800,
+            color: '#fff',
+            textShadow: `0 0 10px ${statusColor}55`,
+            marginBottom: 8,
+            letterSpacing: '0.02em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12
+          }}>
+            <span style={{ fontSize: '1.5rem' }}>{statusIcon}</span>
+            {finding.finding}
+          </div>
+          <div style={{
+            fontFamily: "'Rajdhani', sans-serif",
+            fontSize: '0.9rem',
+            color: 'rgba(255,255,255,0.7)',
+            lineHeight: 1.6,
+            marginBottom: 16,
+            maxWidth: '90%'
+          }}>
+            {finding.details}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${statusColor}33`, paddingTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '4px 12px',
-              borderRadius: 6,
-              background: `${statusColor}15`,
-              border: `1px solid ${statusColor}33`,
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '4px 16px',
+              background: `${statusColor}33`,
+              borderRadius: 16,
               fontFamily: "'Orbitron', monospace",
-              fontSize: '0.6rem',
-              fontWeight: 700,
-              color: statusColor,
-              letterSpacing: '0.08em',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              color: '#fff',
+              letterSpacing: '0.1em',
+              textShadow: `0 0 5px ${statusColor}`,
             }}>
-              {statusIcon} {finding.status}
+              {finding.status}
             </span>
             <span style={{
               fontFamily: "'Share Tech Mono'",
-              fontSize: '0.6rem',
-              color: NEON.textMuted,
+              fontSize: '0.75rem',
+              color: 'rgba(255,255,255,0.5)',
               letterSpacing: '0.1em',
             }}>
               {finding.module?.toUpperCase()} · {finding.timestamp?.toLocaleTimeString?.() || '—'}
             </span>
           </div>
-          <div style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: '1rem',
-            fontWeight: 700,
-            color: '#fff',
-            lineHeight: 1.3,
-            marginBottom: 8,
-          }}>
-            {finding.finding}
-          </div>
-          <div style={{
-            fontFamily: "'Rajdhani', sans-serif",
-            fontSize: '0.8rem',
-            color: NEON.textMuted,
-            lineHeight: 1.6,
-          }}>
-            {finding.details}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 8,
-              background: 'rgba(0,212,255,0.08)',
-              border: '1px solid rgba(0,212,255,0.3)',
-              color: NEON.blue,
-              fontFamily: "'Orbitron', monospace",
-              fontSize: '0.6rem',
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-              transition: 'all 0.2s',
-            }}
-          >
-            📄 REPORT
-          </motion.button>
-          {finding.status === 'NUKED' && (
+
+          <div style={{ display: 'flex', gap: 12 }}>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               style={{
-                padding: '10px 16px',
-                borderRadius: 8,
-                background: `${NEON.magenta}15`,
-                border: `1px solid ${NEON.magenta}44`,
-                color: NEON.magenta,
+                padding: '8px 24px',
+                borderRadius: 4,
+                background: 'rgba(0,212,255,0.1)',
+                border: '1px solid rgba(0,212,255,0.4)',
+                color: NEON.blue,
                 fontFamily: "'Orbitron', monospace",
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                letterSpacing: '0.1em',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
               }}
             >
-              NUKE
+              📄 REPORT
             </motion.button>
-          )}
+            {finding.status === 'NUKED' && (
+              <motion.button
+                whileHover={{ scale: 1.05, boxShadow: `0 0 20px ${NEON.magenta}66` }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  padding: '8px 32px',
+                  borderRadius: 4,
+                  background: `${NEON.magenta}44`,
+                  border: `1px solid ${NEON.magenta}`,
+                  color: '#fff',
+                  fontFamily: "'Orbitron', monospace",
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.15em',
+                  cursor: 'pointer',
+                  textShadow: `0 0 8px ${NEON.magenta}`,
+                }}
+              >
+                NUKE
+              </motion.button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -244,24 +258,8 @@ export const Dashboard = () => {
     return { nuked, knoxed, monitored };
   }, [findings]);
 
-  // Enhanced sovereign score calculation with classification
   const sovereignScoreData = useMemo(() => {
     return calculateSovereignScoreWithDetails(findings);
-  }, [findings]);
-
-  const modules = useMemo(() => {
-    return MODULE_CONFIG.map(config => {
-      const moduleFindings = findings.filter(f => f.module === config.id);
-      const nuked = moduleFindings.filter(f => f.status === 'NUKED').length;
-      const knoxed = moduleFindings.filter(f => f.status === 'KNOXED').length;
-      const monitored = moduleFindings.filter(f => f.status === 'MONITORED').length;
-      let severity = 100;
-      if (moduleFindings.length > 0) {
-        const points = knoxed * 10 + monitored * 5;
-        severity = Math.round((points / (moduleFindings.length * 10)) * 100);
-      }
-      return { ...config, nuked, knoxed, monitored, severity };
-    });
   }, [findings]);
 
   const currentModuleLabel = useMemo(() => {
@@ -292,8 +290,9 @@ export const Dashboard = () => {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', padding: '16px' }}>
       <PasskeyLockOverlay zone="identity" />
+        <Header />
 
       <div style={{
         animation: "fade-in 0.4s ease",
@@ -301,35 +300,33 @@ export const Dashboard = () => {
         transition: 'filter 0.3s ease',
         pointerEvents: isLocked ? 'none' : 'auto',
       }}>
-        {/* ── Status Cards ── */}
-        <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
+        {/* Card hover effect */}
+        <motion.div whileHover={{ scale: 1.02, boxShadow: `0 0 20px ${NEON.magenta}` }} style={{
+          display: 'flex',
+          gap: 16,
+          marginBottom: 40,
+        }}>
           <StatusCard label="NUKED" count={stats.nuked} color={NEON.magenta} glow={`${NEON.magenta}22`} />
-          <StatusCard label="KNOXED" count={stats.knoxed} color={NEON.orange} glow={`${NEON.orange}22`} />
-          <StatusCard label="MONITORED" count={stats.monitored} color={NEON.blue} glow={`${NEON.blue}22`} />
-          <StatusCard 
-            label="SOVEREIGN SCORE" 
-            count={sovereignScoreData.score} 
-            color={sovereignScoreData.classification === 'KNOXED' ? NEON.blue : NEON.magenta} 
-            glow={sovereignScoreData.classification === 'KNOXED' ? `${NEON.blue}22` : `${NEON.magenta}22`}
-            classification={sovereignScoreData.classification}
-          />
-        </div>
+          <StatusCard label="KNOXED" count={stats.knoxed} color={NEON.blue} glow={`${NEON.blue}22`} />
+          <StatusCard label="MONITORED" count={stats.monitored} color={NEON.orange} glow={`${NEON.orange}22`} />
+        </motion.div>
 
         {/* ── Intelligence Findings ── */}
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{
             fontFamily: "'Orbitron', monospace",
-            fontSize: '0.75rem',
-            fontWeight: 700,
+            fontSize: '0.85rem',
+            fontWeight: 800,
             color: NEON.orange,
-            letterSpacing: '0.12em',
+            letterSpacing: '0.15em',
+            textShadow: `0 0 10px ${NEON.orange}55`
           }}>
             INTELLIGENCE FINDINGS
           </span>
-          <div style={{ flex: 1, height: 1, background: `${NEON.orange}33` }} />
+          <div style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${NEON.orange}88, transparent)` }} />
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
           {isLoading ? (
             Array(3).fill(0).map((_, i) => (
               <div key={i} style={{
@@ -352,106 +349,21 @@ export const Dashboard = () => {
             ))
           ) : (
             <div style={{
-              padding: '40px 24px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.05)',
+              padding: '60px 24px',
+              clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
+              background: 'rgba(0,212,255,0.02)',
+              border: '1px solid rgba(0,212,255,0.1)',
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: '2rem', marginBottom: 12, opacity: 0.3 }}>⬡</div>
-              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.8rem', color: NEON.textMuted }}>
-                NO INTELLIGENCE FINDINGS
+              <div style={{ fontSize: '3rem', marginBottom: 16, opacity: 0.2 }}>⬡</div>
+              <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '1rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>
+                NO INTELLIGENCE FINDINGS DETECTED
               </div>
-              <div style={{ fontSize: '0.7rem', color: NEON.textMuted, marginTop: 4, opacity: 0.6 }}>
-                Initiate scan to populate feed
+              <div style={{ fontSize: '0.75rem', color: NEON.blue, marginTop: 8, opacity: 0.8 }}>
+                Awaiting scan initialization...
               </div>
             </div>
           )}
-        </div>
-
-        {/* ── Action Buttons ── */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 28 }}>
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}66` }}
-            whileTap={{ scale: 0.98 }}
-            onClick={triggerFullScan}
-            disabled={isScanning}
-            style={{
-              flex: 1.3,
-              minWidth: 240,
-              padding: '16px 24px',
-              borderRadius: 12,
-              background: `linear-gradient(135deg, ${NEON.blue}30 0%, ${NEON.magenta}30 100%)`,
-              border: `1.5px solid ${NEON.blue}`,
-              color: '#FFFFFF',
-              fontFamily: "'Orbitron', monospace",
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              letterSpacing: '0.12em',
-              cursor: isScanning ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              boxShadow: `0 0 20px rgba(0,212,255,0.3)`
-            }}
-          >
-            {isScanning ? '⚡ SCANNING 16 VECTORS...' : '🚀 RUN LIVE DIFF SCAN (16 VECTORS)'}
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.magenta}44` }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleNukeAll}
-            disabled={isScanning || stats.nuked === 0}
-            style={{
-              flex: 1,
-              padding: '16px 24px',
-              borderRadius: 12,
-              background: `linear-gradient(135deg, ${NEON.magenta}20 0%, ${NEON.magenta}08 100%)`,
-              border: `1.5px solid ${NEON.magenta}44`,
-              color: NEON.magenta,
-              fontFamily: "'Orbitron', monospace",
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              cursor: isScanning || stats.nuked === 0 ? 'not-allowed' : 'pointer',
-              opacity: isScanning || stats.nuked === 0 ? 0.5 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              transition: 'all 0.3s ease',
-            }}
-          >
-            🔥 NUKE ALL EXPOSURES
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}44` }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleKnoxAll}
-            disabled={isScanning}
-            style={{
-              flex: 1,
-              padding: '16px 24px',
-              borderRadius: 12,
-              background: `linear-gradient(135deg, ${NEON.blue}20 0%, ${NEON.blue}08 100%)`,
-              border: `1.5px solid ${NEON.blue}44`,
-              color: NEON.blue,
-              fontFamily: "'Orbitron', monospace",
-              fontSize: '0.8rem',
-              fontWeight: 800,
-              letterSpacing: '0.1em',
-              cursor: isScanning ? 'not-allowed' : 'pointer',
-              opacity: isScanning ? 0.5 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              transition: 'all 0.3s ease',
-            }}
-          >
-            🛡️ KNOX ALL SECURED
-          </motion.button>
         </div>
 
         {/* ── Scanning Progress ── */}
@@ -460,34 +372,36 @@ export const Dashboard = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             style={{
-              marginBottom: 24,
-              padding: '16px 20px',
-              borderRadius: 12,
+              marginBottom: 40,
+              padding: '24px 32px',
+              clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
               background: `${NEON.orange}08`,
-              border: `1px solid ${NEON.orange}22`,
+              border: `1px solid ${NEON.orange}33`,
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{
                 fontFamily: "'Share Tech Mono'",
-                fontSize: '0.75rem',
+                fontSize: '0.85rem',
                 color: NEON.orange,
+                letterSpacing: '0.1em'
               }}>
                 V-VECTOR {currentStep + 1}/{totalSteps}: {currentModuleLabel}
               </span>
               <span style={{
                 fontFamily: "'Share Tech Mono'",
-                fontSize: '0.7rem',
+                fontSize: '0.85rem',
                 color: NEON.orange,
+                fontWeight: 700
               }}>
                 {scanProgress}% ANALYZED
               </span>
             </div>
             <div style={{
               width: '100%',
-              height: 4,
+              height: 6,
               background: 'rgba(255,255,255,0.05)',
-              borderRadius: 2,
+              borderRadius: 3,
               overflow: 'hidden',
             }}>
               <motion.div
@@ -496,116 +410,64 @@ export const Dashboard = () => {
                 style={{
                   height: '100%',
                   background: `linear-gradient(90deg, ${NEON.orange}, ${NEON.magenta})`,
-                  boxShadow: `0 0 10px ${NEON.orange}`,
+                  boxShadow: `0 0 15px ${NEON.orange}`,
                 }}
               />
             </div>
           </motion.div>
         )}
 
-        {/* ── Module Grid ── */}
-        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{
-            fontFamily: "'Orbitron', monospace",
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            color: NEON.blue,
-            letterSpacing: '0.12em',
-          }}>
-            IDENTITY VECTOR MODULES
-          </span>
-          <div style={{ flex: 1, height: 1, background: `${NEON.blue}33` }} />
-          <span style={{
-            fontFamily: "'Share Tech Mono'",
-            fontSize: '0.65rem',
-            color: NEON.textMuted,
-          }}>
-            {MODULE_CONFIG.length}
-          </span>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 12,
-          marginBottom: 24,
-        }}>
-          {modules.map((m, idx) => {
-            const sev = m.severity;
-            const sevColor = sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
-            const route = MODULE_ROUTES[m.id] || '/';
-
-            return (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: idx * 0.03 }}
-                whileHover={{ y: -2, boxShadow: `0 8px 24px ${sevColor}18` }}
-                onClick={() => navigate(route)}
-                style={{
-                  cursor: 'pointer',
-                  padding: '14px 16px',
-                  borderRadius: 10,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${sevColor}18`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <div style={{
-                  width: 36, height: 36,
-                  borderRadius: 8,
-                  background: `${sevColor}10`,
-                  border: `1px solid ${sevColor}22`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <span style={{ color: sevColor, fontSize: '1rem' }}>{m.icon}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: "'Rajdhani', sans-serif",
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    color: '#fff',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {m.label}
-                  </div>
-                  <div style={{
-                    fontFamily: "'Share Tech Mono'",
-                    fontSize: '0.58rem',
-                    color: NEON.textMuted,
-                    marginTop: 2,
-                  }}>
-                    {m.vector} · {m.nuked}🔥 {m.knoxed}🛡️
-                  </div>
-                </div>
-                <div style={{
-                  width: 38, height: 38,
-                  borderRadius: '50%',
-                  border: `2px solid ${sevColor}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: `0 0 8px ${sevColor}33`,
-                }}>
-                  <span style={{
-                    fontFamily: "'Orbitron'",
-                    fontSize: '0.55rem',
-                    color: sevColor,
-                    fontWeight: 700,
-                  }}>
-                    {sev}
-                  </span>
-                </div>
-              </motion.div>
-            );
-          })}
+        {/* ── Action Buttons ── */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginBottom: 40 }}>
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}66` }}
+            whileTap={{ scale: 0.98 }}
+            onClick={triggerFullScan}
+            disabled={isScanning}
+            style={{
+              padding: '16px 32px',
+              clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
+              background: `linear-gradient(135deg, ${NEON.blue}30 0%, ${NEON.magenta}30 100%)`,
+              border: `1px solid ${NEON.blue}`,
+              color: '#FFFFFF',
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              letterSpacing: '0.15em',
+              cursor: isScanning ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              boxShadow: `0 0 20px rgba(0,212,255,0.3)`
+            }}
+          >
+            {isScanning ? '⚡ SCANNING...' : '🚀 RUN LIVE DIFF SCAN'}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}44` }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleKnoxAll}
+            disabled={isScanning}
+            style={{
+              padding: '16px 32px',
+              clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
+              background: `linear-gradient(135deg, ${NEON.blue}20 0%, ${NEON.blue}08 100%)`,
+              border: `1px solid ${NEON.blue}44`,
+              color: NEON.blue,
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              letterSpacing: '0.15em',
+              cursor: isScanning ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+            }}
+          >
+            🛡️ KNOX ALL SECURED
+          </motion.button>
         </div>
 
         {/* ── Encrypted Footer Seal ── */}
@@ -625,3 +487,4 @@ export const Dashboard = () => {
     </div>
   );
 };
+
