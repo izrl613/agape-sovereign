@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
 import { LogoutButton } from './auth/LogoutButton';
+import { DynamicTelemetry } from './DynamicTelemetry';
 
 interface ModuleProps {
   title: string;
@@ -437,6 +438,9 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
           </div>
         ))}
       </div>
+
+      {/* DYNAMIC TELEMETRY DATALETS */}
+      <DynamicTelemetry moduleId={moduleId} />
 
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
       <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">

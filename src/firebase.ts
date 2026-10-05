@@ -27,8 +27,36 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-ch
 // Import the Firebase configuration
 import firebaseConfig from '../firebase-applet-config.json';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+/**
+ * Resolve authDomain dynamically.
+ *
+ * When the app is accessed at `agape-sovereign.web.app` but the config says
+ * authDomain = "sovereign.nyc", the OAuth popup opens on sovereign.nyc and
+ * tries to postMessage back to agape-sovereign.web.app — which browsers block
+ * as a cross-origin violation, producing a generic "Error".
+ *
+ * Fix: if the current hostname is one of the known Firebase Hosting origins
+ * (*.web.app, *.firebaseapp.com) we set authDomain to match so the popup and
+ * parent share the same origin. For the custom domain (sovereign.nyc) the
+ * config value already matches.
+ */
+function resolveAuthDomain(): string {
+  if (typeof window === 'undefined') return firebaseConfig.authDomain;
+  const host = window.location.hostname;
+  const firebaseHosts = [
+    'agape-sovereign.web.app',
+    'agape-sovereign.firebaseapp.com',
+  ];
+  if (firebaseHosts.includes(host)) return host;
+  // localhost dev server: use the default .firebaseapp.com handler
+  if (host === 'localhost' || host === '127.0.0.1') return 'agape-sovereign.firebaseapp.com';
+  // For sovereign.nyc or other custom domains, use whatever is in the config
+  return firebaseConfig.authDomain;
+}
+
+// Initialize Firebase with the resolved authDomain
+const resolvedConfig = { ...firebaseConfig, authDomain: resolveAuthDomain() };
+const app = initializeApp(resolvedConfig);
 
 // Firebase App Check uses the production reCAPTCHA Enterprise score key registered
 // to this Firebase web app. This is a public site key (not a server secret).
@@ -194,42 +222,18 @@ export const loginWithGoogle = async () => {
       }
     }
 
-    const result = await signInWithPopup(auth, googleProvider);
-    // Persist email as login_hint so the next sign-in can skip the account picker
-    try {
-      if (result.user.email) {
-        localStorage.setItem('sovereign_login_hint', result.user.email);
-        // Refresh custom params for any subsequent provider use in this session
-        googleProvider.setCustomParameters({ login_hint: result.user.email });
-      }
-    } catch {
-      // Non-fatal — localStorage may be blocked in private mode
+    // Persist email hint if available
+    const hint = localStorage.getItem('sovereign_login_hint');
+    if (hint) {
+      googleProvider.setCustomParameters({ login_hint: hint });
     }
-    return result.user;
+
+    // Use redirect instead of popup to avoid cross-origin and popup-blocker issues
+    await signInWithRedirect(auth, googleProvider);
+    // Redirect navigates away; return null to indicate redirect started
+    return null;
   } catch (error: unknown) {
-    const code = authErrorCode(error);
-
-    if (code === 'auth/popup-blocked') {
-      console.warn('[AUTH] Popup blocked — signInWithRedirect fallback.');
-      try {
-        await signInWithRedirect(auth, googleProvider);
-        // Redirect navigates away; callers should treat null as "redirect started"
-        return null;
-      } catch (redirectError) {
-        throw humanizeAuthError(redirectError);
-      }
-    }
-
-    // User closed popup: surface a clean message
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      throw humanizeAuthError(error);
-    }
-
-    if (code === 'auth/unauthorized-domain') {
-      console.error('[AUTH] Unauthorized domain. Current host:', window.location.hostname);
-    }
-
-    console.error('[AUTH] Google sign-in error:', code || error);
+    console.error('[AUTH] Google sign-in error:', error);
     throw humanizeAuthError(error);
   }
 };

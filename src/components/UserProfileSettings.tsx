@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
 import { encryptClientSide, decryptClientSide, generateSHA256 } from '../utils/crypto';
+import { SecurityEnclaveToggles } from './SecurityEnclaveToggles';
 
 export const UserProfileSettings = () => {
   const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey, demoMode } = useAuth();
@@ -480,50 +481,7 @@ export const UserProfileSettings = () => {
                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div 
-                onClick={bindPasskey}
-                className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-[#FF7A18]/10 rounded-lg group-hover:bg-[#FF7A18]/20 transition-colors">
-                    <Key className="w-4 h-4 text-[#FF7A18]" />
-                  </div>
-                  <div className="font-bold text-sm text-white">Passkey Management</div>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">Register a new device biometric or hardware security key.</p>
-              </div>
-
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-[#00D4FF]/10 rounded-lg group-hover:bg-[#00D4FF]/20 transition-colors">
-                    <Fingerprint className="w-4 h-4 text-[#00D4FF]" />
-                  </div>
-                  <div className="font-bold text-sm text-white">Biometric Auth</div>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">Enable face or fingerprint verification for high-risk DIFF operations.</p>
-              </div>
-
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-[#FF2E9F]/10 rounded-lg group-hover:bg-[#FF2E9F]/20 transition-colors">
-                    <Lock className="w-4 h-4 text-[#FF2E9F]" />
-                  </div>
-                  <div className="font-bold text-sm text-white">Session Lockdown</div>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">Configure automatic session termination and zero-knowledge clearing.</p>
-              </div>
-
-              <div className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-yellow-500/10 rounded-lg group-hover:bg-yellow-500/20 transition-colors">
-                    <AlertTriangle className="w-4 h-4 text-yellow-500" />
-                  </div>
-                  <div className="font-bold text-sm text-white">Privacy Hardening</div>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">Enable advanced obfuscation for your public metadata footprint.</p>
-              </div>
-            </div>
+            <SecurityEnclaveToggles bindPasskey={bindPasskey} />
           </GlassCard>
 
           {/* ── Multi-Email Vault ──────────────────────────────── */}
