@@ -122,7 +122,9 @@ async function startServer() {
 
   const RP_NAME = process.env.WEBAUTHN_RP_NAME || "Agape Sovereign";
   const RP_ID   = process.env.WEBAUTHN_RP_ID   || (process.env.NODE_ENV === "production" ? "sovereign.nyc" : "localhost");
-  const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === "production" ? "https://sovereign.nyc" : `http://localhost:${Number(process.env.PORT) || 5000}`);
+  const EXPECTED_ORIGIN = process.env.NODE_ENV === "production" 
+    ? ["https://sovereign.nyc", "https://agape-sovereign.web.app", "https://agape-sovereign.firebaseapp.com", process.env.WEBAUTHN_ORIGIN].filter(Boolean) as string[]
+    : ["http://localhost:5173", "http://localhost:5000", "http://localhost:5002", "http://127.0.0.1:5173", "http://localhost:3000"];
 
   // ── POST /api/auth/register-options ──────────────────────────────
   // Called when a logged-in user wants to bind a new passkey (hardware or platform).

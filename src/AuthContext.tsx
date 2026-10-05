@@ -370,7 +370,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ email: currentUser.email }),
+        body: JSON.stringify({ email: currentUser.email, userId: currentUser.uid }),
       });
 
       const optionsBody = await optionsRes.json().catch(() => ({}));
