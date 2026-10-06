@@ -11,7 +11,7 @@ export class PrivacyAgent extends EncryptionAgent {
   async processAndEncrypt(data: any): Promise<string> {
     // For demo, we simply stringify and prepend a marker.
     const payload = JSON.stringify({ masked: true, timestamp: Date.now(), data });
-    const encrypted = Buffer.from(payload).toString('base64');
+    const encrypted = btoa(unescape(encodeURIComponent(payload)));
     console.log('[PrivacyAgent] Data processed and masked.');
     return encrypted;
   }

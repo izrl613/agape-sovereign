@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Key, Fingerprint, Lock, AlertTriangle, Activity } from 'lucide-react';
 import { NEON } from './UI';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const SecurityEnclaveToggles = ({ bindPasskey }: { bindPasskey: () => void }) => {
   const [activeEnclaves, setActiveEnclaves] = useState<Record<string, boolean>>({

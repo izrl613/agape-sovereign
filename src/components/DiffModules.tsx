@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key, Copy } from 'lucide-react';
+import { Mail, Share2, HardDrive, Smartphone, Globe, Database, FileText, X, AlertTriangle, Loader2, Zap, Shield, Search, Cpu, Lock, Eye, EyeOff, Key, Copy, Sparkles, UserCheck, ArrowRight } from 'lucide-react';
 import { NEON, NeonText, NeonButton, GlassCard, StatusBadge, CopyButton } from './UI';
 import { useScan } from '../ScanContext';
 import { useAuth } from '../AuthContext';
@@ -14,6 +14,9 @@ import { ModuleSplashScreen } from './ModuleSplashScreen';
 import { EncryptedFooter } from './EncryptedFooter';
 import { LogoutButton } from './auth/LogoutButton';
 import { DynamicTelemetry } from './DynamicTelemetry';
+import { RichVectorInputForm } from './RichVectorInputForm';
+import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
+import { executeArchitectAIAgent } from '../services/architectAIAgentService';
 
 interface ModuleProps {
   title: string;
@@ -44,6 +47,82 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
   // Per-module splash — re-triggers on every navigation to this module
   const [showSplash, setShowSplash] = useState(true);
+
+  // Architect AI & Third-Party Verification State
+  const [isThirdPartyModalOpen, setIsThirdPartyModalOpen] = useState(false);
+  const [thirdPartyVerificationData, setThirdPartyVerificationData] = useState<Record<string, any>>({});
+  const [isArchitectProcessing, setIsArchitectProcessing] = useState(false);
+
+  const handleRichFormSaveAndHandoff = async (
+    formData: Record<string, string>,
+    sha256Hash: string,
+    encryptedBase64: string
+  ) => {
+    if (!user) return;
+    setIsArchitectProcessing(true);
+    const toastId = toast.loading('Architect AI (nemotron-3-nano:4b) processing SHA-256 encrypted payload...');
+
+    try {
+      // 1. Save Encrypted Data
+      if (demoMode) {
+        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
+        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
+        parsed.data[moduleId] = encryptedBase64;
+        parsed.hashes[moduleId + "Hash"] = sha256Hash;
+        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
+      } else {
+        const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
+        await setDoc(docRef, {
+          data: { [moduleId]: encryptedBase64 },
+          hashes: { [`${moduleId}Hash`]: sha256Hash },
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
+      setStoredHash(sha256Hash);
+
+      // 2. Execute Architect AI local model inference (nemotron-3-nano:4b)
+      await executeArchitectAIAgent({
+        sha256Id: sha256Hash,
+        totalRiskScore: severity > 70 ? 10 : 60,
+        scanTimestamp: new Date().toISOString(),
+        status: 'SUCCESS',
+        vectors: {
+          [moduleId]: {
+            module: moduleId,
+            score: severity,
+            riskLevel: severity > 70 ? 'LOW' : 'HIGH',
+            findings: findings.map((f) => f.finding),
+            lastScanned: new Date().toISOString(),
+          }
+        }
+      });
+
+      // 3. Formulate verification payload for Third-Party Agent
+      const payload: Record<string, any> = {
+        [moduleId]: {
+          vector,
+          label: title,
+          status: severity > 70 ? 'KNOXED' : 'NUKED',
+          sha256Hash,
+          details: `Processed by Nemotron-3-Nano:4b (${Object.keys(formData).length} field(s) encrypted)`,
+          fieldsCount: Object.keys(formData).length,
+          formData,
+        }
+      };
+
+      setThirdPartyVerificationData(payload);
+      toast.dismiss(toastId);
+      toast.success('Processed by Architect AI! Handed off to Third-Party Agent.');
+      setIsThirdPartyModalOpen(true);
+    } catch (err: any) {
+      console.error(err);
+      toast.dismiss(toastId);
+      toast.error('Handoff failed: ' + (err.message || err));
+    } finally {
+      setIsArchitectProcessing(false);
+    }
+  };
 
   const findings = allFindings.filter(f => f.module === moduleId);
   const nuked = findings.filter(f => f.status === 'NUKED').length;
@@ -442,6 +521,20 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
       {/* DYNAMIC TELEMETRY DATALETS */}
       <DynamicTelemetry moduleId={moduleId} />
 
+      {/* RICH MULTI-FIELD VECTOR DATA SUITE */}
+      {user && (
+        <div className="mb-6">
+          <RichVectorInputForm
+            moduleId={moduleId}
+            vector={vector}
+            title={title}
+            userId={user.uid}
+            isProcessing={isArchitectProcessing}
+            onSaveAndHandoff={handleRichFormSaveAndHandoff}
+          />
+        </div>
+      )}
+
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
       <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
         <div className="relative z-10">
@@ -832,6 +925,19 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
           showFullHash={true}
         />
       </div>
+
+      {/* THIRD-PARTY AGENT LIVE USER DATA VERIFICATION MODAL */}
+      {user && (
+        <ThirdPartyVerificationModal
+          isOpen={isThirdPartyModalOpen}
+          onClose={() => setIsThirdPartyModalOpen(false)}
+          userId={user.uid}
+          userEmail={user.email || ''}
+          sovereignScore={severity}
+          sha256Id={storedHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+          vectorData={thirdPartyVerificationData}
+        />
+      )}
     </div>
     </>
   );

@@ -13,6 +13,8 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
+import { Cpu, Lock, ShieldCheck, FileText, Sparkles, ArrowRight, Activity, Zap, CheckCircle2 } from 'lucide-react';
+import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
 
 // Header component for neon title
 const Header = () => (
@@ -289,6 +291,23 @@ export const Dashboard = () => {
     toast.success("All vectors locked in KNOXED status.");
   };
 
+  const [isThirdPartyModalOpen, setIsThirdPartyModalOpen] = useState(false);
+
+  const dashboardVectorData = useMemo(() => {
+    const data: Record<string, any> = {};
+    for (const mod of MODULE_CONFIG) {
+      data[mod.id] = {
+        vector: mod.vector,
+        label: mod.label,
+        status: stats.nuked > 0 ? 'MONITORED' : 'KNOXED',
+        sha256Hash: sovereignHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        details: `Active in Sovereign Matrix · ${mod.label}`,
+        fieldsCount: 4,
+      };
+    }
+    return data;
+  }, [stats, sovereignHash]);
+
   return (
     <div style={{ position: 'relative', padding: '16px' }}>
       <PasskeyLockOverlay zone="identity" />
@@ -300,6 +319,44 @@ export const Dashboard = () => {
         transition: 'filter 0.3s ease',
         pointerEvents: isLocked ? 'none' : 'auto',
       }}>
+        {/* Architect AI Cognitive Engine HUD Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-[#060d1f] via-[#08132e] to-[#040914] border border-[#00d4ff]/40 shadow-[0_0_30px_rgba(0,212,255,0.12)] relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#00d4ff]/5 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono text-[10px] font-bold flex items-center gap-1.5">
+                  <Cpu className="w-3 h-3" /> ARCHITECT AI MODEL: nemotron-3-nano:4b (2.8GB OFFLINE)
+                </div>
+                <div className="px-2.5 py-0.5 rounded-full bg-[#00d4ff]/10 border border-[#00d4ff]/30 text-[#00d4ff] font-mono text-[10px] font-bold flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> ZERO-KNOWLEDGE ENCLAVE
+                </div>
+              </div>
+
+              <h2 className="text-xl font-orbitron font-extrabold text-white tracking-wide">
+                16 IDENTITY VECTORS <span className="text-[#00d4ff]">INTEGRITY MATRIX</span>
+              </h2>
+              <p className="text-xs font-mono text-slate-400 max-w-xl">
+                All 16 identity vector modules are encrypted client-side using AES-GCM 256-bit cryptography with SHA-256 integrity seals. Architect AI processes data locally via <span className="text-emerald-400 font-bold">nemotron-3-nano:4b</span>.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => setIsThirdPartyModalOpen(true)}
+                className="px-5 py-3 rounded-xl bg-gradient-to-r from-[#00d4ff] to-cyan-500 hover:from-cyan-400 hover:to-[#00d4ff] text-slate-950 font-orbitron font-bold text-xs shadow-lg shadow-[#00d4ff]/20 transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" /> VERIFY & EXPORT PASSPORT
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Card hover effect */}
         <motion.div whileHover={{ scale: 1.02, boxShadow: `0 0 20px ${NEON.magenta}` }} style={{
           display: 'flex',
@@ -310,6 +367,49 @@ export const Dashboard = () => {
           <StatusCard label="KNOXED" count={stats.knoxed} color={NEON.blue} glow={`${NEON.blue}22`} />
           <StatusCard label="MONITORED" count={stats.monitored} color={NEON.orange} glow={`${NEON.orange}22`} />
         </motion.div>
+
+        {/* ── 16 Identity Vector Modules Navigation Grid ── */}
+        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{
+            fontFamily: "'Orbitron', monospace",
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: NEON.blue,
+            letterSpacing: '0.15em',
+            textShadow: `0 0 10px ${NEON.blue}55`
+          }}>
+            16 IDENTITY VECTOR MODULES
+          </span>
+          <div style={{ flex: 1, height: 2, background: `linear-gradient(90deg, ${NEON.blue}88, transparent)` }} />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+          {MODULE_CONFIG.map((mod) => (
+            <motion.div
+              key={mod.id}
+              whileHover={{ scale: 1.03, translateY: -2 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => navigate(MODULE_ROUTES[mod.id] || `/dashboard/${mod.id}`)}
+              className="p-4 rounded-xl bg-[#060d1f]/80 hover:bg-[#0a1633] border border-[#00d4ff]/20 hover:border-[#00d4ff]/50 transition-all cursor-pointer group flex flex-col justify-between h-28 relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-2xl filter drop-shadow-[0_0_8px_rgba(0,212,255,0.4)]">{mod.icon}</span>
+                <span className="px-2 py-0.5 rounded-full bg-[#00d4ff]/10 border border-[#00d4ff]/30 text-[#00d4ff] font-mono text-[9px] font-bold">
+                  {mod.vector}
+                </span>
+              </div>
+              <div>
+                <div className="font-orbitron font-bold text-xs text-white group-hover:text-[#00d4ff] transition-colors truncate">
+                  {mod.label}
+                </div>
+                <div className="text-[10px] font-mono text-slate-500 group-hover:text-slate-400 flex items-center justify-between mt-1">
+                  <span>CONFIGURE & SEAL</span>
+                  <ArrowRight className="w-3 h-3 text-[#00d4ff] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
         {/* ── Intelligence Findings ── */}
         <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -484,6 +584,19 @@ export const Dashboard = () => {
           />
         </div>
       </div>
+
+      {/* THIRD-PARTY AGENT LIVE VERIFICATION MODAL */}
+      {user && (
+        <ThirdPartyVerificationModal
+          isOpen={isThirdPartyModalOpen}
+          onClose={() => setIsThirdPartyModalOpen(false)}
+          userId={user.uid}
+          userEmail={user.email || ''}
+          sovereignScore={sovereignScore}
+          sha256Id={sovereignHash || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+          vectorData={dashboardVectorData}
+        />
+      )}
     </div>
   );
 };
