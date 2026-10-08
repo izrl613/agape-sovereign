@@ -113,6 +113,25 @@ export const messaging = typeof window !== 'undefined'
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
+// drive.file is optional and only used after explicit Drive export consent in-app.
+// Do not add broader Drive scopes here — they break OAuth consent for basic login.
+
+/**
+ * True when the app is embedded (AI Studio preview, iframe) where popups and
+ * third-party cookie partitions commonly break Firebase Google Sign-In.
+ */
+function isEmbeddedBrowserContext(): boolean {
+  try {
+    if (typeof window === 'undefined') return false;
+    if (window.top !== window.self) return true;
+    if (window.location.hostname.includes('aistudio.google.com')) return true;
+    if (document.referrer.includes('aistudio.google.com')) return true;
+  } catch {
+    // Cross-origin frame access throws — treat as embedded.
+    return true;
+  }
+  return false;
+}
 
 /**
  * Build Google OAuth custom parameters.
@@ -177,6 +196,9 @@ function humanizeAuthError(error: unknown): Error {
  */
 export const loginWithGoogle = async () => {
   try {
+    // Refresh OAuth params each attempt (hint may have changed).
+    googleProvider.setCustomParameters(buildGoogleProviderParams());
+
     const isPrivate = await isPrivateBrowsing();
     if (isPrivate) {
       try {
@@ -194,6 +216,33 @@ export const loginWithGoogle = async () => {
       }
     }
 
+    // Embedded previews (AI Studio / iframes) cannot reliably complete popup OAuth
+    // against authDomain sovereign.nyc. Prefer full-page redirect on top window.
+    if (isEmbeddedBrowserContext()) {
+      console.warn('[AUTH] Embedded context detected — using redirect Google Sign-In.');
+      try {
+        // Break out of iframe when possible so authDomain handler can complete.
+        if (window.top && window.top !== window.self) {
+          const topOrigin = (() => {
+            try { return window.top!.location.origin; } catch { return null; }
+          })();
+          if (!topOrigin) {
+            // Cross-origin embed: open the real app origin for OAuth.
+            window.open('https://sovereign.nyc/login?intent=google', '_blank', 'noopener,noreferrer');
+            throw new Error(
+              'Google Sign-In cannot complete inside this preview. Open https://sovereign.nyc/login in a normal browser tab.'
+            );
+          }
+        }
+      } catch (embedErr) {
+        if (embedErr instanceof Error && embedErr.message.includes('sovereign.nyc')) {
+          throw embedErr;
+        }
+      }
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+
     const result = await signInWithPopup(auth, googleProvider);
     // Persist email as login_hint so the next sign-in can skip the account picker
     try {
@@ -209,8 +258,12 @@ export const loginWithGoogle = async () => {
   } catch (error: unknown) {
     const code = authErrorCode(error);
 
-    if (code === 'auth/popup-blocked') {
-      console.warn('[AUTH] Popup blocked — signInWithRedirect fallback.');
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/internal-error' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      console.warn('[AUTH] Popup failed (' + code + ') — signInWithRedirect fallback.');
       try {
         await signInWithRedirect(auth, googleProvider);
         // Redirect navigates away; callers should treat null as "redirect started"
@@ -227,6 +280,12 @@ export const loginWithGoogle = async () => {
 
     if (code === 'auth/unauthorized-domain') {
       console.error('[AUTH] Unauthorized domain. Current host:', window.location.hostname);
+      const e = new Error(
+        `This domain (${window.location.hostname}) is not authorized for Google Sign-In. ` +
+        'Add it under Firebase Authentication → Settings → Authorized domains, or open https://sovereign.nyc/login.'
+      );
+      (e as Error & { code?: string }).code = code;
+      throw e;
     }
 
     console.error('[AUTH] Google sign-in error:', code || error);

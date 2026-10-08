@@ -471,8 +471,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const verifyRes = await fetch('/api/auth/verify-login', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assertionResponse),
+        headers: {
+          'Content-Type': 'application/json',
+          // Helps server recover challenge if the signed __session cookie is dropped.
+          'X-Passkey-Email': normalized,
+        },
+        body: JSON.stringify({ ...assertionResponse, email: normalized }),
       });
 
       const verifyBody = await verifyRes.json().catch(() => ({}));

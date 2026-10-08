@@ -27,7 +27,10 @@ if (!getApps().length) {
   initializeApp();
 }
 
-const db = getFirestore();
+// Named Firestore DB matches firebase.json / client config (not "(default)").
+const FIRESTORE_DATABASE_ID =
+  process.env.FIRESTORE_DATABASE_ID || "agape-sovereign";
+const db = getFirestore(FIRESTORE_DATABASE_ID);
 const auth = getAuth();
 const isProductionEnv = process.env.NODE_ENV === "production" ||
   process.env.K_SERVICE !== undefined ||
@@ -73,7 +76,16 @@ const BUILTIN_ORIGINS = [
 const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
 
 const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
-  process.env.COOKIE_SECRET;
+  process.env.COOKIE_SECRET ||
+  // Dev-only fallback so local emulators still set signed cookies.
+  // Production must set PASSKEY_COOKIE_SECRET / COOKIE_SECRET via Secret Manager.
+  (isProductionEnv ? undefined : "agape-sovereign-dev-cookie-secret");
+
+if (isProductionEnv && !process.env.PASSKEY_COOKIE_SECRET && !process.env.COOKIE_SECRET) {
+  logger.warn(
+    "[authApi] PASSKEY_COOKIE_SECRET/COOKIE_SECRET not set — signed __session cookies will fail passkey ceremonies"
+  );
+}
 
 const authApp = express();
 
@@ -118,7 +130,9 @@ authApp.use(cors({
   credentials: true,
 }));
 authApp.use(express.json({limit: "256kb"}));
-authApp.use(cookieParser(COOKIE_SECRET));
+// cookie-parser without a secret still parses unsigned cookies; with a secret it
+// verifies signed ones. Always pass a string so __session can be signed.
+authApp.use(cookieParser(COOKIE_SECRET || "unsigned-dev-only"));
 
 // Security headers with helmet
 authApp.use(helmet({
@@ -403,11 +417,22 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
       },
     });
 
+    const expectedOrigin = getWebAuthnConfig(req).expectedOrigin;
     setSessionCookie(res, {
       registrationChallenge: options.challenge,
       authUserId: userId,
       rpId,
-      expectedOrigin: getWebAuthnConfig(req).expectedOrigin,
+      expectedOrigin,
+    });
+    // Firestore backup: Hosting/CDN paths sometimes drop Set-Cookie on function rewrites.
+    await db.collection("passkey_challenges").doc(userEmail).set({
+      challenge: options.challenge,
+      type: "registration",
+      authUserId: userId,
+      rpId,
+      expectedOrigin,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 15 * 60_000,
     });
     res.json(options);
   } catch (error) {
@@ -432,7 +457,25 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
       userId?: string;
       email?: string;
     };
-    const sessionData = readSession(req);
+    let sessionData = readSession(req);
+    // Fallback to Firestore challenge when cookie is missing (rewrite/cookie issues).
+    if (!sessionData && body.email) {
+      const snap = await db.collection("passkey_challenges")
+        .doc(normalizeEmail(body.email)).get();
+      if (snap.exists) {
+        const d = snap.data() || {};
+        if (typeof d.expiresAt === "number" && Date.now() > d.expiresAt) {
+          await snap.ref.delete();
+        } else {
+          sessionData = {
+            registrationChallenge: d.challenge,
+            authUserId: d.authUserId,
+            rpId: d.rpId,
+            expectedOrigin: d.expectedOrigin,
+          };
+        }
+      }
+    }
     if (!sessionData) {
       res.status(400).json({error: "Challenge expired or missing. Retry passkey setup."});
       return;
@@ -488,6 +531,13 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
 
       const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
       res.clearCookie("__session", {path: "/"});
+      if (body.email) {
+        try {
+          await db.collection("passkey_challenges").doc(normalizeEmail(body.email)).delete();
+        } catch {
+          // non-fatal
+        }
+      }
       res.json({verified: true, token: customToken, credentialId});
     } else {
       res.status(400).json({verified: false, error: "Verification failed"});
@@ -590,6 +640,15 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
       rpId,
       expectedOrigin,
     });
+    await db.collection("passkey_challenges").doc(email).set({
+      challenge: options.challenge,
+      type: "authentication",
+      authUserId: userId,
+      rpId,
+      expectedOrigin,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 15 * 60_000,
+    });
     res.json(options);
   } catch (error) {
     logger.error("Login Options Error:", error);
@@ -601,8 +660,61 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
 // POST /verify-login
 router.post("/verify-login", strictLimiter, async (req: Request, res: Response) => {
   try {
-    const body = req.body as AuthenticationResponseJSON;
-    const sessionData = readSession(req);
+    const body = req.body as AuthenticationResponseJSON & {email?: string};
+    let sessionData = readSession(req);
+    const credentialId = encodeCredentialId(body.id);
+
+    // Cookie missing → recover challenge from Firestore by email or credential id.
+    if (!sessionData) {
+      const emailHint = normalizeEmail(
+        body.email ||
+        (typeof req.get("x-passkey-email") === "string" ? req.get("x-passkey-email") : "") ||
+        ""
+      );
+      let snap = emailHint ?
+        await db.collection("passkey_challenges").doc(emailHint).get() :
+        null;
+      if (!snap?.exists) {
+        // Try reverse lookup via credential → user email
+        const credQ = await db.collectionGroup("passkeyCredentials")
+          .where("credentialID", "==", credentialId).limit(1).get();
+        if (!credQ.empty) {
+          const parentUser = credQ.docs[0].ref.parent.parent;
+          if (parentUser) {
+            const u = await parentUser.get();
+            const em = normalizeEmail(u.data()?.email || "");
+            if (em) {
+              snap = await db.collection("passkey_challenges").doc(em).get();
+            }
+            if (!sessionData && snap?.exists) {
+              // also bind userId from credential path
+            }
+            if (!sessionData) {
+              sessionData = {
+                authenticationChallenge: snap?.data()?.challenge,
+                authUserId: parentUser.id,
+                rpId: snap?.data()?.rpId || credQ.docs[0].data()?.rpId,
+                expectedOrigin: snap?.data()?.expectedOrigin,
+              };
+            }
+          }
+        }
+      }
+      if ((!sessionData || !sessionData.authenticationChallenge) && snap?.exists) {
+        const d = snap.data() || {};
+        if (typeof d.expiresAt === "number" && Date.now() > d.expiresAt) {
+          await snap.ref.delete();
+        } else {
+          sessionData = {
+            authenticationChallenge: d.challenge,
+            authUserId: d.authUserId,
+            rpId: d.rpId,
+            expectedOrigin: d.expectedOrigin,
+          };
+        }
+      }
+    }
+
     if (!sessionData) {
       res.status(400).json({error: "Challenge expired or missing. Retry passkey sign-in."});
       return;
@@ -613,8 +725,6 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
       res.status(400).json({error: "Challenge expired or missing. Retry passkey sign-in."});
       return;
     }
-
-    const credentialId = encodeCredentialId(body.id);
 
     // Resolve userId — for resident-key/reauth flows authUserId may be null.
     // In that case, derive the uid from the userHandle returned by the authenticator.
@@ -683,6 +793,16 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
       });
       const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
       res.clearCookie("__session", {path: "/"});
+      try {
+        const emailForCleanup = normalizeEmail(
+          (await db.collection("users").doc(userId).get()).data()?.email || ""
+        );
+        if (emailForCleanup) {
+          await db.collection("passkey_challenges").doc(emailForCleanup).delete();
+        }
+      } catch {
+        // non-fatal
+      }
       res.json({verified: true, token: customToken, credentialId});
     } else {
       res.status(400).json({verified: false, error: "Authentication failed"});

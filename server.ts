@@ -14,8 +14,11 @@ if (!getApps().length) {
   console.log("BOOT: Firebase Admin initialized.");
 }
 console.log("BOOT: Obtaining Firestore reference...");
-const db = getFirestore();
-console.log("BOOT: Firestore reference obtained.");
+// Named DB must match client firebase-applet-config.json + firebase.json
+const FIRESTORE_DATABASE_ID =
+  process.env.FIRESTORE_DATABASE_ID || "agape-sovereign";
+const db = getFirestore(FIRESTORE_DATABASE_ID);
+console.log(`BOOT: Firestore reference obtained (db=${FIRESTORE_DATABASE_ID}).`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -121,8 +124,76 @@ async function startServer() {
   const { getAuth: getAdminAuth } = await import("firebase-admin/auth");
 
   const RP_NAME = process.env.WEBAUTHN_RP_NAME || "Agape Sovereign";
-  const RP_ID   = process.env.WEBAUTHN_RP_ID   || (process.env.NODE_ENV === "production" ? "sovereign.nyc" : "localhost");
-  const EXPECTED_ORIGIN = process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === "production" ? "https://sovereign.nyc" : `http://localhost:${Number(process.env.PORT) || 5000}`);
+  const DEFAULT_RP_ID =
+    process.env.WEBAUTHN_RP_ID ||
+    (process.env.NODE_ENV === "production" ? "sovereign.nyc" : "localhost");
+  const DEFAULT_ORIGIN =
+    process.env.WEBAUTHN_ORIGIN ||
+    (process.env.NODE_ENV === "production"
+      ? "https://sovereign.nyc"
+      : `http://localhost:${Number(process.env.PORT) || 5000}`);
+
+  const BUILTIN_ORIGINS = [
+    DEFAULT_ORIGIN,
+    "https://sovereign.nyc",
+    "https://www.sovereign.nyc",
+    "https://agape-sovereign.web.app",
+    "https://agape-sovereign.firebaseapp.com",
+    `http://localhost:${Number(process.env.PORT) || 5000}`,
+    "http://localhost:5173",
+    "http://localhost:5000",
+    "http://localhost:5002",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5000",
+  ];
+
+  function webAuthnFromRequest(req: express.Request): {
+    rpId: string;
+    expectedOrigin: string;
+    allowedOrigins: string[];
+  } {
+    const originHeader = req.get("origin") || "";
+    const referer = req.get("referer") || "";
+    let candidate = originHeader;
+    if (!candidate && referer) {
+      try {
+        candidate = new URL(referer).origin;
+      } catch {
+        candidate = "";
+      }
+    }
+    if (candidate) {
+      try {
+        const url = new URL(candidate);
+        const host = url.hostname;
+        const allowed =
+          BUILTIN_ORIGINS.includes(url.origin) ||
+          host === "localhost" ||
+          host === "127.0.0.1" ||
+          host.endsWith(".web.app") ||
+          host.endsWith(".firebaseapp.com") ||
+          host === "sovereign.nyc" ||
+          host === "www.sovereign.nyc";
+        if (allowed) {
+          let rpId = host;
+          if (host === "www.sovereign.nyc") rpId = "sovereign.nyc";
+          if (host === "localhost" || host === "127.0.0.1") rpId = host;
+          return {
+            rpId,
+            expectedOrigin: url.origin,
+            allowedOrigins: Array.from(new Set([url.origin, ...BUILTIN_ORIGINS])),
+          };
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return {
+      rpId: DEFAULT_RP_ID,
+      expectedOrigin: DEFAULT_ORIGIN,
+      allowedOrigins: BUILTIN_ORIGINS,
+    };
+  }
 
   // ── POST /api/auth/register-options ──────────────────────────────
   // Called when a logged-in user wants to bind a new passkey (hardware or platform).
@@ -142,9 +213,10 @@ async function startServer() {
         transports: d.data().transports || [],
       }));
 
+      const {rpId, expectedOrigin} = webAuthnFromRequest(req);
       const options = await generateRegistrationOptions({
         rpName: RP_NAME,
-        rpID: RP_ID,
+        rpID: rpId,
         userID: new TextEncoder().encode(resolvedUserId),
         userName: resolvedEmail,
         userDisplayName: resolvedEmail,
@@ -161,6 +233,8 @@ async function startServer() {
       await db.collection("passkey_challenges").doc(resolvedEmail).set({
         challenge: options.challenge,
         type: "registration",
+        rpId,
+        expectedOrigin,
         createdAt: Date.now(),
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
@@ -184,17 +258,22 @@ async function startServer() {
       const challengeRef = db.collection("passkey_challenges").doc(resolvedEmail);
       const challengeDoc = await challengeRef.get();
       if (!challengeDoc.exists) return res.status(400).json({ error: "No pending challenge for this email" });
-      const { challenge, expiresAt } = challengeDoc.data()!;
+      const challengeData = challengeDoc.data()!;
+      const { challenge, expiresAt } = challengeData;
       if (Date.now() > expiresAt) {
         await challengeRef.delete();
         return res.status(400).json({ error: "Challenge expired. Please try again." });
       }
 
+      const cfg = webAuthnFromRequest(req);
+      const expectedOrigin = (challengeData.expectedOrigin as string) || cfg.expectedOrigin;
+      const rpId = (challengeData.rpId as string) || cfg.rpId;
+
       const verification = await verifyRegistrationResponse({
         response: attestationResponse,
         expectedChallenge: challenge,
-        expectedOrigin: EXPECTED_ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
+        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
         requireUserVerification: false,
       });
 
@@ -267,8 +346,9 @@ async function startServer() {
         transports: d.data().transports || [],
       }));
 
+      const {rpId, expectedOrigin} = webAuthnFromRequest(req);
       const options = await generateAuthenticationOptions({
-        rpID: RP_ID,
+        rpID: rpId,
         allowCredentials,
         userVerification: "preferred",
       });
@@ -277,6 +357,9 @@ async function startServer() {
       await db.collection("passkey_challenges").doc(email).set({
         challenge: options.challenge,
         type: "authentication",
+        rpId,
+        expectedOrigin,
+        userId: userDoc.id,
         createdAt: Date.now(),
         expiresAt: Date.now() + 5 * 60 * 1000,
       });
@@ -323,24 +406,36 @@ async function startServer() {
         return res.status(404).json({ error: "Credential not found" });
       }
 
-      // Fetch challenge
-      const challengeRef = db.collection("passkey_challenges").doc(storedCred.email);
-      const challengeDoc = await challengeRef.get();
-      if (!challengeDoc.exists) return res.status(400).json({ error: "No pending challenge" });
-      const { challenge, expiresAt } = challengeDoc.data()!;
+      // Fetch challenge (email-keyed, with credential-id fallback)
+      const emailKey = (storedCred.email || "").toString().trim().toLowerCase();
+      let challengeRef = emailKey
+        ? db.collection("passkey_challenges").doc(emailKey)
+        : null;
+      let challengeDoc = challengeRef ? await challengeRef.get() : null;
+      if (!challengeDoc?.exists) {
+        challengeRef = db.collection("passkey_challenges").doc(credentialID);
+        challengeDoc = await challengeRef.get();
+      }
+      if (!challengeDoc?.exists) return res.status(400).json({ error: "No pending challenge" });
+      const challengeData = challengeDoc.data()!;
+      const { challenge, expiresAt } = challengeData;
       if (Date.now() > expiresAt) {
-        await challengeRef.delete();
+        await challengeRef!.delete();
         return res.status(400).json({ error: "Challenge expired. Please try again." });
       }
 
       const publicKeyRaw = storedCred.publicKey || storedCred.credentialPublicKey;
       const publicKeyBuffer = Buffer.from(publicKeyRaw, publicKeyRaw.includes("-") || publicKeyRaw.includes("_") ? "base64url" : "base64");
 
+      const cfg = webAuthnFromRequest(req);
+      const expectedOrigin = (challengeData.expectedOrigin as string) || cfg.expectedOrigin;
+      const rpId = (challengeData.rpId as string) || (storedCred.rpId as string) || cfg.rpId;
+
       const verification = await verifyAuthenticationResponse({
         response: assertionResponse,
         expectedChallenge: challenge,
-        expectedOrigin: EXPECTED_ORIGIN,
-        expectedRPID: RP_ID,
+        expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
+        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
         credential: {
           id: storedCred.credentialID || credentialID,
           publicKey: publicKeyBuffer,
