@@ -69,7 +69,7 @@ function createAuth() {
 
 export const auth = createAuth();
 export const db = getFirestore(app, (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)');
-export const storage = getStorage(app);
+export const storage = getStorage(app, { bucket: firebaseConfig.storageBucket });
 export const functions = getFunctions(app);
 export const remoteConfig = getRemoteConfig(app);
 export const database = getDatabase(app);

@@ -1,9 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ScanFinding } from './scanService';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { doc as firestoreDoc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, addDoc, query, getDocs } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { generateSHA256 } from '../utils/crypto';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 
@@ -237,7 +237,7 @@ export async function generateSovereignReport(options: ReportGenerationOptions):
   const sha256Digest = await generatePDFIntegrityHash(pdfData);
 
   // Upload to Firebase Storage
-  const storage = getStorage();
+  // Use imported storage instance
   const pdfStoragePath = `diff_reports/pdfs/${userId}/${reportId}.pdf`;
   const storageRef = ref(storage, pdfStoragePath);
 
@@ -360,12 +360,11 @@ export async function cleanupExpiredReports(): Promise<number> {
         
         // Delete from Storage
         if (data.pdfStoragePath) {
-          const storage = getStorage();
+          // Use imported storage instance
           const storageRef = ref(storage, data.pdfStoragePath);
           try {
-            // Note: deleteObject needs to be imported from firebase/storage
-            // For now, we'll just log it
-            console.log(`Would delete from storage: ${data.pdfStoragePath}`);
+            await deleteObject(storageRef);
+            console.log(`Deleted from storage: ${data.pdfStoragePath}`);
           } catch (storageError) {
             console.error('Failed to delete from storage:', storageError);
           }
