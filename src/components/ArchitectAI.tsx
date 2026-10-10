@@ -98,6 +98,192 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Sovereign Score Bar with Accessible Tooltip ──
+  const SovereignScoreBar = ({ 
+    variant = 'default',
+    showBreakdown = true 
+  }: { 
+    variant?: 'default' | 'compact' | 'sidebar';
+    showBreakdown?: boolean;
+  }) => {
+    const [isTooltipVisible, setIsTooltipVisible] = useState(false);
+    const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const barRef = useRef<HTMLDivElement>(null);
+
+    const classification = sovereignScore >= 70 ? 'KNOXED' : sovereignScore >= 40 ? 'MONITORED' : 'NUKED';
+    const classificationColor = classification === 'KNOXED' ? NEON.blue : classification === 'MONITORED' ? NEON.orange : NEON.magenta;
+    const barHeight = variant === 'compact' ? 4 : variant === 'sidebar' ? 6 : 8;
+
+    const showTooltip = () => {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+      setIsTooltipVisible(true);
+    };
+    const hideTooltip = () => {
+      tooltipTimeoutRef.current = setTimeout(() => setIsTooltipVisible(false), 150);
+    };
+
+    useEffect(() => {
+      return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
+    }, []);
+
+    return (
+      <div
+        ref={barRef}
+        style={{ position: 'relative', width: '100%' }}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
+      >
+        {/* Clickable / focusable score bar */}
+        <div
+          role="progressbar"
+          aria-valuenow={sovereignScore}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Sovereign Score: ${sovereignScore} out of 100. Status: ${classification}`}
+          tabIndex={0}
+          style={{
+            height: barHeight,
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: barHeight / 2,
+            overflow: 'hidden',
+            cursor: 'pointer',
+            border: `1px solid ${classificationColor}22`,
+            outline: 'none',
+            transition: 'border-color 0.3s ease, box-shadow 0.3s ease',
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsTooltipVisible(v => !v); } }}
+        >
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${sovereignScore}%` }}
+            transition={{ type: 'spring', stiffness: 50, damping: 25, delay: 0.2 }}
+            style={{
+              height: '100%',
+              background: `linear-gradient(90deg, ${classificationColor}66, ${classificationColor})`,
+              boxShadow: `0 0 12px ${classificationColor}88`,
+              position: 'relative',
+              borderRadius: barHeight / 2,
+            }}
+          >
+            {/* Shimmer effect */}
+            <motion.div
+              animate={{ x: ['-100%', '300%'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear', repeatDelay: 1 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: '30%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                borderRadius: 'inherit',
+              }}
+            />
+          </motion.div>
+        </div>
+
+        {/* Tooltip */}
+        <AnimatePresence>
+          {isTooltipVisible && (
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              role="tooltip"
+              aria-live="polite"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                marginTop: 10,
+                zIndex: 2000,
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Tooltip arrow */}
+              <div style={{
+                position: 'absolute',
+                top: -5,
+                left: '50%',
+                transform: 'translateX(-50%) rotate(45deg)',
+                width: 10,
+                height: 10,
+                background: 'rgba(6, 13, 31, 0.95)',
+                borderTop: `1px solid ${classificationColor}44`,
+                borderLeft: `1px solid ${classificationColor}44`,
+              }} />
+
+              {/* Tooltip body */}
+              <div style={{
+                background: 'rgba(6, 13, 31, 0.95)',
+                backdropFilter: 'blur(16px)',
+                border: `1px solid ${classificationColor}44`,
+                borderRadius: 12,
+                padding: '14px 18px',
+                minWidth: variant === 'sidebar' ? 200 : 260,
+                boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 20px ${classificationColor}22`,
+              }}>
+                {/* Score header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showBreakdown ? 10 : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{
+                      fontFamily: "'Orbitron'",
+                      fontSize: variant === 'sidebar' ? '1.2rem' : '1.5rem',
+                      fontWeight: 900,
+                      color: classificationColor,
+                      textShadow: `0 0 15px ${classificationColor}88`,
+                      lineHeight: 1,
+                    }}>
+                      {sovereignScore}
+                    </span>
+                    <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.7rem', color: NEON.textMuted }}>/100</span>
+                  </div>
+                  <span style={{
+                    fontFamily: "'Orbitron'",
+                    fontSize: '0.55rem',
+                    fontWeight: 700,
+                    color: classificationColor,
+                    letterSpacing: '0.1em',
+                    padding: '3px 8px',
+                    borderRadius: 4,
+                    background: `${classificationColor}15`,
+                    border: `1px solid ${classificationColor}33`,
+                  }}>
+                    {classification}
+                  </span>
+                </div>
+
+                {/* Breakdown stats */}
+                {showBreakdown && (
+                  <div style={{ display: 'flex', gap: 12, paddingTop: 10, borderTop: `1px solid ${NEON.textMuted}22` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: NEON.magenta, boxShadow: `0 0 6px ${NEON.magenta}` }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: NEON.magenta }}>{stats.nuked}</span>
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted }}>NUKED</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: NEON.blue, boxShadow: `0 0 6px ${NEON.blue}` }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: NEON.blue }}>{stats.knoxed}</span>
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted }}>KNOXED</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: NEON.orange, boxShadow: `0 0 6px ${NEON.orange}` }} />
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: NEON.orange }}>{stats.monitored}</span>
+                      <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted }}>MON</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
   // Initialize feature flags
   useEffect(() => {
     setIsDarkWebScanEnabled(getFeatureFlag('enable_dark_web_scan'));
@@ -1110,6 +1296,10 @@ The report includes detailed remediation recommendations for all NUKED findings 
             <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 4 }}>AI INTELLIGENCE ENGINE</div>
             <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
             <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Local security & privacy intelligence · evidence-bound · Gemma-powered</div>
+            {/* Header Sovereign Score Bar (compact) */}
+            <div style={{ marginTop: 8, maxWidth: 280 }}>
+              <SovereignScoreBar variant="compact" showBreakdown={false} />
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <NeonButton 
@@ -1237,6 +1427,32 @@ The report includes detailed remediation recommendations for all NUKED findings 
 
         <div style={{ height: 1, background: "linear-gradient(135deg, #FF2E9F 0%, #00D4FF 50%, #FF7A18 100%)", marginBottom: 16, opacity: 0.5 }} />
 
+        {/* ── Dedicated Sovereign Score Section ── */}
+        <div style={{ marginBottom: 16, padding: '0 8px' }}>
+          <GlassCard style={{
+            padding: '14px 18px',
+            background: 'rgba(0, 212, 255, 0.02)',
+            borderColor: `${sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta}22`,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Shield size={16} color={sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta} />
+                <span style={{ fontFamily: "'Orbitron'", fontSize: '0.65rem', color: NEON.text, fontWeight: 700, letterSpacing: '0.08em' }}>SOVEREIGN SCORE</span>
+              </div>
+              <span style={{
+                fontFamily: "'Orbitron'",
+                fontSize: '1rem',
+                fontWeight: 900,
+                color: sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta,
+                textShadow: `0 0 12px ${(sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta)}66`,
+              }}>
+                {sovereignScore}/100
+              </span>
+            </div>
+            <SovereignScoreBar variant="default" showBreakdown={true} />
+          </GlassCard>
+        </div>
+
         {/* Scan Progress Indicator */}
         <AnimatePresence>
           {isScanning && (
@@ -1303,34 +1519,8 @@ The report includes detailed remediation recommendations for all NUKED findings 
                     </div>
                   </div>
 
-                  {/* Progress Bar Container */}
-                  <div style={{ height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: 'hidden', marginBottom: 16, border: '1px solid rgba(0, 212, 255, 0.1)' }}>
-                    <motion.div 
-                      key="progress-bar"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${scanProgress}%` }}
-                      transition={{ type: "spring", stiffness: 40, damping: 20 }}
-                      style={{ 
-                        height: '100%', 
-                        background: `linear-gradient(90deg, ${NEON.blue}88, ${NEON.blue})`,
-                        boxShadow: `0 0 15px ${NEON.blue}`,
-                        position: 'relative'
-                      }} 
-                    >
-                      {/* Animating highlight inside the progress bar */}
-                      <motion.div 
-                        animate={{ x: ["-100%", "200%"] }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          bottom: 0,
-                          width: '40px',
-                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                        }}
-                      />
-                    </motion.div>
-                  </div>
+                  {/* Progress Bar Container — with hover tooltip */}
+                  <ScanProgressTooltip scanProgress={scanProgress} currentModule={currentModule} />
 
                   {/* Stages Matrix - Granular Detail View */}
                   <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '16px', border: '1px solid rgba(0, 212, 255, 0.15)', marginBottom: 16, boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)' }}>
@@ -2084,6 +2274,26 @@ The report includes detailed remediation recommendations for all NUKED findings 
 
       {/* Threat Intelligence Sidebar & Scan History */}
       <div style={{ width: 300, display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Sidebar Sovereign Score Panel */}
+        <GlassCard style={{ padding: '14px 16px', flexShrink: 0, background: 'rgba(0, 212, 255, 0.02)', borderColor: `${sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta}22` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={14} color={sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta} />
+              <span style={{ fontFamily: "'Orbitron'", fontSize: '0.6rem', color: NEON.text, fontWeight: 700, letterSpacing: '0.06em' }}>SOVEREIGN SCORE</span>
+            </div>
+            <span style={{
+              fontFamily: "'Orbitron'",
+              fontSize: '0.85rem',
+              fontWeight: 900,
+              color: sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta,
+              textShadow: `0 0 10px ${(sovereignScore >= 70 ? NEON.blue : sovereignScore >= 40 ? NEON.orange : NEON.magenta)}66`,
+            }}>
+              {sovereignScore}
+            </span>
+          </div>
+          <SovereignScoreBar variant="sidebar" showBreakdown={true} />
+        </GlassCard>
+
         <GlassCard style={{ flex: 1, padding: 20, display: "flex", flexDirection: "column", maxHeight: "50%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Rss size={18} color={NEON.orange} />
