@@ -158,6 +158,42 @@ async function inspectBrowserEntropy(): Promise<{ canvasHash: string; vendor: st
 }
 
 /**
+ * Helper: AI-driven telemetry synthesis using Architect AI (Nemotron 3 Nano)
+ */
+async function analyzeWithArchitectAI(
+  vector: string, 
+  rawTelemetry: string, 
+  defaultStatus: "NUKED" | "KNOXED" | "MONITORED",
+  defaultFinding: string,
+  defaultDetails: string
+): Promise<{ findingText: string; detailsText: string; status: "NUKED" | "KNOXED" | "MONITORED" }> {
+  try {
+    const prompt = `Analyze this raw security telemetry for DIFF Vector: ${vector}.
+Telemetry: ${rawTelemetry}
+Provide a JSON response with exactly these keys:
+- "findingText": A short (3-6 words) punchy, cyber-styled headline (e.g., "Exposed in 3 Public Breaches").
+- "detailsText": A 1-2 sentence highly technical cyber-defense analysis based on the telemetry.
+- "status": Must be exactly one of: "NUKED" (high risk/breached), "MONITORED" (medium risk/public footprint), or "KNOXED" (secure/private).`;
+
+    const { text, offline } = await chatComplete(prompt, "You are the Agape Sovereign AI Orchestrator running locally on Nemotron-3-Nano. Output strictly valid JSON.", true);
+    
+    if (offline) {
+      return { findingText: defaultFinding, detailsText: defaultDetails + " [AI Offline]", status: defaultStatus };
+    }
+
+    const parsed = JSON.parse(text);
+    return {
+      findingText: parsed.findingText || defaultFinding,
+      detailsText: parsed.detailsText || defaultDetails,
+      status: ["NUKED", "KNOXED", "MONITORED"].includes(parsed.status) ? parsed.status : defaultStatus
+    };
+  } catch (err) {
+    console.error("AI Analysis failed:", err);
+    return { findingText: defaultFinding, detailsText: defaultDetails, status: defaultStatus };
+  }
+}
+
+/**
  * Execute real scan for an individual vector
  */
 export async function startModuleScan(
@@ -177,36 +213,48 @@ export async function startModuleScan(
   if (normModule.includes("email") || normModule === "v-01") {
     onProgress?.(1, 1, "Email Breach Scanner", "Querying XposedOrNot live breach registry...");
     const res = await checkEmailBreachReal(email);
-    if (res.breached) {
-      status = "NUKED";
-      findingText = `Exposed in ${res.breaches.length} Public Breaches`;
-      detailsText = res.details;
-    } else {
-      status = "KNOXED";
-      findingText = "Zero Public Breaches Detected";
-      detailsText = `Analyzed ${email} against live threat feeds. No active breaches found.`;
-    }
+    const telemetry = res.breached ? `Email breached in: ${res.breaches.join(', ')}` : "No breaches detected in XposedOrNot global index.";
+    const aiResult = await analyzeWithArchitectAI(
+      "V-01 Email Breach Scanner", 
+      telemetry, 
+      res.breached ? "NUKED" : "KNOXED",
+      res.breached ? `Exposed in ${res.breaches.length} Public Breaches` : "Zero Public Breaches Detected",
+      res.details
+    );
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("social") || normModule === "v-02") {
     onProgress?.(1, 1, "Social Media Footprint", "Enumerating public API endpoints...");
     const handle = email.split("@")[0];
     const res = await checkSocialProfileReal(handle);
-    if (res.exists) {
-      status = "MONITORED";
-      findingText = `Public Social Profile Detected (@${handle})`;
-      detailsText = res.details;
-    } else {
-      status = "KNOXED";
-      findingText = "No Correlated Public Handle Exposure";
-      detailsText = res.details;
-    }
+    const telemetry = res.exists ? `Found GitHub profile for ${handle}: ${res.details}` : `No GitHub profile found for ${handle}.`;
+    const aiResult = await analyzeWithArchitectAI(
+      "V-02 Social Media Footprint",
+      telemetry,
+      res.exists ? "MONITORED" : "KNOXED",
+      res.exists ? `Public Social Profile Detected (@${handle})` : "No Correlated Public Handle Exposure",
+      res.details
+    );
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("device") || normModule === "v-03") {
     onProgress?.(1, 1, "Device File Scan", "Auditing hardware concurrency & storage entropy...");
     const cores = navigator.hardwareConcurrency || 4;
     const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory || 8;
     const platform = navigator.platform || "Desktop";
-    status = "KNOXED";
-    findingText = `Device Enclave Sealed: ${platform} (${cores} Cores, ${mem}GB RAM)`;
-    detailsText = `Local hardware security verification complete. No unprotected file system handles exposed.`;
+    const telemetry = `Platform: ${platform}, CPU Cores: ${cores}, Memory: ${mem}GB. No direct filesystem access granted to browser.`;
+    const aiResult = await analyzeWithArchitectAI(
+      "V-03 Device File Scan",
+      telemetry,
+      "KNOXED",
+      `Device Enclave Sealed: ${platform} (${cores} Cores)`,
+      `Local hardware security verification complete. No unprotected file system handles exposed.`
+    );
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("mobile") || normModule.includes("system") || normModule === "v-04") {
     onProgress?.(1, 1, "Mobile Security Layer", "Testing WebAuthn biometric platform authenticator...");
     const hasWebAuthn = !!window.PublicKeyCredential;
@@ -214,9 +262,17 @@ export async function startModuleScan(
     if (hasWebAuthn && window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
       hasBiometrics = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false);
     }
-    status = hasBiometrics ? "KNOXED" : "MONITORED";
-    findingText = hasBiometrics ? "Hardware Passkey Enclave Verified" : "Software Authenticator Active";
-    detailsText = `WebAuthn: ${hasWebAuthn ? "Supported" : "Disabled"}. Biometric Secure Enclave: ${hasBiometrics ? "Available & Active" : "Requires Device Passkey Enrollment"}.`;
+    const telemetry = `WebAuthn Support: ${hasWebAuthn}. Biometric Enclave Available: ${hasBiometrics}.`;
+    const aiResult = await analyzeWithArchitectAI(
+      "V-04 Mobile Security Layer",
+      telemetry,
+      hasBiometrics ? "KNOXED" : "MONITORED",
+      hasBiometrics ? "Hardware Passkey Enclave Verified" : "Software Authenticator Active",
+      `WebAuthn: ${hasWebAuthn ? "Supported" : "Disabled"}. Biometric Secure Enclave: ${hasBiometrics ? "Available & Active" : "Requires Device Passkey Enrollment"}.`
+    );
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("deepweb") || normModule === "v-05") {
     onProgress?.(1, 1, "Deep Web Exposure", "Checking pastebins & unindexed pattern registries...");
     status = "MONITORED";
