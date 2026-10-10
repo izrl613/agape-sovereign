@@ -5,7 +5,6 @@ import { initializeApp, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import cookieParser from "cookie-parser";
 import { ARCHITECT_SYSTEM_PROMPT } from "./src/architectPrompt.ts";
-import { DEFAULT_MODEL, OLLAMA_BASE_URL, buildOllamaChatPayload } from "./src/config/aiModel.js";
 
 console.log("BOOT: Starting Agape Sovereign Enclave server...");
 if (!getApps().length) {
@@ -43,39 +42,13 @@ async function startServer() {
     try {
       const { message, history = [] } = req.body;
       
-      // Attempt to use Gemini (Cloud Mode) if API key is present
-      if (process.env.GEMINI_API_KEY) {
-        const { GoogleGenAI } = await import('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        
-        // Format history for Gemini
-        const formattedHistory = history.map((h: any) => ({
-            role: h.role === "user" ? "user" : "model",
-            parts: [{ text: h.parts?.[0]?.text || h.content || "" }]
-        }));
-        
-        const response = await ai.models.generateContent({
-            model: 'gemini-1.5-flash',
-            contents: [
-                ...formattedHistory,
-                { role: "user", parts: [{ text: message.parts?.[0]?.text || message.content || "" }] }
-            ],
-            config: {
-                systemInstruction: ARCHITECT_SYSTEM_PROMPT,
-                temperature: 0.7,
-            }
-        });
-        
-        res.json({ reply: response.text || "" });
-        return;
-      }
-      
-      // Fallback to Ollama if no Gemini key
-      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      // Use Local AI Offline LLM (LM Studio / MCP Server) - Nemotron 3 Nano 4B
+      const LOCAL_AI_URL = "http://localhost:1234/v1/chat/completions";
+      const aiResponse = await fetch(LOCAL_AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOllamaChatPayload({
-          stream: false,
+        body: JSON.stringify({
+          model: "nemotron-3-nano:4b",
           messages: [
             { role: "system", content: ARCHITECT_SYSTEM_PROMPT },
             ...history.map((h: any) => ({
@@ -83,12 +56,13 @@ async function startServer() {
               content: h.parts?.[0]?.text || h.content || ""
             })),
             { role: "user", content: message.parts?.[0]?.text || message.content || "" }
-          ]
-        }))
+          ],
+          temperature: 0.7,
+        })
       });
-      if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);
-      const data = await response.json();
-      res.json({ reply: data.message?.content || "" });
+      if (!aiResponse.ok) throw new Error(`Local AI HTTP error ${aiResponse.status}`);
+      const data = await aiResponse.json();
+      res.json({ reply: data.choices?.[0]?.message?.content || "" });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to generate AI response" });
@@ -105,25 +79,23 @@ async function startServer() {
         "body": "The full formal email body..."
       }`;
       
-      const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+      const LOCAL_AI_URL = "http://localhost:1234/v1/chat/completions";
+      const aiResponse = await fetch(LOCAL_AI_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildOllamaChatPayload({
-          stream: false,
-          format: "json",
+        body: JSON.stringify({
+          model: "nemotron-3-nano:4b",
           messages: [
             { role: "system", content: "You are an automated privacy agent. Output must be a valid JSON object matching the requested schema. Do not output markdown backticks." },
             { role: "user", content: prompt }
           ],
-          options: {
-            temperature: 0.2
-          }
-        }))
+          temperature: 0.2
+        })
       });
 
-      if (!response.ok) throw new Error(`Ollama HTTP error ${response.status}`);
-      const data = await response.json();
-      const text = data.message?.content || "{}";
+      if (!aiResponse.ok) throw new Error(`Local AI HTTP error ${aiResponse.status}`);
+      const data = await aiResponse.json();
+      const text = data.choices?.[0]?.message?.content || "{}";
 
       try {
         const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
