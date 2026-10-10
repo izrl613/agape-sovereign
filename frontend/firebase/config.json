@@ -1,0 +1,13 @@
+{
+  "webAppConfig": {
+    "projectId": "agape-sovereign",
+    "appId": "1:956088455461:web:d7a783aed2c9d55f904acc",
+    "apiKey": "AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g",
+    "authDomain": "agape-sovereign.firebaseapp.com",
+    "storageBucket": "agape-sovereign.firebasestorage.app",
+    "databaseURL": "https://agape-sovereign-default-rtdb.firebaseio.com",
+    "messagingSenderId": "956088455461",
+    "measurementId": "G-FHSTLBTWQ5"
+  },
+  "databaseId": "architect-ai"
+}
