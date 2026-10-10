@@ -284,6 +284,136 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     );
   };
 
+  // ── Scan Progress Bar with Tooltip ──
+  const ScanProgressTooltip = ({ scanProgress, currentModule }: { scanProgress: number, currentModule: string | null }) => {
+    const [isTooltipVisible, setIsTooltipVisible] = useState(false);
+    const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const showTooltip = () => {
+      if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current);
+      setIsTooltipVisible(true);
+    };
+    const hideTooltip = () => {
+      tooltipTimeoutRef.current = setTimeout(() => setIsTooltipVisible(false), 150);
+    };
+
+    useEffect(() => {
+      return () => { if (tooltipTimeoutRef.current) clearTimeout(tooltipTimeoutRef.current); };
+    }, []);
+
+    return (
+      <div 
+        style={{ position: 'relative' }}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
+        onFocus={showTooltip}
+        onBlur={hideTooltip}
+      >
+        {/* Progress Bar Container */}
+        <div
+          role="progressbar"
+          aria-valuenow={scanProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Scan Progress: ${scanProgress}%`}
+          tabIndex={0}
+          style={{ 
+            height: 6, 
+            background: "rgba(255,255,255,0.05)", 
+            borderRadius: 3, 
+            overflow: 'hidden', 
+            marginBottom: 16, 
+            border: '1px solid rgba(0, 212, 255, 0.1)',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsTooltipVisible(v => !v); } }}
+        >
+          <motion.div 
+            key="progress-bar"
+            initial={{ width: 0 }}
+            animate={{ width: `${scanProgress}%` }}
+            transition={{ type: "spring", stiffness: 40, damping: 20 }}
+            style={{ 
+              height: '100%', 
+              background: `linear-gradient(90deg, ${NEON.blue}88, ${NEON.blue})`,
+              boxShadow: `0 0 15px ${NEON.blue}`,
+              position: 'relative'
+            }} 
+          >
+            {/* Animating highlight inside the progress bar */}
+            <motion.div 
+              animate={{ x: ["-100%", "200%"] }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: '40px',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+              }}
+            />
+          </motion.div>
+        </div>
+
+        {/* Tooltip */}
+        <AnimatePresence>
+          {isTooltipVisible && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              role="tooltip"
+              aria-live="polite"
+              style={{
+                position: 'absolute',
+                bottom: '100%',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                marginBottom: 10,
+                zIndex: 2000,
+                pointerEvents: 'none',
+              }}
+            >
+              {/* Tooltip body */}
+              <div style={{
+                background: 'rgba(6, 13, 31, 0.95)',
+                backdropFilter: 'blur(16px)',
+                border: `1px solid ${NEON.blue}44`,
+                borderRadius: 8,
+                padding: '10px 14px',
+                minWidth: 160,
+                boxShadow: `0 8px 32px rgba(0,0,0,0.6), 0 0 20px ${NEON.blue}22`,
+                textAlign: 'center'
+              }}>
+                <div style={{ fontFamily: "'Orbitron'", fontSize: '1.2rem', fontWeight: 900, color: NEON.blue, textShadow: `0 0 10px ${NEON.blue}88` }}>
+                  {scanProgress}%
+                </div>
+                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.65rem', color: NEON.textMuted, marginTop: 4 }}>
+                  {scanProgress === 100 ? 'ANALYSIS COMPLETE' : currentModule ? `SCANNING ${currentModule.toUpperCase()} VECTOR` : 'INITIALIZING...'}
+                </div>
+              </div>
+              
+              {/* Tooltip arrow */}
+              <div style={{
+                position: 'absolute',
+                bottom: -5,
+                left: '50%',
+                transform: 'translateX(-50%) rotate(45deg)',
+                width: 10,
+                height: 10,
+                background: 'rgba(6, 13, 31, 0.95)',
+                borderBottom: `1px solid ${NEON.blue}44`,
+                borderRight: `1px solid ${NEON.blue}44`,
+              }} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
   // Initialize feature flags
   useEffect(() => {
     setIsDarkWebScanEnabled(getFeatureFlag('enable_dark_web_scan'));
