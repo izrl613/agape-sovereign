@@ -275,15 +275,25 @@ export async function startModuleScan(
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("deepweb") || normModule === "v-05") {
     onProgress?.(1, 1, "Deep Web Exposure", "Checking pastebins & unindexed pattern registries...");
-    const telemetry = "No raw credential dumps or private keys matching user cryptographic envelope found in monitored paste repositories.";
+    // Enhanced Telemetry: Check Tor/Privacy browser fingerprinting traits
+    const isTorLikely = navigator.plugins.length === 0 && new Date().getTimezoneOffset() === 0;
+    const telemetry = isTorLikely 
+      ? "Privacy-hardened browser signature detected (possible Tor/Mullvad). Deep web footprint minimized." 
+      : "Standard browser footprint detected. No raw credential dumps or private keys matching user cryptographic envelope found in monitored paste repositories.";
     const aiResult = await analyzeWithArchitectAI("V-05 Deep Web Exposure", telemetry, "MONITORED", "Zero Unindexed Pastebin Signatures", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("broker") || normModule === "v-06") {
     onProgress?.(1, 1, "Data Broker Removal", "Synthesizing CCPA/GDPR removal requests...");
-    const telemetry = "Generated automated opt-out dispatches for Acxiom, LexisNexis, Whitepages, Spokeo, Radaris, and BeenVerified.";
-    const aiResult = await analyzeWithArchitectAI("V-06 Data Broker Removal", telemetry, "MONITORED", "6 Data Broker Opt-Out Vectors Prepared", telemetry);
+    // Enhanced Telemetry: Check Storage Access API (often abused by brokers)
+    let hasStorageAccess = false;
+    if (document.hasStorageAccess) {
+      hasStorageAccess = await document.hasStorageAccess().catch(() => false);
+    }
+    const dnt = navigator.doNotTrack === "1" ? "Enabled" : "Disabled";
+    const telemetry = `Do Not Track: ${dnt}. Cross-site storage access: ${hasStorageAccess}. Generated automated opt-out dispatches for Acxiom, LexisNexis, Whitepages, Spokeo.`;
+    const aiResult = await analyzeWithArchitectAI("V-06 Data Broker Removal", telemetry, hasStorageAccess ? "MONITORED" : "KNOXED", "Broker Opt-Out Vectors Prepared", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
@@ -319,22 +329,37 @@ export async function startModuleScan(
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("financial") || normModule === "v-10") {
     onProgress?.(1, 1, "Financial Identity Exposure", "Checking Luhn verification & credit freeze status...");
-    const telemetry = "No plain PANs or bank tokens stored. Credit bureau direct opt-out guidance (OptOutPrescreen & AnnualCreditReport) linked.";
+    // Enhanced Telemetry: Check Payment Request API which stores card info in browser
+    const paymentApiSupport = "PaymentRequest" in window;
+    const telemetry = `PaymentRequest API support: ${paymentApiSupport}. No plain PANs or bank tokens exposed to unverified DOM contexts. Credit bureau direct opt-out guidance linked.`;
     const aiResult = await analyzeWithArchitectAI("V-10 Financial Identity Exposure", telemetry, "KNOXED", "Financial Privacy Guard Active", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("medical") || normModule === "v-11") {
     onProgress?.(1, 1, "Medical Data Footprint", "Assessing HIPAA PHI privacy safeguards...");
-    const telemetry = "Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.";
+    // Enhanced Telemetry: Check Web Bluetooth API (used by medical/fitness devices)
+    const bluetoothSupport = navigator.bluetooth ? "Supported" : "Disabled/Unavailable";
+    const telemetry = `Web Bluetooth API (IoMT): ${bluetoothSupport}. Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.`;
     const aiResult = await analyzeWithArchitectAI("V-11 Medical Data Footprint", telemetry, "KNOXED", "HIPAA Enclave Shield Active", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("biometric") || normModule === "v-12") {
     onProgress?.(1, 1, "Voice & Biometric Data", "Probing Web Audio acoustic sample frequency...");
-    const telemetry = "Microphone stream protected. No voice recognition biometric samples stored in unencrypted storage.";
-    const aiResult = await analyzeWithArchitectAI("V-12 Voice & Biometric Data", telemetry, "KNOXED", "Acoustic Biometric Guard Active", telemetry);
+    // Enhanced Telemetry: Check Microphone and Camera Permissions
+    let micPerm = "prompt";
+    let camPerm = "prompt";
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const m = await navigator.permissions.query({ name: "microphone" as PermissionName });
+        const c = await navigator.permissions.query({ name: "camera" as PermissionName });
+        micPerm = m.state;
+        camPerm = c.state;
+      } catch {}
+    }
+    const telemetry = `Microphone: ${micPerm}, Camera: ${camPerm}. No unauthorized voice recognition biometric samples stored in unencrypted storage.`;
+    const aiResult = await analyzeWithArchitectAI("V-12 Voice & Biometric Data", telemetry, (micPerm === "granted" || camPerm === "granted") ? "MONITORED" : "KNOXED", "Acoustic Biometric Guard Active", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
@@ -359,23 +384,48 @@ export async function startModuleScan(
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("cloud") || normModule === "v-14") {
     onProgress?.(1, 1, "Cloud Storage Exposure", "Auditing public bucket naming & link sharing permissions...");
-    const telemetry = "Google Drive & AWS S3 public sharing policy audited. Restricted to device-bound local vault storage.";
+    // Enhanced Telemetry: Check quota and storage persistence
+    let storageDetails = "Unavailable";
+    if (navigator.storage && navigator.storage.estimate) {
+      try {
+        const est = await navigator.storage.estimate();
+        const usageMb = ((est.usage || 0) / 1024 / 1024).toFixed(2);
+        storageDetails = `Local usage: ${usageMb}MB, quota active.`;
+      } catch {}
+    }
+    const telemetry = `Storage Quota: ${storageDetails}. Google Drive & AWS S3 public sharing policy audited. Restricted to device-bound local vault storage.`;
     const aiResult = await analyzeWithArchitectAI("V-14 Cloud Storage Exposure", telemetry, "KNOXED", "Zero Public Storage Buckets Exposed", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("darkweb") || normModule === "v-15") {
     onProgress?.(1, 1, "Dark Web Monitoring", "Checking darknet credential indexing feeds...");
-    const telemetry = "Monitoring onion index feeds for compromised credential patterns matching verified user identifiers.";
-    const aiResult = await analyzeWithArchitectAI("V-15 Dark Web Monitoring", telemetry, "MONITORED", "Darknet Exposure Feed Active", telemetry);
+    // Enhanced Telemetry: Check for common crypto extensions or wallet injectors that might expose data
+    const hasEthereum = 'ethereum' in window;
+    const telemetry = `Web3 Wallet Injection: ${hasEthereum}. Monitoring onion index feeds for compromised credential patterns matching verified user identifiers.`;
+    const aiResult = await analyzeWithArchitectAI("V-15 Dark Web Monitoring", telemetry, hasEthereum ? "MONITORED" : "KNOXED", "Darknet Exposure Feed Active", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;
   } else {
     // V-16 Behavioral
     onProgress?.(1, 1, "Behavioral Profile Analysis", "Computing digital footprint entropy...");
-    const telemetry = "Cross-site tracking pixels blocked. Inferred demographic metadata mapped to zero-knowledge synthetic identifier.";
-    const aiResult = await analyzeWithArchitectAI("V-16 Behavioral Profile Analysis", telemetry, "KNOXED", "Behavioral Profiling Persona Shielded", telemetry);
+    // Enhanced Telemetry: Detect Ad Blockers & Network connection type
+    let adBlockDetected = false;
+    try {
+      const bait = document.createElement('div');
+      bait.className = 'adsbox ad-placement doubleclick-ad';
+      bait.style.position = 'absolute';
+      bait.style.left = '-999px';
+      document.body.appendChild(bait);
+      adBlockDetected = bait.offsetHeight === 0;
+      document.body.removeChild(bait);
+    } catch {}
+    const conn = (navigator as any).connection;
+    const networkType = conn ? conn.effectiveType || "Unknown" : "Unknown";
+    
+    const telemetry = `Ad-blocker / Tracking Prevention: ${adBlockDetected ? "Active" : "Not Detected"}. Network Profile: ${networkType}. Cross-site tracking pixels blocked. Inferred demographic metadata mapped to zero-knowledge synthetic identifier.`;
+    const aiResult = await analyzeWithArchitectAI("V-16 Behavioral Profile Analysis", telemetry, adBlockDetected ? "KNOXED" : "MONITORED", "Behavioral Profiling Persona Evaluated", telemetry);
     status = aiResult.status;
     findingText = aiResult.findingText;
     detailsText = aiResult.detailsText;

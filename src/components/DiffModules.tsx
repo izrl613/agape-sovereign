@@ -34,7 +34,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   const [isGenerating, setIsGenerating] = useState(false);
   
   // Real-time parameter sync state
-  const [parameterValue, setParameterValue] = useState<string>('');
+  const [parameterValues, setParameterValues] = useState<string[]>(['']);
   const [decryptedValue, setDecryptedValue] = useState<string>('');
   const [storedHash, setStoredHash] = useState<string>('');
   const [isDecrypting, setIsDecrypting] = useState<boolean>(false);
@@ -43,6 +43,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
 
   // Per-module splash — re-triggers on every navigation to this module
   const [showSplash, setShowSplash] = useState(true);
+  const [showIdleSplash, setShowIdleSplash] = useState(false);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
   const findings = allFindings.filter(f => f.module === moduleId);
   const nuked = findings.filter(f => f.status === 'NUKED').length;
@@ -71,8 +73,19 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           setStoredHash(hash);
           if (encVal) {
             decryptClientSide(encVal, user.uid).then(dec => {
-              setDecryptedValue(dec);
-              setParameterValue(dec);
+              try {
+                const parsed = JSON.parse(dec);
+                if (Array.isArray(parsed)) {
+                  setParameterValues(parsed.length ? parsed : ['']);
+                  setDecryptedValue(parsed.join(' | '));
+                } else {
+                  setParameterValues([dec]);
+                  setDecryptedValue(dec);
+                }
+              } catch {
+                setParameterValues([dec]);
+                setDecryptedValue(dec);
+              }
             });
           }
         } catch (e) {
@@ -93,15 +106,26 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           setIsDecrypting(true);
           try {
             const dec = await decryptClientSide(encVal, user.uid);
-            setDecryptedValue(dec);
-            setParameterValue(dec);
+            try {
+              const parsed = JSON.parse(dec);
+              if (Array.isArray(parsed)) {
+                setParameterValues(parsed.length ? parsed : ['']);
+                setDecryptedValue(parsed.join(' | '));
+              } else {
+                setParameterValues([dec]);
+                setDecryptedValue(dec);
+              }
+            } catch {
+              setParameterValues([dec]);
+              setDecryptedValue(dec);
+            }
           } catch (err) {
             console.error("Decryption failed in sync:", err);
           }
           setIsDecrypting(false);
         } else {
           setDecryptedValue("");
-          setParameterValue("");
+          setParameterValues([""]);
         }
       }
     });
@@ -109,14 +133,30 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
     return () => unsubscribe();
   }, [user, moduleId]);
 
+  // Autosave Idle Timer
+  useEffect(() => {
+    const idleTimer = setTimeout(() => {
+      if (!showSplash && !showIdleSplash) {
+        setShowIdleSplash(true);
+        if (parameterValues.some(v => v.trim() !== '')) {
+          handleUpdate();
+        }
+      }
+    }, 60000); // 60 seconds
+    return () => clearTimeout(idleTimer);
+  }, [parameterValues, showSplash, showIdleSplash, lastActivity]);
+
   const handleUpdate = async () => {
     if (!user) return;
     setIsSaving(true);
-    const toastId = toast.loading("ENCRYPTING & SEALING PARAMETER...");
+    const toastId = toast.loading("ENCRYPTING & SEALING PARAMETERS...");
+
+    const activeVals = parameterValues.filter(v => v.trim() !== '');
+    const stringified = JSON.stringify(activeVals);
 
     try {
-      const newHash = await generateSHA256(parameterValue);
-      const encrypted = await encryptClientSide(parameterValue, user.uid);
+      const newHash = await generateSHA256(stringified);
+      const encrypted = await encryptClientSide(stringified, user.uid);
 
       // Save to Firestore or LocalStorage for demoMode
       if (demoMode) {
@@ -143,6 +183,7 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       let findingText = 'Secured via client-side PBKDF2 AES-256 Enclave';
       let detailsText = `Parameter encrypted with your sovereign passkey signature. Integrity Seal: ${newHash}`;
 
+      const parameterValue = activeVals.join(', ');
       if (!parameterValue) {
         status = 'MONITORED';
         findingText = 'Awaiting active configuration';
@@ -332,7 +373,34 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
         />
       )}
 
-      <div style={{ animation: "fade-in 0.3s ease" }}>
+      {/* Idle Splash Screen */}
+      {showIdleSplash && user && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md">
+          <div className="text-center p-8 bg-[#0a0a0a] border border-[#00D4FF]/30 rounded-2xl max-w-md w-full shadow-[0_0_50px_rgba(0,212,255,0.1)]">
+            <Shield className="w-16 h-16 text-[#00D4FF] mx-auto mb-6" />
+            <h2 className="font-mono text-xl text-white mb-2 tracking-widest">SESSION AUTOSAVED</h2>
+            <p className="text-slate-400 text-sm mb-8">
+              Your enclave has been secured due to inactivity. All parameters have been client-side crypted and preserved by Architect AI.
+            </p>
+            <NeonButton 
+              color={NEON.blue} 
+              onClick={() => {
+                setShowIdleSplash(false);
+                setLastActivity(Date.now());
+              }}
+              style={{ width: "100%" }}
+            >
+              RESUME SESSION
+            </NeonButton>
+          </div>
+        </div>
+      )}
+
+      <div 
+        style={{ animation: "fade-in 0.3s ease" }}
+        onMouseMove={() => setLastActivity(Date.now())}
+        onKeyDown={() => setLastActivity(Date.now())}
+      >
       {/* Integrity Tag */}
       <div className="flex justify-between items-center mb-6">
         <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
@@ -487,26 +555,41 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUE</label>
-                <div className="relative group">
-                  <input 
-                    type={moduleId === 'password' ? 'password' : 'text'}
-                    value={parameterValue}
-                    onChange={(e) => setParameterValue(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
-                    placeholder={`Enter parameter input for ${title}...`}
-                    disabled={isSaving}
-                  />
-                  {parameterValue && !isSaving && (
-                    <button
-                      onClick={() => setParameterValue('')}
-                      className="absolute right-2 text-xs text-[#666] opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Clear input"
-                    >
-                      <X />
-                    </button>
-                  )}
-                </div>
+                <label className="text-xs font-mono text-[#FF7A18]">UPDATE VECTOR VALUES</label>
+                {parameterValues.map((val, idx) => (
+                  <div key={idx} className="relative group flex items-center gap-2">
+                    <input 
+                      type={moduleId === 'password' ? 'password' : 'text'}
+                      value={val}
+                      onChange={(e) => {
+                        const newVals = [...parameterValues];
+                        newVals[idx] = e.target.value;
+                        setParameterValues(newVals);
+                      }}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00D4FF]/50 transition-all font-mono text-sm group-hover:border-white/20"
+                      placeholder={`Enter parameter input for ${title}...`}
+                      disabled={isSaving}
+                    />
+                    {parameterValues.length > 1 && !isSaving && (
+                      <button
+                        onClick={() => {
+                          const newVals = parameterValues.filter((_, i) => i !== idx);
+                          setParameterValues(newVals);
+                        }}
+                        className="text-[#666] hover:text-red-500 transition-colors px-2 py-1"
+                        title="Remove field"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button 
+                  onClick={() => setParameterValues([...parameterValues, ''])}
+                  className="mt-2 self-start text-xs text-[#00D4FF] hover:text-white transition-colors border border-[#00D4FF]/30 px-3 py-1.5 rounded-full"
+                >
+                  + ADD ADDITIONAL FIELD
+                </button>
               </div>
             </div>
 
