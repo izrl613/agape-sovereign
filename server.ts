@@ -42,6 +42,35 @@ async function startServer() {
   app.post("/api/architect", async (req, res) => {
     try {
       const { message, history = [] } = req.body;
+      
+      // Attempt to use Gemini (Cloud Mode) if API key is present
+      if (process.env.GEMINI_API_KEY) {
+        const { GoogleGenAI } = await import('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        
+        // Format history for Gemini
+        const formattedHistory = history.map((h: any) => ({
+            role: h.role === "user" ? "user" : "model",
+            parts: [{ text: h.parts?.[0]?.text || h.content || "" }]
+        }));
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: [
+                ...formattedHistory,
+                { role: "user", parts: [{ text: message.parts?.[0]?.text || message.content || "" }] }
+            ],
+            config: {
+                systemInstruction: ARCHITECT_SYSTEM_PROMPT,
+                temperature: 0.7,
+            }
+        });
+        
+        res.json({ reply: response.text || "" });
+        return;
+      }
+      
+      // Fallback to Ollama if no Gemini key
       const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

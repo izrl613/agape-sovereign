@@ -13,6 +13,7 @@ import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestor
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
+import { generateSovereignReport } from '../services/pdfReportService';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
@@ -218,6 +219,7 @@ export const Dashboard = () => {
   const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     return passkeyLockService.subscribe(state => {
@@ -277,6 +279,38 @@ export const Dashboard = () => {
       }
     }
     toast.success("All vectors locked in KNOXED status.");
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!user) return;
+    setIsGeneratingPdf(true);
+    const loadingToast = toast.loading("Generating Sovereign PDF Report...");
+    
+    try {
+      const reportMetadata = await generateSovereignReport({
+        userId: user.uid,
+        userEmail: user.email || 'unknown@sovereign.nyc',
+        findings,
+        sovereignScore: sovereignScoreData.score,
+        classification: sovereignScoreData.classification as 'KNOXED' | 'NUKED',
+        includeRemediation: true,
+        includeComplianceInfo: true
+      });
+      
+      toast.dismiss(loadingToast);
+      toast.success("PDF Report Generated Successfully!", {
+        action: {
+          label: "View Report",
+          onClick: () => window.open(reportMetadata.downloadUrl, "_blank")
+        }
+      });
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error("Failed to generate PDF Report. See console for details.");
+      console.error(err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   return (
@@ -439,6 +473,33 @@ export const Dashboard = () => {
             }}
           >
             🛡️ KNOX ALL SECURED
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.orange}44` }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleGeneratePdf}
+            disabled={isScanning || isGeneratingPdf}
+            style={{
+              flex: 1,
+              padding: '16px 24px',
+              borderRadius: 12,
+              background: `linear-gradient(135deg, ${NEON.orange}20 0%, ${NEON.orange}08 100%)`,
+              border: `1.5px solid ${NEON.orange}44`,
+              color: NEON.orange,
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              cursor: (isScanning || isGeneratingPdf) ? 'not-allowed' : 'pointer',
+              opacity: (isScanning || isGeneratingPdf) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.3s ease',
+            }}
+          >
+            {isGeneratingPdf ? '⏳ GENERATING...' : '📄 EXPORT PDF REPORT'}
           </motion.button>
         </div>
 
