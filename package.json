@@ -5,10 +5,34 @@
     "dev-frontend": "npm run dev --prefix frontend",
     "dev-backend": "npm run dev --prefix backend",
     "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
-    "build": "npm run build --prefix frontend",
-    "start": "npm run preview --prefix frontend"
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "latest",
+    "@simplewebauthn/browser": "^10.0.0",
+    "firebase": "^11.0.0",
+    "framer-motion": "^11.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^5.0.0",
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.0",
+    "react-router-dom": "^6.28.0",
+    "react-syntax-highlighter": "^15.6.0",
+    "recharts": "^2.13.0",
+    "remark-gfm": "^4.0.0",
+    "sonner": "^1.7.0"
   },
   "devDependencies": {
-    "concurrently": "latest"
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.0.0"
   }
 }

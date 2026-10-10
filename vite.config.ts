@@ -2,11 +2,19 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import dyadComponentTagger from '@dyad-sh/react-vite-component-tagger';
-
 export default defineConfig(() => {
+  let dyadPlugin: any = { name: 'dyad-noop' };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const tagger = require('@dyad-sh/react-vite-component-tagger');
+    if (typeof tagger === 'function') dyadPlugin = tagger();
+    else if (typeof tagger.default === 'function') dyadPlugin = tagger.default();
+  } catch {
+    // optional dev plugin
+  }
+
   return {
-    plugins: [dyadComponentTagger(), react(), tailwindcss()],
+    plugins: [dyadPlugin, react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
