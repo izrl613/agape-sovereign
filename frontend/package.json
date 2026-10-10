@@ -1,5 +1,5 @@
 {
-  "name": "architect-ai-agape-sovereign-enclave-frontend",
+  "name": "architect-ai-agape-sovereign-enclave-2026-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,17 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dataconnect/generated": "file:src/dataconnect-generated",
-    "@google/genai": "latest",
-    "crypto-browserify": "^3.5.1",
-    "pdf-lib": "^1.17.1",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "@google/genai": "latest",
+    "lucide-react": "latest",
+    "recharts": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@vitejs/plugin-react": "latest",
     "typescript": "latest",
-    "vite": "^8.1.4"
+    "vite": "latest"
   }
 }
