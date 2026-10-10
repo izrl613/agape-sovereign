@@ -13,7 +13,8 @@
     "react-dom": "latest",
     "@google/genai": "latest",
     "lucide-react": "latest",
-    "recharts": "latest"
+    "recharts": "latest",
+    "firebase": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
