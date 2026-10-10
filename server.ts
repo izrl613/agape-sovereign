@@ -446,7 +446,7 @@ async function startServer() {
         requireUserVerification: false,
       });
 
-      await challengeRef.delete();
+      await challengeRef?.delete();
 
       if (!verification.verified) {
         return res.status(400).json({ verified: false, error: "Authentication failed" });

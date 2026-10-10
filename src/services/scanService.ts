@@ -339,7 +339,7 @@ export async function startModuleScan(
   } else if (normModule.includes("medical") || normModule === "v-11") {
     onProgress?.(1, 1, "Medical Data Footprint", "Assessing HIPAA PHI privacy safeguards...");
     // Enhanced Telemetry: Check Web Bluetooth API (used by medical/fitness devices)
-    const bluetoothSupport = navigator.bluetooth ? "Supported" : "Disabled/Unavailable";
+    const bluetoothSupport = (navigator as any).bluetooth ? "Supported" : "Disabled/Unavailable";
     const telemetry = `Web Bluetooth API (IoMT): ${bluetoothSupport}. Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.`;
     const aiResult = await analyzeWithArchitectAI("V-11 Medical Data Footprint", telemetry, "KNOXED", "HIPAA Enclave Shield Active", telemetry);
     status = aiResult.status;
