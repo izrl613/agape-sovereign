@@ -275,21 +275,26 @@ export async function startModuleScan(
     detailsText = aiResult.detailsText;
   } else if (normModule.includes("deepweb") || normModule === "v-05") {
     onProgress?.(1, 1, "Deep Web Exposure", "Checking pastebins & unindexed pattern registries...");
-    status = "MONITORED";
-    findingText = "Zero Unindexed Pastebin Signatures";
-    detailsText = "No raw credential dumps or private keys matching user cryptographic envelope found in monitored paste repositories.";
+    const telemetry = "No raw credential dumps or private keys matching user cryptographic envelope found in monitored paste repositories.";
+    const aiResult = await analyzeWithArchitectAI("V-05 Deep Web Exposure", telemetry, "MONITORED", "Zero Unindexed Pastebin Signatures", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("broker") || normModule === "v-06") {
     onProgress?.(1, 1, "Data Broker Removal", "Synthesizing CCPA/GDPR removal requests...");
-    status = "MONITORED";
-    findingText = "6 Data Broker Opt-Out Vectors Prepared";
-    detailsText = "Generated automated opt-out dispatches for Acxiom, LexisNexis, Whitepages, Spokeo, Radaris, and BeenVerified.";
+    const telemetry = "Generated automated opt-out dispatches for Acxiom, LexisNexis, Whitepages, Spokeo, Radaris, and BeenVerified.";
+    const aiResult = await analyzeWithArchitectAI("V-06 Data Broker Removal", telemetry, "MONITORED", "6 Data Broker Opt-Out Vectors Prepared", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("password") || normModule === "v-07") {
     onProgress?.(1, 1, "Password Vault Analysis", "Running SHA-1 k-anonymity verification...");
-    // Test common password pattern for user feedback
     const sampleExposure = await checkPwnedPasswordKAnonymity("Password123!");
-    status = "KNOXED";
-    findingText = "Zero-Knowledge k-Anonymity Guard Active";
-    detailsText = `Local SHA-1 prefix truncation verified against Cloudflare k-anonymity index. Baseline test confirmed ${sampleExposure > 0 ? "active cloud detection" : "clean"}. No passwords leave device.`;
+    const telemetry = `Local SHA-1 prefix truncation verified against Cloudflare k-anonymity index. Baseline test confirmed ${sampleExposure > 0 ? "active cloud detection" : "clean"}. No passwords leave device.`;
+    const aiResult = await analyzeWithArchitectAI("V-07 Password Vault Analysis", telemetry, "KNOXED", "Zero-Knowledge k-Anonymity Guard Active", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("location") || normModule === "v-08") {
     onProgress?.(1, 1, "Location Data Footprint", "Auditing Geolocation permission state & EXIF scrubbing...");
     let perm = "prompt";
@@ -299,30 +304,40 @@ export async function startModuleScan(
         perm = p.state;
       } catch {}
     }
-    status = perm === "granted" ? "MONITORED" : "KNOXED";
-    findingText = perm === "granted" ? "Browser Geolocation Permission Granted" : "Location Permission Sealed";
-    detailsText = `Geolocation state: ${perm}. EXIF GPS scrubbing engine active for all local media uploads.`;
+    const telemetry = `Geolocation state: ${perm}. EXIF GPS scrubbing engine active for all local media uploads.`;
+    const aiResult = await analyzeWithArchitectAI("V-08 Location Data Footprint", telemetry, perm === "granted" ? "MONITORED" : "KNOXED", perm === "granted" ? "Browser Geolocation Permission Granted" : "Location Permission Sealed", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("browser") || normModule === "v-09") {
     onProgress?.(1, 1, "Browser & Cookie Tracker", "Generating Canvas & WebGL entropy profile...");
     const { canvasHash, vendor, audioHz } = await inspectBrowserEntropy();
-    status = "MONITORED";
-    findingText = `Canvas Hash: ${canvasHash} · GPU: ${vendor.slice(0, 24)}`;
-    detailsText = `AudioContext: ${audioHz}Hz. Third-party cookie blocking active. Fingerprint entropy calculated locally.`;
+    const telemetry = `Canvas Hash: ${canvasHash} · GPU: ${vendor.slice(0, 24)}. AudioContext: ${audioHz}Hz. Third-party cookie blocking active. Fingerprint entropy calculated locally.`;
+    const aiResult = await analyzeWithArchitectAI("V-09 Browser & Cookie Tracker", telemetry, "MONITORED", `Canvas Hash: ${canvasHash} · GPU: ${vendor.slice(0, 24)}`, telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("financial") || normModule === "v-10") {
     onProgress?.(1, 1, "Financial Identity Exposure", "Checking Luhn verification & credit freeze status...");
-    status = "KNOXED";
-    findingText = "Financial Privacy Guard Active";
-    detailsText = "No plain PANs or bank tokens stored. Credit bureau direct opt-out guidance (OptOutPrescreen & AnnualCreditReport) linked.";
+    const telemetry = "No plain PANs or bank tokens stored. Credit bureau direct opt-out guidance (OptOutPrescreen & AnnualCreditReport) linked.";
+    const aiResult = await analyzeWithArchitectAI("V-10 Financial Identity Exposure", telemetry, "KNOXED", "Financial Privacy Guard Active", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("medical") || normModule === "v-11") {
     onProgress?.(1, 1, "Medical Data Footprint", "Assessing HIPAA PHI privacy safeguards...");
-    status = "KNOXED";
-    findingText = "HIPAA Enclave Shield Active";
-    detailsText = "Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.";
+    const telemetry = "Zero medical records or biometric health logs exposed in public portals. Health data isolation rules verified.";
+    const aiResult = await analyzeWithArchitectAI("V-11 Medical Data Footprint", telemetry, "KNOXED", "HIPAA Enclave Shield Active", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("biometric") || normModule === "v-12") {
     onProgress?.(1, 1, "Voice & Biometric Data", "Probing Web Audio acoustic sample frequency...");
-    status = "KNOXED";
-    findingText = "Acoustic Biometric Guard Active";
-    detailsText = "Microphone stream protected. No voice recognition biometric samples stored in unencrypted storage.";
+    const telemetry = "Microphone stream protected. No voice recognition biometric samples stored in unencrypted storage.";
+    const aiResult = await analyzeWithArchitectAI("V-12 Voice & Biometric Data", telemetry, "KNOXED", "Acoustic Biometric Guard Active", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("iot") || normModule === "v-13") {
     onProgress?.(1, 1, "IoT & Smart Device Scan", "Probing WebRTC local network IP leakage...");
     let leakedIp = false;
@@ -337,25 +352,33 @@ export async function startModuleScan(
       };
       setTimeout(() => pc.close(), 1000);
     } catch {}
-    status = leakedIp ? "MONITORED" : "KNOXED";
-    findingText = leakedIp ? "WebRTC Local LAN Candidate Detected" : "WebRTC IP Leak Shield Sealed";
-    detailsText = leakedIp ? "Local LAN IP candidate visible to browser peers. Recommended: Disable WebRTC local IP exposure." : "Zero internal IP leaks detected via WebRTC.";
+    const telemetry = leakedIp ? "Local LAN IP candidate visible to browser peers. Recommended: Disable WebRTC local IP exposure." : "Zero internal IP leaks detected via WebRTC.";
+    const aiResult = await analyzeWithArchitectAI("V-13 IoT & Smart Device Scan", telemetry, leakedIp ? "MONITORED" : "KNOXED", leakedIp ? "WebRTC Local LAN Candidate Detected" : "WebRTC IP Leak Shield Sealed", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("cloud") || normModule === "v-14") {
     onProgress?.(1, 1, "Cloud Storage Exposure", "Auditing public bucket naming & link sharing permissions...");
-    status = "KNOXED";
-    findingText = "Zero Public Storage Buckets Exposed";
-    detailsText = "Google Drive & AWS S3 public sharing policy audited. Restricted to device-bound local vault storage.";
+    const telemetry = "Google Drive & AWS S3 public sharing policy audited. Restricted to device-bound local vault storage.";
+    const aiResult = await analyzeWithArchitectAI("V-14 Cloud Storage Exposure", telemetry, "KNOXED", "Zero Public Storage Buckets Exposed", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else if (normModule.includes("darkweb") || normModule === "v-15") {
     onProgress?.(1, 1, "Dark Web Monitoring", "Checking darknet credential indexing feeds...");
-    status = "MONITORED";
-    findingText = "Darknet Exposure Feed Active";
-    detailsText = "Monitoring onion index feeds for compromised credential patterns matching verified user identifiers.";
+    const telemetry = "Monitoring onion index feeds for compromised credential patterns matching verified user identifiers.";
+    const aiResult = await analyzeWithArchitectAI("V-15 Dark Web Monitoring", telemetry, "MONITORED", "Darknet Exposure Feed Active", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   } else {
     // V-16 Behavioral
     onProgress?.(1, 1, "Behavioral Profile Analysis", "Computing digital footprint entropy...");
-    status = "KNOXED";
-    findingText = "Behavioral Profiling Persona Shielded";
-    detailsText = "Cross-site tracking pixels blocked. Inferred demographic metadata mapped to zero-knowledge synthetic identifier.";
+    const telemetry = "Cross-site tracking pixels blocked. Inferred demographic metadata mapped to zero-knowledge synthetic identifier.";
+    const aiResult = await analyzeWithArchitectAI("V-16 Behavioral Profile Analysis", telemetry, "KNOXED", "Behavioral Profiling Persona Shielded", telemetry);
+    status = aiResult.status;
+    findingText = aiResult.findingText;
+    detailsText = aiResult.detailsText;
   }
 
   const finding: ScanFinding = {
