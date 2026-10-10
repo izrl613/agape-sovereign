@@ -1,41 +1,53 @@
-# Agape Sovereign PWA
+# Vertex AI Studio Frontend App with Node.js Backend
 
-A privacy-first, self-sovereign identity platform with dual authentication (Passkey WebAuthn + Google Sign-in).
+This repository contains a frontend and a Node.js backend, designed to run together.
+The backend acts as a proxy, handling Google Cloud API calls.
 
-## Architecture Overview
+This project is intended for demonstration and prototyping purposes only.
+It is not intended for use in a production environment.
 
-- **Dual Authentication Layer**: Passkey WebAuthn + Google OAuth
-- **16 Identity Vector Modules (IVM)** with gate agents
-- **Offline LLM Integration**: Gemma 4:12B for local inference
-- **Encrypted Data Storage**: SHA256ID encryption with 26-month retention
-- **KNOX/NUKE Export Options**: PDF or Google Account sync
+## Prerequisites
 
-## Tech Stack
+To run this application locally, you need:
 
-- **Frontend**: React, TypeScript, WebAuthn API
-- **Backend**: Node.js/Express or Next.js API routes
-- **Authentication**: WebAuthn (FIDO2) + Google OAuth
-- **Database**: Firebase Firestore / GCP Cloud SQL
-- **LLM**: Gemma 4:12B (local via Ollama)
-- **Hosting**: sovereign.nyc / Firebase / GCP App Hosting
+*   **[Google Cloud SDK / gcloud CLI](https://cloud.google.com/sdk/docs/install)**: Follow the instructions to install the SDK.
+
+*   **gcloud Initialization**:
+    *   Initialize the gcloud CLI:
+        ```bash
+        gcloud init
+        ```
+    *   Authenticate for Application Default Credentials (needed to call Google Cloud APIs):
+        ```bash
+        gcloud auth application-default login
+        ```
+
+*   **Node.js and npm**: Ensure you have Node.js and its package manager, `npm`, installed on your machine.
 
 ## Project Structure
 
-```
-agape-sovereign/
-├── client/          # React frontend
-├── server/          # API backend
-├── docs/            # Documentation
-├── scripts/         # Utility scripts
-└── firebase/        # Firebase configuration
-```
+The project is organized into two main directories:
 
-## Getting Started
+*   `frontend/`: Contains the Frontend application code.
+*   `backend/`: Contains the Node.js/Express server code to proxy Google Cloud API calls.
 
-1. Clone and install dependencies
-2. Configure Firebase credentials
-3. Set up Google OAuth credentials
-4. Initialize WebAuthn providers
-5. Run development server
+## Backend Environment Variables
 
-See `docs/` for detailed setup guides.
+The `backend/.env.local` file is automatically generated when you download this application.
+It contains essential Google Cloud environment variables pre-configured based on your project settings at the time of download.
+
+The variables set in `backend/.env.local` are:
+*   `API_BACKEND_PORT`: The port the backend API server listens on (e.g., `5000`).
+*   `API_PAYLOAD_MAX_SIZE`: The maximum size of the request payload accepted by the backend server (e.g., `5mb`).
+*   `GOOGLE_CLOUD_LOCATION`: The Google Cloud region associated with your project.
+*   `GOOGLE_CLOUD_PROJECT`: Your Google Cloud Project ID.
+
+**Note:** These variables are automatically populated during the download process.
+You can modify the values in `backend/.env.local` if you need to change them.
+
+## Installation and Running the App
+
+To install dependencies and run your Google Cloud Vertex AI Studio App locally, execute the following command:
+
+```bash
+npm install && npm run dev
