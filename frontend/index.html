@@ -1,24 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0D0D0D" />
-    <meta name="description" content="Agape Sovereign — AI Digital Identity Sovereign Restoration Platform — 16-vector privacy & security enclave" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Agape Sovereign" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" sizes="120x120" href="/agape-logo-120.png" />
-    <link rel="apple-touch-icon" href="/agape-logo-120.png" />
-    <title>Architect AI - Sovereign Enclave</title>
+    <title>Architect AI | Agape Sovereign Enclave 2026</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'enclave-bg': '#0B1020',
+              'enclave-surface': '#0F172A',
+              'enclave-card': '#111A33',
+              'neon-magenta': '#FF2E9F',
+              'neon-cyan': '#00D4FF',
+              'neon-orange': '#FF7A18',
+            },
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+            keyframes: {
+              'border-flow': {
+                '0%, 100%': { backgroundPosition: '0% 50%' },
+                '50%': { backgroundPosition: '100% 50%' },
+              },
+              'pulse-slow': {
+                '0%, 100%': { opacity: '0.9', transform: 'scale(1)' },
+                '50%': { opacity: '0.6', transform: 'scale(0.995)' },
+              }
+            },
+            animation: {
+              'border-flow': 'border-flow 6s ease infinite',
+              'pulse-slow': 'pulse-slow 4s ease-in-out infinite',
+            }
+          }
+        }
+      }
+    </script>
+
+        <style>
+      /* Custom scrollbars with neon hue */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0B1020;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #FF2E9F, #00D4FF);
+        border-radius: 4px;
+      }
+      /* Prevent text selection flicker */
+      .neon-border-wrapper {
+        background: linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18, #FF2E9F);
+        background-size: 300% 300%;
+      }
+    </style>
   </head>
-  <body class="bg-[#0B1020] text-[#E8F4FF] overflow-hidden font-['Rajdhani']">
+  <body class="bg-[#0B1020] text-slate-100 min-h-screen selection:bg-[#FF2E9F] selection:text-white antialiased font-sans overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-  </body>
+  <script type="module" src="/index.js"></script></body>
 </html>
