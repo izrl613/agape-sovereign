@@ -12,7 +12,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && (request.auth.token.email == "idin@agape.nyc" || request.auth.token.email == "agape@sovereign.nyc");
+      return isSignedIn() &&
+             'email' in request.auth.token &&
+             (request.auth.token.email == "idin@agape.nyc" || request.auth.token.email == "agape@sovereign.nyc");
     }
 
     // Sovereign user accounts & private sandboxes
@@ -63,7 +65,7 @@ service cloud.firestore {
     }
 
     match /audit_logs/{logId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() || isAdmin();
     }
 
     match /sovereign_audits/{auditId} {
