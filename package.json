@@ -5,7 +5,8 @@
     "dev-frontend": "npm run dev --prefix frontend",
     "dev-backend": "npm run dev --prefix backend",
     "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
-    "build": "vite build"
+    "build": "npm run build --prefix frontend",
+    "start": "npm run preview --prefix frontend"
   },
   "devDependencies": {
     "concurrently": "latest"

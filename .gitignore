@@ -10,6 +10,7 @@ coverage/
 out/
 firebase-debug.log
 firebase-debug.*.log
+audit-report.json
 .firebase/
 .env
 __pycache__/

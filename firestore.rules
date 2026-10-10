@@ -11,6 +11,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == "idin@agape.nyc" || request.auth.token.email == "agape@sovereign.nyc");
+    }
+
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
       allow read, write: if isOwner(userId);
