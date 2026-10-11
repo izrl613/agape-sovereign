@@ -113,7 +113,11 @@
           headers: {
             'Content-Type': 'application/json',
             // Add a random header to identify these proxied requests on the Node.js backend.
+<<<<<<< HEAD
+            'X-App-Proxy': '5yzTKN9Pblw1x2ePX7jmub69csGOAoeZ',
+=======
             'X-App-Proxy': 'XsDerF-XalaHctmEHbij6Nqh0hbQV3p3',
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
           },
           body: JSON.stringify(requestDetails),
         };

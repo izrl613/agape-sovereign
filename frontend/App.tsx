@@ -13,10 +13,81 @@ import { MultistepOnboardingSplash } from './components/MultistepOnboardingSplas
 import { PdfReportModal } from './components/PdfReportModal';
 import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserProfileModal } from './components/UserProfileModal';
+<<<<<<< HEAD
+import { EmailBreachScannerModal } from './components/EmailBreachScannerModal';
+import { DataBrokerDispatcherModal } from './components/DataBrokerDispatcherModal';
+import { FileVaultShredderModal } from './components/FileVaultShredderModal';
+import { HardwareEnclaveInspectorModal } from './components/HardwareEnclaveInspectorModal';
+import { DeepWebDarknetModal } from './components/DeepWebDarknetModal';
+import { DnsSurveillanceModal } from './components/DnsSurveillanceModal';
+import { DarknetStealerScannerModal } from './components/DarknetStealerScannerModal';
+import { BiometricDefenseModal } from './components/BiometricDefenseModal';
+import { CloudBackupVerificationModal } from './components/CloudBackupVerificationModal';
+import { IdentityDocumentMdlModal } from './components/IdentityDocumentMdlModal';
+import { AdIdLocationScrubberModal } from './components/AdIdLocationScrubberModal';
+import { SocialMediaScrubberModal } from './components/SocialMediaScrubberModal';
+import { FinancialTokenizationModal } from './components/FinancialTokenizationModal';
+import { SmartHomeTelemetryModal } from './components/SmartHomeTelemetryModal';
+import { PasswordHashStrengthModal } from './components/PasswordHashStrengthModal';
+import { calculateSha256 } from './services/cryptoService';
+import { 
+  initAuthSession, 
+  subscribeToUserEnclave, 
+  saveUserEnclaveData, 
+  logLiveTelemetry, 
+  subscribeToTelemetryLogs 
+} from './services/firebase';
+import { 
+  ShieldCheck, 
+  Flame, 
+  Layers, 
+  Radio, 
+  Sparkles, 
+  Filter, 
+  Hash, 
+  CheckCircle2, 
+  UserPlus, 
+  Send, 
+  Lock, 
+  Skull, 
+  ScanFace,
+  MapPin,
+  Share2,
+  CreditCard,
+  Tv,
+  Mail,
+  Wifi,
+  Cpu,
+  FileText,
+  KeyRound,
+  Globe,
+  Cloud
+} from 'lucide-react';
+
+export default function App() {
+  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
+  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
+
+  // Live user profile state
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => ({
+    fullName: 'Sovereign Enclave User',
+    primaryEmail: '',
+    backupEmails: [],
+    federatedProvider: 'Google',
+    passkeyStatus: 'PENDING',
+    passkeyDeviceId: 'FIDO2-HARDWARE-PASSKEY',
+    masterKeyHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    createdAt: new Date().toISOString(),
+    sovereignScore: 35,
+    cloudAuditId: `DIFF-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+  }));
+
+=======
 import { calculateSha256 } from './services/cryptoService';
 import { ShieldCheck, Flame, Layers, Radio, Sparkles, Filter, Hash, CheckCircle2, UserPlus } from 'lucide-react';
 
 export default function App() {
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   const [vectors, setVectors] = useState<DiffVector[]>(INITIAL_16_DIFF_VECTORS);
   const [activeCategory, setActiveCategory] = useState<VectorCategory | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'EXPOSED' | 'KNOXED' | 'NUKED'>('ALL');
@@ -29,6 +100,24 @@ export default function App() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+<<<<<<< HEAD
+  const [isEmailScannerOpen, setIsEmailScannerOpen] = useState(false);
+  const [isSocialScrubberOpen, setIsSocialScrubberOpen] = useState(false);
+  const [isFileVaultOpen, setIsFileVaultOpen] = useState(false);
+  const [isHardwareEnclaveOpen, setIsHardwareEnclaveOpen] = useState(false);
+  const [isDeepWebOpen, setIsDeepWebOpen] = useState(false);
+  const [isBrokerDispatcherOpen, setIsBrokerDispatcherOpen] = useState(false);
+  const [isDnsSurveillanceOpen, setIsDnsSurveillanceOpen] = useState(false);
+  const [isFinancialTokenizationOpen, setIsFinancialTokenizationOpen] = useState(false);
+  const [isBiometricDefenseOpen, setIsBiometricDefenseOpen] = useState(false);
+  const [isCloudBackupOpen, setIsCloudBackupOpen] = useState(false);
+  const [isIdentityMdlOpen, setIsIdentityMdlOpen] = useState(false);
+  const [isSmartHomeTelemetryOpen, setIsSmartHomeTelemetryOpen] = useState(false);
+  const [isLocationScrubberOpen, setIsLocationScrubberOpen] = useState(false);
+  const [isStealerScannerOpen, setIsStealerScannerOpen] = useState(false);
+  const [isPasswordStrengthOpen, setIsPasswordStrengthOpen] = useState(false);
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   const [focusedVector, setFocusedVector] = useState<DiffVector | null>(null);
 
   // Admin telemetry
@@ -205,7 +294,146 @@ export default function App() {
                 </div>
 
                 {/* Quick actions in hero */}
+<<<<<<< HEAD
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => setIsDeepWebOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/50 text-xs font-mono font-bold text-purple-300 hover:text-white transition shadow-lg"
+                    title="Open Module 5 Deep Web & Darknet Index Monitor"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                    <span>Darknet Monitor</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsCloudBackupOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-blue-950/40 hover:bg-blue-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
+                    title="Open Module 11 iCloud ADP & Google CSE Auditor"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>Cloud Backup ZK</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsPasswordStrengthOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-orange-950/40 hover:bg-orange-900/40 border border-[#FF7A18]/50 text-xs font-mono font-bold text-[#FF7A18] hover:text-white transition shadow-lg"
+                    title="Open Module 16 Password Reuse & Argon2id Studio"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>Argon2id Passwords</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsIdentityMdlOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-cyan-950/40 hover:bg-cyan-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
+                    title="Open Module 12 ISO 18013-5 mDL & ID Shredder"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>ISO 18013-5 mDL</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsHardwareEnclaveOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-blue-950/40 hover:bg-blue-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
+                    title="Open Module 4 Hardware Enclave & Titan M2 Inspector"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>Enclave Inspector</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsEmailScannerOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 1 Email Breach Scanner & Ephemeral Aliases"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>Email Scanner</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsSocialScrubberOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 2 Social Media Scrubber"
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-[#FF2E9F]" />
+                    <span>Social Scrubber</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsDnsSurveillanceOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 8 DNS Surveillance & WireGuard ODoH Shield"
+                  >
+                    <Wifi className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>DNS Shield</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsFinancialTokenizationOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 9 Financial Tokenization"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>Card Vault Purge</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsSmartHomeTelemetryOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 13 Smart Home IoT Quarantine"
+                  >
+                    <Tv className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>IoT Subnet</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsLocationScrubberOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 14 Ad ID & Geolocation Scrubber"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>Location Fuzzing</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsBiometricDefenseOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 10 Clearview & PimEyes Biometric Shield"
+                  >
+                    <ScanFace className="w-3.5 h-3.5 text-[#FF2E9F]" />
+                    <span>Biometric Shield</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsStealerScannerOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 15 Darknet Infostealer Scanner"
+                  >
+                    <Skull className="w-3.5 h-3.5 text-red-400" />
+                    <span>Stealer Scanner</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsFileVaultOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open DoD 5220.22-M File Shredder & AES-GCM Vault"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>File Vault</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsBrokerDispatcherOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Launch Automated CCPA & GDPR Article 17 Data Broker Dispatcher"
+                  >
+                    <Send className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>Broker Dispatcher</span>
+                  </button>
+
+=======
                 <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
                   <button
                     onClick={() => setIsOnboardingOpen(true)}
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-pink-500/40 text-xs font-mono font-bold text-pink-200 hover:text-white transition"
@@ -222,6 +450,10 @@ export default function App() {
                     }}
                     className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] text-white text-xs font-mono font-bold shadow-lg hover:opacity-90 transition"
                   >
+<<<<<<< HEAD
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                    <span>Chief of Staff AI</span>
+=======
                     <Sparkles className="w-4 h-4 text-white" />
                     <span>Ask Chief of Staff AI</span>
                   </button>
@@ -231,6 +463,7 @@ export default function App() {
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-cyan-500/40 text-xs font-mono font-bold text-cyan-200 hover:text-white transition"
                   >
                     <span>Lighthouse PDF</span>
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
                   </button>
                 </div>
               </div>
@@ -277,6 +510,24 @@ export default function App() {
                   setIsChatOpen(true);
                 }}
                 onEdit={() => setIsOnboardingOpen(true)}
+<<<<<<< HEAD
+                onOpenEmailScanner={() => setIsEmailScannerOpen(true)}
+                onOpenSocialScrubber={() => setIsSocialScrubberOpen(true)}
+                onOpenFileVault={() => setIsFileVaultOpen(true)}
+                onOpenHardwareEnclave={() => setIsHardwareEnclaveOpen(true)}
+                onOpenDeepWeb={() => setIsDeepWebOpen(true)}
+                onOpenBrokerDispatcher={() => setIsBrokerDispatcherOpen(true)}
+                onOpenDnsSurveillance={() => setIsDnsSurveillanceOpen(true)}
+                onOpenFinancialTokenization={() => setIsFinancialTokenizationOpen(true)}
+                onOpenBiometricDefense={() => setIsBiometricDefenseOpen(true)}
+                onOpenCloudBackup={() => setIsCloudBackupOpen(true)}
+                onOpenIdentityMdl={() => setIsIdentityMdlOpen(true)}
+                onOpenSmartHomeTelemetry={() => setIsSmartHomeTelemetryOpen(true)}
+                onOpenLocationScrubber={() => setIsLocationScrubberOpen(true)}
+                onOpenStealerScanner={() => setIsStealerScannerOpen(true)}
+                onOpenPasswordStrength={() => setIsPasswordStrengthOpen(true)}
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
               />
             ))}
           </div>
@@ -296,6 +547,114 @@ export default function App() {
       </footer>
 
       {/* Modals */}
+<<<<<<< HEAD
+      <DeepWebDarknetModal
+        isOpen={isDeepWebOpen}
+        onClose={() => setIsDeepWebOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <CloudBackupVerificationModal
+        isOpen={isCloudBackupOpen}
+        onClose={() => setIsCloudBackupOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <PasswordHashStrengthModal
+        isOpen={isPasswordStrengthOpen}
+        onClose={() => setIsPasswordStrengthOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <IdentityDocumentMdlModal
+        isOpen={isIdentityMdlOpen}
+        onClose={() => setIsIdentityMdlOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <HardwareEnclaveInspectorModal
+        isOpen={isHardwareEnclaveOpen}
+        onClose={() => setIsHardwareEnclaveOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <EmailBreachScannerModal
+        isOpen={isEmailScannerOpen}
+        onClose={() => setIsEmailScannerOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <SocialMediaScrubberModal
+        isOpen={isSocialScrubberOpen}
+        onClose={() => setIsSocialScrubberOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <DnsSurveillanceModal
+        isOpen={isDnsSurveillanceOpen}
+        onClose={() => setIsDnsSurveillanceOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <FinancialTokenizationModal
+        isOpen={isFinancialTokenizationOpen}
+        onClose={() => setIsFinancialTokenizationOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <SmartHomeTelemetryModal
+        isOpen={isSmartHomeTelemetryOpen}
+        onClose={() => setIsSmartHomeTelemetryOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <AdIdLocationScrubberModal
+        isOpen={isLocationScrubberOpen}
+        onClose={() => setIsLocationScrubberOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <BiometricDefenseModal
+        isOpen={isBiometricDefenseOpen}
+        onClose={() => setIsBiometricDefenseOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <DarknetStealerScannerModal
+        isOpen={isStealerScannerOpen}
+        onClose={() => setIsStealerScannerOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <FileVaultShredderModal
+        isOpen={isFileVaultOpen}
+        onClose={() => setIsFileVaultOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+      <DataBrokerDispatcherModal
+        isOpen={isBrokerDispatcherOpen}
+        onClose={() => setIsBrokerDispatcherOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
       <MultistepOnboardingSplash
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}

@@ -1,6 +1,34 @@
 import React from 'react';
 import { DiffVector } from '../types';
+<<<<<<< HEAD
+import { 
+  Flame, 
+  ShieldAlert, 
+  ShieldCheck, 
+  Hash, 
+  Eye, 
+  Sparkles, 
+  ExternalLink, 
+  ArrowRight, 
+  Send, 
+  Lock, 
+  Skull, 
+  ScanFace, 
+  MapPin, 
+  Share2, 
+  CreditCard, 
+  Tv, 
+  Mail, 
+  Wifi, 
+  Cpu, 
+  FileText, 
+  KeyRound,
+  Globe,
+  Cloud
+} from 'lucide-react';
+=======
 import { Flame, ShieldAlert, ShieldCheck, Hash, Eye, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 
 interface DiffModuleCardProps {
   vector: DiffVector;
@@ -8,6 +36,24 @@ interface DiffModuleCardProps {
   onKnox: (id: string) => void;
   onConsultAI: (vector: DiffVector) => void;
   onEdit: (vector: DiffVector) => void;
+<<<<<<< HEAD
+  onOpenEmailScanner?: () => void;
+  onOpenSocialScrubber?: () => void;
+  onOpenFileVault?: () => void;
+  onOpenHardwareEnclave?: () => void;
+  onOpenDeepWeb?: () => void;
+  onOpenBrokerDispatcher?: () => void;
+  onOpenDnsSurveillance?: () => void;
+  onOpenFinancialTokenization?: () => void;
+  onOpenBiometricDefense?: () => void;
+  onOpenCloudBackup?: () => void;
+  onOpenIdentityMdl?: () => void;
+  onOpenSmartHomeTelemetry?: () => void;
+  onOpenLocationScrubber?: () => void;
+  onOpenStealerScanner?: () => void;
+  onOpenPasswordStrength?: () => void;
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }
 
 export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
@@ -16,6 +62,24 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onKnox,
   onConsultAI,
   onEdit,
+<<<<<<< HEAD
+  onOpenEmailScanner,
+  onOpenSocialScrubber,
+  onOpenFileVault,
+  onOpenHardwareEnclave,
+  onOpenDeepWeb,
+  onOpenBrokerDispatcher,
+  onOpenDnsSurveillance,
+  onOpenFinancialTokenization,
+  onOpenBiometricDefense,
+  onOpenCloudBackup,
+  onOpenIdentityMdl,
+  onOpenSmartHomeTelemetry,
+  onOpenLocationScrubber,
+  onOpenStealerScanner,
+  onOpenPasswordStrength,
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }) => {
   const getStatusBadge = () => {
     switch (vector.status) {
@@ -56,6 +120,25 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
     return 'border-[#FF2E9F]/50 shadow-[0_0_15px_rgba(255,46,159,0.1)]';
   };
 
+<<<<<<< HEAD
+  const isEmailModule = vector.id === 'diff-01' || vector.moduleNumber === 1;
+  const isSocialModule = vector.id === 'diff-02' || vector.moduleNumber === 2;
+  const isFileVaultModule = vector.id === 'diff-03' || vector.moduleNumber === 3;
+  const isHardwareEnclaveModule = vector.id === 'diff-04' || vector.moduleNumber === 4;
+  const isDeepWebModule = vector.id === 'diff-05' || vector.moduleNumber === 5;
+  const isBrokerModule = vector.id === 'diff-06' || vector.moduleNumber === 6;
+  const isDnsModule = vector.id === 'diff-08' || vector.moduleNumber === 8;
+  const isFinancialModule = vector.id === 'diff-09' || vector.moduleNumber === 9;
+  const isBiometricModule = vector.id === 'diff-10' || vector.moduleNumber === 10;
+  const isCloudBackupModule = vector.id === 'diff-11' || vector.moduleNumber === 11;
+  const isIdentityMdlModule = vector.id === 'diff-12' || vector.moduleNumber === 12;
+  const isSmartHomeModule = vector.id === 'diff-13' || vector.moduleNumber === 13;
+  const isLocationModule = vector.id === 'diff-14' || vector.moduleNumber === 14;
+  const isStealerModule = vector.id === 'diff-15' || vector.moduleNumber === 15;
+  const isPasswordStrengthModule = vector.id === 'diff-16' || vector.moduleNumber === 16;
+
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   return (
     <div className="relative group rounded-2xl p-[1.5px] transition-all duration-300 hover:scale-[1.01]">
       {/* Outer pulsing neon border gradient */}
@@ -106,6 +189,219 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           </div>
 
+<<<<<<< HEAD
+          {/* Module 1: Email Breach Scanner */}
+          {isEmailModule && onOpenEmailScanner && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenEmailScanner}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF2E9F] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Mail className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open Email Breach & GDPR Art 17 Scanner</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF2E9F]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 2: Social Media Scrubber */}
+          {isSocialModule && onOpenSocialScrubber && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenSocialScrubber}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF2E9F]/20 via-[#00D4FF]/20 to-[#FF7A18]/20 hover:from-[#FF2E9F]/30 hover:to-[#00D4FF]/30 border border-[#FF2E9F]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Share2 className="w-4 h-4 text-[#FF2E9F] animate-pulse" />
+                <span>Launch Social Scrubber & EXIF Eraser</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 3: File Shredder & Vault */}
+          {isFileVaultModule && onOpenFileVault && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenFileVault}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF2E9F] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Lock className="w-4 h-4 text-[#00D4FF]" />
+                <span>Open DoD Shredder & AES-GCM Vault</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A18]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 4: Hardware Enclave Inspector */}
+          {isHardwareEnclaveModule && onOpenHardwareEnclave && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenHardwareEnclave}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#FF7A18]/30 border border-[#00D4FF]/50 hover:border-[#FF7A18] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Cpu className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open Enclave & Titan M2 Inspector</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A18]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 5: Deep Web Exposure & Darknet Index */}
+          {isDeepWebModule && onOpenDeepWeb && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenDeepWeb}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-500/20 via-[#FF2E9F]/20 to-[#00D4FF]/20 hover:from-purple-500/30 hover:to-[#FF2E9F]/30 border border-purple-500/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Globe className="w-4 h-4 text-purple-400 animate-pulse" />
+                <span>Open Onion & Pastebin Darknet Monitor</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 6: Data Broker Dispatcher */}
+          {isBrokerModule && onOpenBrokerDispatcher && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenBrokerDispatcher}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF2E9F]/20 via-[#00D4FF]/20 to-[#FF7A18]/20 hover:from-[#FF2E9F]/30 hover:to-[#00D4FF]/30 border border-[#FF2E9F]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Flame className="w-4 h-4 text-[#FF2E9F] animate-pulse" />
+                <span>Launch Opt-Out Dispatcher (CCPA / GDPR)</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 8: DNS Surveillance */}
+          {isDnsModule && onOpenDnsSurveillance && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenDnsSurveillance}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF7A18] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Wifi className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open DNS Snooping & WireGuard ODoH Shield</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A18]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 9: Financial Tokenization */}
+          {isFinancialModule && onOpenFinancialTokenization && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenFinancialTokenization}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF2E9F] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <CreditCard className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open Card Vault Purge & Token Masking</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF2E9F]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 10: Biometric Defense Shield */}
+          {isBiometricModule && onOpenBiometricDefense && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenBiometricDefense}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF2E9F] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <ScanFace className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open Clearview & PimEyes Biometric Shield</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A18]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 11: Cloud Backup Zero-Knowledge */}
+          {isCloudBackupModule && onOpenCloudBackup && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenCloudBackup}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#00D4FF]/30 border border-[#00D4FF]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Cloud className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open iCloud ADP & Google CSE Auditor</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF2E9F]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 12: Identity Document & mDL */}
+          {isIdentityMdlModule && onOpenIdentityMdl && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenIdentityMdl}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#00D4FF]/30 hover:to-[#FF7A18]/30 border border-[#00D4FF]/50 hover:border-[#FF7A18] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <FileText className="w-4 h-4 text-[#00D4FF] animate-pulse" />
+                <span>Open ISO 18013-5 mDL & ID Shredder</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#FF7A18]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 13: Smart Home IoT */}
+          {isSmartHomeModule && onOpenSmartHomeTelemetry && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenSmartHomeTelemetry}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF7A18]/20 via-[#00D4FF]/20 to-[#FF2E9F]/20 hover:from-[#FF7A18]/30 hover:to-[#00D4FF]/30 border border-[#FF7A18]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Tv className="w-4 h-4 text-[#FF7A18] animate-pulse" />
+                <span>Open Smart TV ACR & IoT Subnet Quarantine</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 14: Ad ID & Geolocation Scrubber */}
+          {isLocationModule && onOpenLocationScrubber && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenLocationScrubber}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF7A18]/20 via-[#00D4FF]/20 to-[#FF2E9F]/20 hover:from-[#FF7A18]/30 hover:to-[#00D4FF]/30 border border-[#FF7A18]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <MapPin className="w-4 h-4 text-[#FF7A18] animate-pulse" />
+                <span>Open Ad ID & Geolocation Scrubber</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 15: Darknet Stealer Log Scanner */}
+          {isStealerModule && onOpenStealerScanner && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenStealerScanner}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-red-500/20 via-[#FF2E9F]/20 to-[#00D4FF]/20 hover:from-red-500/30 hover:to-[#00D4FF]/30 border border-red-500/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <Skull className="w-4 h-4 text-red-400 animate-pulse" />
+                <span>Open RedLine & Lumma Stealer Scanner</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 16: Password Hash Strength & Reuse */}
+          {isPasswordStrengthModule && onOpenPasswordStrength && (
+            <div className="mt-3">
+              <button
+                onClick={onOpenPasswordStrength}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF7A18]/20 via-[#00D4FF]/20 to-[#FF2E9F]/20 hover:from-[#FF7A18]/30 hover:to-[#00D4FF]/30 border border-[#FF7A18]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <KeyRound className="w-4 h-4 text-[#FF7A18] animate-pulse" />
+                <span>Open Password Reuse & Argon2id Studio</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
+              </button>
+            </div>
+          )}
+
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
           {/* Cryptographic SHA-256 Fingerprint */}
           <div className="mt-3 px-3 py-2 rounded-lg bg-[#0B1020] border border-slate-800/80 flex items-center gap-2 text-[11px] font-mono text-slate-300">
             <Hash className="w-3.5 h-3.5 text-[#00D4FF] shrink-0" />
