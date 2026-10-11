@@ -17,7 +17,7 @@ export interface DiffVector {
   exposureDetails: string;
   status: VectorStatus;
   sha256Hash: string;
-  sourceInspiration: string;
+  sourceInspiration: string; // e.g., 'Firefox Monitor', 'SayMine', 'Jumbo', 'Optery'
   riskLevel: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
   nukedAction: string;
   knoxedAction: string;
@@ -35,9 +35,6 @@ export interface UserProfile {
   createdAt: string;
   sovereignScore: number;
   cloudAuditId: string;
-  webauthnCredentialId?: string;
-  webauthnAlgorithm?: string;
-  webauthnRegisteredAt?: string;
 }
 
 export interface TelemetryLog {
@@ -67,6 +64,7 @@ export interface ChatMessage {
   suggestedAction?: 'NUKE' | 'KNOX' | 'AUDIT';
   vectorReferenceId?: string;
 }
+<<<<<<< HEAD
 
 export type BrokerOptOutStatus = 'LISTED' | 'DISPATCHED' | 'VERIFYING' | 'CONFIRMED_NUKED';
 
@@ -362,3 +360,5 @@ export interface CloudBackupVaultItem {
   status: 'ZERO_KNOWLEDGE_VERIFIED' | 'STALE_LEGACY_EXPOSED' | 'PURGED_NUKED';
   sha256AuditReceipt: string;
 }
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)

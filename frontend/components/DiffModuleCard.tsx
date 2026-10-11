@@ -1,5 +1,6 @@
 import React from 'react';
 import { DiffVector } from '../types';
+<<<<<<< HEAD
 import { 
   Flame, 
   ShieldAlert, 
@@ -25,6 +26,9 @@ import {
   Globe,
   Cloud
 } from 'lucide-react';
+=======
+import { Flame, ShieldAlert, ShieldCheck, Hash, Eye, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 
 interface DiffModuleCardProps {
   vector: DiffVector;
@@ -32,6 +36,7 @@ interface DiffModuleCardProps {
   onKnox: (id: string) => void;
   onConsultAI: (vector: DiffVector) => void;
   onEdit: (vector: DiffVector) => void;
+<<<<<<< HEAD
   onOpenEmailScanner?: () => void;
   onOpenSocialScrubber?: () => void;
   onOpenFileVault?: () => void;
@@ -47,6 +52,8 @@ interface DiffModuleCardProps {
   onOpenLocationScrubber?: () => void;
   onOpenStealerScanner?: () => void;
   onOpenPasswordStrength?: () => void;
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }
 
 export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
@@ -55,6 +62,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onKnox,
   onConsultAI,
   onEdit,
+<<<<<<< HEAD
   onOpenEmailScanner,
   onOpenSocialScrubber,
   onOpenFileVault,
@@ -70,6 +78,8 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onOpenLocationScrubber,
   onOpenStealerScanner,
   onOpenPasswordStrength,
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }) => {
   const getStatusBadge = () => {
     switch (vector.status) {
@@ -110,6 +120,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
     return 'border-[#FF2E9F]/50 shadow-[0_0_15px_rgba(255,46,159,0.1)]';
   };
 
+<<<<<<< HEAD
   const isEmailModule = vector.id === 'diff-01' || vector.moduleNumber === 1;
   const isSocialModule = vector.id === 'diff-02' || vector.moduleNumber === 2;
   const isFileVaultModule = vector.id === 'diff-03' || vector.moduleNumber === 3;
@@ -126,11 +137,16 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   const isStealerModule = vector.id === 'diff-15' || vector.moduleNumber === 15;
   const isPasswordStrengthModule = vector.id === 'diff-16' || vector.moduleNumber === 16;
 
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   return (
     <div className="relative group rounded-2xl p-[1.5px] transition-all duration-300 hover:scale-[1.01]">
+      {/* Outer pulsing neon border gradient */}
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] opacity-35 group-hover:opacity-100 transition-opacity duration-300 blur-sm" />
 
+      {/* Main card body */}
       <div className={`relative h-full flex flex-col justify-between rounded-2xl bg-[#0F172A] p-5 border ${getRiskBorder()} backdrop-blur-xl transition-all`}>
+        {/* Header: Module Number & Status */}
         <div>
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
@@ -152,6 +168,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             {vector.shortDesc}
           </p>
 
+          {/* User Input & Exposure Summary */}
           <div className="mt-4 p-3 rounded-xl bg-[#0B1020]/90 border border-slate-800">
             <div className="flex items-center justify-between text-[11px] mb-1">
               <span className="font-semibold text-slate-300">Identity Data Vector:</span>
@@ -172,6 +189,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           </div>
 
+<<<<<<< HEAD
           {/* Module 1: Email Breach Scanner */}
           {isEmailModule && onOpenEmailScanner && (
             <div className="mt-3">
@@ -382,9 +400,11 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           )}
 
+=======
+>>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
           {/* Cryptographic SHA-256 Fingerprint */}
           <div className="mt-3 px-3 py-2 rounded-lg bg-[#0B1020] border border-slate-800/80 flex items-center gap-2 text-[11px] font-mono text-slate-300">
-            <Hash className="w-3.5 h-3.5 text-[#00D4FF]" />
+            <Hash className="w-3.5 h-3.5 text-[#00D4FF] shrink-0" />
             <span className="text-slate-300">SHA-256:</span>
             <span className="truncate text-cyan-300 font-mono" title={vector.sha256Hash}>
               {vector.sha256Hash.substring(0, 18)}...
@@ -400,6 +420,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
         {/* Footer Actions: NUKED vs KNOXED & Ask AI */}
         <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-2">
           <div className="grid grid-cols-2 gap-2">
+            {/* NUKE Button */}
             <button
               onClick={() => onNuke(vector.id)}
               className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-mono text-xs font-bold transition-all ${
@@ -413,6 +434,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
               <span>{vector.status === 'NUKED' ? 'NUKED ✓' : 'NUKE'}</span>
             </button>
 
+            {/* KNOX Button */}
             <button
               onClick={() => onKnox(vector.id)}
               className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl font-mono text-xs font-bold transition-all ${
@@ -427,6 +449,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </button>
           </div>
 
+          {/* Consult Architect AI Button */}
           <button
             onClick={() => onConsultAI(vector)}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-[#111A33] hover:bg-slate-800/90 border border-slate-700 text-xs font-medium text-slate-200 hover:text-[#00D4FF] transition"
