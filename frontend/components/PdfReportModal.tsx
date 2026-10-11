@@ -341,7 +341,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#FF2E9F]" />
                       <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wider">
-                        Architect AI Remediation Priorities
+                        Chief of Staff Architectural Remediation Priorities
                       </h3>
                     </div>
 
