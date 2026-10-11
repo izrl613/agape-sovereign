@@ -15,8 +15,6 @@ import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { EmailBreachScannerModal } from './components/EmailBreachScannerModal';
 import { DataBrokerDispatcherModal } from './components/DataBrokerDispatcherModal';
-import { PeopleSearchAggregatorModal } from './components/PeopleSearchAggregatorModal';
-import { PasskeyVaultModal } from './components/PasskeyVaultModal';
 import { FileVaultShredderModal } from './components/FileVaultShredderModal';
 import { HardwareEnclaveInspectorModal } from './components/HardwareEnclaveInspectorModal';
 import { DeepWebDarknetModal } from './components/DeepWebDarknetModal';
@@ -30,7 +28,7 @@ import { SocialMediaScrubberModal } from './components/SocialMediaScrubberModal'
 import { FinancialTokenizationModal } from './components/FinancialTokenizationModal';
 import { SmartHomeTelemetryModal } from './components/SmartHomeTelemetryModal';
 import { PasswordHashStrengthModal } from './components/PasswordHashStrengthModal';
-import { calculateSha256, simulatePasskeyBiometricChallenge } from './services/cryptoService';
+import { calculateSha256 } from './services/cryptoService';
 import { 
   initAuthSession, 
   subscribeToUserEnclave, 
@@ -51,28 +49,23 @@ import {
   Send, 
   Lock, 
   Skull, 
-  ScanFace, 
-  MapPin, 
-  Share2, 
-  CreditCard, 
-  Tv, 
-  Mail, 
-  Wifi, 
-  Cpu, 
-  FileText, 
-  KeyRound, 
-  Globe, 
-  Cloud,
-  Fingerprint,
-  Network,
-  AlertOctagon
+  ScanFace,
+  MapPin,
+  Share2,
+  CreditCard,
+  Tv,
+  Mail,
+  Wifi,
+  Cpu,
+  FileText,
+  KeyRound,
+  Globe,
+  Cloud
 } from 'lucide-react';
 
 export default function App() {
   const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
   const [isInitializingAuth, setIsInitializingAuth] = useState(true);
-  const [isPanicLocked, setIsPanicLocked] = useState(false);
-  const [isUnlockingPanic, setIsUnlockingPanic] = useState(false);
 
   // Live user profile state
   const [userProfile, setUserProfile] = useState<UserProfile>(() => ({
@@ -106,8 +99,6 @@ export default function App() {
   const [isHardwareEnclaveOpen, setIsHardwareEnclaveOpen] = useState(false);
   const [isDeepWebOpen, setIsDeepWebOpen] = useState(false);
   const [isBrokerDispatcherOpen, setIsBrokerDispatcherOpen] = useState(false);
-  const [isPeopleSearchAggregatorOpen, setIsPeopleSearchAggregatorOpen] = useState(false);
-  const [isPasskeyVaultOpen, setIsPasskeyVaultOpen] = useState(false);
   const [isDnsSurveillanceOpen, setIsDnsSurveillanceOpen] = useState(false);
   const [isFinancialTokenizationOpen, setIsFinancialTokenizationOpen] = useState(false);
   const [isBiometricDefenseOpen, setIsBiometricDefenseOpen] = useState(false);
@@ -202,60 +193,8 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Emergency Panic Enclave Lockdown Handler
-  const handleTriggerPanicLockdown = async () => {
-    const zeroDigest = '0000000000000000000000000000000000000000000000000000000000000000';
-    setUserProfile(prev => ({
-      ...prev,
-      masterKeyHash: zeroDigest,
-      passkeyStatus: 'PENDING',
-    }));
-
-    setIsChatOpen(false);
-    setIsReportOpen(false);
-    setIsAdminOpen(false);
-    setIsProfileOpen(false);
-
-    setIsPanicLocked(true);
-
-    await logLiveTelemetry(
-      'PANIC_ENCLAVE_LOCKDOWN',
-      'Emergency lockdown executed: In-memory keys purged, active decrypted buffers zeroed, WebAuthn re-auth mandated.',
-      'ALERT',
-      1.1,
-      zeroDigest
-    );
-
-    showToast('🚨 PANIC LOCKDOWN: All in-memory buffers purged. Enclave locked.');
-  };
-
-  // Unlock Panic Lockdown via Hardware Passkey
-  const handleUnlockPanicLockdown = async () => {
-    setIsUnlockingPanic(true);
-    const challengeRes = await simulatePasskeyBiometricChallenge(userProfile.primaryEmail || 'user@sovereign.enclave');
-    
-    if (challengeRes.success) {
-      const restoredHash = await calculateSha256(`${userProfile.primaryEmail}::SOVEREIGN_ENCLAVE_RESTORED::${Date.now()}`);
-      setUserProfile(prev => ({
-        ...prev,
-        masterKeyHash: restoredHash,
-        passkeyStatus: 'HARDWARE_ENFORCED',
-      }));
-      setIsPanicLocked(false);
-      showToast('Enclave Unlocked via Biometric WebAuthn Passkey.');
-      await logLiveTelemetry(
-        'PANIC_LOCKDOWN_RELEASE',
-        'Enclave unlocked via verified hardware biometric passkey assertion',
-        'SECURED',
-        14.2,
-        restoredHash
-      );
-    }
-    setIsUnlockingPanic(false);
-  };
-
-  // Live NUKE Action Handler
-  const handleNuke = async (id: string): Promise<string | void> => {
+  // NUKE Action Handler
+  const handleNuke = async (id: string) => {
     const target = vectors.find(v => v.id === id);
     if (!target) return;
 
@@ -279,11 +218,10 @@ export default function App() {
     await persistLiveEnclave(updatedVectors);
     await logLiveTelemetry('Vector_NUKE', `Purged vector ${target.name}`, 'SECURED', 2.1, newHash);
     showToast(`🔥 NUKED: "${target.name}" marked for irreversible erasure.`);
-    return newHash;
   };
 
-  // Live KNOX Action Handler
-  const handleKnox = async (id: string): Promise<string | void> => {
+  // KNOX Action Handler
+  const handleKnox = async (id: string) => {
     const target = vectors.find(v => v.id === id);
     if (!target) return;
 
@@ -307,7 +245,6 @@ export default function App() {
     await persistLiveEnclave(updatedVectors);
     await logLiveTelemetry('Vector_KNOX', `Hardened vector ${target.name}`, 'OPTIMAL', 1.8, newHash);
     showToast(`🛡️ KNOXED: "${target.name}" cryptographically hardened in enclave.`);
-    return newHash;
   };
 
   // Direct updater for perimeter vectors
@@ -390,52 +327,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Emergency Panic Lockdown Full Screen Overlay */}
-      {isPanicLocked && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl">
-          <div className="relative w-full max-w-lg rounded-3xl p-[2px] overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-600 via-[#FF2E9F] to-red-600 animate-border-flow" />
-
-            <div className="relative rounded-3xl bg-[#0B1020] p-8 border border-red-500/60 text-center space-y-6">
-              <div className="w-20 h-20 mx-auto rounded-full bg-red-950/60 border-2 border-red-500 flex items-center justify-center text-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)]">
-                <Skull className="w-10 h-10 animate-pulse" />
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-black text-white font-mono tracking-wider">
-                  ENCLAVE PANIC LOCKDOWN ACTIVE
-                </h2>
-                <span className="px-3 py-1 rounded text-xs font-mono font-bold bg-red-950/60 text-red-400 border border-red-500/50 mt-2 inline-block">
-                  ALL VOLATILE MEMORY BUFFERS SHREDDED (0x00)
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-300 font-sans leading-relaxed max-w-md mx-auto">
-                The Agape Sovereign Enclave has been zeroed. In-memory master decryption keys were purged to protect your sovereign identity against physical compromise or coercive interrogation. Authenticate via your hardware WebAuthn passkey to restore access.
-              </p>
-
-              <button
-                onClick={handleUnlockPanicLockdown}
-                disabled={isUnlockingPanic}
-                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-[#00D4FF] via-[#FF2E9F] to-[#00D4FF] text-white text-xs font-mono font-bold uppercase tracking-wider shadow-2xl hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isUnlockingPanic ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Verifying Hardware Biometrics...</span>
-                  </>
-                ) : (
-                  <>
-                    <Fingerprint className="w-4 h-4" />
-                    <span>Authorize Biometric Passkey Unlock</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Bar */}
       <Navbar
         userProfile={userProfile}
@@ -447,7 +338,6 @@ export default function App() {
           setIsChatOpen(true);
         }}
         onOpenReport={() => setIsReportOpen(true)}
-        onTriggerPanicLockdown={handleTriggerPanicLockdown}
       />
 
       {/* Main Enclave Workspace */}
@@ -491,29 +381,11 @@ export default function App() {
                 {/* Quick actions in hero */}
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                   <button
-                    onClick={() => setIsPasskeyVaultOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-cyan-950/40 hover:bg-cyan-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
-                    title="Open Module 7 Universal Passkey & FIDO2 Vault"
-                  >
-                    <Fingerprint className="w-3.5 h-3.5 text-[#00D4FF] animate-pulse" />
-                    <span>FIDO2 Passkeys</span>
-                  </button>
-
-                  <button
-                    onClick={() => setIsPeopleSearchAggregatorOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-orange-950/40 hover:bg-orange-900/40 border border-[#FF7A18]/50 text-xs font-mono font-bold text-[#FF7A18] hover:text-white transition shadow-lg"
-                    title="Open Module 6 220+ People-Search Scraper Network Tracker"
-                  >
-                    <Network className="w-3.5 h-3.5 text-[#FF7A18] animate-pulse" />
-                    <span>220+ Scrapers</span>
-                  </button>
-
-                  <button
                     onClick={() => setIsDeepWebOpen(true)}
                     className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-purple-950/40 hover:bg-purple-900/40 border border-purple-500/50 text-xs font-mono font-bold text-purple-300 hover:text-white transition shadow-lg"
                     title="Open Module 5 Deep Web & Darknet Index Monitor"
                   >
-                    <Globe className="w-3.5 h-3.5 text-purple-400" />
+                    <Globe className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
                     <span>Darknet Monitor</span>
                   </button>
 
@@ -528,29 +400,29 @@ export default function App() {
 
                   <button
                     onClick={() => setIsPasswordStrengthOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-orange-950/40 hover:bg-orange-900/40 border border-[#FF7A18]/50 text-xs font-mono font-bold text-[#FF7A18] hover:text-white transition shadow-lg"
                     title="Open Module 16 Password Reuse & Argon2id Studio"
                   >
                     <KeyRound className="w-3.5 h-3.5 text-[#FF7A18]" />
-                    <span>Argon2id</span>
+                    <span>Argon2id Passwords</span>
                   </button>
 
                   <button
                     onClick={() => setIsIdentityMdlOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-cyan-950/40 hover:bg-cyan-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
                     title="Open Module 12 ISO 18013-5 mDL & ID Shredder"
                   >
                     <FileText className="w-3.5 h-3.5 text-[#00D4FF]" />
-                    <span>ISO 18013-5</span>
+                    <span>ISO 18013-5 mDL</span>
                   </button>
 
                   <button
                     onClick={() => setIsHardwareEnclaveOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-blue-950/40 hover:bg-blue-900/40 border border-[#00D4FF]/50 text-xs font-mono font-bold text-cyan-200 hover:text-white transition shadow-lg"
                     title="Open Module 4 Hardware Enclave & Titan M2 Inspector"
                   >
                     <Cpu className="w-3.5 h-3.5 text-[#00D4FF]" />
-                    <span>Enclave</span>
+                    <span>Enclave Inspector</span>
                   </button>
 
                   <button
@@ -572,11 +444,74 @@ export default function App() {
                   </button>
 
                   <button
+                    onClick={() => setIsDnsSurveillanceOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 8 DNS Surveillance & WireGuard ODoH Shield"
+                  >
+                    <Wifi className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>DNS Shield</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsFinancialTokenizationOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 9 Financial Tokenization"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>Card Vault Purge</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsSmartHomeTelemetryOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 13 Smart Home IoT Quarantine"
+                  >
+                    <Tv className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>IoT Subnet</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsLocationScrubberOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 14 Ad ID & Geolocation Scrubber"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-[#FF7A18]" />
+                    <span>Location Fuzzing</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsBiometricDefenseOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 10 Clearview & PimEyes Biometric Shield"
+                  >
+                    <ScanFace className="w-3.5 h-3.5 text-[#FF2E9F]" />
+                    <span>Biometric Shield</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsStealerScannerOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open Module 15 Darknet Infostealer Scanner"
+                  >
+                    <Skull className="w-3.5 h-3.5 text-red-400" />
+                    <span>Stealer Scanner</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsFileVaultOpen(true)}
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
+                    title="Open DoD 5220.22-M File Shredder & AES-GCM Vault"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-[#00D4FF]" />
+                    <span>File Vault</span>
+                  </button>
+
+                  <button
                     onClick={() => setIsBrokerDispatcherOpen(true)}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-pink-950/40 hover:bg-pink-900/40 border border-[#FF2E9F]/50 text-xs font-mono font-bold text-pink-300 hover:text-white transition shadow-lg"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-slate-200 hover:text-white transition shadow-lg"
                     title="Launch Automated CCPA & GDPR Article 17 Data Broker Dispatcher"
                   >
-                    <Send className="w-3.5 h-3.5 text-[#FF2E9F]" />
+                    <Send className="w-3.5 h-3.5 text-[#FF7A18]" />
                     <span>Broker Dispatcher</span>
                   </button>
 
@@ -597,7 +532,7 @@ export default function App() {
                     className="flex items-center justify-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] text-white text-xs font-mono font-bold shadow-lg hover:opacity-90 transition"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-white" />
-                    <span>Architect AI</span>
+                    <span>Chief of Staff AI</span>
                   </button>
                 </div>
               </div>
@@ -650,8 +585,6 @@ export default function App() {
                 onOpenHardwareEnclave={() => setIsHardwareEnclaveOpen(true)}
                 onOpenDeepWeb={() => setIsDeepWebOpen(true)}
                 onOpenBrokerDispatcher={() => setIsBrokerDispatcherOpen(true)}
-                onOpenPeopleSearchAggregator={() => setIsPeopleSearchAggregatorOpen(true)}
-                onOpenPasskeyVault={() => setIsPasskeyVaultOpen(true)}
                 onOpenDnsSurveillance={() => setIsDnsSurveillanceOpen(true)}
                 onOpenFinancialTokenization={() => setIsFinancialTokenizationOpen(true)}
                 onOpenBiometricDefense={() => setIsBiometricDefenseOpen(true)}
@@ -680,20 +613,6 @@ export default function App() {
       </footer>
 
       {/* Modals */}
-      <PasskeyVaultModal
-        isOpen={isPasskeyVaultOpen}
-        onClose={() => setIsPasskeyVaultOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <PeopleSearchAggregatorModal
-        isOpen={isPeopleSearchAggregatorOpen}
-        onClose={() => setIsPeopleSearchAggregatorOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
       <DeepWebDarknetModal
         isOpen={isDeepWebOpen}
         onClose={() => setIsDeepWebOpen(false)}
