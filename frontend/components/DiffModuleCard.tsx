@@ -23,9 +23,7 @@ import {
   FileText, 
   KeyRound,
   Globe,
-  Cloud,
-  Fingerprint,
-  Network
+  Cloud
 } from 'lucide-react';
 
 interface DiffModuleCardProps {
@@ -40,8 +38,6 @@ interface DiffModuleCardProps {
   onOpenHardwareEnclave?: () => void;
   onOpenDeepWeb?: () => void;
   onOpenBrokerDispatcher?: () => void;
-  onOpenPeopleSearchAggregator?: () => void;
-  onOpenPasskeyVault?: () => void;
   onOpenDnsSurveillance?: () => void;
   onOpenFinancialTokenization?: () => void;
   onOpenBiometricDefense?: () => void;
@@ -65,8 +61,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onOpenHardwareEnclave,
   onOpenDeepWeb,
   onOpenBrokerDispatcher,
-  onOpenPeopleSearchAggregator,
-  onOpenPasskeyVault,
   onOpenDnsSurveillance,
   onOpenFinancialTokenization,
   onOpenBiometricDefense,
@@ -122,7 +116,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   const isHardwareEnclaveModule = vector.id === 'diff-04' || vector.moduleNumber === 4;
   const isDeepWebModule = vector.id === 'diff-05' || vector.moduleNumber === 5;
   const isBrokerModule = vector.id === 'diff-06' || vector.moduleNumber === 6;
-  const isPasskeyVaultModule = vector.id === 'diff-07' || vector.moduleNumber === 7;
   const isDnsModule = vector.id === 'diff-08' || vector.moduleNumber === 8;
   const isFinancialModule = vector.id === 'diff-09' || vector.moduleNumber === 9;
   const isBiometricModule = vector.id === 'diff-10' || vector.moduleNumber === 10;
@@ -249,40 +242,16 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           )}
 
-          {/* Module 6: Data Broker Dispatcher & Continuous Scraper Tracker */}
-          {isBrokerModule && (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {onOpenBrokerDispatcher && (
-                <button
-                  onClick={onOpenBrokerDispatcher}
-                  className="py-2 px-2.5 rounded-xl bg-gradient-to-r from-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#FF2E9F]/30 hover:to-[#FF7A18]/30 border border-[#FF2E9F]/50 text-[11px] font-mono font-bold text-white flex items-center justify-center gap-1.5 shadow-md transition"
-                >
-                  <Flame className="w-3.5 h-3.5 text-[#FF2E9F]" />
-                  <span>Opt-Out DSAR</span>
-                </button>
-              )}
-              {onOpenPeopleSearchAggregator && (
-                <button
-                  onClick={onOpenPeopleSearchAggregator}
-                  className="py-2 px-2.5 rounded-xl bg-gradient-to-r from-[#FF7A18]/20 to-[#00D4FF]/20 hover:from-[#FF7A18]/30 hover:to-[#00D4FF]/30 border border-[#FF7A18]/50 text-[11px] font-mono font-bold text-white flex items-center justify-center gap-1.5 shadow-md transition"
-                >
-                  <Network className="w-3.5 h-3.5 text-[#FF7A18]" />
-                  <span>220+ Scrapers</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Module 7: Universal Passkey & FIDO2 Vault */}
-          {isPasskeyVaultModule && onOpenPasskeyVault && (
+          {/* Module 6: Data Broker Dispatcher */}
+          {isBrokerModule && onOpenBrokerDispatcher && (
             <div className="mt-3">
               <button
-                onClick={onOpenPasskeyVault}
-                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF2E9F]/20 to-[#FF7A18]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#FF2E9F] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+                onClick={onOpenBrokerDispatcher}
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#FF2E9F]/20 via-[#00D4FF]/20 to-[#FF7A18]/20 hover:from-[#FF2E9F]/30 hover:to-[#00D4FF]/30 border border-[#FF2E9F]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
               >
-                <Fingerprint className="w-4 h-4 text-[#00D4FF] animate-pulse" />
-                <span>Open FIDO2 Vault & Sever Phishable SMS</span>
-                <ArrowRight className="w-3.5 h-3.5 text-[#FF2E9F]" />
+                <Flame className="w-4 h-4 text-[#FF2E9F] animate-pulse" />
+                <span>Launch Opt-Out Dispatcher (CCPA / GDPR)</span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#00D4FF]" />
               </button>
             </div>
           )}
@@ -334,7 +303,7 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             <div className="mt-3">
               <button
                 onClick={onOpenCloudBackup}
-                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#FF2E9F]/30 border border-[#00D4FF]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
+                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF]/20 via-[#FF7A18]/20 to-[#FF2E9F]/20 hover:from-[#00D4FF]/30 hover:to-[#00D4FF]/30 border border-[#00D4FF]/50 hover:border-[#00D4FF] text-xs font-mono font-bold text-white flex items-center justify-center gap-2 shadow-md transition"
               >
                 <Cloud className="w-4 h-4 text-[#00D4FF] animate-pulse" />
                 <span>Open iCloud ADP & Google CSE Auditor</span>
