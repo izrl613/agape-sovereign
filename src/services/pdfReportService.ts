@@ -38,7 +38,8 @@ interface ReportGenerationOptions {
  * Generate SHA256 hash for PDF integrity verification
  */
 async function generatePDFIntegrityHash(pdfData: Uint8Array): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest('SHA-256', pdfData.buffer as ArrayBuffer);
+  const cryptoObj = window.crypto || globalThis.crypto;
+  const hashBuffer = await cryptoObj.subtle.digest('SHA-256', pdfData.buffer as ArrayBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   return hashHex;
