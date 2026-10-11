@@ -343,7 +343,7 @@ export interface DarknetPasteExposure {
 }
 
 export interface BlindHashMonitorProfile {
-  zeroKnowledgePrefix: string;
+  zeroKnowledgePrefix: string; // First 8 chars of SHA-256 for blinded k-Anonymity
   alertThreshold: 'IMMEDIATE' | 'DAILY_DIGEST' | 'STRICT_LOCKDOWN';
   activeWebhookAlerts: boolean;
   lastSyncTimestamp: string;
@@ -361,32 +361,4 @@ export interface CloudBackupVaultItem {
   totalSizeGb: number;
   status: 'ZERO_KNOWLEDGE_VERIFIED' | 'STALE_LEGACY_EXPOSED' | 'PURGED_NUKED';
   sha256AuditReceipt: string;
-}
-
-// Module 7: Universal Passkey & FIDO2 Vault Models
-export interface PasskeyVaultEntry {
-  id: string;
-  serviceName: string;
-  domain: string;
-  relyingPartyId: string;
-  credentialType: 'FIDO2_HARDWARE' | 'PASSKEY_RESIDENT' | 'SMS_2FA_FALLBACK';
-  fallbackSmsNumber?: string;
-  hasPhishableSmsFallback: boolean;
-  status: 'SMS_EXPOSED' | 'SMS_REVOKED_NUKED' | 'PASSKEY_ENFORCED_KNOXED';
-  sha256Receipt: string;
-  lastAuthenticated: string;
-}
-
-// Module 6: Continuous People-Search Aggregator Tracker Models
-export interface PeopleSearchNetworkNode {
-  id: string;
-  networkName: string;
-  parentGroup: string;
-  affiliatedScrapersCount: number;
-  recordsIndexed: string[];
-  statutoryDeadlineDays: number;
-  daysRemaining: number;
-  status: 'REMOVAL_PENDING' | 'SUPPRESSION_ACTIVE' | 'RE_SCRAPE_BLOCKED';
-  reScrapeSuppressionEnrolled: boolean;
-  sha256AuditHash: string;
 }
