@@ -2,6 +2,18 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../Downloads/gcp-agent-platform/backend"
+		},
+		{
+			"path": "../../../Downloads/gcp-agent-platform/frontend"
+		},
+		{
+			"path": "../../../Downloads/gcp-agent-platform/frontend/components"
+		},
+		{
+			"path": "../../../Downloads/gcp-agent-platform/frontend/services"
 		}
 	],
 	"settings": {
