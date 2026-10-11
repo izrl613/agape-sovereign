@@ -14,7 +14,7 @@ export class ArchitectAIService {
     }
   }
 
-  public async askArchitectAI(
+  public async askChiefOfStaff(
     question: string,
     vectors: DiffVector[],
     sovereignScore: number,
@@ -42,7 +42,7 @@ USER DIGITAL IDENTITY FEDERATED FOOTPRINT (DIFF) METRICS:
 - Focused Vector: ${selectedVector ? `${selectedVector.name} (Status: ${selectedVector.status}, Risk: ${selectedVector.riskLevel})` : 'Entire 16-Vector Perimeter'}
 `;
 
-      const systemInstruction = `You are Architect AI, a hyper-competent privacy-intelligence and digital sovereignty agent for the Agape Sovereign Enclave 2026.
+      const systemInstruction = `You are the "Architect AI" Chief of Staff, a hyper-competent, privacy-intelligence and digital sovereignty advisor for the Agape Sovereign Enclave 2026.
 Your duty is to guide the user to achieve 100% digital sovereignty over their Digital Identity Federated Footprint (DIFF).
 You think in terms of two decisive sovereign actions:
 1. NUKED: Irreversible erasure, DSAR removal from data brokers, shredding plaintext files, and revoking legacy authorizations.
@@ -64,19 +64,9 @@ Be precise, commanding, articulate, and reassuring. Do not use generic filler wo
 
       return response.text || fallbackResponse;
     } catch (error) {
-      console.error('Error invoking Architect AI:', error);
+      console.error('Error invoking Gemini Chief of Staff:', error);
       return fallbackResponse;
     }
-  }
-
-  // Backward compatibility alias
-  public async askChiefOfStaff(
-    question: string,
-    vectors: DiffVector[],
-    sovereignScore: number,
-    selectedVector?: DiffVector | null
-  ): Promise<string> {
-    return this.askArchitectAI(question, vectors, sovereignScore, selectedVector);
   }
 
   private generateLocalAdvisory(

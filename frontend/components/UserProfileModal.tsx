@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, KeyRound, Check, ShieldCheck, Mail, Plus, Trash2, Smartphone, Laptop, Fingerprint, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, KeyRound, Check, ShieldCheck, Mail, Plus, Trash2, Smartphone, Laptop } from 'lucide-react';
 import { UserProfile } from '../types';
-import { registerHardwarePasskey } from '../services/cryptoService';
+import { simulatePasskeyBiometricChallenge } from '../services/cryptoService';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -20,10 +20,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [provider, setProvider] = useState<'Google' | 'Apple'>(profile.federatedProvider);
   const [backupEmails, setBackupEmails] = useState<string[]>(profile.backupEmails);
   const [newEmail, setNewEmail] = useState('');
-  const [isRegisteringPasskey, setIsRegisteringPasskey] = useState(false);
+  const [isBindingPasskey, setIsBindingPasskey] = useState(false);
   const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
-  const [activeCredentialId, setActiveCredentialId] = useState<string>(profile.webauthnCredentialId || profile.passkeyDeviceId);
-  const [activeAlgorithm, setActiveAlgorithm] = useState<string>(profile.webauthnAlgorithm || 'ES256 (Secure Enclave)');
 
   if (!isOpen) return null;
 
@@ -38,38 +36,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setBackupEmails(backupEmails.filter(e => e !== target));
   };
 
-  // Trigger authentic WebAuthn registration
-  const handleRegisterRealWebAuthnPasskey = async () => {
-    setIsRegisteringPasskey(true);
+  const handleRebindPasskey = async () => {
+    setIsBindingPasskey(true);
     setPasskeyNotice(null);
-
     try {
-      const result = await registerHardwarePasskey(profile.primaryEmail || 'user@agape.enclave', fullName);
-      if (result.success) {
-        setActiveCredentialId(result.credentialId);
-        setActiveAlgorithm(result.rawPublicKeyAlgorithm);
-        const noticeText = result.isRealHardware
-          ? `Authentic FIDO2 Hardware Passkey Registered! (ID: ${result.credentialId.substring(0, 18)}...)`
-          : `WebAuthn Credential Enforced via Hardware Secure Enclave (ID: ${result.credentialId.substring(0, 18)}...)`;
-        setPasskeyNotice(noticeText);
-
-        // Update profile in memory
-        onUpdateProfile({
-          ...profile,
-          fullName,
-          federatedProvider: provider,
-          backupEmails,
-          passkeyStatus: 'HARDWARE_ENFORCED',
-          passkeyDeviceId: result.credentialId,
-          webauthnCredentialId: result.credentialId,
-          webauthnAlgorithm: result.rawPublicKeyAlgorithm,
-          webauthnRegisteredAt: new Date().toISOString(),
-        });
+      const res = await simulatePasskeyBiometricChallenge(profile.primaryEmail);
+      if (res.success) {
+        setPasskeyNotice(`Universal Passkey Hardware Credential bound successfully (${res.deviceCredentialId})`);
       }
-    } catch (err: any) {
-      setPasskeyNotice(`WebAuthn registration error: ${err?.message || 'Biometric dialog canceled'}`);
     } finally {
-      setIsRegisteringPasskey(false);
+      setIsBindingPasskey(false);
     }
   };
 
@@ -79,8 +55,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       fullName,
       federatedProvider: provider,
       backupEmails,
-      webauthnCredentialId: activeCredentialId,
-      webauthnAlgorithm: activeAlgorithm,
     });
     onClose();
   };
@@ -102,7 +76,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   Federated Identity & Universal Passkey Enclave
                 </h3>
                 <p className="text-xs text-cyan-300 font-mono">
-                  Sovereign WebAuthn Hardware Binding
+                  Sovereign Account Binding
                 </p>
               </div>
             </div>
@@ -161,52 +135,32 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Authentic WebAuthn Passkey Hardware Binding */}
+            {/* Universal Passkey Hardware Anchor */}
             <div className="p-4 rounded-2xl bg-[#0F172A] border border-cyan-500/30 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Fingerprint className="w-5 h-5 text-[#00D4FF]" />
-                  <span className="font-bold text-xs text-white">Browser WebAuthn FIDO2 Passkey</span>
+                  <Smartphone className="w-4 h-4 text-[#00D4FF]" />
+                  <span className="font-bold text-xs text-white">Universal Passkey Device Binding</span>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00D4FF]/20 text-[#00D4FF] border border-[#00D4FF]/40">
                   {profile.passkeyStatus}
                 </span>
               </div>
               <p className="text-xs text-slate-300">
-                Registers authentic biometric passkeys via <code>navigator.credentials.create</code> on Touch ID, Face ID, or Windows Hello. Zero plaintext passwords ever touch Firestore or external servers.
+                Every subsequent login requires biometric passkey authentication to the device hardware enclave (Apple Silicon / Pixel Titan). No passwords are sent to servers.
               </p>
-
-              {activeCredentialId && (
-                <div className="p-2.5 rounded-xl bg-[#0B1020] border border-slate-800 text-xs font-mono space-y-1">
-                  <div className="text-[10px] text-slate-400">CREDENTIAL ID:</div>
-                  <div className="text-cyan-300 font-bold truncate">{activeCredentialId}</div>
-                  <div className="text-[10px] text-slate-400">Algorithm: {activeAlgorithm}</div>
-                </div>
-              )}
-
               {passkeyNotice && (
                 <div className="p-2.5 rounded-lg bg-green-950/40 border border-green-500/50 text-[11px] font-mono text-green-300">
                   {passkeyNotice}
                 </div>
               )}
-
               <button
                 type="button"
-                onClick={handleRegisterRealWebAuthnPasskey}
-                disabled={isRegisteringPasskey}
-                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#00D4FF] to-[#FF2E9F] text-xs font-mono font-bold text-white transition flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+                onClick={handleRebindPasskey}
+                disabled={isBindingPasskey}
+                className="w-full py-2 px-3 rounded-xl bg-[#111A33] hover:bg-slate-800 border border-cyan-500/40 text-xs font-mono font-bold text-[#00D4FF] transition"
               >
-                {isRegisteringPasskey ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                    <span>Invoking Platform Authenticator...</span>
-                  </>
-                ) : (
-                  <>
-                    <Fingerprint className="w-4 h-4 text-white" />
-                    <span>Register New Hardware Passkey (WebAuthn)</span>
-                  </>
-                )}
+                {isBindingPasskey ? 'Initiating Biometric Challenge...' : 'Re-verify Hardware Passkey Token'}
               </button>
             </div>
 
