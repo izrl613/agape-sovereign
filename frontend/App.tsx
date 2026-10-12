@@ -63,26 +63,6 @@ import {
   Cloud
 } from 'lucide-react';
 
-export default function App() {
-  const [currentUserUid, setCurrentUserUid] = useState<string | null>(null);
-  const [isInitializingAuth, setIsInitializingAuth] = useState(true);
-
-  // Live user profile state
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => ({
-    fullName: 'Sovereign Enclave User',
-    primaryEmail: '',
-    backupEmails: [],
-    federatedProvider: 'Google',
-    passkeyStatus: 'PENDING',
-    passkeyDeviceId: 'FIDO2-HARDWARE-PASSKEY',
-    masterKeyHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    createdAt: new Date().toISOString(),
-    sovereignScore: 35,
-    cloudAuditId: `DIFF-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-  }));
-
-import { calculateSha256 } from './services/cryptoService';
-import { ShieldCheck, Flame, Layers, Radio, Sparkles, Filter, Hash, CheckCircle2, UserPlus } from 'lucide-react';
 
 export default function App() {
   const [vectors, setVectors] = useState<DiffVector[]>(INITIAL_16_DIFF_VECTORS);
