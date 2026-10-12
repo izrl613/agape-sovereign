@@ -55,6 +55,7 @@ export const MultistepOnboardingSplash: React.FC<MultistepOnboardingSplashProps>
   const [fullName, setFullName] = useState(userProfile.fullName);
   const [primaryEmail, setPrimaryEmail] = useState(userProfile.primaryEmail);
   const [federatedProvider, setFederatedProvider] = useState<'Google' | 'Apple'>(userProfile.federatedProvider);
+    const [emailProvider, setEmailProvider] = useState<'Gmail' | 'Outlook' | 'Yahoo'>('Gmail');
 
   // Identity values mapping
   const [formData, setFormData] = useState<Record<string, string>>(() => {
