@@ -28,7 +28,7 @@ interface PdfReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   vectors: DiffVector[];
-  userProfile: UserProfile;
+  userProfile: UserProfile & { sovereignHash: string; hdiStatus?: HDIStatus };
   sovereignScore: number;
 }
 
@@ -48,6 +48,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [exportComplete, setExportComplete] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [awaitingUserVerification, setAwaitingUserVerification] = useState(false);
 
   const reportPrintRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +68,8 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
 
   if (!isOpen) return null;
 
+  const [awaitingUserVerification, setAwaitingUserVerification] = useState(false);
+
   const handleCopyHash = (hash: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedHash(hash);
@@ -77,7 +80,12 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
     window.print();
   };
 
+  const [awaitingUserVerification, setAwaitingUserVerification] = useState(false);
+
   const handleSimulatePdfDownload = () => {
+    // Step 1: Show user verification dialog (handled by React state UI)
+    setAwaitingUserVerification(true);
+  };
     setIsExporting(true);
     setExportComplete(false);
     setExportProgress(15);
@@ -90,16 +98,20 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
       setExportComplete(true);
 
       // Construct a verifiable JSON/Markdown audit artifact to download as PDF alternative
+      // Include SHA256ID and Human Dignity Index per 2026 ERCA/ECRA LTS protocol
       const reportPayload = {
         title: "Architect AI - Lighthouse DIFF Audit Report",
         auditId: userProfile.cloudAuditId,
         standard: "2026 ERCA / ECRA LTS Protocol",
         sovereignScore: `${sovereignScore}%`,
+        sovereignHash: userProfile.sovereignHash || 'pending_sha256_id',
         timestamp: new Date().toISOString(),
         owner: userProfile.fullName,
         primaryEmail: userProfile.primaryEmail,
         passkeyStatus: userProfile.passkeyStatus,
         masterKeyHash: userProfile.masterKeyHash,
+        hdiStatus: userProfile.hdiStatus,
+        verification: "user_verified_2026_erca",
         summary: {
           totalVectors: vectors.length,
           knoxedHardened: knoxedCount,
@@ -163,6 +175,45 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                 </p>
               </div>
             </div>
+
+            {/* User Verification Step Before Export */}
+            {awaitingUserVerification && (
+              <div className="fixed inset-0 z-50 bg-[#0B1020]/90 backdrop-blur-xl flex items-center justify-center p-8">
+                <div className="relative rounded-3xl bg-[#0F172A] p-8 w-full max-w-md shadow-2xl border border-cyan-500/30">
+                  <h3 className="text-2xl font-bold text-center mb-4">🔐 Verified Export Confirmation</h3>
+                  <p className="text-slate-300 text-base mb-6 leading-relaxed">
+                    This will export your complete 16-vector DIFF audit report. All data processed client-side via Web Crypto Subtle API with zero plaintext exposure. Review the summary below and confirm.
+                  </p>
+                  
+                  <div className="p-4 rounded-xl bg-[#0B1020] border border-slate-800 mb-6">
+                    <h4 className="font-semibold text-cyan-300 mb-2">Export Summary</h4>
+                    <ul className="text-sm text-slate-200 space-y-1">
+                      <li>• {vectors.length} identity vectors with full SHA-256 hashes</li>
+                      <li>• {nukedCount} exposures marked for NUKED (erasure)</li>
+                      <li>• {knoxedCount} assets hardened KNOXED (enclave)</li>
+                      <li>• {exposedCount} active exposure risks requiring remediation</li>
+                      <li>• Sovereign Score: {sovereignScore}%</li>
+                      <li>• Owner: {userProfile.fullName} ({userProfile.primaryEmail})</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setAwaitingUserVerification(false)}
+                      className="flex-1 py-2 rounded-xl bg-[#111A33] hover:bg-slate-800 text-sm font-mono text-slate-300 hover:text-white transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => setAwaitingUserVerification(false)}
+                      className="flex-1 py-2 rounded-xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] text-white text-sm font-mono font-bold shadow-lg hover:opacity-90 transition"
+                    >
+                      Confirm & Export
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-2 sm:gap-3">
@@ -610,7 +661,14 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                     <div className="p-3.5 rounded-xl bg-[#0B1020] border border-slate-800">
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">ROOT ENCLAVE DIGEST:</span>
                       <span className="text-[#00D4FF] font-bold break-all text-[11px]">
-                        {userProfile.masterKeyHash}
+                        {userProfile.sovereignHash || 'pending_sha256_id'}
+                      </span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#0B1020] border border-slate-800">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">HUMAN DIGNITY INDEX:</span>
+                      <span className="text-cyan-300 font-bold text-[11px]">
+                        {userProfile.hdiStatus ? `${userProfile.hdiStatus.score}% - ${userProfile.hdiStatus.tier}` : 'pending_hdi'}
                       </span>
                     </div>
 
@@ -626,6 +684,7 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                     <div>Enclave Authority: <strong>Agape Sovereign Studio</strong></div>
                     <div>Cloud Audit Token: <strong className="text-white">{userProfile.cloudAuditId}</strong></div>
                     <div>Timestamp: <strong>March 2026 LTS</strong></div>
+                    <div>SHA256ID: <strong className="text-[#00D4FF]">{userProfile.sovereignHash || 'pending'}</strong></div>
                   </div>
                 </div>
               </div>

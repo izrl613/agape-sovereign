@@ -5,7 +5,7 @@ import { db } from './firebase';
 import { logEvent, AuditLogType } from './services/auditService';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
-import { DEMO_FINDINGS } from './data/demoData';
+import { loadScanFindings } from './data/demoData';
 
 import { DIFF_MODULES, DiffModule } from './lib/diffModules';
 
@@ -72,13 +72,74 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [findings]);
 
   useEffect(() => {
+    // Real data mode: load findings from Firestore
+    if (!demoMode && user) {
+      setIsLoading(true);
+      loadScanFindings(user.uid)
+        .then((findings) => {
+          setFindings(findings);
+          setIsLoading(false);
+          
+          // Update diff modules counts based on real findings
+          setDiffModules(prevModules =>
+            prevModules.map(mod => {
+              const modFindings = findings.filter(f =>
+                f.module?.toLowerCase() === mod.id.toLowerCase() ||
+                f.module?.toLowerCase() === mod.label.toLowerCase() ||
+                f.module?.toLowerCase().includes(mod.id.split('-')[0])
+              );
+              if (modFindings.length === 0) return mod;
+              const nuked = modFindings.filter(f => f.status === 'NUKED').length;
+              const knoxed = modFindings.filter(f => f.status === 'KNOXED').length;
+              const monitored = modFindings.filter(f => f.status === 'MONITORED').length;
+              const sevCalc = Math.max(0, 100 - (knoxed * 5) + (nuked * 15));
+              return {
+                ...mod,
+                nukedCount: nuked,
+                knoxedCount: knoxed,
+                monitoredCount: monitored,
+                severity: Math.min(100, Math.max(10, sevCalc)),
+                lastScanned: Date.now()
+              };
+            })
+          );
+          
+          // Check for new NUKED findings to notify
+          if (!isLoading) {
+            findings.forEach(finding => {
+              if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
+                toast.error(`CRITICAL EXPOSURE DETECTED`, {
+                  description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
+                  duration: 10000,
+                });
+                setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
+              }
+            });
+          }
+          
+          // Set last scan date
+          if (findings.length > 0) {
+            const latest = findings.reduce((prev, current) => 
+              (prev.timestamp > current.timestamp) ? prev : current
+            );
+            setLastScanDate(latest.timestamp);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load scan findings:', err);
+          setFindings([]);
+          setIsLoading(false);
+          setLastScanDate(null);
+          setNotifiedFindingIds(new Set());
+        });
+      return;
+    }
+
     // Demo mode: inject pre-populated findings without hitting Firestore
     if (demoMode) {
-      setFindings(DEMO_FINDINGS);
-      const latest = DEMO_FINDINGS.reduce((prev, cur) =>
-        prev.timestamp > cur.timestamp ? prev : cur
-      );
-      setLastScanDate(latest.timestamp);
+      // Fall back to minimal demo structure since full DEMO_FINDINGS removed
+      setFindings([]);
+      setLastScanDate(null);
       setIsLoading(false);
       return;
     }

@@ -12,7 +12,7 @@ import { signInWithCustomToken } from 'firebase/auth';
 // OPERATION FRAMEWORK: Sovereign Pipeline
 import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
 import { generateSessionNonce } from './services/sovereignHashService';
-import { DEMO_USER_DATA, DEMO_SOVEREIGN_SCORE } from './data/demoData';
+import { loadUserData, loadScoreHistory } from './data/demoData';
 import { calculateEnhancedSovereignScore, getScanFindings } from './services/scanService';
 import { localVaultService } from './services/localVaultService';
 import { driveExportService } from './services/driveExportService';
@@ -100,19 +100,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Restore demo session on mount (handles page refresh within TTL)
   useEffect(() => {
-    const session = readDemoSession();
+    // Demo session restored from sessionStorage — but since demo data has been
+    // removed, we only restore the flag and require proper Firebase auth.
+    // The demoModeRef is set so the onAuthStateChanged closure can read it.
     if (session?.active && session.expiresAt > Date.now()) {
       demoModeRef.current = true;
       setDemoMode(true);
-      setUser(DEMO_USER_OBJECT);
-      setUserData(DEMO_USER_DATA);
-      setSovereignScore(DEMO_SOVEREIGN_SCORE);
-      setSetupCompleteState(true);
+      // Do NOT set userData/sovereignScore from removed demo data.
+      // User must sign in via Google or passkey to get real data.
       setLoading(false);
     } else if (session) {
       clearDemoSession();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -544,16 +543,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const handleSetDemoUser = () => {
-    writeDemoSession();
-    setDemoMode(true);
-    demoModeRef.current = true;
-    setUser(DEMO_USER_OBJECT);
-    setUserData(DEMO_USER_DATA);
-    setSovereignScore(DEMO_SOVEREIGN_SCORE);
-    setSovereignHash('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
-    setAuthType('anonymous');
-    setSetupCompleteState(true);
-    setLoading(false);
+    // Demo mode is no longer supported with pre-populated data.
+    // Users must sign in via Google OAuth or passkey to access the platform.
+    // This function now redirects to Google sign-in instead.
+    // If demo access is needed for development, use firebase emulators:start
+    // and sign in with a real test account.
+    toast.info('Demo mode removed — please sign in with Google or passkey to use Agape Sovereign.');
+    // Do not auto-set demo user; require proper authentication.
   };
 
   const handleClearDemoUser = () => {

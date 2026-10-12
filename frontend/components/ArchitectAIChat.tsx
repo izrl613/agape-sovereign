@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles, Flame, ShieldCheck, Bot, User, RefreshCw, Hash } from 'lucide-react';
 import { DiffVector, ChatMessage } from '../types';
+import { packageVectorDataForAI } from '../services/cryptoService';
 import { architectAI } from '../services/geminiService';
 
 interface ArchitectAIChatProps {
@@ -11,6 +12,7 @@ interface ArchitectAIChatProps {
   focusedVector: DiffVector | null;
   onNukeVector: (id: string) => void;
   onKnoxVector: (id: string) => void;
+  userProfile: { uid: string; email: string; fullName: string; primaryEmail: string };
 }
 
 export const ArchitectAIChat: React.FC<ArchitectAIChatProps> = ({
