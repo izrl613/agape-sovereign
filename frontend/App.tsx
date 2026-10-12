@@ -13,7 +13,6 @@ import { MultistepOnboardingSplash } from './components/MultistepOnboardingSplas
 import { PdfReportModal } from './components/PdfReportModal';
 import { AdminPortalModal } from './components/AdminPortalModal';
 import { UserProfileModal } from './components/UserProfileModal';
-<<<<<<< HEAD
 import { EmailBreachScannerModal } from './components/EmailBreachScannerModal';
 import { DataBrokerDispatcherModal } from './components/DataBrokerDispatcherModal';
 import { FileVaultShredderModal } from './components/FileVaultShredderModal';
@@ -82,12 +81,10 @@ export default function App() {
     cloudAuditId: `DIFF-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
   }));
 
-=======
 import { calculateSha256 } from './services/cryptoService';
 import { ShieldCheck, Flame, Layers, Radio, Sparkles, Filter, Hash, CheckCircle2, UserPlus } from 'lucide-react';
 
 export default function App() {
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   const [vectors, setVectors] = useState<DiffVector[]>(INITIAL_16_DIFF_VECTORS);
   const [activeCategory, setActiveCategory] = useState<VectorCategory | 'ALL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'EXPOSED' | 'KNOXED' | 'NUKED'>('ALL');
@@ -100,7 +97,6 @@ export default function App() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-<<<<<<< HEAD
   const [isEmailScannerOpen, setIsEmailScannerOpen] = useState(false);
   const [isSocialScrubberOpen, setIsSocialScrubberOpen] = useState(false);
   const [isFileVaultOpen, setIsFileVaultOpen] = useState(false);
@@ -116,8 +112,6 @@ export default function App() {
   const [isLocationScrubberOpen, setIsLocationScrubberOpen] = useState(false);
   const [isStealerScannerOpen, setIsStealerScannerOpen] = useState(false);
   const [isPasswordStrengthOpen, setIsPasswordStrengthOpen] = useState(false);
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   const [focusedVector, setFocusedVector] = useState<DiffVector | null>(null);
 
   // Admin telemetry
@@ -294,7 +288,6 @@ export default function App() {
                 </div>
 
                 {/* Quick actions in hero */}
-<<<<<<< HEAD
                 <div className="flex flex-wrap items-center gap-2.5 shrink-0">
                   <button
                     onClick={() => setIsDeepWebOpen(true)}
@@ -431,9 +424,7 @@ export default function App() {
                     <span>Broker Dispatcher</span>
                   </button>
 
-=======
                 <div className="flex flex-col sm:flex-row gap-3 shrink-0">
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
                   <button
                     onClick={() => setIsOnboardingOpen(true)}
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-pink-500/40 text-xs font-mono font-bold text-pink-200 hover:text-white transition"
@@ -450,10 +441,8 @@ export default function App() {
                     }}
                     className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#FF2E9F] via-[#00D4FF] to-[#FF7A18] text-white text-xs font-mono font-bold shadow-lg hover:opacity-90 transition"
                   >
-<<<<<<< HEAD
                     <Sparkles className="w-3.5 h-3.5 text-white" />
                     <span>Chief of Staff AI</span>
-=======
                     <Sparkles className="w-4 h-4 text-white" />
                     <span>Ask Chief of Staff AI</span>
                   </button>
@@ -463,7 +452,6 @@ export default function App() {
                     className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#111A33] hover:bg-slate-800 border border-cyan-500/40 text-xs font-mono font-bold text-cyan-200 hover:text-white transition"
                   >
                     <span>Lighthouse PDF</span>
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
                   </button>
                 </div>
               </div>
@@ -510,7 +498,6 @@ export default function App() {
                   setIsChatOpen(true);
                 }}
                 onEdit={() => setIsOnboardingOpen(true)}
-<<<<<<< HEAD
                 onOpenEmailScanner={() => setIsEmailScannerOpen(true)}
                 onOpenSocialScrubber={() => setIsSocialScrubberOpen(true)}
                 onOpenFileVault={() => setIsFileVaultOpen(true)}
@@ -526,8 +513,6 @@ export default function App() {
                 onOpenLocationScrubber={() => setIsLocationScrubberOpen(true)}
                 onOpenStealerScanner={() => setIsStealerScannerOpen(true)}
                 onOpenPasswordStrength={() => setIsPasswordStrengthOpen(true)}
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
               />
             ))}
           </div>
@@ -547,7 +532,6 @@ export default function App() {
       </footer>
 
       {/* Modals */}
-<<<<<<< HEAD
       <DeepWebDarknetModal
         isOpen={isDeepWebOpen}
         onClose={() => setIsDeepWebOpen(false)}
@@ -653,8 +637,6 @@ export default function App() {
         onUpdatePerimeterVector={handleUpdatePerimeterVector}
       />
 
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
       <MultistepOnboardingSplash
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}

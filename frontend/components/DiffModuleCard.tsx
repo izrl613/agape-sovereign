@@ -1,6 +1,5 @@
 import React from 'react';
 import { DiffVector } from '../types';
-<<<<<<< HEAD
 import { 
   Flame, 
   ShieldAlert, 
@@ -26,9 +25,7 @@ import {
   Globe,
   Cloud
 } from 'lucide-react';
-=======
 import { Flame, ShieldAlert, ShieldCheck, Hash, Eye, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 
 interface DiffModuleCardProps {
   vector: DiffVector;
@@ -36,7 +33,6 @@ interface DiffModuleCardProps {
   onKnox: (id: string) => void;
   onConsultAI: (vector: DiffVector) => void;
   onEdit: (vector: DiffVector) => void;
-<<<<<<< HEAD
   onOpenEmailScanner?: () => void;
   onOpenSocialScrubber?: () => void;
   onOpenFileVault?: () => void;
@@ -52,8 +48,6 @@ interface DiffModuleCardProps {
   onOpenLocationScrubber?: () => void;
   onOpenStealerScanner?: () => void;
   onOpenPasswordStrength?: () => void;
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }
 
 export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
@@ -62,7 +56,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onKnox,
   onConsultAI,
   onEdit,
-<<<<<<< HEAD
   onOpenEmailScanner,
   onOpenSocialScrubber,
   onOpenFileVault,
@@ -78,8 +71,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   onOpenLocationScrubber,
   onOpenStealerScanner,
   onOpenPasswordStrength,
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
 }) => {
   const getStatusBadge = () => {
     switch (vector.status) {
@@ -120,7 +111,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
     return 'border-[#FF2E9F]/50 shadow-[0_0_15px_rgba(255,46,159,0.1)]';
   };
 
-<<<<<<< HEAD
   const isEmailModule = vector.id === 'diff-01' || vector.moduleNumber === 1;
   const isSocialModule = vector.id === 'diff-02' || vector.moduleNumber === 2;
   const isFileVaultModule = vector.id === 'diff-03' || vector.moduleNumber === 3;
@@ -137,8 +127,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
   const isStealerModule = vector.id === 'diff-15' || vector.moduleNumber === 15;
   const isPasswordStrengthModule = vector.id === 'diff-16' || vector.moduleNumber === 16;
 
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
   return (
     <div className="relative group rounded-2xl p-[1.5px] transition-all duration-300 hover:scale-[1.01]">
       {/* Outer pulsing neon border gradient */}
@@ -189,7 +177,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           </div>
 
-<<<<<<< HEAD
           {/* Module 1: Email Breach Scanner */}
           {isEmailModule && onOpenEmailScanner && (
             <div className="mt-3">
@@ -400,8 +387,6 @@ export const DiffModuleCard: React.FC<DiffModuleCardProps> = ({
             </div>
           )}
 
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
           {/* Cryptographic SHA-256 Fingerprint */}
           <div className="mt-3 px-3 py-2 rounded-lg bg-[#0B1020] border border-slate-800/80 flex items-center gap-2 text-[11px] font-mono text-slate-300">
             <Hash className="w-3.5 h-3.5 text-[#00D4FF] shrink-0" />

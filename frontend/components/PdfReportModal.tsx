@@ -343,7 +343,6 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                       </p>
                     </div>
 
-<<<<<<< HEAD
                     {/* KNOXED Box */}
                     <div className="p-5 rounded-2xl bg-[#0F172A] border border-cyan-500/40 relative overflow-hidden">
                       <div className="flex items-center justify-between mb-2">
@@ -397,13 +396,11 @@ export const PdfReportModal: React.FC<PdfReportModalProps> = ({
                         <div className="font-bold text-cyan-300 flex items-center gap-1.5 font-mono">
                           <CheckCircle className="w-3.5 h-3.5 text-[#00D4FF]" />
                           Primary Hardening Vector: Data Brokers (Module 6)
-=======
                     {/* Sovereign Score Gauge Component */}
                     <div className="flex items-center gap-4 bg-[#0B1020] p-4 rounded-2xl border border-slate-700/80 shrink-0">
                       <div className="text-right">
                         <div className="text-[10px] font-mono uppercase text-slate-300 font-bold">
                           LIGHTHOUSE SCORE
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
                         </div>
                         <div className="text-xs text-cyan-300 font-mono">
                           Zero-Access Index

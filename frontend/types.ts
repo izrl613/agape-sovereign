@@ -64,7 +64,6 @@ export interface ChatMessage {
   suggestedAction?: 'NUKE' | 'KNOX' | 'AUDIT';
   vectorReferenceId?: string;
 }
-<<<<<<< HEAD
 
 export type BrokerOptOutStatus = 'LISTED' | 'DISPATCHED' | 'VERIFYING' | 'CONFIRMED_NUKED';
 
@@ -360,5 +359,3 @@ export interface CloudBackupVaultItem {
   status: 'ZERO_KNOWLEDGE_VERIFIED' | 'STALE_LEGACY_EXPOSED' | 'PURGED_NUKED';
   sha256AuditReceipt: string;
 }
-=======
->>>>>>> 6bf8aae34 (refactor: remove unused modal components and firebase services from the frontend codebase)
