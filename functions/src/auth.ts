@@ -542,6 +542,10 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
     });
 
     if (verification.verified && verification.registrationInfo) {
+      // Explicit attestation check for production security
+      if (!verification.registrationInfo.attestation) {
+        logger.warn("[authApi] WebAuthn registration verification passed but no attestation evidence");
+      }
       const {credential} = verification.registrationInfo;
       const credentialId = encodeCredentialId(credential.id);
       const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");

@@ -50,10 +50,12 @@ export const generateSalt = (): Uint8Array => {
 
 /**
  * Encrypt data using AES-256-GCM
+ * Key is derived from passphrase+salt internally - no master key injection allowed
  */
 export const encryptData = async (
   data: unknown,
-  key: CryptoKey,
+  passphrase: string,
+  salt: Uint8Array,
   iv?: Uint8Array
 ): Promise<{
   ciphertext: string;
@@ -64,6 +66,28 @@ export const encryptData = async (
   const dataString = JSON.stringify(data);
   const plaintext = encoder.encode(dataString);
 
+  // Derive key from passphrase + salt (no external key injection)
+  const importedKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(passphrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+
+  const derivedKey = await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt,
+      iterations: 100000,
+      hash: 'SHA-256',
+    },
+    importedKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+
   // Generate IV if not provided
   const initVector = iv || crypto.getRandomValues(new Uint8Array(12));
 
@@ -73,7 +97,7 @@ export const encryptData = async (
       name: 'AES-GCM',
       iv: initVector,
     },
-    key,
+    derivedKey,
     plaintext
   );
 
@@ -239,7 +263,7 @@ export const encryptDIFFProfile = async (
   const salt = generateSalt();
   const key = await deriveKeyFromPassphrase(passphrase, salt);
 
-  const { ciphertext, iv } = await encryptData(diffProfile, key);
+  const { ciphertext, iv } = await encryptData(diffProfile, passphrase, salt);
   const sha256Seal = await hashSHA256(diffProfile);
 
   return {
@@ -260,9 +284,8 @@ export const decryptDIFFProfile = async (
   passphrase: string
 ): Promise<unknown> => {
   const salt = base64ToArrayBuffer(encrypted.salt);
-  const key = await deriveKeyFromPassphrase(passphrase, salt as Uint8Array);
-
-  return decryptData(encrypted.encryptedData, key, encrypted.iv);
+  // Key is derived from passphrase + salt internally; no master key injection possible
+  return decryptData(encrypted.encryptedData, passphrase, encrypted.iv);
 };
 
 /**
