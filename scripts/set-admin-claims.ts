@@ -11,6 +11,11 @@
  * Environment variables required:
  * - GOOGLE_APPLICATION_CREDENTIALS: Path to service account key
  * - FIREBASE_PROJECT_ID: Your Firebase project ID
+ * 
+ * Note: This script is designed for Node.js CommonJS context.
+ * It uses `require()` for loading the service account JSON file.
+ * If you encounter "Unknown identifier 'require'", ensure you are
+ * running this with Node.js (not in a browser or ESM-only environment).
  */
 
 import { getAuth } from 'firebase-admin/auth';

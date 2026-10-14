@@ -212,6 +212,42 @@ export function rpIdForOrigin(origin: string): string {
  * @param {Request} req Express request.
  * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
+
+/**
+ * Creates a custom Firebase Auth token with optional admin claim.
+ * Checks the user's Firestore document for an 'admin' field.
+ * @param userId The user's UID
+ * @param overrideAuthMethod Optional override for auth method params
+ * @returns Custom token string with admin claim if user is admin
+ */
+export async function createCustomTokenWithAdminClaim(
+  userId: string,
+  overrideAuthMethod?: Parameters<typeof auth.createCustomToken>[1]
+): Promise<string> {
+  // Check if user has admin role in Firestore
+  const userRef = db.collection("users").doc(userId);
+  const userDoc = await userRef.get();
+  const userData = userDoc.data() || {};
+  const isAdmin = userData.admin === true;
+
+  const tokenClaims: Record<string, any> = { authMethod: "passkey" };
+  if (isAdmin) {
+    tokenClaims.admin = true;
+    logger.info(
+      "[authApi] Creating custom token with admin claim for user: " + userId
+    );
+  }
+
+  // Merge custom claims into the auth method params
+  const mergedParams = {
+    ...overrideAuthMethod,
+    customClaims: tokenClaims,
+  };
+
+  return await auth.createCustomToken(userId, mergedParams);
+}
+
+/**
 function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
   rpId: string;
@@ -529,7 +565,7 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
         }, {merge: true});
       }
 
-      const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
+      const customToken = await createCustomTokenWithAdminClaim(userId, {authMethod: "passkey"});
       res.clearCookie("__session", {path: "/"});
       if (body.email) {
         try {
@@ -791,7 +827,7 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
         counter: verification.authenticationInfo.newCounter,
         lastUsedAt: FieldValue.serverTimestamp(),
       });
-      const customToken = await auth.createCustomToken(userId, {authMethod: "passkey"});
+      const customToken = await createCustomTokenWithAdminClaim(userId, {authMethod: "passkey"});
       res.clearCookie("__session", {path: "/"});
       try {
         const emailForCleanup = normalizeEmail(
