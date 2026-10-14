@@ -267,7 +267,7 @@ export const SocialMediaScrubberModal: React.FC<SocialMediaScrubberModalProps> =
                     <span>Automated Ephemeral Social Media Quarantine</span>
                   </h4>
                   <p className="text-xs text-slate-300 mt-1 max-w-xl font-sans">
-                    Public posts expose exact GPS coordinates via photo EXIF headers and allow threat actors to map routine locations. Forcefully <strong className="text-[#FF2E9F]">NUKE</strong> legacy posts (>90 days) or <strong className="text-[#00D4FF]">KNOX</strong> active publications by stripping all metadata.
+                    Public posts expose exact GPS coordinates via photo EXIF headers and allow threat actors to map routine locations. Forcefully <strong className="text-[#FF2E9F]">NUKE</strong> legacy posts (90 days) or <strong className="text-[#00D4FF]">KNOX</strong> active publications by stripping all metadata.
                   </p>
                 </div>
 

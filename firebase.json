@@ -1,7 +1,7 @@
 {
   "hosting": {
     "site": "agape-sovereign",
-    "public": "dist",
+    "public": "frontend/dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -26,97 +26,6 @@
           }
         ]
       }
-    ],
-    "rewrites": [
-      {
-        "source": "/api/auth/**",
-        "function": {
-          "functionId": "authApi",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/architect/**",
-        "function": {
-          "functionId": "architectApi",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
-  },
-  "firestore": {
-    "database": "agape-sovereign",
-    "location": "nam7",
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "appCheck": {
-    "providers": {
-      "recaptchaV3": {
-        "siteKey": "REPLACE_WITH_RECAPTCHA_V3_SITE_KEY"
-      },
-      "playIntegrity": {
-        "tokenExchange": true
-      }
-    }
-  },
-  "functions": [
-    {
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
-        "npm --prefix \"$RESOURCE_DIR\" run build"
-      ],
-      "source": "functions"
-    }
-  ],
-  "storage": {
-    "rules": "storage.rules",
-    "bucket": "agape-sovereign.firebasestorage.app"
-  },
-  "emulators": {
-    "apphosting": {
-      "port": 5002,
-      "rootDirectory": "./",
-      "startCommand": "npm run dev"
-    },
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "storage": {
-      "port": 9199
-    },
-    "ui": {
-      "enabled": true
-    },
-    "singleProjectMode": true
-  },
-  "extensions": {},
-  "auth": {
-    "providers": {
-      "anonymous": true,
-      "emailPassword": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "Agape Sovereign AI",
-        "supportEmail": "idin@agape.nyc"
-      }
-    }
   }
 }

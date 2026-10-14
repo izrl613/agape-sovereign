@@ -228,7 +228,7 @@ export const DeepWebDarknetModal: React.FC<DeepWebDarknetModalProps> = ({
               </div>
 
               <div className="space-y-3">
-                {['Red Forum', 'Dread', 'BreachForums', 'Exploit.in'].forum.forumName => (
+                {['Red Forum', 'Dread', 'BreachForums', 'Exploit'].map(forumName => (
                   <div key={forumName} className="p-3 rounded-xl bg-[#0B1020] border border-slate-800 flex items-center justify-between">
                     <div>
                       <span className="font-medium text-white">.{forumName.replace(' ', '.').toLowerCase()}</span>

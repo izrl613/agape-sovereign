@@ -5,7 +5,7 @@ import {
   Shield, 
   Server, 
   Settings,
-  LockKey,
+  Lock,
   Database,
   ShieldCheck,
   Zap,
@@ -176,7 +176,7 @@ export const CloudBackupVerificationModal: React.FC<CloudBackupVerificationModal
           {/* Footer Bar */}
           <div className="p-4 sm:p-5 bg-[#0F172A] border-t border-slate-800 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <LockKey className="w-3.5 h-3.5 text-[#FF2E9F]" />
+              <Lock className="w-3.5 h-3.5 text-[#FF2E9F]" />
               <span>Zero-Knowledge • Ephemeral • No Server-Side Access</span>
             </div>
 

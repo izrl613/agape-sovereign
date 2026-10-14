@@ -63,7 +63,6 @@ import {
   Cloud
 } from 'lucide-react';
 
-
 export default function App() {
   const [vectors, setVectors] = useState<DiffVector[]>(INITIAL_16_DIFF_VECTORS);
   const [activeCategory, setActiveCategory] = useState<VectorCategory | 'ALL'>('ALL');
@@ -99,121 +98,52 @@ export default function App() {
 
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    fullName: 'Israel David',
-    primaryEmail: 'idin@agape.nyc',
-    backupEmails: ['agape@sovereign.nyc', 'id.security@diff-enclave.io'],
-    federatedProvider: 'Apple',
-    passkeyStatus: 'HARDWARE_ENFORCED',
-    passkeyDeviceId: 'FIDO2-APPLE-SECURE-ENCLAVE-2026',
-    masterKeyHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    createdAt: 'March 2026',
-    sovereignScore: 68,
-    cloudAuditId: 'DIFF-2026-ENCLAVE-001',
+    fullName: '',
+    primaryEmail: '',
+    backupEmails: [],
+    federatedProvider: 'Google',
+    passkeyStatus: 'BOUND',
+    passkeyDeviceId: '',
+    masterKeyHash: '',
+    createdAt: '',
+    sovereignScore: 0,
+    cloudAuditId: ''
   });
 
-  // Calculate dynamic sovereign score
-  const sovereignScore = useMemo(() => {
-    const total = vectors.length;
-    if (total === 0) return 100;
-    const knoxed = vectors.filter(v => v.status === 'KNOXED').length;
-    const nuked = vectors.filter(v => v.status === 'NUKED').length;
-    // Nuked is 90% sovereign, Knoxed is 100% sovereign
-    const score = Math.round(((knoxed * 1.0 + nuked * 0.9) / total) * 100);
-    return Math.min(100, Math.max(10, score));
-  }, [vectors]);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+  // Status filter handlers
+  const handleFilterChange = (st: 'ALL' | 'EXPOSED' | 'KNOXED' | 'NUKED') => {
+    setStatusFilter(st);
   };
 
-  // NUKE Action Handler
-  const handleNuke = async (id: string) => {
-    const target = vectors.find(v => v.id === id);
-    if (!target) return;
-
-    const newHash = await calculateSha256(`${target.name}::NUKED_ACTION::${Date.now()}`);
-    setVectors(prev => prev.map(v => {
-      if (v.id === id) {
-        return {
-          ...v,
-          status: 'NUKED',
-          exposureDetails: 'Exposure permanently purged & GDPR/CCPA erasure requests issued.',
-          sha256Hash: newHash,
-          lastScanned: 'Just now',
-        };
-      }
-      return v;
-    }));
-
-    showToast(`🔥 NUKED: "${target.name}" marked for irreversible erasure.`);
+  // Vector update handler
+  const handleUpdatePerimeterVector = (id: string, status: string, vectorData?: any) => {
+    setVectors(vectors.map(v => v.id === id ? { ...v, status } : v));
+    showToast('Enclave perimeter vector updated successfully.');
   };
 
-  // KNOX Action Handler
-  const handleKnox = async (id: string) => {
-    const target = vectors.find(v => v.id === id);
-    if (!target) return;
-
-    const newHash = await calculateSha256(`${target.name}::KNOXED_ENCLAVE::${Date.now()}`);
-    setVectors(prev => prev.map(v => {
-      if (v.id === id) {
-        return {
-          ...v,
-          status: 'KNOXED',
-          exposureDetails: 'Secured inside hardware enclave with Web Crypto AES-GCM.',
-          sha256Hash: newHash,
-          lastScanned: 'Just now',
-        };
-      }
-      return v;
-    }));
-
-    showToast(`🛡️ KNOXED: "${target.name}" cryptographically hardened in enclave.`);
+  // Toast helper
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
   };
-
-  // Trigger Deep Scan
-  const handleRunDeepScan = () => {
-    setIsScanning(true);
-    showToast('Initiating 16-vector deep crawler across breaches, darknet, and broker registries...');
-    setTimeout(async () => {
-      // Simulate real-time re-hashing
-      const refreshed = await Promise.all(
-        vectors.map(async (v) => {
-          const newHash = await calculateSha256(`${v.name}::${v.dataValue}::${Date.now()}`);
-          return {
-            ...v,
-            sha256Hash: newHash,
-            lastScanned: '1 min ago',
-          };
-        })
-      );
-      setVectors(refreshed);
-      setIsScanning(false);
-      showToast('DIFF Scan complete: 16 vectors cryptographically validated.');
-    }, 1800);
-  };
-
-  // Vector filtering
-  const filteredVectors = useMemo(() => {
-    return vectors.filter(v => {
-      const matchCat = activeCategory === 'ALL' || v.category === activeCategory;
-      const matchStatus = statusFilter === 'ALL' || v.status === statusFilter;
-      return matchCat && matchStatus;
-    });
-  }, [vectors, activeCategory, statusFilter]);
-
-  const exposedCount = vectors.filter(v => v.status === 'EXPOSED').length;
-  const knoxedCount = vectors.filter(v => v.status === 'KNOXED').length;
-  const nukedCount = vectors.filter(v => v.status === 'NUKED').length;
 
   return (
-    <div className="min-h-screen bg-[#0B1020] text-slate-100 flex flex-col font-sans">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#0F172A] border border-cyan-500/50 shadow-2xl text-xs font-mono font-bold text-cyan-200 animate-slide-up">
-          <CheckCircle2 className="w-4 h-4 text-[#00D4FF]" />
-          <span>{toastMessage}</span>
+    <div className="min-h-screen bg-[#0B1020]">
+      <section className="p-4 sm:p-5 md:p-6 bg-[#0F172A]">
+        <div className="max-w-5xl mx-auto">
+          <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">
+            16 Perimeter Security Modules
+          </h3>
+          <p className="text-xs text-slate-400 font-mono">
+            Identity security platform with 16 perimeter security modules
+          </p>
         </div>
+      </section>
+      <main className="p-6 bg-[#0F172A] rounded-lg">
+        <div className="text-sm text-slate-300">
+          Showing {vectors.length} of 16 identity modules
+        </div>
+<<<<<<< HEAD
       )}
 
       {/* Navigation Bar */}
@@ -566,140 +496,49 @@ export default function App() {
 
     <PasswordHashStrengthModal
       isOpen={isPasswordStrengthOpen}
+=======
+      </main>
+      <footer className="p-4 sm:p-5 bg-[#0F172A] border-t border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-4">
+          <p className="text-xs text-slate-300 font-mono">
+            16 Perimeter Security Modules • 2026 ECRA LTS Certified
+          </p>
+        </div>
+      </footer>
+      <DeepWebDarknetModal
+        isOpen={isDeepWebOpen}
+        onClose={() => setIsDeepWebOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+      <CloudBackupVerificationModal
+        isOpen={isCloudBackupOpen}
+        onClose={() => setIsCloudBackupOpen(false)}
+        userProfile={userProfile}
+        onUpdatePerimeterVector={handleUpdatePerimeterVector}
+      />
+      <PasswordHashStrengthModal
+        isOpen={isPasswordStrengthOpen}
+>>>>>>> 76140cdc7 (Update firebase.json hosting config to use dist directory)
         onClose={() => setIsPasswordStrengthOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
       />
-
-      <IdentityDocumentMdlModal
-        isOpen={isIdentityMdlOpen}
-        onClose={() => setIsIdentityMdlOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <HardwareEnclaveInspectorModal
-        isOpen={isHardwareEnclaveOpen}
-        onClose={() => setIsHardwareEnclaveOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <EmailBreachScannerModal
-        isOpen={isEmailScannerOpen}
-        onClose={() => setIsEmailScannerOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
       <SocialMediaScrubberModal
         isOpen={isSocialScrubberOpen}
         onClose={() => setIsSocialScrubberOpen(false)}
         userProfile={userProfile}
         onUpdatePerimeterVector={handleUpdatePerimeterVector}
       />
-
-      <DnsSurveillanceModal
-        isOpen={isDnsSurveillanceOpen}
-        onClose={() => setIsDnsSurveillanceOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
       <FinancialTokenizationModal
         isOpen={isFinancialTokenizationOpen}
         onClose={() => setIsFinancialTokenizationOpen(false)}
         userProfile={userProfile}
         onUpdatePerimeterVector={handleUpdatePerimeterVector}
       />
-
       <SmartHomeTelemetryModal
         isOpen={isSmartHomeTelemetryOpen}
         onClose={() => setIsSmartHomeTelemetryOpen(false)}
         userProfile={userProfile}
         onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <AdIdLocationScrubberModal
-        isOpen={isLocationScrubberOpen}
-        onClose={() => setIsLocationScrubberOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <BiometricDefenseModal
-        isOpen={isBiometricDefenseOpen}
-        onClose={() => setIsBiometricDefenseOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <DarknetStealerScannerModal
-        isOpen={isStealerScannerOpen}
-        onClose={() => setIsStealerScannerOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <FileVaultShredderModal
-        isOpen={isFileVaultOpen}
-        onClose={() => setIsFileVaultOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <DataBrokerDispatcherModal
-        isOpen={isBrokerDispatcherOpen}
-        onClose={() => setIsBrokerDispatcherOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
-
-      <MultistepOnboardingSplash
-        isOpen={isOnboardingOpen}
-        onClose={() => setIsOnboardingOpen(false)}
-        vectors={vectors}
-        userProfile={userProfile}
-        onComplete={(updatedVectors, updatedProfile) => {
-          setVectors(updatedVectors);
-          setUserProfile(updatedProfile);
-          showToast('Sovereign setup complete! 16 vectors committed with verified SHA-256 hashes.');
-        }}
-      />
-
-      <ArchitectAIChat
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        vectors={vectors}
-        sovereignScore={sovereignScore}
-        focusedVector={focusedVector}
-        onNukeVector={handleNuke}
-        onKnoxVector={handleKnox}
-      />
-
-      <PdfReportModal
-        isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        vectors={vectors}
-        userProfile={userProfile}
-        sovereignScore={sovereignScore}
-      />
-
-      <AdminPortalModal
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
-        telemetry={adminTelemetry}
-        currentEmail={userProfile.primaryEmail}
-      />
-
-      <UserProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        profile={userProfile}
-        onUpdateProfile={(updated) => {
-          setUserProfile(updated);
-          showToast('Enclave profile committed successfully.');
-        }}
       />
     </div>
   );
