@@ -496,38 +496,76 @@ export default function App() {
               />
             ))}
           </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="w-full border-t border-slate-800/80 py-6 text-center text-xs font-mono text-slate-300 bg-[#0B1020]">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            Architect AI • Agape Sovereign Enclave 2026 • Digital Sovereignty Platform
-          </div>
-          <div>
-            Zero-Access AES-GCM • Passkey WebAuthn • 2026 ECRA LTS Certified
-          </div>
+        {/* Vector Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {filteredVectors.map((vector) => (
+            <DiffModuleCard
+              key={vector.id}
+              vector={vector}
+              onNuke={handleNuke}
+              onKnox={handleKnox}
+              onConsultAI={(v) => {
+                setFocusedVector(v);
+                setIsChatOpen(true);
+              }}
+              onEdit={() => setIsOnboardingOpen(true)}
+              onOpenEmailScanner={() => setIsEmailScannerOpen(true)}
+              onOpenSocialScrubber={() => setIsSocialScrubberOpen(true)}
+              onOpenFileVault={() => setIsFileVaultOpen(true)}
+              onOpenHardwareEnclave={() => setIsHardwareEnclaveOpen(true)}
+              onOpenDeepWeb={() => setIsDeepWebOpen(true)}
+              onOpenBrokerDispatcher={() => setIsBrokerDispatcherOpen(true)}
+              onOpenDnsSurveillance={() => setIsDnsSurveillanceOpen(true)}
+              onOpenFinancialTokenization={() => setIsFinancialTokenizationOpen(true)}
+              onOpenBiometricDefense={() => setIsBiometricDefenseOpen(true)}
+              onOpenCloudBackup={() => setIsCloudBackupOpen(true)}
+              onOpenIdentityMdl={() => setIsIdentityMdlOpen(true)}
+              onOpenSmartHomeTelemetry={() => setIsSmartHomeTelemetryOpen(true)}
+              onOpenLocationScrubber={() => setIsLocationScrubberOpen(true)}
+              onOpenStealerScanner={() => setIsStealerScannerOpen(true)}
+              onOpenPasswordStrength={() => setIsPasswordStrengthOpen(true)}
+            />
+          ))}
         </div>
-      </footer>
+      </section>
+      <main className="p-6 bg-[#0F172A] rounded-lg">
+        <div className="text-sm text-slate-300">
+          Showing {filteredVectors.length} of 16 identity modules
+        </div>
+      </main>
+    </div>
+    </section>
+    </main>
 
-      {/* Modals */}
-      <DeepWebDarknetModal
-        isOpen={isDeepWebOpen}
-        onClose={() => setIsDeepWebOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
+    {/* Footer */}
+    <footer className="w-full border-t border-slate-800/80 py-6 text-center text-xs font-mono text-slate-300 bg-[#0B1020]">
+      <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div>
+          Architect AI • Agape Sovereign Enclave 2026 • Digital Sovereignty Platform
+        </div>
+        <div>
+          Zero-Access AES-GCM • Passkey WebAuthn • 2026 ECRA LTS Certified
+        </div>
+      </div>
+    </footer>
 
-      <CloudBackupVerificationModal
-        isOpen={isCloudBackupOpen}
-        onClose={() => setIsCloudBackupOpen(false)}
-        userProfile={userProfile}
-        onUpdatePerimeterVector={handleUpdatePerimeterVector}
-      />
+    {/* Modals */}
+    <DeepWebDarknetModal
+      isOpen={isDeepWebOpen}
+      onClose={() => setIsDeepWebOpen(false)}
+      userProfile={userProfile}
+      onUpdatePerimeterVector={handleUpdatePerimeterVector}
+    />
 
-      <PasswordHashStrengthModal
-        isOpen={isPasswordStrengthOpen}
+    <CloudBackupVerificationModal
+      isOpen={isCloudBackupOpen}
+      onClose={() => setIsCloudBackupOpen(false)}
+      userProfile={userProfile}
+      onUpdatePerimeterVector={handleUpdatePerimeterVector}
+    />
+
+    <PasswordHashStrengthModal
+      isOpen={isPasswordStrengthOpen}
         onClose={() => setIsPasswordStrengthOpen(false)}
         userProfile={userProfile}
         onUpdatePerimeterVector={handleUpdatePerimeterVector}

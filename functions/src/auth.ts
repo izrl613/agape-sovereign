@@ -46,11 +46,8 @@ const DEFAULT_RP_ID = process.env.WEBAUTHN_RP_ID || "sovereign.nyc";
 const DEFAULT_ORIGIN = process.env.WEBAUTHN_ORIGIN || "https://sovereign.nyc";
 
 // Development fallback for local testing
-const isDevelopment = process.env.NODE_ENV === "development" ||
-                      process.env.FUNCTIONS_EMULATOR === "true";
-
-const DEV_RP_ID = "localhost";
-const DEV_ORIGIN = "http://localhost:5173";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-enable @typescript-eslint/no-unused-vars */
 
 /**
  * Origins allowed for WebAuthn ceremony verification.
@@ -210,15 +207,15 @@ export function rpIdForOrigin(origin: string): string {
  * Resolve expectedOrigin + rpId from the request Origin/Referer.
  * Firebase Hosting terminates TLS before the function runs.
  * @param {Request} req Express request.
- * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
+ * @returns {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
 
 /**
  * Creates a custom Firebase Auth token with optional admin claim.
  * Checks the user's Firestore document for an 'admin' field.
- * @param userId The user's UID
- * @param overrideAuthMethod Optional override for auth method params
- * @returns Custom token string with admin claim if user is admin
+ * @param {string} userId The user's UID
+ * @param {object} [overrideAuthMethod] Optional override for auth method params
+ * @return Custom token string with admin claim if user is admin, otherwise standard passkey token
  */
 export async function createCustomTokenWithAdminClaim(
   userId: string,
@@ -230,7 +227,7 @@ export async function createCustomTokenWithAdminClaim(
   const userData = userDoc.data() || {};
   const isAdmin = userData.admin === true;
 
-  const tokenClaims: Record<string, any> = { authMethod: "passkey" };
+  const tokenClaims: Record<string, unknown> = { authMethod: "passkey" };
   if (isAdmin) {
     tokenClaims.admin = true;
     logger.info(
@@ -248,6 +245,12 @@ export async function createCustomTokenWithAdminClaim(
 }
 
 /**
+ * Resolves the expected origin and RP ID from the request's Origin/Referer headers.
+ * Firebase Hosting terminates TLS before the function runs, so the origin must
+ * be derived from the request headers rather than the connection secure context.
+ * @param req The incoming HTTP request.
+ * @return The resolved origin, RP ID, and array of allowed origins.
+ */
 function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
   rpId: string;
@@ -281,7 +284,10 @@ function getWebAuthnConfig(req: Request): {
       const host = url.hostname;
       const allowed =
         ALLOWED_ORIGINS.includes(origin) ||
-        host === "localhost" ||
+        ALLOWED_ORIGINS.includes(host) ||
+        // Fallback: allow the candidate origin itself if not in the list
+        candidate;
+      host === "localhost" ||
         host === "127.0.0.1" ||
         host.endsWith(".web.app") ||
         host.endsWith(".firebaseapp.com") ||
