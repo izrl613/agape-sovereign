@@ -207,7 +207,7 @@ export function rpIdForOrigin(origin: string): string {
  * Resolve expectedOrigin + rpId from the request Origin/Referer.
  * Firebase Hosting terminates TLS before the function runs.
  * @param {Request} req Express request.
- * @returns {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
+ * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
 
 /**
@@ -215,7 +215,7 @@ export function rpIdForOrigin(origin: string): string {
  * Checks the user's Firestore document for an 'admin' field.
  * @param {string} userId The user's UID
  * @param {object} [overrideAuthMethod] Optional override for auth method params
- * @returns {string} Custom token string with admin claim if user is admin, otherwise standard passkey token
+ * @return {string} Custom token string with admin claim if user is admin, otherwise standard passkey token
  */
 export async function createCustomTokenWithAdminClaim(
   userId: string,
@@ -248,8 +248,8 @@ export async function createCustomTokenWithAdminClaim(
  * Resolves the expected origin and RP ID from the request's Origin/Referer headers.
  * Firebase Hosting terminates TLS before the function runs, so the origin must
  * be derived from the request headers rather than the connection secure context.
- * @param req The incoming HTTP request.
- * @return The resolved origin, RP ID, and array of allowed origins.
+ * @param {Request} req The incoming HTTP request.
+ * @return {{expectedOrigin: string, rpId: string, allowedOrigins: string[]}}
  */
 function getWebAuthnConfig(req: Request): {
   expectedOrigin: string;
@@ -268,15 +268,6 @@ function getWebAuthnConfig(req: Request): {
     }
   }
 
-  // Use development defaults for local testing
-  if (isDevelopment && (candidate.includes("localhost") || candidate.includes("127.0.0.1"))) {
-    return {
-      expectedOrigin: DEV_ORIGIN,
-      rpId: DEV_RP_ID,
-      allowedOrigins: [DEV_ORIGIN, "http://localhost:5000", "http://localhost:5173"],
-    };
-  }
-
   if (candidate) {
     try {
       const url = new URL(candidate);
@@ -286,7 +277,7 @@ function getWebAuthnConfig(req: Request): {
         ALLOWED_ORIGINS.includes(origin) ||
         ALLOWED_ORIGINS.includes(host) ||
         // Fallback: allow the candidate origin itself if not in the list
-        candidate;
+      //
       host === "localhost" ||
         host === "127.0.0.1" ||
         host.endsWith(".web.app") ||
@@ -542,10 +533,6 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
     });
 
     if (verification.verified && verification.registrationInfo) {
-      // Explicit attestation check for production security
-      if (!verification.registrationInfo.attestation) {
-        logger.warn("[authApi] WebAuthn registration verification passed but no attestation evidence");
-      }
       const {credential} = verification.registrationInfo;
       const credentialId = encodeCredentialId(credential.id);
       const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
