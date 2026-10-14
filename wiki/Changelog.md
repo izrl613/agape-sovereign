@@ -1,15 +1,17 @@
 # Agape Sovereign â Full Journey Changelog
 
 > _From Project Genesis to v2.0 â every commit, issue, and milestone documented._
-> _Repo created: 2026-04-20 Â· Last updated: 2026-07-21_
+> _Repo created: 2026-04-20 Â· Last updated: 2026-10-13_
 
 ---
 
 ## Phase 4 â v2.0 Identity Vectors & Shield Platform _(Jul 2026 Â· In Progress)_
 
-### Milestone: `Phase 4 â v2.0 Identity Vectors & Shield Platform` (due 2026-07-30)
+### Milestone: `Phase 4 â v2.0 Identity Vectors & Shield Platform` (due 2026-07-30 Â· Extended)
 
-**Highlights:** Firebase deploy reliability overhaul, autonomous agentic workflows, sovereign pipeline v1 complete, LM Studio integration, NotebookLM documentation, YouTube script outline.
+**Status**: Phase 4 milestone extended due to critical security audit findings. Security hardening in progress (October 2026).
+
+**Highlights:** Firebase deploy reliability overhaul, autonomous agentic workflows, sovereign pipeline v1 complete, LM Studio integration, NotebookLM documentation, YouTube script outline, security hardening.
 
 | Date | Type | Description |
 |------|------|-------------|
@@ -45,6 +47,14 @@
 | 2026-07-20 | `deps` | bump `github/codeql-action` from 3 to 4 |
 | 2026-07-20 | `deps` | bump `typescript` from 6.0.3 to 7.0.2 in functions |
 | 2026-07-20 | `deps` | bump `actions/setup-node` from 4 to 7 |
+| 2026-10-13 | `security` | Fix git repository corruption (remove .DS_Store from .git refs) |
+| 2026-10-13 | `security` | Clean up 58 .DS_Store files throughout repository |
+| 2026-10-13 | `security` | Clean up 27 stale branches (dependabot, devin, copilot, arena, etc.) |
+| 2026-10-13 | `security` | Harden Firestore security rules with owner-based access control |
+| 2026-10-13 | `security` | Update admin function to use custom claims instead of hardcoded emails |
+| 2026-10-13 | `docs` | Update root SECURITY.md with project-specific information |
+| 2026-10-13 | `docs` | Update wiki Security.md to reflect August 2026 audit findings |
+| 2026-10-13 | `docs` | Update wiki Changelog.md with Phase 4 extension status |
 | 2026-07-20 | `deps` | bump various npm_and_yarn groups across workspaces |
 | 2026-07-20 | `deps` | bump `firebase-functions-test` from 3.4.1 to 3.5.0 |
 | 2026-07-20 | `deps` | bump `gitleaks/gitleaks-action` from 2 to 3 |
@@ -241,10 +251,10 @@
 | **Closed issues** | 66 |
 | **Total issues** | 97 |
 | **Milestones** | 5 (Phase 0â4) |
-| **Branches** | 27 |
+| **Branches** | 8 (after cleanup) |
 | **Releases** | 2 (v1.0.0, v2.0.0-alpha) |
 | **Workflows** | 13 GitHub Actions |
-| **Wiki pages** | 5+ (Architecture, Agent Pipeline, Deployment, Billing, Journey) |
+| **Wiki pages** | 11 (Architecture, Security, Changelog, etc.) |
 | **Discussions** | Enabled |
 | **Projects (v2)** | Active |
 | **Stars** | 1 |
@@ -253,10 +263,26 @@
 
 ---
 
-## Remaining Work (as of 2026-07-21)
+## Remaining Work (as of 2026-10-13)
 
-### Phase 4 â Must Complete by 2026-07-30
+### Phase 4 â Extended Due to Security Audit
 
+**Security Hardening Completed (October 2026)**:
+- [x] Git repository corruption fixed (.DS_Store files removed)
+- [x] 58 .DS_Store files cleaned up throughout repository
+- [x] 27 stale branches deleted (dependabot, devin, copilot, arena, etc.)
+- [x] Firestore security rules hardened with owner-based access control
+- [x] Admin function updated to use custom claims
+- [x] Security documentation updated to reflect audit findings
+
+**Remaining Security Tasks**:
+- [ ] Implement actual WebAuthn signature verification (critical)
+- [ ] Implement secure key storage (KMS or secure key store) (critical)
+- [ ] Remove master_key injection capability (critical)
+- [ ] Fix AES-GCM parameter swap vulnerability (critical)
+- [ ] Deploy custom claims for admin users (required for Firestore rules)
+
+**Remaining Phase 4 Tasks**:
 - [ ] **Issue #84** â Phase 4 Identity Vectors & Shield Platform
 - [ ] **Issue #79** â Near-Zero Cost GCP Monitoring & Logging Setup
 - [ ] **Issue #78** â Firebase > GCP Cost Analysis & Remediation Plan
@@ -265,11 +291,10 @@
 - [ ] **Issue #24** â Stage 3: PDF report generator + retention
 - [ ] **Issue #23** â Stage 2: NUKED/KNOXED + Sovereign Score engine
 - [ ] **Issue #22** â Stage 1A1: Email Breach & Metadata Scanner
-- [ ] **10 open Dependabot PRs** â dependency updates across workspaces
 - [ ] **GCP credit preservation** â stretch $1,000 to 2027-01-26
-- [ ] **Firebase deploy** â push main branch to production
+- [ ] **Firebase deploy** â push main branch to production (after security fixes)
 
 ---
 
 _This CHANGELOG is auto-maintained. Updates are committed as part of the daily autonomous compliance workflow._
-_Last updated: 2026-07-21_
+_Last updated: 2026-10-13_

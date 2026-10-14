@@ -13,8 +13,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() &&
-             'email' in request.auth.token &&
-             (request.auth.token.email == "idin@agape.nyc" || request.auth.token.email == "agape@sovereign.nyc");
+             request.auth.token.admin == true;
     }
 
     // Sovereign user accounts & private sandboxes
@@ -28,72 +27,90 @@ service cloud.firestore {
     }
 
     // Application Top-Level Collections
+    // Each collection should have owner-based access control
     match /diff_scans/{scanId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /diff_reports/{reportId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /score_history/{historyId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /user_vector_statuses/{statusId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /findings/{findingId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /monitored_emails/{emailId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /dlp_violations/{violationId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /identity_risks/{riskId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /pii_scans/{scanId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /audit_logs/{logId} {
-      allow read, write: if isSignedIn() || isAdmin();
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /sovereign_audits/{auditId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /pipeline_runs/{runId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /chat_sessions/{sessionId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /ai_feedback/{feedbackId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /sovereign_exports/{exportId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     match /system/{docId} {
-      allow read, write: if isSignedIn();
+      allow read: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /test/{testId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
     }
 
     // Global Safety Net: Default Deny All

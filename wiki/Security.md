@@ -1,5 +1,25 @@
 # Security
 
+## Security Status
+
+**⚠️ Important**: A comprehensive security audit was conducted on August 22, 2026, identifying **21 vulnerabilities** (5 critical, 7 high, 6 medium, 3 low). The system is currently marked as **NON-COMPLIANT** pending resolution of critical issues.
+
+**Critical Vulnerabilities (Pending Fix)**:
+1. Simulated passkey authentication (signature verification not implemented)
+2. Non-persisted master encryption keys (data loss risk on restart)
+3. Master key injection capability
+4. AES-GCM parameter swap vulnerability
+
+**Timeline**: Estimated 2-4 weeks for critical fixes. See [SECURITY_AUDIT_REPORT.md](../docs/SECURITY_AUDIT_REPORT.md) for full details.
+
+**Recent Security Improvements (October 2026)**:
+- Firestore security rules hardened with owner-based access control
+- Admin function updated to use custom claims instead of hardcoded emails
+- Git repository corruption fixed (.DS_Store files removed)
+- Stale branches cleaned up to reduce attack surface
+
+---
+
 ## Security Model
 
 agape.sovereign is built on a **zero-knowledge, privacy-first** security architecture. No user data is ever exposed to administrators or third parties beyond what is strictly required.
@@ -56,11 +76,11 @@ service cloud.firestore {
 
 ## Compliance Certifications
 
-| Standard | Scope |
-|---------|-------|
-| **ECRA 2026** | European Cybersecurity Resilience Act |
-| **GDPR** | Data minimization, consent, right to deletion |
-| **CCPA** | California Privacy Rights Act |
+| Standard | Status | Notes |
+|---------|--------|-------|
+| **ECRA 2026** | In Progress | Pending security audit fixes |
+| **GDPR** | Partially Implemented | Rights implemented, audit pending |
+| **CCPA** | Partially Implemented | Rights implemented, audit pending |
 
 ### GDPR Rights Implemented
 - **Right to Access** — Users can export all their data
@@ -83,12 +103,11 @@ To report a security vulnerability:
 
 ## Supported Versions
 
-| Version | Security Updates |
-|---------|-----------------|
-| 5.1.x | ✅ Supported |
-| 5.0.x | ❌ End of Life |
-| 4.0.x | ✅ Supported |
-| < 4.0 | ❌ End of Life |
+| Version | Security Updates | Status |
+|---------|-----------------|--------|
+| 2.0.x | ✅ Supported | Production |
+| 1.0.x | ❌ End of Life | Deprecated |
+| < 1.0 | ❌ End of Life | Unsupported |
 
 ---
 
