@@ -16,7 +16,16 @@
   },
   "dependencies": {
     "audius": "^1.1.1",
-    "firebase": "^13.0.0",
+    "firebase": "^9.14.0",
     "openclaw": "^2026.10.3"
+  },
+  "allowScripts": {
+    "@google/genai@2.24.0": true,
+    "@firebase/util@1.15.3": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "fsevents@2.3.3": true,
+    "koffi@3.3.1": true,
+    "openclaw@2026.10.3": true
   }
 }
