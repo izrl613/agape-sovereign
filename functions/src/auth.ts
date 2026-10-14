@@ -215,7 +215,7 @@ export function rpIdForOrigin(origin: string): string {
  * Checks the user's Firestore document for an 'admin' field.
  * @param {string} userId The user's UID
  * @param {object} [overrideAuthMethod] Optional override for auth method params
- * @return Custom token string with admin claim if user is admin, otherwise standard passkey token
+ * @returns {string} Custom token string with admin claim if user is admin, otherwise standard passkey token
  */
 export async function createCustomTokenWithAdminClaim(
   userId: string,
