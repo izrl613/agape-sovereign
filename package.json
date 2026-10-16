@@ -18,7 +18,8 @@
   "dependencies": {
     "audius": "^1.1.1",
     "firebase": "^13.0.0",
-    "openclaw": "^2026.10.3"
+    "openclaw": "^2026.10.3",
+    "protobufjs": "^8.8.1"
   },
   "allowScripts": {
     "@google/genai@2.24.0": true,
