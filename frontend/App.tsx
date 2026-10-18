@@ -145,9 +145,17 @@ export default function App() {
         </div>
       </main>
       <footer className="p-4 sm:p-5 bg-[#0F172A] border-t border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-slate-300 font-mono">
             16 Perimeter Security Modules • 2026 ECRA LTS Certified
+          </p>
+          <div className="flex items-center gap-6 text-xs font-mono">
+            <a href="/terms" rel="terms-of-service" className="text-cyan-400 hover:text-cyan-300 transition-colors">TERMS OF SERVICE</a>
+            <a href="/privacy" rel="privacy-policy" className="text-cyan-400 hover:text-cyan-300 transition-colors">PRIVACY POLICY</a>
+            <a href="/contact" className="text-slate-400 hover:text-white transition-colors">CONTACT</a>
+          </div>
+          <p className="text-xs text-slate-500 font-mono">
+            © {new Date().getFullYear()} AGAPE SOVEREIGN AI
           </p>
         </div>
       </footer>

@@ -98,24 +98,33 @@ export const PrivacyPolicy = () => (
         <P>When you sign in using Google OAuth, we receive only: your display name, your email address (used solely for account identification), and a unique provider-issued user identifier (UID). This authentication data is never linked to or merged with the identity intelligence data you enter in the Platform's DIFF modules.</P>
         <Note>In Plain English: When you sign in with Google, we receive only your name, email, and a unique ID. We cannot see your Gmail, Drive, or any other Google data.</Note>
 
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.3 Google OAuth Scopes Used</h3>
-        <P>The Platform requests only the minimum OAuth scopes required to authenticate users:</P>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.3 Google OAuth Scopes and API Services</h3>
+        <P>The Platform requests only the minimum OAuth scopes necessary to provide functionality:</P>
         <ul style={{ margin: '0 0 12px', paddingLeft: 20 }}>
-          <Li><code style={{ color: NEON_BLUE }}>openid</code> — confirms your identity with Google.</Li>
-          <Li><code style={{ color: NEON_BLUE }}>email</code> — retrieves your email address for account identification.</Li>
-          <Li><code style={{ color: NEON_BLUE }}>profile</code> — retrieves your basic name and profile picture for your account display.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>openid</code> — verifies your identity with Google.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>email</code> — retrieves your email address for account identification and authentication.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>profile</code> — retrieves your basic name and profile avatar for account display.</Li>
+          <Li><code style={{ color: NEON_BLUE }}>https://www.googleapis.com/auth/drive.file</code> — <em>(Optional / User-Initiated only)</em>: When you explicitly choose to export an identity report to Google Drive, this scope allows the app to create a dedicated "Agape Sovereign" folder in your Drive and save your report file. The Platform does not read, access, or modify any other files or folders in your Google Drive.</Li>
         </ul>
-        <P>We do not request access to Gmail, Google Drive, Google Contacts, Google Calendar, or any other Google service.</P>
-        <Note>In Plain English: We ask Google for only three things — who you are, your email, and your name. We do not access any of your other Google account data.</Note>
+        <P>We do not request access to Gmail, Google Contacts, Google Calendar, or full Google Drive storage.</P>
+        <Note>In Plain English: For login, we ask Google only for who you are, your email, and your name. If you choose to export a report to Google Drive, we only save that specific report into your own Drive. We cannot see your other files or emails.</Note>
 
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.4 WebAuthn Passkey Data</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.4 Google API Services User Data Policy & Limited Use Disclosure</h3>
+        <P>Agape Sovereign's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" style={{ color: NEON_BLUE, textDecoration: 'underline' }}>Google API Services User Data Policy</a>, including the Limited Use requirements.</P>
+        <ul style={{ margin: '0 0 12px', paddingLeft: 20 }}>
+          <Li><strong>No Model Training:</strong> Google user data is never used to develop, improve, or train generalized or non-personalized artificial intelligence (AI) or machine learning (ML) models.</Li>
+          <Li><strong>No Sale or Transfer:</strong> Google user data is never transferred, shared, or sold to third parties, advertising platforms, data brokers, or information resellers.</Li>
+          <Li><strong>Revocation of Access:</strong> You can revoke the Platform's access to your Google account at any time through your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" style={{ color: NEON_BLUE, textDecoration: 'underline' }}>Google Account Permissions</a> page.</Li>
+        </ul>
+
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.5 WebAuthn Passkey Data</h3>
         <P>After initial sign-in, the Platform creates a WebAuthn passkey bound to your physical device. We store only the public-key component of your passkey credential. The private key never leaves your device and is never transmitted to our servers.</P>
 
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.5 Operational and Technical Data</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.6 Operational and Technical Data</h3>
         <P>To maintain security, performance, and integrity, we collect limited technical data: authentication event logs, Firebase usage statistics (anonymized and aggregated), cloud infrastructure health metrics, and application error reports (no personal data included). This operational data is retained for no longer than ninety (90) days unless required by applicable law.</P>
         <Note>In Plain English: We keep basic system logs to make sure the system works and is not being abused. These logs do not contain your personal identity information.</Note>
 
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.6 Information We Do Not Collect</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#fff', margin: '16px 0 8px' }}>3.7 Information We Do Not Collect</h3>
         <P>We do not collect: financial information, government IDs, biometric raw data, health records, location data beyond what is technically incidental to IP-based routing, third-party social account contents, or any data beyond what is described in this Policy.</P>
       </Section>
 

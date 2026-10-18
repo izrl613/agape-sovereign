@@ -79,7 +79,7 @@ class DriveExportService {
       try {
         // @ts-ignore - GIS types not available
         this.tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: import.meta.env.VITE_FIREBASE_API_KEY,
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.VITE_FIREBASE_API_KEY,
           scope: DRIVE_SCOPE,
           callback: (response: any) => {
             if (response.access_token) {

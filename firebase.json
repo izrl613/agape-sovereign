@@ -26,6 +26,26 @@
           }
         ]
       }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/auth/**",
+        "function": {
+          "functionId": "authApi",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/architect/**",
+        "function": {
+          "functionId": "architectApi",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
     ]
   },
   "functions": [

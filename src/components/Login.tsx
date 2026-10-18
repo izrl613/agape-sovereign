@@ -401,7 +401,7 @@ export const Login = () => {
             borderRadius: 100, padding: '3px 10px', marginBottom: 28,
             fontFamily: 'monospace',
           }}>
-            FIDO2 · GOOGLE OAUTH 2.0 VERIFIED
+            FIDO2 · SECURE GOOGLE OAUTH 2.0
           </div>
 
           {/* Gradient separator */}
@@ -553,7 +553,7 @@ export const Login = () => {
                         Sign in with Google
                       </div>
                       <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        OAuth 2.0 · Sync to Google Drive
+                        OAuth 2.0 · Fast, Secure Access
                       </div>
                     </div>
                     <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />

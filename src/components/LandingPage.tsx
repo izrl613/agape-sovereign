@@ -80,9 +80,9 @@ const AUTHORITY_CARDS = [
   },
   {
     icon: '🛡️',
-    title: 'Google OAuth 2.0 Verified',
+    title: 'Google OAuth 2.0 Secure Sign-In',
     stat: 'OAuth Secured',
-    desc: 'Google-verified OAuth 2.0. Your Google credentials are never shared with or stored by us.',
+    desc: 'Industry-standard OAuth 2.0 authentication. Your Google account credentials are never shared with or stored by us.',
   },
 ];
 

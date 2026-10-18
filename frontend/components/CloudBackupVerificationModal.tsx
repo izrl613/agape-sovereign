@@ -5,7 +5,6 @@ import {
   Shield, 
   Server, 
   Settings,
-  Lock,
   Database,
   ShieldCheck,
   Zap,
