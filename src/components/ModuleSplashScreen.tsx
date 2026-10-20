@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NEON } from './UI';
+import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ModuleSplashScreen — Per-Module Identity Vector Entry Screen
@@ -22,6 +23,7 @@ interface ModuleSplashProps {
   hasData: boolean;
   status?: 'KNOXED' | 'NUKED' | 'MONITORED' | null;
   onDismiss: () => void;
+  showThirdPartyVerification?: boolean;
 }
 
 // Glitch-animate a SHA-256 hex string before settling
@@ -60,6 +62,7 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   hasData,
   status,
   onDismiss,
+  showThirdPartyVerification,
 }) => {
   const [visible, setVisible] = useState(true);
   const [displayHash, setDisplayHash] = useState(storedHash ? randomHex(64) : randomHex(64));
@@ -89,7 +92,8 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   useEffect(() => {
     timerRef.current = setTimeout(() => {
       setVisible(false);
-      setTimeout(onDismiss, 500); // let exit animation finish
+      setTimeout(onDismiss,
+  showThirdPartyVerification, 500); // let exit animation finish
     }, AUTO_DISMISS_MS);
 
     return () => {
