@@ -117,118 +117,14 @@ const AGENT_CONFIGS: AgentConfig[] = [
 // running against stored user data. In production, these would connect to
 // external APIs/databases; here they provide deterministic simulation.
 
-const V01_FINDINGS: AgentFinding[] = [
-  { id: 'v01-f1', moduleId: 'email-scanner', vector: 'V-01', status: 'NUKED', severity: 75, label: 'Email found in Collection #1 Breach', detail: 'Email identified in a major credential dump containing plaintext passwords.', remediation: 'Migrate account to WebAuthn passkey and rotate old passwords.' },
-  { id: 'v01-f2', moduleId: 'email-scanner', vector: 'V-01', status: 'NUKED', severity: 85, label: 'Credential Pair Reused on 3 Accounts', detail: 'Password hash matching this email was found reused across multiple third-party services.', remediation: 'Enforce unique generated passkeys or aliases for each service.' },
-  { id: 'v01-f3', moduleId: 'email-scanner', vector: 'V-01', status: 'KNOXED', severity: 10, label: 'Primary Inbound Forwarding Alias Enrolled', detail: 'Identity uses cloaked email forwarding aliases for external service signups.', remediation: 'Maintain unique alias per domain.' },
-];
-
-const V02_FINDINGS: AgentFinding[] = [
-  { id: 'v02-f1', moduleId: 'social-map', vector: 'V-02', status: 'NUKED', severity: 90, label: 'High-Risk OAuth App Access Detected', detail: 'Third-party app "Legacy Analytics Tools" has full read/write access to your social profile.', remediation: 'Revoke OAuth token immediately in Social Map drawer.' },
-  { id: 'v02-f2', moduleId: 'social-map', vector: 'V-02', status: 'NUKED', severity: 65, label: 'Public Post Contains Home Neighborhood Metadata', detail: 'Historical post from 2022 contains geotagged location metadata tied to home address.', remediation: 'Run Bulk Post Sanitizer script to delete geotagged posts.' },
-  { id: 'v02-f3', moduleId: 'social-map', vector: 'V-02', status: 'KNOXED', severity: 5, label: 'X/Twitter Profile Set to Private', detail: 'Public search indexing is disabled for connected social profile.' },
-];
-
-const V03_FINDINGS: AgentFinding[] = [
-  { id: 'v03-f1', moduleId: 'device-health', vector: 'V-03', status: 'NUKED', severity: 88, label: 'Unencrypted W2 Tax Form in Downloads Folder', detail: "File \"2024_W2_TaxReturn.pdf\" contains unencrypted Social Security Number in local storage.", remediation: 'Move document into Enclave AES-256 Vault.' },
-  { id: 'v03-f2', moduleId: 'device-health', vector: 'V-03', status: 'KNOXED', severity: 0, label: 'Local Shell History Clean', detail: 'No API keys or plaintext passwords found in ~/.bash_history or ~/.zsh_history.' },
-];
-
-const V04_FINDINGS: AgentFinding[] = [
-  { id: 'v04-f1', moduleId: 'system-security', vector: 'V-04', status: 'KNOXED', severity: 0, label: 'YubiKey Hardware Passkey Enrolled', detail: 'FIDO2 / WebAuthn hardware token registered for master enclave authentication.' },
-  { id: 'v04-f2', moduleId: 'system-security', vector: 'V-04', status: 'NUKED', severity: 80, label: 'High-Risk Browser Extension Detected', detail: 'Browser extension "PDF Reader Pro" possesses permission to read and alter all web page data.', remediation: 'Disable extension or replace with Manifest V3 privacy-hardened alternative.' },
-];
-
-const V05_FINDINGS: AgentFinding[] = [
-  { id: 'v05-f1', moduleId: 'deep-web', vector: 'V-05', status: 'NUKED', severity: 85, label: 'Dark Web Marketplace Paste Match', detail: 'Credentials tied to user email appeared on an onion breach forum on September 2026.', remediation: 'Rotate master security keys and trigger account lockdown.' },
-];
-
-const V06_FINDINGS: AgentFinding[] = [
-  { id: 'v06-f1', moduleId: 'broker-removal', vector: 'V-06', status: 'NUKED', severity: 78, label: 'Active Listing on Spokeo & Whitepages', detail: 'Data broker holds profile with home address, mobile phone number, and relative connections.', remediation: 'Dispatch automated ECRA 2026 opt-out removal payload.' },
-];
-
-const V07_FINDINGS: AgentFinding[] = [
-  { id: 'v07-f1', moduleId: 'network-vector', vector: 'V-07', status: 'NUKED', severity: 70, label: 'DNS Queries Sent Unencrypted to ISP', detail: 'Browser is querying local network DNS without DoH encryption, exposing domain history.', remediation: 'Enforce Cloudflare DoH gateway in browser settings.' },
-  { id: 'v07-f2', moduleId: 'network-vector', vector: 'V-07', status: 'KNOXED', severity: 0, label: 'WebRTC Local IP Shield Active', detail: 'WebRTC STUN candidate requests are strictly bound to active tunnel interface.' },
-];
-
-const V08_FINDINGS: AgentFinding[] = [
-  { id: 'v08-f1', moduleId: 'cloud-enclave', vector: 'V-08', status: 'NUKED', severity: 85, label: 'Public Link Active on Financial Folder', detail: 'Folder "2025_Invoices" is shared with "Anyone with the link can view".', remediation: 'Nuke public link and enforce restricted domain-only access.' },
-];
-
-const V09_FINDINGS: AgentFinding[] = [
-  { id: 'v09-f1', moduleId: 'biometrics', vector: 'V-09', status: 'NUKED', severity: 72, label: 'Facial Vector Indexed in Public Dataset', detail: 'Facial metadata matches 4 public image web clusters.', remediation: 'Dispatch BIPA biometric deletion demand.' },
-];
-
-const V10_FINDINGS: AgentFinding[] = [
-  { id: 'v10-f1', moduleId: 'crypto-assets', vector: 'V-10', status: 'NUKED', severity: 82, label: 'Unlimited USDC Approval on Deprecated Contract', detail: 'Wallet has an active unlimited spending allowance to an unverified DEX contract.', remediation: 'Revoke allowance via Revoke.cash transaction.' },
-];
-
-const V11_FINDINGS: AgentFinding[] = [
-  { id: 'v11-f1', moduleId: 'smart-home', vector: 'V-11', status: 'NUKED', severity: 78, label: 'RTSP Camera Broadcast Unencrypted', detail: 'Local network IP camera on port 554 lacks RTSP stream authentication.', remediation: 'Enable WPA3 & isolate IoT devices to guest VLAN.' },
-];
-
-const V12_FINDINGS: AgentFinding[] = [
-  { id: 'v12-f1', moduleId: 'metadata-purge', vector: 'V-12', status: 'NUKED', severity: 68, label: 'EXIF GPS Data Present in Shared Photos', detail: 'Uploaded image file contains exact latitude/longitude metadata.', remediation: 'Execute 1-Click Metadata Strip in Metadata Purge drawer.' },
-];
-
-const V13_FINDINGS: AgentFinding[] = [
-  { id: 'v13-f1', moduleId: 'kernel-health', vector: 'V-13', status: 'KNOXED', severity: 0, label: 'System Integrity Protection Active', detail: 'OS kernel integrity protection (SIP) is fully enforced.' },
-];
-
-const V14_FINDINGS: AgentFinding[] = [
-  { id: 'v14-f1', moduleId: 'bios-integrity', vector: 'V-14', status: 'KNOXED', severity: 0, label: 'UEFI Firmware Hash Verified Against Apple OEM Baseline', detail: 'System SPI Flash hash matches signed vendor firmware manifest.' },
-];
-
-const V15_FINDINGS: AgentFinding[] = [
-  { id: 'v15-f1', moduleId: 'sovereign-id', vector: 'V-15', status: 'NUKED', severity: 75, label: 'Credit Bureau Freeze Status Open', detail: 'TransUnion & Experian accounts remain unfrozen, exposing identity to loan fraud.', remediation: 'Execute credit freeze via Sovereign ID links.' },
-];
-
-const V16_FINDINGS: AgentFinding[] = [
-  { id: 'v16-f1', moduleId: 'shadow-purge', vector: 'V-16', status: 'NUKED', severity: 82, label: 'Active Profiles Found on 14 People-Search Networks', detail: 'People-search brokers hold current home address, relatives list, and phone records.', remediation: 'Activate Ghost Protocol to auto-dispatch removal payloads to all 200+ networks.' },
-];
-
 // Map from moduleId to its hardcoded findings
-const FINDING_MAP: Record<string, AgentFinding[]> = {
-  'email-scanner': V01_FINDINGS,
-  'social-map': V02_FINDINGS,
-  'device-health': V03_FINDINGS,
-  'system-security': V04_FINDINGS,
-  'deep-web': V05_FINDINGS,
-  'broker-removal': V06_FINDINGS,
-  'network-vector': V07_FINDINGS,
-  'cloud-enclave': V08_FINDINGS,
-  'biometrics': V09_FINDINGS,
-  'crypto-assets': V10_FINDINGS,
-  'smart-home': V11_FINDINGS,
-  'metadata-purge': V12_FINDINGS,
-  'kernel-health': V13_FINDINGS,
-  'bios-integrity': V14_FINDINGS,
-  'sovereign-id': V15_FINDINGS,
-  'shadow-purge': V16_FINDINGS,
-}
 
 // ── simulateAgentScan: Execute a single vector agent's scan logic ───────────────
 //
 // Returns the pre-computed AgentFinding[] for the given moduleId/vector,
 // mirroring what each BaseAgent subclass's scan() method produces.
 
-function simulateAgentScan(
-  moduleId: string,
-  vector: string,
-  _userId: string,
-  _email: string
-): AgentFinding[] {
-  const findings = FINDING_MAP[moduleId] || [];
-  // Ensure status types are FindingStatus (narrow from string)
-  const narrowed: AgentFinding[] = findings.map(f => ({
-    ...f,
-    status: f.status as FindingStatus,
-  }));
-  return narrowed;
-}
-
-// ── calculateSovereignScore: Weighted aggregate score from agent results ────────
+── calculateSovereignScore: Weighted aggregate score from agent results ────────
 //
 // Computes a composite 0–100 sovereignty score using each agent's weight,
 // mirroring AgentRegistry.calculateSovereignScore().
