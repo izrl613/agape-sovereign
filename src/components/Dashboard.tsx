@@ -215,7 +215,7 @@ const FindingCard = ({ finding }: { finding: any }) => {
 };
 
 export const Dashboard = () => {
-  const { user, sovereignScore, sovereignHash, demoMode } = useAuth();
+  const { user, sovereignScore, sovereignHash,  } = useAuth();
   const { findings, isLoading, isScanning, scanProgress, currentStep, totalSteps, currentModule, lastScanDate, error, triggerFullScan } = useScan();
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);

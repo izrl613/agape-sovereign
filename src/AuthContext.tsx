@@ -12,7 +12,7 @@ import { signInWithCustomToken } from 'firebase/auth';
 // OPERATION FRAMEWORK: Sovereign Pipeline
 import { gatekeeperStage, cleanupSession } from './services/poaOrchestratorService';
 import { generateSessionNonce } from './services/sovereignHashService';
-import { loadUserData, loadScoreHistory } from './data/demoData';
+// demo data import removed — no demo mode
 import { calculateEnhancedSovereignScore, getScanFindings } from './services/scanService';
 import { localVaultService } from './services/localVaultService';
 import { driveExportService } from './services/driveExportService';
@@ -28,7 +28,7 @@ interface AuthContextType {
   setupComplete: boolean;
   vaultReady: boolean;
   loading: boolean;
-  demoMode: boolean;
+
   login: () => Promise<void>;
   loginAnonymously: () => Promise<void>;
   upgradeAnonymousWithGoogle: () => Promise<void>;
@@ -37,21 +37,18 @@ interface AuthContextType {
   bindPasskey: () => Promise<void>;
   setSetupComplete: (complete: boolean) => Promise<void>;
   updateProfile: (data: Record<string, unknown>) => Promise<void>;
-  setDemoUser: () => void;
-  clearDemoUser: () => void;
+
+
   saveToVault: (pdfBlob: Blob, metadata: any) => Promise<string>;
   exportToDrive: (pdfBlob: Blob, fileName: string) => Promise<{ success: boolean; fileId?: string; webViewLink?: string; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_SESSION_KEY = 'sovereign_demo_mode';
-const DEMO_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-interface DemoSession {
-  active: boolean;
-  expiresAt: number;
-}
+
+
+
 
 function readDemoSession(): DemoSession | null {
   try {
@@ -63,23 +60,11 @@ function readDemoSession(): DemoSession | null {
   }
 }
 
-function writeDemoSession() {
-  sessionStorage.setItem(DEMO_SESSION_KEY, JSON.stringify({
-    active: true,
-    expiresAt: Date.now() + DEMO_TTL_MS,
-  }));
+
 }
 
-function clearDemoSession() {
-  sessionStorage.removeItem(DEMO_SESSION_KEY);
-}
 
-const DEMO_USER_OBJECT = {
-  uid: 'demo-user',
-  email: 'demo@sovereign.nyc',
-  displayName: 'Demo Explorer',
-  isAnonymous: true,
-} as unknown as User;
+
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -92,27 +77,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [setupComplete, setSetupCompleteState] = useState(false);
   const [vaultReady, setVaultReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [demoMode, setDemoMode] = useState(false);
-  // Ref mirrors demoMode so onAuthStateChanged closure can read the live value
-  // without being recreated every time demoMode changes.
-  const demoModeRef = React.useRef(false);
-  React.useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
+  
+  
+  
 
-  // Restore demo session on mount (handles page refresh within TTL)
-  useEffect(() => {
-    // Demo session restored from sessionStorage — but since demo data has been
-    // removed, we only restore the flag and require proper Firebase auth.
-    // The demoModeRef is set so the onAuthStateChanged closure can read it.
-    if (session?.active && session.expiresAt > Date.now()) {
-      demoModeRef.current = true;
-      setDemoMode(true);
-      // Do NOT set userData/sovereignScore from removed demo data.
-      // User must sign in via Google or passkey to get real data.
-      setLoading(false);
-    } else if (session) {
-      clearDemoSession();
-    }
-  }, []);
+  
 
   useEffect(() => {
     let unsubscribeUserDoc: (() => void) | null = null;
@@ -120,8 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       try {
         // Don't evict an active demo session when Firebase confirms no real auth.
-        // demoMode is read from the ref below so the closure always sees current value.
-        if (!currentUser && demoModeRef.current) {
+              if (!currentUser) {
           setLoading(false);
           return;
         }
@@ -542,23 +510,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const handleSetDemoUser = () => {
-    // Demo mode is no longer supported with pre-populated data.
-    // Users must sign in via Google OAuth or passkey to access the platform.
-    // This function now redirects to Google sign-in instead.
-    // If demo access is needed for development, use firebase emulators:start
-    // and sign in with a real test account.
-    toast.info('Demo mode removed — please sign in with Google or passkey to use Agape Sovereign.');
-    // Do not auto-set demo user; require proper authentication.
-  };
+  
 
-  const handleClearDemoUser = () => {
-    clearDemoSession();
-    setDemoMode(false);
-    setUser(null);
-    setUserData(null);
-    setSetupCompleteState(false);
-  };
+  
 
   const handleSaveToVault = async (pdfBlob: Blob, metadata: any): Promise<string> => {
     if (!user) {
@@ -611,7 +565,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setupComplete,
       vaultReady,
       loading,
-      demoMode,
       login: handleLogin,
       loginAnonymously: handleLoginAnonymously,
       upgradeAnonymousWithGoogle: handleUpgradeAnonymousWithGoogle,
@@ -620,8 +573,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       bindPasskey: handleBindPasskey,
       setSetupComplete: handleSetSetupComplete,
       updateProfile: handleUpdateProfile,
-      setDemoUser: handleSetDemoUser,
-      clearDemoUser: handleClearDemoUser,
       saveToVault: handleSaveToVault,
       exportToDrive: handleExportToDrive,
     }}>

@@ -5,7 +5,7 @@ import { db } from './firebase';
 import { logEvent, AuditLogType } from './services/auditService';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
-import { loadScanFindings } from './data/demoData';
+// demo data import removed
 
 import { DIFF_MODULES, DiffModule } from './lib/diffModules';
 
@@ -30,7 +30,7 @@ const ScanContext = createContext<ScanContextType | undefined>(undefined);
 import { toast } from 'sonner';
 
 export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, demoMode } = useAuth();
+  const { user } = useAuth();
   const [findings, setFindings] = useState<ScanFinding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
@@ -73,7 +73,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     // Real data mode: load findings from Firestore
-    if (!demoMode && user) {
+    if (user) {
       setIsLoading(true);
       loadScanFindings(user.uid)
         .then((findings) => {
@@ -135,14 +135,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Demo mode: inject pre-populated findings without hitting Firestore
-    if (demoMode) {
-      // Fall back to minimal demo structure since full DEMO_FINDINGS removed
-      setFindings([]);
-      setLastScanDate(null);
-      setIsLoading(false);
-      return;
-    }
+    
 
     if (!user) {
       setFindings([]);
@@ -193,7 +186,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => unsubscribe();
-  }, [user, demoMode]);
+  }, [user]);
 
   const triggerFullScan = React.useCallback(async () => {
     if (!user) return;

@@ -21,14 +21,14 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   style = {},
   onClick,
 }) => {
-  const { logout, demoMode, clearDemoUser } = useAuth();
+  const { logout, , clearDemoUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
     try {
-      if (demoMode) {
+      // demo mode removed
         clearDemoUser();
         toast.info('Demo session ended. Your temporary identity has been cleared.');
       } else {

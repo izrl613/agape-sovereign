@@ -40,7 +40,7 @@ import {
 } from './components/DiffModules';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading, demoMode, setupComplete, setSetupComplete } = useAuth();
+  const { user, loading, setupComplete, setSetupComplete } = useAuth();
   
   if (loading) {
     return (
@@ -50,7 +50,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
   
-  if (!user && !demoMode) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
 
@@ -87,7 +87,7 @@ import { ContactPage } from './components/ContactPage';
 import { OfflinePage } from './components/OfflinePage';
 
 const AppRoutes = () => {
-  const { user, setupComplete, setSetupComplete, demoMode } = useAuth();
+  const { user, setupComplete, setSetupComplete } = useAuth();
 
   return (
     <Routes>
