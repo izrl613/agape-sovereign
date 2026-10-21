@@ -5,7 +5,7 @@
  * ============================================================
  *
  * Full production implementations of all 16 identity vector agents,
- * extending BaseAgent to perform real & simulated diagnostic scans,
+ * extending BaseAgent to perform real diagnostic scans,
  * pattern matching, API checks, and remediation triggers.
  */
 
