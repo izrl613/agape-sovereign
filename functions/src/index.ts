@@ -25,3 +25,7 @@ export {generatePolicyDocument} from "./policyGenerator";
 
 // Analytics / billing callable
 export {fetchAnalyticsData} from "./bigquery";
+
+// Identity Vector Pipeline — full backend pipeline:
+//   16 IVM modules → Agent execution → Architect AI → PDF Export Agent
+export {processIdentityVectors} from "./process-identity-vectors";
