@@ -451,7 +451,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     }
 
     const loadHistory = async () => {
-      // Handle demo / anonymous user with local storage
+      // Handle anonymous user with local storage
       if (user?.isAnonymous) {
         const localHistory = localStorage.getItem(`chat_history_${user.uid}`);
         if (localHistory) {
@@ -512,7 +512,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
   const saveHistory = useCallback(async (currentMessages: Message[]) => {
     if (!user?.uid || !isHistoryLoaded || currentMessages.length === 0) return;
 
-    // Handle demo / anonymous user with local storage
+    // Handle anonymous user with local storage
     if (user?.isAnonymous) {
       localStorage.setItem(`chat_history_${user.uid}`, JSON.stringify(currentMessages));
       return;
