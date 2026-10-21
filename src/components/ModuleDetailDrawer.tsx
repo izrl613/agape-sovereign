@@ -63,7 +63,7 @@ export const ModuleDetailDrawer: React.FC<ModuleDetailDrawerProps> = ({
       const registry = getAgentRegistry();
       const result = await registry.executeOne(
         module.id as any,
-        'demo-sovereign-user',
+        user?.uid || 'user',
         'user@sovereign.nyc',
         undefined,
         (step, total, modId, message) => {

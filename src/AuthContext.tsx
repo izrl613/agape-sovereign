@@ -50,15 +50,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 
 
-function readDemoSession(): DemoSession | null {
-  try {
-    const raw = sessionStorage.getItem(DEMO_SESSION_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as DemoSession;
-  } catch {
-    return null;
-  }
-}
+
 
 
 }

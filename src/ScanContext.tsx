@@ -72,68 +72,44 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [findings]);
 
   useEffect(() => {
-    // Real data mode: load findings from Firestore
-    if (user) {
-      setIsLoading(true);
-      loadScanFindings(user.uid)
-        .then((findings) => {
-          setFindings(findings);
-          setIsLoading(false);
-          
-          // Update diff modules counts based on real findings
-          setDiffModules(prevModules =>
-            prevModules.map(mod => {
-              const modFindings = findings.filter(f =>
-                f.module?.toLowerCase() === mod.id.toLowerCase() ||
-                f.module?.toLowerCase() === mod.label.toLowerCase() ||
-                f.module?.toLowerCase().includes(mod.id.split('-')[0])
-              );
-              if (modFindings.length === 0) return mod;
-              const nuked = modFindings.filter(f => f.status === 'NUKED').length;
-              const knoxed = modFindings.filter(f => f.status === 'KNOXED').length;
-              const monitored = modFindings.filter(f => f.status === 'MONITORED').length;
-              const sevCalc = Math.max(0, 100 - (knoxed * 5) + (nuked * 15));
-              return {
-                ...mod,
-                nukedCount: nuked,
-                knoxedCount: knoxed,
-                monitoredCount: monitored,
-                severity: Math.min(100, Math.max(10, sevCalc)),
-                lastScanned: Date.now()
-              };
-            })
-          );
-          
-          // Check for new NUKED findings to notify
-          if (!isLoading) {
-            findings.forEach(finding => {
-              if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
-                toast.error(`CRITICAL EXPOSURE DETECTED`, {
-                  description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
-                  duration: 10000,
-                });
-                setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
-              }
+    setIsLoading(true);
+    const q = query(collection(db, "diff_scans"), where("userId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const newFindings = snapshot.docs.map(d => ({ 
+        id: d.id, 
+        ...d.data(),
+        timestamp: d.data().timestamp?.toDate() || new Date()
+      } as ScanFinding));
+      
+      // Check for new NUKED findings to notify
+      if (!isLoading) {
+        newFindings.forEach(finding => {
+          if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
+            toast.error(`CRITICAL EXPOSURE DETECTED`, {
+              description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
+              duration: 10000,
             });
+            setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
           }
-          
-          // Set last scan date
-          if (findings.length > 0) {
-            const latest = findings.reduce((prev, current) => 
-              (prev.timestamp > current.timestamp) ? prev : current
-            );
-            setLastScanDate(latest.timestamp);
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to load scan findings:', err);
-          setFindings([]);
-          setIsLoading(false);
-          setLastScanDate(null);
-          setNotifiedFindingIds(new Set());
-        });
-      return;
-    }
+        } else {
+          // Initial load: just mark existing NUKED as notified so we don't spam on login
+          const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
+          setNotifiedFindingIds(initialNukedIds);
+        }
+
+        setFindings(newFindings);
+        setIsLoading(false);
+        
+        if (newFindings.length > 0) {
+          const latest = newFindings.reduce((prev, current) => 
+            (prev.timestamp > current.timestamp) ? prev : current
+          );
+          setLastScanDate(latest.timestamp);
+        }
+      }, (err) => {
+        handleFirestoreError(err, OperationType.LIST, 'diff_scans');
+      });
+    }, [user]);
 
     
 

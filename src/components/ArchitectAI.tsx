@@ -452,7 +452,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
 
     const loadHistory = async () => {
       // Handle demo / anonymous user with local storage
-      if (user?.isAnonymous || user?.uid?.startsWith('demo-')) {
+      if (user?.isAnonymous) {
         const localHistory = localStorage.getItem(`chat_history_${user.uid}`);
         if (localHistory) {
           try {
@@ -513,7 +513,7 @@ What aspect of your digital sovereignty would you like to reclaim today?`,
     if (!user?.uid || !isHistoryLoaded || currentMessages.length === 0) return;
 
     // Handle demo / anonymous user with local storage
-    if (user?.isAnonymous || user?.uid?.startsWith('demo-')) {
+    if (user?.isAnonymous) {
       localStorage.setItem(`chat_history_${user.uid}`, JSON.stringify(currentMessages));
       return;
     }
@@ -1247,8 +1247,8 @@ All scan logic, encryption, and identity protection continue to function normall
       toast.loading("Generating sovereign PDF report...", { id: "pdf-generation" });
 
       const reportMetadata = await generateSovereignReport({
-        userId: user?.uid || 'demo-user',
-        userEmail: user?.email || 'demo@sovereign.nyc',
+        userId: user?.uid || '',
+        userEmail: user?.email || '',
         findings,
         sovereignScore,
         classification: sovereignScore >= 70 ? 'KNOXED' : 'NUKED',
