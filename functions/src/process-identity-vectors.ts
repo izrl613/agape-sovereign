@@ -245,7 +245,7 @@ app.post("/api/process-identity-vectors", async (req: express.Request, res: expr
       const moduleData = moduleVectors || { score: 0, riskLevel: "UNKNOWN", findings: 0 };
 
       // Derive score and counts from actual vector data.
-      // Score is based on the vector's finding count.
+      // Score is based on the vector's risk level and finding count.
       const findingCount = moduleData.findings !== undefined ? (Array.isArray(moduleData.findings) ? moduleData.findings.length : 0) : 0;
 
       // Count NUKED, KNOXED, MONITORED from actual findings if available.
@@ -493,8 +493,7 @@ Output ONLY the JSON object.`;
     };
 
     res.json(response);
-    return;
-  } catch (error: unknown) {
+  } catch (error: any) {
     logger.error("[PIPELINE] Critical failure:", error);
     res.status(500).json({
       status: "FAILED",
@@ -516,17 +515,12 @@ Output ONLY the JSON object.`;
  */
 
 function generateSovereignPDF(
-  auditReport: object,
+  auditReport: any,
   agentResults: AgentResult[],
   sha256Id: string,
   sovereignScore: number
 ) {
-  const doc = new jsPDF(/* eslint-disable @typescript-eslint/new-cap */ {});
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
-
+  const doc = new jsPDF({});
   const issuedDateStr = new Date().toISOString().split("T")[0];
   const expiresDateStr = new Date(
     Date.now() + 2 * 365 * 24 * 60 * 60 * 1000
