@@ -9,15 +9,19 @@
     "dev-backend": "npm run dev --prefix backend",
     "commit": "git add . && git commit -m \"chore: update dependencies\"",
     "dev": "concurrently \"npm run dev-frontend\" \"npm run dev-backend\"",
+    "lint": "npm run lint --prefix frontend",
+    "check": "npm run check --prefix frontend",
+    "typecheck": "node scripts/check-frontend-quality.mjs",
     "build": "npm run build --prefix frontend",
-    "deploy": "npm run build && firebase deploy"
+    "postdeploy:cdn": "node scripts/purge-cdn-cache.mjs",
+    "deploy": "firebase deploy"
   },
   "devDependencies": {
     "concurrently": "latest"
   },
   "dependencies": {
     "audius": "^1.1.1",
-    "firebase": "^15.33.0",
+    "firebase": "^10.11.0",
     "openclaw": "^2026.10.3",
     "protobufjs": "^8.8.1"
   },

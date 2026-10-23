@@ -1,6 +1,13 @@
 {
   "hosting": {
     "site": "agape-sovereign",
+    "predeploy": [
+      "npm --prefix \"frontend\" run lint",
+      "npm --prefix \"frontend\" run build"
+    ],
+    "postdeploy": [
+      "node scripts/purge-cdn-cache.mjs"
+    ],
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",
