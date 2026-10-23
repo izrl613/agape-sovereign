@@ -21,7 +21,7 @@ import express from "express";
 import cors from "cors";
 import {rateLimit} from "express-rate-limit";
 import helmet from "helmet";
-import jsPDF from "jspdf";
+import {jsPDF as JSPDF} from "jspdf";
 
 // Admin init
 if (!getApps().length) {
@@ -95,22 +95,134 @@ interface AgentConfig {
 // Define all 16 agent configs (canonical order from AgentRegistry)
 // Weights total exactly 1.0 (100%). No simulated data.
 const AGENT_CONFIGS: AgentConfig[] = [
-  { moduleId: "email-scanner", vector: "V-01", label: "Email Scanner", description: "Email breach & credential reuse scan", weight: 0.08, integratedWith: ["HIBP", "Dehashed"] },
-  { moduleId: "social-map", vector: "V-02", label: "Social Map", description: "OSINT social profile & OAuth audit", weight: 0.06, integratedWith: ["OSINT"] },
-  { moduleId: "device-health", vector: "V-03", label: "Device Health", description: "Local PII scan & encryption audit", weight: 0.06, integratedWith: ["Local Storage"] },
-  { moduleId: "system-security", vector: "V-04", label: "System Security", description: "Passkey & disk encryption verification", weight: 0.08, integratedWith: ["WebAuthn"] },
-  { moduleId: "deep-web", vector: "V-05", label: "Deep Web", description: "Dark web & leak channel monitoring", weight: 0.08, integratedWith: ["Tor", "Telegram"] },
-  { moduleId: "broker-removal", vector: "V-06", label: "Broker Removal", description: "Data broker opt-out & ECRA compliance", weight: 0.08, integratedWith: ["Optery", "ECRA"] },
-  { moduleId: "network-vector", vector: "V-07", label: "Network Vector", description: "WebRTC & DoH leak probe", weight: 0.06, integratedWith: ["DNS", "STUN"] },
-  { moduleId: "cloud-enclave", vector: "V-08", label: "Cloud Enclave", description: "Cloud file share & permission audit", weight: 0.06, integratedWith: ["Google Drive", "Dropbox"] },
-  { moduleId: "biometrics", vector: "V-09", label: "Biometrics", description: "Facial recognition dataset check", weight: 0.05, integratedWith: ["PimEyes", "Clearview"] },
-  { moduleId: "crypto-assets", vector: "V-10", label: "Crypto Assets", description: "On-chain wallet & smart contract audit", weight: 0.05, integratedWith: ["Etherscan", "Revoked.cash"] },
-  { moduleId: "smart-home", vector: "V-11", label: "Smart Home IoT", description: "IoT device discovery & security audit", weight: 0.05, integratedWith: ["mDNS", "UPnP"] },
-  { moduleId: "metadata-purge", vector: "V-12", label: "Metadata Purge", description: "EXIF GPS & PDF sanitization", weight: 0.05, integratedWith: ["ExifTool"] },
-  { moduleId: "kernel-health", vector: "V-13", label: "Kernel Health", description: "Kernel extensions & SIP status audit", weight: 0.05, integratedWith: ["OS Kernel"] },
-  { moduleId: "bios-integrity", vector: "V-14", label: "BIOS Integrity", description: "UEFI firmware hash verification", weight: 0.05, integratedWith: ["SPI Flash", "Secure Boot"] },
-  { moduleId: "sovereign-id", vector: "V-15", label: "Sovereign ID", description: "Credit bureau & SSN dark web exposure", weight: 0.06, integratedWith: ["Credit Bureaus"] },
-  { moduleId: "shadow-purge", vector: "V-16", label: "ShadowPurge", description: "Data broker profile suppression", weight: 0.06, integratedWith: ["Optery", "Data Brokers"] },
+  {
+    moduleId: "email-scanner",
+    vector: "V-01",
+    label: "Email Scanner",
+    description: "Email breach & credential reuse scan",
+    weight: 0.08,
+    integratedWith: ["HIBP", "Dehashed"],
+  },
+  {
+    moduleId: "social-map",
+    vector: "V-02",
+    label: "Social Map",
+    description: "OSINT social profile & OAuth audit",
+    weight: 0.06,
+    integratedWith: ["OSINT"],
+  },
+  {
+    moduleId: "device-health",
+    vector: "V-03",
+    label: "Device Health",
+    description: "Local PII scan & encryption audit",
+    weight: 0.06,
+    integratedWith: ["Local Storage"],
+  },
+  {
+    moduleId: "system-security",
+    vector: "V-04",
+    label: "System Security",
+    description: "Passkey & disk encryption verification",
+    weight: 0.08,
+    integratedWith: ["WebAuthn"],
+  },
+  {
+    moduleId: "deep-web",
+    vector: "V-05",
+    label: "Deep Web",
+    description: "Dark web & leak channel monitoring",
+    weight: 0.08,
+    integratedWith: ["Tor", "Telegram"],
+  },
+  {
+    moduleId: "broker-removal",
+    vector: "V-06",
+    label: "Broker Removal",
+    description: "Data broker opt-out & ECRA compliance",
+    weight: 0.08,
+    integratedWith: ["Optery", "ECRA"],
+  },
+  {
+    moduleId: "network-vector",
+    vector: "V-07",
+    label: "Network Vector",
+    description: "WebRTC & DoH leak probe",
+    weight: 0.06,
+    integratedWith: ["DNS", "STUN"],
+  },
+  {
+    moduleId: "cloud-enclave",
+    vector: "V-08",
+    label: "Cloud Enclave",
+    description: "Cloud file share & permission audit",
+    weight: 0.06,
+    integratedWith: ["Google Drive", "Dropbox"],
+  },
+  {
+    moduleId: "biometrics",
+    vector: "V-09",
+    label: "Biometrics",
+    description: "Facial recognition dataset check",
+    weight: 0.05,
+    integratedWith: ["PimEyes", "Clearview"],
+  },
+  {
+    moduleId: "crypto-assets",
+    vector: "V-10",
+    label: "Crypto Assets",
+    description: "On-chain wallet & smart contract audit",
+    weight: 0.05,
+    integratedWith: ["Etherscan", "Revoked.cash"],
+  },
+  {
+    moduleId: "smart-home",
+    vector: "V-11",
+    label: "Smart Home IoT",
+    description: "IoT device discovery & security audit",
+    weight: 0.05,
+    integratedWith: ["mDNS", "UPnP"],
+  },
+  {
+    moduleId: "metadata-purge",
+    vector: "V-12",
+    label: "Metadata Purge",
+    description: "EXIF GPS & PDF sanitization",
+    weight: 0.05,
+    integratedWith: ["ExifTool"],
+  },
+  {
+    moduleId: "kernel-health",
+    vector: "V-13",
+    label: "Kernel Health",
+    description: "Kernel extensions & SIP status audit",
+    weight: 0.05,
+    integratedWith: ["OS Kernel"],
+  },
+  {
+    moduleId: "bios-integrity",
+    vector: "V-14",
+    label: "BIOS Integrity",
+    description: "UEFI firmware hash verification",
+    weight: 0.05,
+    integratedWith: ["SPI Flash", "Secure Boot"],
+  },
+  {
+    moduleId: "sovereign-id",
+    vector: "V-15",
+    label: "Sovereign ID",
+    description: "Credit bureau & SSN dark web exposure",
+    weight: 0.06,
+    integratedWith: ["Credit Bureaus"],
+  },
+  {
+    moduleId: "shadow-purge",
+    vector: "V-16",
+    label: "ShadowPurge",
+    description: "Data broker profile suppression",
+    weight: 0.06,
+    integratedWith: ["Optery", "Data Brokers"],
+  },
 ];
 
 // ── interface: AgentResult ─────────────────────────────────────────────────────
@@ -131,13 +243,42 @@ interface AgentResult {
   };
 }
 
+interface RawFinding {
+  id?: string;
+  vector?: string;
+  status?: string;
+  severity?: number;
+  label?: string;
+  detail?: string;
+  description?: string;
+  actionTaken?: string;
+  remediation?: string;
+}
+
+interface LLMAuditOutput {
+  financialRisk?: {
+    totalRiskScore?: number;
+    highValueAlerts?: string[];
+    riskLevel?: string;
+  };
+  stabilityIndex?: {
+    activeModules?: number;
+    criticalFindings?: number;
+    stabilityScore?: number;
+  };
+  sovereignAuditScore?: number;
+  moduleBreakdown?: Record<string, {score: number; riskLevel: string; summary: string}>;
+  confidence?: string;
+  totalRiskScore?: number;
+}
+
 // ── interface: ProcessIdentityVectorsRequest ──────────────────────────────────
 //
 // Accepts an IVM payload (sha256Id + vector data from Firestore).
 
 interface ProcessIdentityVectorsRequest {
   sha256Id: string;
-  vectors: Record<string, any>;
+  vectors: Record<string, unknown>;
   totalRiskScore: number;
   scanTimestamp: string;
   status: "SUCCESS" | "PARTIAL" | "FAILED";
@@ -152,13 +293,13 @@ interface ProcessIdentityVectorsResponse {
   sha256Id: string;
   sovereignScore: number;
   moduleResults: AgentResult[];
-  auditReport: any;
+  auditReport: Record<string, unknown>;
   pdf: {
     pdfBase64: string;
     pdfFileName: string;
     sha256Digest: string;
   };
-  reportableData: any;
+  reportableData: Record<string, unknown>;
   generatedAt: string;
   error?: string;
 }
