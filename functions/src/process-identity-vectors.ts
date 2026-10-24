@@ -14,13 +14,13 @@
  * No demo, fake, or simulated data presented as real.
  */
 
-import {onRequest} from "firebase-functions/https";
-import {logger} from "firebase-functions";
-import {initializeApp, getApps} from "firebase-admin/app";
+import { onRequest } from "firebase-functions/https";
+import { logger } from "firebase-functions";
+import { initializeApp, getApps } from "firebase-admin/app";
 import crypto from "crypto";
 import express from "express";
 import cors from "cors";
-import {rateLimit} from "express-rate-limit";
+import { rateLimit } from "express-rate-limit";
 import helmet from "helmet";
 import JsPDF from "jspdf";
 
@@ -47,12 +47,12 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({limit: "256kb"}));
+app.use(express.json({ limit: "256kb" }));
 app.use(helmet({
   contentSecurityPolicy: false,
-  hsts: {maxAge: 31536000, includeSubDomains: true, preload: true},
-  referrerPolicy: {policy: "strict-origin-when-cross-origin"},
-  frameguard: {action: "deny"},
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  frameguard: { action: "deny" },
   noSniff: true,
 }));
 
@@ -60,7 +60,7 @@ app.use(helmet({
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: {error: "Too many requests, please try again later"},
+  message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
 }));
@@ -202,7 +202,7 @@ function calculateSovereignScore(results: AgentResult[]): number {
 // @ts-expect-error — Express handler return type inference
 app.post("/api/process-identity-vectors", async (req: express.Request, res: express.Response) => {
   try {
-    const {sha256Id, vectors, totalRiskScore, scanTimestamp, status: statusParam} =
+    const { sha256Id, vectors, totalRiskScore, scanTimestamp, status: statusParam } =
       req.body as ProcessIdentityVectorsRequest;
 
     if (!sha256Id) {
@@ -359,11 +359,11 @@ Output ONLY the JSON object.`;
 
       const response = await fetch("http://localhost:1234/v1/chat/completions", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         signal: controller.signal,
         body: JSON.stringify({
           model: "qwen3.5-9b-sushi-coder-rl-mlx",
-          messages: [{role: "user", content: buildAuditPrompt(minimalInput, sha256Id)}],
+          messages: [{ role: "user", content: buildAuditPrompt(minimalInput, sha256Id) }],
           temperature: 0.1,
           max_tokens: 512,
           stream: false,
@@ -393,8 +393,8 @@ Output ONLY the JSON object.`;
       llmModel: "rule-based-fallback",
       llmConfidence: "N/A",
       reportableData: {
-        financialRisk: {totalRiskScore: 0, highValueAlerts: [], riskLevel: "LOW"},
-        stabilityIndex: {activeModules: 0, criticalFindings: 0, stabilityScore: 0},
+        financialRisk: { totalRiskScore: 0, highValueAlerts: [], riskLevel: "LOW" },
+        stabilityIndex: { activeModules: 0, criticalFindings: 0, stabilityScore: 0 },
         sovereignAuditScore: 0,
         moduleBreakdown: {},
       },
@@ -402,8 +402,8 @@ Output ONLY the JSON object.`;
     };
 
     if (llmOutput && typeof llmOutput === "object") {
-      const financialRisk = llmOutput.financialRisk || {totalRiskScore: 0, highValueAlerts: [], riskLevel: "LOW"};
-      const stabilityIndex = llmOutput.stabilityIndex || {activeModules: 0, criticalFindings: 0, stabilityScore: 0};
+      const financialRisk = llmOutput.financialRisk || { totalRiskScore: 0, highValueAlerts: [], riskLevel: "LOW" };
+      const stabilityIndex = llmOutput.stabilityIndex || { activeModules: 0, criticalFindings: 0, stabilityScore: 0 };
       const activeModulesCount = agentResults.length;
       const criticalFindingsCount = agentResults.reduce((sum, r) => sum + r.counts.nuked, 0);
       const stabilityScore = Math.round((activeModulesCount / 16) * 100);
@@ -452,8 +452,8 @@ Output ONLY the JSON object.`;
         llmModel: "rule-based-fallback",
         llmConfidence: "N/A",
         reportableData: {
-          financialRisk: {totalRiskScore: totalRiskScore, highValueAlerts: [], riskLevel},
-          stabilityIndex: {activeModules: activeModulesCount, criticalFindings: criticalFindingsCount, stabilityScore},
+          financialRisk: { totalRiskScore: totalRiskScore, highValueAlerts: [], riskLevel },
+          stabilityIndex: { activeModules: activeModulesCount, criticalFindings: criticalFindingsCount, stabilityScore },
           sovereignAuditScore,
           moduleBreakdown,
         },
@@ -527,7 +527,7 @@ function generateSovereignPDF(
     Date.now() + 2 * 365 * 24 * 60 * 60 * 1000
   ).toISOString().split("T")[0];
   // Generate SHA-256 master hash using Node crypto
-  const masterHashInput = sha256Id || JSON.stringify({auditReport, agentResults, sha256Id});
+  const masterHashInput = sha256Id || JSON.stringify({ auditReport, agentResults, sha256Id });
   const masterSha256 = crypto.createHash("sha256").update(masterHashInput).digest("hex");
 
   // Colors
@@ -558,7 +558,7 @@ function generateSovereignPDF(
 
     doc.setFontSize(7);
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-    doc.text(`PAGE ${pageNo} OF ${totalPages}`, 198, 14, {align: "right"});
+    doc.text(`PAGE ${pageNo} OF ${totalPages}`, 198, 14, { align: "right" });
 
     // Header divider
     doc.setDrawColor(neonBlue[0], neonBlue[1], neonBlue[2]);
@@ -577,7 +577,7 @@ function generateSovereignPDF(
     doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
     doc.text(
       `VALID UNTIL: ${expiresDateStr} (2-YEAR HARDENED PROOF) · VERIFIED BY ARCHITECT AI (${auditReport.llmModel || "nemotron-3-nano:4b"})`,
-      198, 284, {align: "right"}
+      198, 284, { align: "right" }
     );
   };
 
@@ -589,11 +589,11 @@ function generateSovereignPDF(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(28);
   doc.setTextColor(neonBlue[0], neonBlue[1], neonBlue[2]);
-  doc.text("SOVEREIGN IDENTITY PASSPORT", 105, 40, {align: "center"});
+  doc.text("SOVEREIGN IDENTITY PASSPORT", 105, 40, { align: "center" });
 
   doc.setFontSize(14);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-  doc.text("Zero-Knowledge 16-Vector Identity Proof & Cryptographic Certificate", 105, 52, {align: "center"});
+  doc.text("Zero-Knowledge 16-Vector Identity Proof & Cryptographic Certificate", 105, 52, { align: "center" });
 
   // Score Banner
   doc.setFillColor(15, 23, 42);
@@ -608,14 +608,14 @@ function generateSovereignPDF(
   doc.setFontSize(40);
   const scoreColor = sovereignScore > 75 ? neonBlue : neonMagenta;
   doc.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
-  doc.text(`${sovereignScore}/100`, 45, 120, {align: "center"});
+  doc.text(`${sovereignScore}/100`, 45, 120, { align: "center" });
 
   doc.setFontSize(11);
   doc.setTextColor(textWhite[0], textWhite[1], textWhite[2]);
-  doc.text(`STATUS: ${auditReport.reportableData.financialRisk.riskLevel}`, 105, 135, {align: "center"});
-  doc.text(`ISSUED: ${issuedDateStr}`, 105, 144, {align: "center"});
-  doc.text(`EXPIRES: ${expiresDateStr} (Valid 2 Years)`, 105, 153, {align: "center"});
-  doc.text(`USER UID: ${sha256Id.substring(0, 8)}`, 105, 162, {align: "center"});
+  doc.text(`STATUS: ${auditReport.reportableData.financialRisk.riskLevel}`, 105, 135, { align: "center" });
+  doc.text(`ISSUED: ${issuedDateStr}`, 105, 144, { align: "center" });
+  doc.text(`EXPIRES: ${expiresDateStr} (Valid 2 Years)`, 105, 153, { align: "center" });
+  doc.text(`USER UID: ${sha256Id.substring(0, 8)}`, 105, 162, { align: "center" });
 
   // Master SHA-256 Integrity Digest
   doc.setFillColor(10, 16, 35);
@@ -626,7 +626,7 @@ function generateSovereignPDF(
   doc.text("MASTER SHA-256 INTEGRITY DIGEST:", 35, 195);
   doc.setFontSize(12);
   doc.setTextColor(textWhite[0], textWhite[1], textWhite[2]);
-  doc.text(masterSha256, 35, 210, {align: "center"});
+  doc.text(masterSha256, 35, 210, { align: "center" });
 
   // Vectors overview summary (all 16 vectors in compact form)
   doc.setFontSize(8);
@@ -941,7 +941,7 @@ function generateSovereignPDF(
   doc.text("• GDPR Art.32 - Security of processing", 30, 180);
   doc.text("• NIST SP 800-53 - Control families applicable", 30, 190);
 
-  doc.text("─ END OF DOCUMENT ─", 105, 210, {align: "center"});
+  doc.text("─ END OF DOCUMENT ─", 105, 210, { align: "center" });
 
   // Encode PDF as base64
   const pdfBase64 = btoa(
