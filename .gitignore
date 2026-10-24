@@ -1,117 +1,22 @@
+# Dependencies
 node_modules/
-build/
+.npm
 dist/
-coverage/
-.DS_Store
-*.log
-.env*
-!.env.example
-.next/
-out/
-firebase-debug.log
-firebase-debug.*.log
-audit-report.json
-.firebase/
+build/
+
+# Environment
 .env
-__pycache__/
-*.pyc
-mcp_server/__pycache__/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# --- Repo hygiene fix (2026-07-10) ---
-# GCP CLI SDK must never be vendored into the repo
-google-cloud-sdk/
-google-cloud-cli-*.tar.gz
+# OS files
+.DS_Store
+Thumbs.db
 
-# Infra/IAM exports and local IDE MCP config back up local machine + org details
-iam.json
-mcp_config_backup.json
+# Reports
+reports/*.pdf
 
-# Accidental/junk files
-conflicts.txt
-FILE_NAME
-package 2.json
-*.orig
-* (1).*
-* (1)/
-
-# Design/UX assets (not for production)
-architect-ai/
-*.pdf
-
-# Firebase / functions build output
-functions/lib/
-functions/node_modules/
-recaptcha-key.json
-
-# Simulation and test outputs
-workspace_outputs/
-tests/
-scripts/venv
-agape-sovereign-1/
-.dyad/
-.spectra/
-openspec/.vector-search.db*
-
-# IDE workspace metadata (should never be committed)
-.metadata/
-.idea/
-.env.keys
-
-# Kilo Code IDE agent config
-.kilo/
-
-# Auto-added by git-autorepair.sh
-.cursor/  # Cursor IDE
-.windsurf/  # Windsurf IDE
-**/package-lock 2.json
-**/node_modules 2/
-
-# --- Bloat cleanup 2026-09-30 ---
-# Python virtualenvs (never commit)
-**/venv/
-**/.venv/
-scripts/venv/
-
-# IDE / agent local tooling dumps (keep curated docs; ignore bulk caches)
-.agents/
-.agent/
-.pi/
-.gemini/
-.augment/
-.claude/
-.unsloth_tool_output/
-.skills/
-
-# Accidental screenshots / binary dumps at repo root
-/*.png
-/*.pages
-/*.docx
-Screenshot*.png
-OPERATION FRAMEWORK.PDF
-
-# Built frontend bundles checked into public by mistake
-public/assets/*.js
-public/assets/*.css
-public/Neon Sovereign Identity Dashboard.png
-
-# OCR / extraction scratch
-ocr_output/
-extracted_files/
-output/
-
-# Local duplicate worktrees
-agape-sovereign/
-
-# Media dumps
-*.mp4
-*.mov
-reference_ui*
-
-# Finder duplicate copies (macOS "foo 2.ext" / "foo 3.ext")
-**/* 2.*
-**/* 3.*
-**/* 2
-**/* 3
-*.bak
-ARCHITECTURE 2.md
-*.docx
+# MCP Server logs
+logs/
