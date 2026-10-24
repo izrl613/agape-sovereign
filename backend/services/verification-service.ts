@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { CONFIG } from '../../frontend/config';
 
 export interface VerificationResult {
   isValid: boolean;
@@ -9,47 +10,56 @@ export interface VerificationResult {
 
 /**
  * Real Verification Service
- * Implements a pluggable architecture for third-party API integrations.
+ * Implements a strict no-mock policy for production identity verification.
  */
 export class VerificationService {
-  private apiKeys: Record<string, string> = {};
-
-  setApiKey(provider: string, key: string) {
-    this.apiKeys[provider] = key;
-  }
-
+  /**
+   * Verifies identity fragments against designated third-party APIs.
+   * throws Error if API keys are missing, preventing accidental simulations.
+   */
   async verify(moduleId: string, data: any): Promise<VerificationResult> {
     const provider = this.getProviderForModule(moduleId);
-    const apiKey = this.apiKeys[provider];
+    const apiKey = CONFIG.API_KEYS[provider as keyof typeof CONFIG.API_KEYS];
 
     if (!apiKey) {
-      console.warn(`[VerificationService] No API key for ${provider}. Falling back to simulated verification.`);
-      return this.simulateVerification(provider, data);
+      throw new Error(`[Security Violation] Missing API key for provider ${provider}. Simulation is disabled in production.`);
     }
 
     try {
-      // REAL API CALL logic
-      const response = await fetch(`https://api.${provider.toLowerCase()}.com/v1/verify`, {
+      const response = await fetch(`${CONFIG.API_ENDPOINTS.VERIFICATION}/${provider.toLowerCase()}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({
+          moduleId,
+          data,
+          timestamp: new Date().toISOString(),
+        }),
       });
 
-      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API ${provider} returned ${response.status}: ${JSON.stringify(errorData)}`);
+      }
+
       const result = await response.json();
 
       return {
-        isValid: result.valid,
-        token: result.token,
+        isValid: result.isValid,
+        token: result.verificationToken,
         provider,
         metadata: result.metadata,
       };
     } catch (error) {
-      console.error(`[VerificationService] ${provider} API call failed: ${error}`);
-      return { isValid: false, token: '', provider, metadata: { error: 'API_FAILURE' } };
+      console.error(`[VerificationService] Critical Failure for ${provider}: ${error}`);
+      return {
+        isValid: false,
+        token: '',
+        provider,
+        metadata: { error: 'API_UNREACHABLE', message: error instanceof Error ? error.message : 'Unknown' },
+      };
     }
   }
 
@@ -73,15 +83,6 @@ export class VerificationService {
       'permissions': 'SovereignLedger',
     };
     return map[moduleId] || 'Generic-Verifier';
-  }
-
-  private simulateVerification(provider: string, data: any): VerificationResult {
-    return {
-      isValid: true,
-      token: `sim-tok_${crypto.randomBytes(16).toString('hex')}`,
-      provider: `SIMULATED-${provider}`,
-      metadata: { simulated: true },
-    };
   }
 }
 

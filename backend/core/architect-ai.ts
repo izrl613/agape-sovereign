@@ -30,14 +30,12 @@ export class ArchitectAI {
       throw new Error(`Incomplete identity: ${userStore?.size || 0}/${this.MIN_VECTORS} vectors collected.`);
     }
 
-    // Convert map to array for the LLM
     const vectors = Array.from(userStore.entries()).map(([mod, packet]) => ({
       module: mod,
       token: packet.verificationToken,
       timestamp: packet.timestamp
     }));
 
-    // CALL MCP SERVER
     const result = await sovereignMCP.handleRequest({
       tool: 'synthesize_identity',
       args: { vectors: vectors }
@@ -62,7 +60,7 @@ export class ArchitectAI {
 
     const synthesis = await this.synthesizeIdentity(userId);
 
-    const reportPath = `/Users/aarondavid/agape-sovereign/reports/sovereign_report_${userId}.pdf`;
+    const reportPath = `/Users/aarondavid/Documents/agape-sovereign/reports/sovereign_report_${userId}.pdf`;
     this.generatePdf(userId, synthesis, reportPath);
 
     return {
@@ -87,8 +85,8 @@ export class ArchitectAI {
       Model: ${synthesis.modelUsed}
       =========================================
     `;
-    if (!fs.existsSync('/Users/aarondavid/agape-sovereign/reports')) {
-      fs.mkdirSync('/Users/aarondavid/agape-sovereign/reports', { recursive: true });
+    if (!fs.existsSync('/Users/aarondavid/Documents/agape-sovereign/reports')) {
+      fs.mkdirSync('/Users/aarondavid/Documents/agape-sovereign/reports', { recursive: true });
     }
     fs.writeFileSync(path, content);
   }

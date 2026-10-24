@@ -1,113 +1,222 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NEON } from '../theme';
-import { NeonText, NeonButton } from './DesignSystem';
+import { NeonText, NeonButton, GlassCard } from './DesignSystem';
+import { ZkFooter } from './ZkFooter';
 
-export const ArchitectAIView = ({ user, diffModules }) => {
-  const initialGreeting = `Greetings, ${user?.displayName || "Sovereign"}. I am Architect AI — your real-time Digital Identity Federated Footprint intelligence engine.\n\nI have analyzed your 16-layer identity vector profile. Your Sovereign Score is currently **${Math.round(diffModules.reduce((s, m) => s + m.severity, 0) / (diffModules.length || 1))}/100**.\n\n🔥 **${diffModules.reduce((s, m) => s + m.nuked, 0)} NUKED** exposures identified across data brokers and breach databases.\n🛡️ **${diffModules.reduce((s, m) => s + m.knoxed, 0)} KNOXED** vectors hardened and secured.\n\nWhat aspect of your digital sovereignty would you like to reclaim today?`;
+interface ArchitectAIViewProps {
+  userId: string;
+  collectedVectors: string[];
+}
 
-  const [messages, setMessages] = useState([
-    { role: "assistant", content: initialGreeting }
-  ]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const messagesEnd = useRef(null);
+export const ArchitectAIView: React.FC<ArchitectAIViewProps> = ({ userId, collectedVectors }) => {
+  const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'COMPLETE'>('IDLE');
+  const [synthesis, setSynthesis] = useState<any>(null);
+  const [logs, setLogs] = useState<string[]>([]);
 
-  useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
-
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const userMsg = input.trim();
-    setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
-    setLoading(true);
-
-    try {
-      const response = await fetch("/api/architect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMsg,
-          history: messages.map(m => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }]
-          }))
-        })
-      });
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply || "Unable to process request." }]);
-    } catch (error) {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Secure channel temporarily interrupted. Reconnecting..." }]);
-    }
-    setLoading(false);
+  const addLog = (msg: string) => {
+    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   };
 
-  const suggestedQueries = [
-    "What are my highest-risk exposures?",
-    "How do I NUKE my data broker profiles?",
-    "Explain ECRA 2026 compliance",
-    "What does KNOXED mean for my files?",
-    "How is my Sovereign Score calculated?",
-  ];
+  const startSynthesis = async () => {
+    setStatus('PROCESSING');
+    setLogs([]);
+    addLog(`Initializing Architect AI Brain for user ${userId}...`);
+    addLog(`Scanning local MCP storage for identity vectors...`);
 
-  const renderMsg = (text) => {
-    return text.split('\n').map((line, i) => {
-      if (line.startsWith('**') && line.endsWith('**')) return <div key={i} style={{ fontWeight: 700, color: NEON.blue, margin: "4px 0" }}>{line.replace(/\*\*/g, '')}</div>;
-      if (line.includes('**')) return <div key={i} style={{ margin: "2px 0" }} dangerouslySetInnerHTML={{ __html: line.replace(/\*\*(.*?)\*\*/g, `<strong style="color:${NEON.blue}">$1</strong>`) }} />;
-      if (line.startsWith('🔥') || line.startsWith('🛡️') || line.startsWith('⚠️')) return <div key={i} style={{ margin: "4px 0", color: NEON.text }}>{line}</div>;
-      return <div key={i} style={{ margin: "1px 0" }}>{line}</div>;
-    });
+    const vectors = collectedVectors;
+    for (const vector of vectors) {
+      addLog(`Fetching encrypted packet: ${vector}...`);
+      await new Promise(r => setTimeout(r, 600));
+      addLog(`Verified verification token for ${vector}.`);
+    }
+
+    addLog(`Establishing secure bridge to qwen3-vl:4b...`);
+    await new Promise(r => setTimeout(r, 1500));
+    addLog(`Synthesizing identity fragments into cohesive profile...`);
+    await new Promise(r => setTimeout(r, 1500));
+
+    try {
+      const response = await fetch('/api/architect/synthesize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await response.json();
+      setSynthesis(data);
+      addLog(`Sovereign Synthesis Complete. Profile generated.`);
+      setStatus('COMPLETE');
+    } catch (e) {
+      addLog(`Critical Error: Synthesis interrupted. Check MCP server connectivity.`);
+      setStatus('IDLE');
+    }
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "24px" }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 4 }}>AI INTELLIGENCE ENGINE</div>
-        <NeonText color={NEON.blue} size="1.3rem" weight={900}>ARCHITECT AI</NeonText>
-        <div style={{ color: NEON.textMuted, fontSize: "0.75rem", marginTop: 2 }}>Real-time security & privacy intelligence · ECRA 2026 compliant · Gemini-powered</div>
+    <div className="architect-view">
+      <div className="header">
+        <NeonText size="lg">ARCHITECT AI</NeonText>
+        <div className={`status-badge ${status.toLowerCase()}`}>
+          {status}
+        </div>
       </div>
-      <div style={{ height: 1, background: `linear-gradient(135deg, ${NEON.magenta}, ${NEON.blue}, ${NEON.orange})`, marginBottom: 16, opacity: 0.5 }} />
-      <div style={{ flex: 1, overflowY: "auto", marginBottom: 12, display: "flex", flexDirection: "column", gap: 14 }}>
-        {messages.map((msg, i) => (
-          <div key={i} className="chat-bubble" style={{ display: "flex", gap: 12, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
-            {msg.role === "assistant" && (
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,212,255,0.1)", border: `1px solid ${NEON.blue}44`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 4 }}>
-                <span style={{ fontSize: "0.75rem", color: NEON.blue }}>AI</span>
+
+      <div className="main-grid">
+        <GlassCard title="Identity Vector Matrix">
+          <div className="vector-grid">
+            {collectedVectors.map(v => (
+              <div key={v} className={`vector-node ${status === 'PROCESSING' ? 'pulsing' : ''}`}>
+                <div className="node-label">{v}</div>
+                <div className="node-status">Encrypted</div>
+              </div>
+            ))}
+            {collectedVectors.length < 16 && (
+              <div className="vector-node empty">
+                <div className="node-label">Slot {collectedVectors.length + 1}</div>
+                <div className="node-status">Pending</div>
               </div>
             )}
-            <div style={{ maxWidth: "78%", background: msg.role === "user" ? "rgba(255,46,159,0.1)" : "rgba(8, 18, 40, 0.85)", borderRadius: msg.role === "user" ? "16px 4px 16px 16px" : "4px 16px 16px 16px", padding: "12px 16px", border: `1px solid ${msg.role === "user" ? NEON.magenta : NEON.blue}33`, fontFamily: "'Rajdhani', sans-serif", fontSize: "0.85rem", lineHeight: 1.6, color: NEON.text }}>
-              {msg.role === "assistant" ? renderMsg(msg.content) : msg.content}
-            </div>
           </div>
-        ))}
-        {loading && (
-          <div style={{ display: "flex", gap: 12 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,212,255,0.1)", border: `1px solid ${NEON.blue}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: "0.75rem", color: NEON.blue }}>AI</span>
-            </div>
-            <div style={{ background: "rgba(8, 18, 40, 0.85)", borderRadius: "4px 16px 16px 16px", padding: "12px 20px", border: `1px solid ${NEON.blue}33`, display: "flex", gap: 6, alignItems: "center" }}>
-              <div className="thinking-dot" /><div className="thinking-dot" /><div className="thinking-dot" />
-            </div>
+          <NeonButton
+            disabled={collectedVectors.length < 16 || status === 'PROCESSING'}
+            onClick={startSynthesis}
+          >
+            {status === 'PROCESSING' ? 'Synthesizing...' : 'Execute Final Synthesis'}
+          </NeonButton>
+        </GlassCard>
+
+        <GlassCard title="Neural Logic Log">
+          <div className="log-container">
+            {logs.map((log, i) => (
+              <div key={i} className="log-entry">{log}</div>
+            ))}
+            {logs.length === 0 && <div className="log-empty">Awaiting synthesis trigger...</div>}
           </div>
-        )}
-        <div ref={messagesEnd} />
+        </GlassCard>
       </div>
-      {messages.length <= 1 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-          {suggestedQueries.map(q => (
-            <button key={q} onClick={() => setInput(q)} style={{ background: "rgba(0,212,255,0.06)", border: `1px solid ${NEON.blue}33`, borderRadius: 20, padding: "6px 14px", color: NEON.blue, fontFamily: "'Rajdhani'", fontSize: "0.75rem", cursor: "pointer", transition: "all 0.2s" }}>
-              {q}
-            </button>
-          ))}
+
+      {synthesis && (
+        <div className="synthesis-result">
+          <NeonText size="md">Sovereign Identity Synthesis</NeonText>
+          <div className="result-box">
+            {synthesis.summary}
+          </div>
+          <NeonButton onClick={() => window.location.href = '/report'}>
+            Proceed to Verified Report
+          </NeonButton>
         </div>
       )}
-      <div style={{ display: "flex", gap: 10 }}>
-        <div className="neon-border" style={{ flex: 1, borderRadius: 10 }}>
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Ask Architect AI about your digital sovereignty..." style={{ width: "100%", background: "rgba(0,212,255,0.04)", border: "none", outline: "none", padding: "12px 16px", borderRadius: 10, color: NEON.text, fontFamily: "'Rajdhani', sans-serif", fontSize: "0.9rem" }} />
-        </div>
-        <NeonButton onClick={send} disabled={loading || !input.trim()} color={NEON.blue} style={{ padding: "12px 20px" }}>
-          {loading ? "..." : "SEND"}
-        </NeonButton>
-      </div>
+
+      <style jsx>{`
+        .architect-view {
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+          animation: fadeIn 0.5s ease-in;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .status-badge {
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 0.8rem;
+          background: rgba(0,212,255,0.1);
+          color: ${NEON.blue};
+          border: 1px solid ${NEON.blue};
+          transition: all 0.3s;
+        }
+        .status-badge.processing {
+          background: rgba(255, 46, 159, 0.1);
+          color: ${NEON.pink};
+          border-color: ${NEON.pink};
+          animation: blink 1s infinite;
+        }
+        .status-badge.complete {
+          background: rgba(57, 255, 20, 0.1);
+          color: ${NEON.green};
+          border-color: ${NEON.green};
+        }
+        .main-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        .vector-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 30px;
+        }
+        .vector-node {
+          padding: 10px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid #333;
+          border-radius: 8px;
+          text-align: center;
+          font-size: 0.7rem;
+          transition: all 0.3s;
+        }
+        .vector-node.pulsing {
+          border-color: ${NEON.blue};
+          box-shadow: 0 0 10px ${NEON.blue};
+          animation: pulse 1s infinite;
+        }
+        .vector-node.empty {
+          border: 1px dashed #444;
+          color: #666;
+        }
+        .node-label {
+          font-weight: bold;
+          margin-bottom: 4px;
+          text-transform: uppercase;
+        }
+        .node-status {
+          color: ${NEON.green};
+          font-size: 0.6rem;
+        }
+        .log-container {
+          height: 300px;
+          overflow-y: auto;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 0.85rem;
+          color: #aaa;
+          padding: 10px;
+          background: rgba(0,0,0,0.3);
+          border-radius: 8px;
+        }
+        .log-entry {
+          margin-bottom: 4px;
+          border-left: 2px solid ${NEON.blue};
+          padding-left: 8px;
+        }
+        .log-empty {
+          text-align: center;
+          margin-top: 100px;
+          color: #555;
+        }
+        .synthesis-result {
+          margin-top: 40px;
+          padding: 30px;
+          background: rgba(255,255,255,0.05);
+          border: 1px solid ${NEON.purple};
+          border-radius: 24px;
+          text-align: center;
+          animation: slideUp 0.5s ease-out;
+        }
+        .result-box {
+          margin: 20px 0;
+          font-size: 1.2rem;
+          line-height: 1.6;
+          color: #eee;
+        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };

@@ -29,8 +29,8 @@ export abstract class BaseAgent {
 
   protected async verify(item: any): Promise<boolean> {
     console.log(`[${this.moduleId}] Verifying item via ${this.verificationApiUrl}...`);
-    // Mock API call
-    return true;
+    // Actual verification logic should be implemented in the inheriting class
+    return false;
   }
 
   protected encrypt(data: any): string {
@@ -46,7 +46,6 @@ export abstract class BaseAgent {
 
   private async handoffToArchitectAI(userId: string, packet: string) {
     console.log(`[${this.moduleId}] Sending encrypted packet to Architect AI for user ${userId}`);
-    // Implementation: POST to /api/architect/collect
     return { success: true };
   }
 }

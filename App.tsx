@@ -1,156 +1,192 @@
-import React, { useState, useEffect } from 'react';
-import { auth, db, loginWithGoogle } from './src/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { GlobalStyles } from './frontend/styles/global-styles';
-import { TopHeader } from './frontend/components/TopHeader';
-import { LeftNav } from './frontend/components/LeftNav';
-import { DashboardView } from './frontend/components/DashboardView';
+import React, { useState } from 'react';
+import { SovereignProvider, useSovereign } from './frontend/context/SovereignContext';
+import { PasskeyService, AuthMethod } from './frontend/auth/passkey-service';
 import { ModuleInterface } from './frontend/components/ModuleInterface';
+import { ZkFooter } from './frontend/components/ZkFooter';
+import { DashboardView } from './frontend/components/DashboardView';
 import { ArchitectAIView } from './frontend/components/ArchitectAIView';
 import { ReportView } from './frontend/components/ReportView';
-import { AdminPortal } from './frontend/components/AdminPortal';
-import { ProfilePanel } from './frontend/components/ProfilePanel';
-import { MODULE_REGISTRY } from './frontend/module-registry';
+import { TopHeader } from './frontend/components/TopHeader';
+import { LeftNav } from './frontend/components/LeftNav';
 
-const DEFAULT_MODULE_DATA = Object.values(MODULE_REGISTRY).map(m => ({
-  ...m, nuked: 0, knoxed: 0, monitored: 0, severity: 100, findings: []
-}));
+export type AppView = 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
 
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [diffModules, setDiffModules] = useState(DEFAULT_MODULE_DATA);
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [activeModule, setActiveModule] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+const AppContent: React.FC = () => {
+  const { user, setUser, collectedVectors, addVector, clearSession } = useSovereign();
+  const [view, setView] = useState<AppView>('LOGIN');
+  const [activeModule, setActiveModule] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (authUser) => {
-      setUser(authUser);
-      if (authUser) {
-        const profileRef = doc(db, "users", authUser.uid, "diff", "profile");
-        const unsubscribeDb = onSnapshot(profileRef, (docSnap) => {
-          if (docSnap.exists() && docSnap.data().modules) {
-            setDiffModules(docSnap.data().modules);
-          } else {
-            setDoc(profileRef, { modules: DEFAULT_MODULE_DATA, initializedAt: new Date().toISOString() });
-            setDiffModules(DEFAULT_MODULE_DATA);
-          }
+  const handleAuth = async (method: AuthMethod) => {
+    try {
+      const result = await PasskeyService.authenticate(method);
+      if (result.success || result.userId) {
+        setUser({
+          id: result.userId || 'user_session_123',
+          type: method === 'ANON' ? 'anonymous' : 'verified'
         });
-        return () => unsubscribeDb();
-      } else {
-        setDiffModules(DEFAULT_MODULE_DATA);
+        setView('DASHBOARD');
       }
-    });
-    return () => unsubscribeAuth();
-  }, []);
+    } catch (e) {
+      alert('Authentication failed');
+    }
+  };
 
-  if (!user) {
-    // Use the custom AuthScreen from the previous implementation
+  const handleModuleSubmit = async (data: any[]) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/vector/collect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          moduleId: activeModule,
+          data
+        }),
+      });
+
+      if (response.ok) {
+        addVector(activeModule!);
+        setView('DASHBOARD');
+      }
+    } catch (e) {
+      alert('Data submission failed');
+    }
+  };
+
+  if (view === 'LOGIN') {
     return (
-      <>
-        <GlobalStyles />
-        <AuthScreen />
-      </>
+      <div className="login-screen">
+        <div className="login-box">
+          <h1 className="login-title">SOVEREIGN</h1>
+          <p className="login-subtitle">Enter your digital identity</p>
+          <div className="auth-grid">
+            <button className="auth-btn" onClick={() => handleAuth('PASSKEY')}>Passkey Auth</button>
+            <button className="auth-btn" onClick={() => handleAuth('GOOGLE')}>Google Sign-in</button>
+            <button className="auth-btn" onClick={() => handleAuth('ANON')}>ANON Bypass</button>
+          </div>
+        </div>
+        <ZkFooter pageId="login" />
+        <style jsx>{`
+          .login-screen {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+          }
+          .login-box {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+          }
+          .login-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            letter-spacing: 10px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #00d4ff, #bc13fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+          }
+          .login-subtitle {
+            font-size: 1.2rem;
+            color: #aaa;
+            margin-bottom: 40px;
+          }
+          .auth-grid {
+            display: grid;
+            gap: 20px;
+          }
+          .auth-btn {
+            padding: 15px 30px;
+            background: transparent;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s;
+          }
+          .auth-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0,212,255,0.3);
+          }
+        `}</style>
+      </div>
     );
   }
 
-  const handleModuleClick = (id) => {
-    setActiveModule(id);
-    setActiveSection("modules");
-  };
-
-  const renderMain = () => {
-    if (activeSection === "architect") return <ArchitectAIView user={user} diffModules={diffModules} />;
-    if (activeSection === "report") return <ReportView diffModules={diffModules} />;
-    if (activeSection === "modules" && activeModule) {
-      return (
-        <ModuleInterface
-          moduleId={activeModule}
-          onSubmit={(data) => {
-            console.log(`Submitting ${activeModule} data:`, data);
-            // Here we would trigger the Module Agent flow
-          }}
+  return (
+    <div className="main-app">
+      <TopHeader user={user} onLogout={clearSession} />
+      <div className="app-body">
+        <LeftNav
+          activeView={view}
+          onNavigate={setView}
+          collectedVectors={collectedVectors}
         />
-      );
-    }
-    return <DashboardView diffModules={diffModules} onModuleClick={handleModuleClick} />;
-  };
-
-  return (
-    <>
-      <GlobalStyles />
-      <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column", background: "#060D1F", overflow: "hidden" }}>
-        <div style={{ height: 2, background: `linear-gradient(135deg, #FF2E9F, #00D4FF, #FF7A18)`, backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear infinite", flexShrink: 0 }} />
-
-        <TopHeader user={user} onAdmin={() => setShowAdmin(true)} onProfile={() => setShowProfile(true)} />
-
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <LeftNav
-            diffModules={diffModules}
-            activeModule={activeModule}
-            setActiveModule={setActiveModule}
-            activeSection={activeSection}
-            setActiveSection={setActiveSection}
-          />
-
-          <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-            <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px)`, backgroundSize: "32px 32px", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", top: "20%", right: "15%", width: 300, height: 300, background: "radial-gradient(circle, rgba(0,212,255,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-            <div style={{ position: "absolute", bottom: "20%", left: "20%", width: 200, height: 200, background: "radial-gradient(circle, rgba(255,46,159,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-            <div style={{ position: "relative", zIndex: 1, height: "100%", overflowY: "auto" }}>
-              {renderMain()}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ height: 2, background: `linear-gradient(135deg, #FF2E9F, #00D4FF, #FF7A18)`, backgroundSize: "200% 100%", animation: "rotate-gradient 3s linear reverse infinite", flexShrink: 0 }} />
+        <main className="content-area">
+          {view === 'DASHBOARD' && (
+            <DashboardView
+              collectedVectors={collectedVectors}
+              onSelectModule={(id) => {
+                setActiveModule(id);
+                setView('MODULE');
+              }}
+            />
+          )}
+          {view === 'MODULE' && activeModule && (
+            <ModuleInterface
+              moduleId={activeModule}
+              onSubmit={handleModuleSubmit}
+            />
+          )}
+          {view === 'ARCHITECT' && (
+            <ArchitectAIView userId={user?.id || ''} collectedVectors={collectedVectors} />
+          )}
+          {view === 'REPORT' && (
+            <ReportView userId={user?.id || ''} />
+          )}
+        </main>
       </div>
-
-      {showAdmin && <AdminPortal onClose={() => setShowAdmin(false)} />}
-      {showProfile && <ProfilePanel user={user} onClose={() => setShowProfile(false)} />}
-    </>
-  );
-}
-
-// Define AuthScreen here since it's required for the App to render
-const AuthScreen = () => {
-  // Use the high-fidelity AuthScreen from the JSX implementation
-  return (
-    <div style={{ width: "100vw", height: "100vh", background: "#060D1F", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", inset: 0, backgroundImage: `linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
-      <div style={{ position: "absolute", top: "30%", left: "50%", transform: "translate(-50%,-50%)", width: 600, height: 600, background: "radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", top: "70%", left: "L20%", width: 400, height: 400, background: "radial-gradient(circle, rgba(255,46,159,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
-      <div className="neon-border" style={{ width: 480, padding: "48px 40px", textAlign: "center", background: "rgba(8, 18, 40, 0.85)", backdropFilter: "blur(20px)", borderRadius: 12, border: "1px solid rgba(0,212,255,0.15)", zIndex: 1 }}>
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ width: 80, height: 80, margin: "0 auto 16px", position: "relative" }}>
-            <svg viewBox="0 0 80 8 same" style={{ width: "100%", filter: `drop-shadow(0 0 12px #00D4FF)` }}>
-              <polygon points="40,5 75,25 75,55 40,75 5,55 5,25" fill="none" stroke="#00D4FF" strokeWidth="1.5" />
-              <text x="40" y="46" textAnchor="middle" fill="#00D4FF" fontFamily="Orbitron" fontSize="16" fontWeight="900">AI</text>
-            </svg>
-          </div>
-          <h1 style={{ fontFamily: "'Orbitron', monospace", color: "#00D4FF", fontSize: "1.6rem", fontWeight: 900 }}>ARCHITECT AI</h1>
-          <div style={{ color: "#7B9BB5", fontSize: "0.7rem", fontFamily: "'Share Tech Mono'", marginTop: 4, letterSpacing: "0.15em" }}>AGAPE SOVEREIGN ENCLAVE 2026</div>
-        </div>
-        <div style={{ height: 1, background: `linear-gradient(135deg, #FF2E9F, #00D4FF, #FF7A18)`, marginBottom: 28, borderRadius: 1, opacity: 0.7 }} />
-        <div style={{ color: "#E8F4FF", fontSize: "0.9rem", marginBottom: 8, fontWeight: 500 }}>Digital Identity Federated Footprint</div>
-        <div style={{ color: "#7B9BB5", fontSize: "0.78rem", marginBottom: 28, lineHeight: 1.6 }}>
-          Authenticate to begin your <span style={{ color: "#FF2E9F", fontWeight: 700 }}>DIFF</strong> analysis. Your sovereignty begins here.
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button style={{ padding: "13px 20px", borderRadius: 8, background: "rgba(66,133,244,0.1)", color: "#fff", fontFamily: "'Rajdhani', sans-serif", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", border: "1px solid rgba(0,212,255,0.2)" }}>
-            Continue with Google
-          </button>
-          <button style={{ padding: "13px 20px", borderRadius: 8, background: "rgba(255,255,255,0.06)", color: "#fff", fontFamily: "'Rajdhani', sans-serif", fontSize: "0.95rem", fontWeight: 600, cursor: "pointer", border: "1px solid rgba(0,212,255,0.2)" }}>
-            Continue with Apple
-          </button>
-        </div>
-        <div style={{ marginTop: 20, color: "#7B9BB5", fontSize: "0.7rem", lineHeight: 1.5 }}>
-          🔒 All data encrypted client-side. Zero-knowledge architecture.<br />
-          Your identity. Your sovereignty. Your rules.
-        </div>
-      </div>
+      <ZkFooter pageId={view.toLowerCase()} />
+      <style jsx global>{`
+        .main-app {
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+          background: #0a0a0a;
+          color: white;
+          font-family: 'Rajdhani', sans-serif;
+        }
+        .app-body {
+          display: flex;
+          flex: 1;
+          overflow: hidden;
+        }
+        .content-area {
+          flex: 1;
+          padding: 40px;
+          overflow-y: auto;
+          background: #0f0f0f;
+        }
+      `}</style>
     </div>
   );
 };
+
+export default function App() {
+  return (
+    <SovereignProvider>
+      <AppContent />
+    </SovereignProvider>
+  );
+}

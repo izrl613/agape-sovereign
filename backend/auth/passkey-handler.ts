@@ -8,6 +8,7 @@ import {
 export class PasskeyHandler {
   // In a real app, this would be a database
   private static userDb = new Map<string, any>();
+  private static challenges = new Map<string, string>();
 
   async handleRegistrationOptions(userId: string) {
     const options = await generateRegistrationOptions({
@@ -24,6 +25,8 @@ export class PasskeyHandler {
 
   async handleVerifyRegistration(userId: string, body: any) {
     const challenge = this.getChallenge(userId);
+    if (!challenge) throw new Error('No challenge found for user');
+
     const verification = await verifyRegistrationResponse({
       response: body,
       expectedChallenge: challenge,
@@ -32,7 +35,6 @@ export class PasskeyHandler {
     });
 
     if (verification.verified) {
-      // Store the public key and credential ID
       this.userDb.set(userId, {
         credentialID: verification.registrationResponse.id,
         publicKey: verification.registrationResponse.publicKey,
@@ -61,7 +63,10 @@ export class PasskeyHandler {
 
   async handleVerifyAuthentication(userId: string, body: any) {
     const user = this.userDb.get(userId);
+    if (!user) throw new Error('User not registered');
+
     const challenge = this.getChallenge(userId);
+    if (!challenge) throw new Error('No challenge found for user');
 
     const verification = await verifyAuthenticationResponse({
       response: body,
@@ -78,13 +83,12 @@ export class PasskeyHandler {
   }
 
   private saveChallenge(userId: string, challenge: string) {
-    // Implementation for temporary storage (e.g., Redis)
-    console.log(`Saved challenge for ${userId}: ${challenge}`);
+    PasskeyHandler.challenges.set(userId, challenge);
+    console.log(`Saved challenge for ${userId}`);
   }
 
-  private getChallenge(userId: string): string {
-    // Implementation for temporary storage retrieval
-    return 'mock-challenge';
+  private getChallenge(userId: string): string | undefined {
+    return PasskeyHandler.challenges.get(userId);
   }
 }
 
