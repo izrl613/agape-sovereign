@@ -178,15 +178,8 @@ export const LandingPage = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const handleGoogleSignIn = async () => {
-    setAuthError(null);
-    setGoogleLoading(true);
-    try {
-      await login();
-    } catch {
-      setGoogleLoading(false);
-      navigate('/login');
-    }
+  const handleGoogleSignIn = () => {
+    navigate('/login');
   };
 
   // Scroll-restoration for hash links
