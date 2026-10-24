@@ -6,7 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
-import { ArchitectAI } from './components/ArchitectAI';
+import { ArchitectAIApp } from './components/ArchitectAIApp';
 import { AdminPortal } from './components/AdminPortal';
 import { UserProfileSettings } from './components/UserProfileSettings';
 import { SecurityTips } from './components/SecurityTips';
@@ -103,7 +103,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
 
       {/* Protected app — all authenticated routes live under /dashboard */}
-      <Route path="/architect" element={<ProtectedRoute><ArchitectUI /></ProtectedRoute>} />
+      <Route path="/architect" element={<ProtectedRoute><ArchitectAIApp /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="email" element={<EmailModule />} />

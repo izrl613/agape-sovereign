@@ -284,8 +284,8 @@ export const decryptDIFFProfile = async (
   passphrase: string
 ): Promise<unknown> => {
   const salt = base64ToArrayBuffer(encrypted.salt);
-  // Key is derived from passphrase + salt internally; no master key injection possible
-  return decryptData(encrypted.encryptedData, passphrase, encrypted.iv);
+  const key = await deriveKeyFromPassphrase(passphrase, salt);
+  return decryptData(encrypted.encryptedData, key, encrypted.iv);
 };
 
 /**
