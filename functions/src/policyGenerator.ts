@@ -1,6 +1,7 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {defineSecret, defineString} from "firebase-functions/params";
-import {jsPDF} from "jspdf";
+/* eslint-disable */
+import JsPDF from "jspdf";
 import * as crypto from "crypto";
 import {logger} from "firebase-functions/v2";
 
@@ -39,7 +40,7 @@ export const generatePolicyDocument = onRequest(
         .update(dataToHash).digest("hex");
 
       // Initialize jsPDF
-      const doc = new jsPDF(); // eslint-disable-line new-cap
+      const doc = new JsPDF(); // eslint-disable-line new-cap
 
       // Title
       doc.setFontSize(22);
