@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { passkeyHandler } from './auth/passkey-handler';
 import { architectAI } from './core/architect-ai';
 import { getAgentForModule } from '../agents/agent-registry';
+import { OAuthService } from './services/oauth-service';
 
 dotenv.config();
 
@@ -62,6 +63,35 @@ app.post('/api/auth/verify-authentication', async (req, res, next) => {
     if (!userId || !body) throw new Error('userId and body are required');
     const result = await passkeyHandler.handleVerifyAuthentication(userId, body);
     res.json(result);
+  } catch (e: any) {
+    next(e);
+  }
+});
+
+// --- GOOGLE OAUTH ENDPOINTS ---
+app.get('/api/auth/google', (req, res) => {
+  const url = OAuthService.getGoogleAuthUrl();
+  res.redirect(url);
+});
+
+app.get('/api/auth/google/callback', async (req, res, next) => {
+  try {
+    const { code } = req.query;
+    if (!code) throw new Error('Authorization code missing');
+
+    const tokens = await OAuthService.exchangeCodeForTokens(code as string);
+    const user = await OAuthService.verifyUser(tokens.access_token);
+
+    // Here we would link the Google identity to the Sovereign user profile
+    res.json({
+      success: true,
+      user: {
+        id: user.sub,
+        email: user.email,
+        type: 'verified'
+      },
+      accessToken: tokens.access_token
+    });
   } catch (e: any) {
     next(e);
   }
