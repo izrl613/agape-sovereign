@@ -11,6 +11,7 @@
     "check": "npm run lint"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "latest",
     "react": "latest",
     "react-dom": "latest",
     "@google/genai": "latest",
