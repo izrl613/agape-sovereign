@@ -7,6 +7,7 @@ import { Layout } from './components/Layout';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 import { ArchitectAIApp } from './components/ArchitectAIApp';
+import { ArchitectAI } from './components/ArchitectAI';
 import { AdminPortal } from './components/AdminPortal';
 import { UserProfileSettings } from './components/UserProfileSettings';
 import { SecurityTips } from './components/SecurityTips';
@@ -23,6 +24,7 @@ import {
   NetworkModule,
   CloudModule,
   CommunicationModule,
+  FinancialModule,
   PrivacyReclaimModule,
   DocumentModule,
   OauthModule,
@@ -117,6 +119,7 @@ const AppRoutes = () => {
         <Route path="network" element={<NetworkModule />} />
         <Route path="cloud" element={<CloudModule />} />
         <Route path="communication" element={<CommunicationModule />} />
+        <Route path="financial" element={<FinancialModule />} />
         <Route path="privacy-reclaim" element={<PrivacyReclaimModule />} />
         <Route path="documents" element={<DocumentModule />} />
         <Route path="oauth" element={<OauthModule />} />

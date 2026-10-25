@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "latest",
+    "firebase": "^10.11.0",
     "react": "latest",
     "react-dom": "latest",
     "@google/genai": "latest",

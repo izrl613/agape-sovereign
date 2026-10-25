@@ -9,6 +9,8 @@
 
   <!-- Canonical + Indexing -->
   <link rel="canonical" href="https://sovereign.nyc/" />
+  <link rel="privacy-policy" href="https://sovereign.nyc/privacy" />
+  <link rel="terms-of-service" href="https://sovereign.nyc/terms" />
   <meta name="robots" content="index,follow" />
 
   <!-- Primary SEO / Google OAuth verification -->
@@ -982,9 +984,9 @@
     <!-- ── Footer (Google OAuth: must show Privacy Policy + Terms) ── -->
     <footer class="site-footer">
       <div class="footer-links">
-        <a href="https://sovereign.nyc/terms/TERMS.pdf" rel="terms-of-service" class="footer-link-terms"
+        <a href="/terms" rel="terms-of-service" class="footer-link-terms"
           id="footer-terms">TERMS OF SERVICE</a>
-        <a href="https://sovereign.nyc/privacy/PRIVACY.pdf" rel="privacy-policy" class="footer-link-privacy"
+        <a href="/privacy" rel="privacy-policy" class="footer-link-privacy"
           id="footer-privacy">PRIVACY POLICY</a>
         <a href="/contact" class="footer-link-contact" id="footer-contact">CONTACT</a>
       </div>
@@ -1001,6 +1003,9 @@
       var pre = document.getElementById('static-prerender');
       if (!pre) return;
       var obs = new MutationObserver(function () {
+        var path = (location.pathname || '/').replace(/\/+$/, '') || '/';
+        // Keep the homepage prerender visible for Google OAuth verification crawlers.
+        if (path === '/') return;
         if (root && root.children.length > 0) {
           pre.style.display = 'none';
           obs.disconnect();

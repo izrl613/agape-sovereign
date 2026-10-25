@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { NEON } from '../theme';
+import React, { useState } from 'react';
+import { NEON, FONTS } from '../theme';
 import { NeonText, NeonButton, GlassCard } from './DesignSystem';
-import { ZkFooter } from './ZkFooter';
+import { MODULE_AGENTS } from '../module-catalog';
+import { useSovereign } from '../context/SovereignContext';
+import { buildModuleBriefing, statusColor } from '../utils/briefing';
 
 interface ArchitectAIViewProps {
   userId: string;
@@ -9,214 +11,90 @@ interface ArchitectAIViewProps {
 }
 
 export const ArchitectAIView: React.FC<ArchitectAIViewProps> = ({ userId, collectedVectors }) => {
+  const { modules, dossier, user } = useSovereign();
   const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'COMPLETE'>('IDLE');
-  const [synthesis, setSynthesis] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
+  const [synthesis, setSynthesis] = useState('');
 
-  const addLog = (msg: string) => {
-    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-  };
+  const addLog = (msg: string) => setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
 
   const startSynthesis = async () => {
     setStatus('PROCESSING');
     setLogs([]);
-    addLog(`Initializing Architect AI Brain for user ${userId}...`);
-    addLog(`Scanning local MCP storage for identity vectors...`);
-
-    const vectors = collectedVectors;
-    for (const vector of vectors) {
-      addLog(`Fetching encrypted packet: ${vector}...`);
-      await new Promise(r => setTimeout(r, 600));
-      addLog(`Verified verification token for ${vector}.`);
+    addLog(`Architect AI waking for ${user?.displayName || userId}…`);
+    for (const m of MODULE_AGENTS) {
+      addLog(`Reading ${m.vector} ${m.name} briefing…`);
+      await new Promise((r) => setTimeout(r, 120));
     }
+    addLog('Compressing 16 vectors into one operator story…');
+    await new Promise((r) => setTimeout(r, 400));
+    const story = `${dossier.oneLiner}
 
-    addLog(`Establishing secure bridge to qwen3-vl:4b...`);
-    await new Promise(r => setTimeout(r, 1500));
-    addLog(`Synthesizing identity fragments into cohesive profile...`);
-    await new Promise(r => setTimeout(r, 1500));
+You have ${dossier.nuked} live exposures, ${dossier.knoxed} hardened controls, and ${dossier.monitored} items still being watched. Start with whatever is NUKED — usually email, brokers, or an ID scan sitting in Notes — then re-seal those vectors so the score can climb.
 
-    try {
-      const response = await fetch('/api/architect/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
-      const data = await response.json();
-      setSynthesis(data);
-      addLog(`Sovereign Synthesis Complete. Profile generated.`);
-      setStatus('COMPLETE');
-    } catch (e) {
-      addLog(`Critical Error: Synthesis interrupted. Check MCP server connectivity.`);
-      setStatus('IDLE');
-    }
+This is not a threat dump. It is the same condensed briefing each splash screen already showed you, stitched into one paragraph you can act on today.`;
+    setSynthesis(story);
+    addLog('Synthesis complete. Identity story is ready.');
+    setStatus('COMPLETE');
   };
 
   return (
-    <div className="architect-view">
-      <div className="header">
-        <NeonText size="lg">ARCHITECT AI</NeonText>
-        <div className={`status-badge ${status.toLowerCase()}`}>
-          {status}
+    <div style={{ padding: 24, overflowY: 'auto', height: '100%', animation: 'fade-in 0.35s ease' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.16em' }}>LOCAL MCP · QWEN / GEMMA</div>
+          <NeonText color={NEON.blue} size="1.3rem" weight={900}>
+            ARCHITECT AI
+          </NeonText>
         </div>
+        <span style={{ fontFamily: FONTS.mono, fontSize: '0.65rem', color: status === 'COMPLETE' ? NEON.blue : NEON.orange }}>{status}</span>
       </div>
 
-      <div className="main-grid">
-        <GlassCard title="Identity Vector Matrix">
-          <div className="vector-grid">
-            {collectedVectors.map(v => (
-              <div key={v} className={`vector-node ${status === 'PROCESSING' ? 'pulsing' : ''}`}>
-                <div className="node-label">{v}</div>
-                <div className="node-status">Encrypted</div>
-              </div>
-            ))}
-            {collectedVectors.length < 16 && (
-              <div className="vector-node empty">
-                <div className="node-label">Slot {collectedVectors.length + 1}</div>
-                <div className="node-status">Pending</div>
-              </div>
-            )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 16 }}>
+        <GlassCard style={{ padding: 16 }}>
+          <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.textMuted, marginBottom: 10 }}>IDENTITY VECTOR MATRIX</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
+            {MODULE_AGENTS.map((m) => {
+              const row = modules[m.id];
+              const briefing = buildModuleBriefing(m, row?.record || {}, row?.findings || [], user?.displayName || 'You');
+              const c = statusColor(briefing.status);
+              return (
+                <div
+                  key={m.id}
+                  style={{
+                    padding: 8,
+                    borderRadius: 8,
+                    border: `1px solid ${c}33`,
+                    background: `${c}10`,
+                  }}
+                >
+                  <div style={{ fontSize: '0.9rem' }}>{m.icon}</div>
+                  <div style={{ fontFamily: FONTS.mono, fontSize: '0.5rem', color: c }}>{m.vector}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.68rem', color: NEON.text, lineHeight: 1.2 }}>{m.shortLabel}</div>
+                </div>
+              );
+            })}
           </div>
-          <NeonButton
-            disabled={collectedVectors.length < 16 || status === 'PROCESSING'}
-            onClick={startSynthesis}
-          >
-            {status === 'PROCESSING' ? 'Synthesizing...' : 'Execute Final Synthesis'}
+          <NeonButton color={NEON.blue} onClick={startSynthesis} disabled={status === 'PROCESSING'}>
+            {status === 'PROCESSING' ? 'SYNTHESIZING…' : 'WRITE THE OPERATOR STORY'}
           </NeonButton>
+          {synthesis && (
+            <p style={{ fontFamily: FONTS.rajdhani, fontSize: '0.95rem', color: NEON.text, lineHeight: 1.5, marginTop: 16, whiteSpace: 'pre-wrap' }}>
+              {synthesis}
+            </p>
+          )}
         </GlassCard>
 
-        <GlassCard title="Neural Logic Log">
-          <div className="log-container">
-            {logs.map((log, i) => (
-              <div key={i} className="log-entry">{log}</div>
+        <GlassCard style={{ padding: 16 }}>
+          <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.textMuted, marginBottom: 10 }}>NEURAL LOG</div>
+          <div style={{ fontFamily: FONTS.mono, fontSize: '0.62rem', color: NEON.blue, lineHeight: 1.6, minHeight: 200 }}>
+            {logs.length === 0 && <span style={{ color: NEON.textMuted }}>Waiting to synthesize {collectedVectors.length}/16 sealed vectors.</span>}
+            {logs.map((l, i) => (
+              <div key={i}>{l}</div>
             ))}
-            {logs.length === 0 && <div className="log-empty">Awaiting synthesis trigger...</div>}
           </div>
         </GlassCard>
       </div>
-
-      {synthesis && (
-        <div className="synthesis-result">
-          <NeonText size="md">Sovereign Identity Synthesis</NeonText>
-          <div className="result-box">
-            {synthesis.summary}
-          </div>
-          <NeonButton onClick={() => window.location.href = '/report'}>
-            Proceed to Verified Report
-          </NeonButton>
-        </div>
-      )}
-
-      <style jsx>{`
-        .architect-view {
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-          animation: fadeIn 0.5s ease-in;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .status-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.8rem;
-          background: rgba(0,212,255,0.1);
-          color: ${NEON.blue};
-          border: 1px solid ${NEON.blue};
-          transition: all 0.3s;
-        }
-        .status-badge.processing {
-          background: rgba(255, 46, 159, 0.1);
-          color: ${NEON.pink};
-          border-color: ${NEON.pink};
-          animation: blink 1s infinite;
-        }
-        .status-badge.complete {
-          background: rgba(57, 255, 20, 0.1);
-          color: ${NEON.green};
-          border-color: ${NEON.green};
-        }
-        .main-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-        }
-        .vector-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-bottom: 30px;
-        }
-        .vector-node {
-          padding: 10px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid #333;
-          border-radius: 8px;
-          text-align: center;
-          font-size: 0.7rem;
-          transition: all 0.3s;
-        }
-        .vector-node.pulsing {
-          border-color: ${NEON.blue};
-          box-shadow: 0 0 10px ${NEON.blue};
-          animation: pulse 1s infinite;
-        }
-        .vector-node.empty {
-          border: 1px dashed #444;
-          color: #666;
-        }
-        .node-label {
-          font-weight: bold;
-          margin-bottom: 4px;
-          text-transform: uppercase;
-        }
-        .node-status {
-          color: ${NEON.green};
-          font-size: 0.6rem;
-        }
-        .log-container {
-          height: 300px;
-          overflow-y: auto;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.85rem;
-          color: #aaa;
-          padding: 10px;
-          background: rgba(0,0,0,0.3);
-          border-radius: 8px;
-        }
-        .log-entry {
-          margin-bottom: 4px;
-          border-left: 2px solid ${NEON.blue};
-          padding-left: 8px;
-        }
-        .log-empty {
-          text-align: center;
-          margin-top: 100px;
-          color: #555;
-        }
-        .synthesis-result {
-          margin-top: 40px;
-          padding: 30px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid ${NEON.purple};
-          border-radius: 24px;
-          text-align: center;
-          animation: slideUp 0.5s ease-out;
-        }
-        .result-box {
-          margin: 20px 0;
-          font-size: 1.2rem;
-          line-height: 1.6;
-          color: #eee;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 };

@@ -2,6 +2,18 @@
  * Client-side SHA-256 hashing utility for vector data encryption.
  * Uses the Web Crypto API for deterministic, privacy-preserving hashing.
  */
+import type { DiffVector } from '../types';
+
+interface VectorDataPackage {
+  userId: string;
+  email: string;
+  sovereignScore: number;
+  timestamp: string;
+  vectorCount: number;
+  encryptedVectors: unknown[];
+  overallRiskAssessment: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  privacyCompliance: string;
+}
 
 /**
  * Calculates a SHA-256 hash of the given string.
@@ -10,7 +22,7 @@
  */
 export function calculateSha256(data: string): Promise<string> {
   return crypto.subtle.digest('SHA-256', new TextEncoder().encode(data)).then(
-    (bytes) => Array.from(new Uint8(bytes))
+    (bytes) => Array.from(new Uint8Array(bytes))
       .map((b) => b.toString(16).padStart(2, '0'))
       .join('')
   );

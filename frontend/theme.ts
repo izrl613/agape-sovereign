@@ -1,17 +1,31 @@
 export const NEON = {
-  blue: '#00d4ff',
+  magenta: '#FF2E9F',
+  blue: '#00D4FF',
+  orange: '#FF7A18',
   purple: '#bc13fe',
-  green: '#39ff14',
+  green: '#00FF87',
   pink: '#ff00ff',
   yellow: '#ffff00',
+  bg: '#060D1F',
+  bgCard: 'rgba(8, 18, 40, 0.85)',
+  bgGlass: 'rgba(0, 212, 255, 0.04)',
+  text: '#E8F4FF',
+  textMuted: '#7B9BB5',
 };
 
-export const GRADIENT_BORDER = 'linear-gradient(45deg, #00d4ff, #bc13fe)';
+export const GRADIENT = `linear-gradient(135deg, ${NEON.magenta}, ${NEON.blue}, ${NEON.orange})`;
+export const GRADIENT_BORDER = `linear-gradient(135deg, ${NEON.magenta} 0%, ${NEON.blue} 50%, ${NEON.orange} 100%)`;
 
 export const COLORS = {
-  background: '#0a0a0a',
-  surface: '#1a1a1a',
-  text: '#ffffff',
-  textMuted: '#888888',
-  border: '#333333',
+  background: NEON.bg,
+  surface: '#0B1020',
+  text: NEON.text,
+  textMuted: NEON.textMuted,
+  border: 'rgba(0,212,255,0.15)',
+};
+
+export const FONTS = {
+  orbitron: "'Orbitron', monospace",
+  rajdhani: "'Rajdhani', sans-serif",
+  mono: "'Share Tech Mono', monospace",
 };

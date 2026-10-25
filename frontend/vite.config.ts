@@ -10,13 +10,16 @@ export default defineConfig(({ mode }) => {
         'process.env.API_KEY' : JSON.stringify('api-key-this-is-not-used-can-be-ignored!'),
       },
       server: {
+        host: '0.0.0.0',
+        allowedHosts: true,
+        port: 5173,
         proxy: {
-          //Target your Node.js backend
+          '/api/auth': { target: 'https://sovereign.nyc', changeOrigin: true, secure: true },
           '/api-proxy': 'http://localhost:5000',
           '/ws-proxy': {target: 'ws://localhost:5000', ws: true},
         },
       },
-      plugins: react(),
+      plugins: [react()],
       resolve: {
         alias: {
           '@': path.resolve(import.meta.dirname, '.'),

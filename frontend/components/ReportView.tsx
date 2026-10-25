@@ -1,137 +1,66 @@
-import React, { useState } from 'react';
-import { NEON } from '../theme';
-import { NeonText, NeonButton, GlassCard } from './DesignSystem';
-import { ZkFooter } from './ZkFooter';
+import React from 'react';
+import { NEON, FONTS } from '../theme';
+import { NeonText, GlassCard } from './DesignSystem';
+import { MODULE_AGENTS } from '../module-catalog';
+import { useSovereign } from '../context/SovereignContext';
+import { buildModuleBriefing, statusColor } from '../utils/briefing';
 
-interface ReportViewProps {
-  userId: string;
-}
-
-export const ReportView: React.FC<ReportViewProps> = ({ userId }) => {
-  const [status, setStatus] = useState<'LOCKED' | 'VERIFYING' | 'RELEASED'>('LOCKED');
-  const [reportUrl, setReportUrl] = useState<string | null>(null);
-
-  const handleVerifyAndRelease = async () => {
-    setStatus('VERIFYING');
-    try {
-      // Integration with Backend /api/architect/finalize
-      const response = await fetch('/api/architect/finalize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          authPayload: { mockToken: 'verified-passkey-gesture' } // In real app, this is the WebAuthn response
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setReportUrl(data.reportPath);
-        setStatus('RELEASED');
-      } else {
-        throw new Error('Verification failed');
-      }
-    } catch (e) {
-      alert('Passkey verification failed. Identity remains locked.');
-      setStatus('LOCKED');
-    }
-  };
+export const ReportView: React.FC = () => {
+  const { modules, dossier, user } = useSovereign();
 
   return (
-    <div className="report-view">
-      <div className="report-container">
-        <GlassCard title="Sovereign Identity Vault">
-          <div className="vault-content">
-            {status === 'LOCKED' && (
-              <div className="locked-state">
-                <div className="lock-icon">🔒</div>
-                <NeonText size="md">Identity Report Encrypted</NeonText>
-                <p>Your sovereign identity report is encrypted and locked. To release the document, a hardware-backed Passkey verification is required.</p>
-                <NeonButton onClick={handleVerifyAndRelease}>
-                  Verify Passkey & Release PDF
-                </NeonButton>
-              </div>
-            )}
-
-            {status === 'VERIFYING' && (
-              <div className="verifying-state">
-                <div className="spinner"></div>
-                <NeonText size="md">Verifying Hardware Signature...</NeonText>
-                <p>Establishing secure channel with Architect AI...</p>
-              </div>
-            )}
-
-            {status === 'RELEASED' && (
-              <div className="released-state">
-                <div className="success-icon">✅</div>
-                <NeonText size="md">Identity Released</NeonText>
-                <p>Your verified sovereign report is now available for download.</p>
-                <a href={reportUrl} download className="download-btn">
-                  Download Sovereign Report (.pdf)
-                </a>
-                <NeonButton onClick={() => setStatus('LOCKED')} variant="secondary">
-                  Relock Vault
-                </NeonButton>
-              </div>
-            )}
-          </div>
-        </GlassCard>
+    <div style={{ padding: 24, overflowY: 'auto', height: '100%', animation: 'fade-in 0.35s ease' }}>
+      <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
+        IDENTITY AUDIT · 16 VECTORS
       </div>
-      <ZkFooter pageId="report" />
-      <style jsx>{`
-        .report-view {
-          height: 100vh;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background: #0a0a0a;
-          color: white;
-          font-family: 'Rajdhani', sans-serif;
-        }
-        .report-container {
-          width: 600px;
-          text-align: center;
-        }
-        .vault-content {
-          padding: 40px 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-        }
-        .locked-state, .verifying-state, .released-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-        }
-        .lock-icon, .success-icon {
-          font-size: 64px;
-          margin-bottom: 20px;
-        }
-        .download-btn {
-          display: block;
-          padding: 15px 30px;
-          background: ${NEON.green};
-          color: black;
-          text-decoration: none;
-          font-weight: bold;
-          border-radius: 12px;
-          margin-bottom: 20px;
-          transition: transform 0.2s;
-        }
-        .download-btn:hover { transform: scale(1.05); }
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid rgba(0,212,255,0.1);
-          border-top: 4px solid ${NEON.blue};
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin-bottom: 20px;
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      <NeonText color={NEON.blue} size="1.4rem" weight={900}>
+        CONDENSED SOVEREIGN REPORT
+      </NeonText>
+      <p style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted, maxWidth: 720, margin: '8px 0 20px' }}>
+        {dossier.oneLiner}. This page is the same story the splash screens tell — one plain-English card per agent, so you never have to decode a hash to know where you stand.
+      </p>
+
+      <GlassCard style={{ padding: 18, marginBottom: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <Stat label="Score" value={String(dossier.score)} color={NEON.blue} />
+          <Stat label="Nuked" value={String(dossier.nuked)} color={NEON.magenta} />
+          <Stat label="Knoxed" value={String(dossier.knoxed)} color={NEON.blue} />
+          <Stat label="Sealed" value={`${dossier.sealed}/16`} color={NEON.orange} />
+        </div>
+        <div style={{ fontFamily: FONTS.mono, fontSize: '0.62rem', color: NEON.textMuted, marginTop: 12 }}>
+          Operator {user?.displayName} · {dossier.emailMasked} · {dossier.authLabel}
+        </div>
+      </GlassCard>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 40 }}>
+        {MODULE_AGENTS.map((m) => {
+          const row = modules[m.id] || { record: {}, findings: [] };
+          const briefing = buildModuleBriefing(m, row.record, row.findings, user?.displayName || 'You');
+          const c = statusColor(briefing.status);
+          return (
+            <GlassCard key={m.id} style={{ padding: 16, borderLeft: `4px solid ${c}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.orange }}>
+                    {m.vector} · {m.icon} {m.name}
+                  </div>
+                  <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.95rem', color: c, margin: '4px 0' }}>{briefing.headline}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.9rem', color: NEON.text, lineHeight: 1.45 }}>{briefing.plainEnglish}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.8rem', color: NEON.blue, marginTop: 6 }}>Next: {briefing.nextAction}</div>
+                </div>
+                <div style={{ fontFamily: FONTS.orbitron, fontSize: '1.4rem', color: c, fontWeight: 800 }}>{briefing.score}</div>
+              </div>
+            </GlassCard>
+          );
+        })}
+      </div>
     </div>
   );
 };
+
+const Stat = ({ label, value, color }: { label: string; value: string; color: string }) => (
+  <div>
+    <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+    <div style={{ fontFamily: FONTS.orbitron, fontSize: '1.4rem', fontWeight: 800, color }}>{value}</div>
+  </div>
+);
