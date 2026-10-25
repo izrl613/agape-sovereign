@@ -220,7 +220,7 @@ export async function submitRectificationClaim(
     HDISource.RECTIFICATION_RIGHT,
     HDISource.THIRD_PARTY_ATTESTATION,
   ];
-  const hdi Improvement = improveHDI(defaultHDI, hdiSources);
+  const hdiImprovement = improveHDI(defaultHDI, hdiSources);
 
   // Step 6: Build compliance guarantees
   const complianceGuarantees = {

@@ -78,7 +78,7 @@ export const AdminPortal = ({ onClose }) => {
             ].map((log, i) => <div key={i} style={{ color: i === 0 ? NEON.blue : NEON.textMuted }}>{log}</div>)}
           </div>
         </div>
-      </GlassCard>
+      </div>
     </div>
   );
 };

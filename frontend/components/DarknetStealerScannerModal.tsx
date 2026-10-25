@@ -157,7 +157,7 @@ export const DarknetStealerScannerModal: React.FC<DarknetStealerScannerModalProp
                 </table>
               </div>
             </div>
-          </footer>
+          </div>
 
           {/* Quick Actions */}
           <div className="px-4 sm:px-6 py-3 bg-[#0B1020] border-t border-slate-800">
