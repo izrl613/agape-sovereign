@@ -6,7 +6,7 @@ from agents.workflows.runner import WorkflowRunner
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Launch the sovereign workflow agent pipeline")
-    parser.add_argument("--input", default="/Users/aarondavid/Desktop/Sovereign Data Pipeline Defined - 2026-07-15 21.46.md", help="Input file or inline text")
+    parser.add_argument("--input", default=os.path.join(os.path.expanduser('~'), 'Desktop', 'Sovereign Data Pipeline Defined - 2026-07-15 21.46.md'), help="Input file or inline text")
     parser.add_argument("--output-dir", default="./workspace_outputs", help="Output directory for generated artifacts")
     args = parser.parse_args()
 

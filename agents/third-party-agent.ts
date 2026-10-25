@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { verificationService } from '../backend/services/verification-service';
+import { architectAI } from '../backend/core/architect-ai';
 
 /**
  * Third Party Agent (TPA)
@@ -50,7 +51,15 @@ export abstract class ThirdPartyAgent {
   }
 
   private async handoffToArchitectAI(userId: string, packet: string) {
-    console.log(`[TPA:${this.moduleId}] Handoff to Architect AI for user ${userId} complete.`);
-    // In production: POST /api/architect/collect
+    console.log(`[TPA:${this.moduleId}] Performing secure handoff to Architect AI for user ${userId}...`);
+
+    await architectAI.collectPacket(userId, {
+      moduleId: this.moduleId,
+      encryptedData: packet,
+      verificationToken: `v-tok-${crypto.randomBytes(8).toString('hex')}`,
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`[TPA:${this.moduleId}] Handoff to Architect AI complete.`);
   }
 }
