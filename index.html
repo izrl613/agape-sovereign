@@ -224,7 +224,6 @@
     <script>
         function generateHash() {
             const data = "sovereign-landing-" + Math.random().toString(36).substring(2);
-            // Simple hash simulation for static HTML
             let hash = 0;
             for (let i = 0; i < data.length; i++) {
                 hash = ((hash << 5) - hash) + data.charCodeAt(i);
