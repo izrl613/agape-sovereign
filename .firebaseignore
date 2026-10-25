@@ -9,9 +9,6 @@ gemma-chat-public/
 google-cloud-sdk/
 architect-ai/
 architectai/
-frontend/
-backend/
-functions/
 dist/
 public/
 docs/
