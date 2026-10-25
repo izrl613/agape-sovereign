@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOVEREIGN | Digital Identity Federated Footprint</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00d4ff;
+            --neon-purple: #bc13fe;
+            --neon-green: #39ff14;
+            --bg-dark: #0a0a0a;
+            --bg-surface: #1a1a1a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .background-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(0, 212, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(188, 19, 254, 0.05) 0%, transparent 40%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .grid-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .logo-container {
+            margin-bottom: 30px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .logo-svg {
+            width: 120px;
+            height: 120px;
+            filter: drop-shadow(0 0 15px var(--neon-blue));
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: 15px;
+            margin: 0;
+            background: linear-gradient(to right, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        .subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            color: var(--text-muted);
+            letter-spacing: 0.3em;
+            margin-top: 10px;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            animation: fadeIn 2s ease-out;
+        }
+
+        .hero-section {
+            max-width: 800px;
+            animation: fadeIn 2.5s ease-out;
+        }
+
+        .hero-text {
+            font-size: 1.4rem;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            color: #ccc;
+        }
+
+        .hero-text span {
+            color: var(--neon-blue);
+            font-weight: bold;
+        }
+
+        .cta-button {
+            padding: 20px 45px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.2);
+        }
+
+        .cta-button:hover {
+            background: var(--neon-blue);
+            color: black;
+            box-shadow: 0 0 30px var(--neon-blue);
+            transform: translateY(-3px);
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--neon-blue);
+        }
+
+        .zk-proof {
+            background: rgba(255,255,255,0.05);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <div class="grid-pattern"></div>
+
+    <div class="container">
+        <div class="logo-container">
+            <svg class="logo-svg" viewBox="0 0 80 80">
+                <polygon points="40,5 75,25 75,55 40,75 5,55 5,25" fill="none" stroke="#00d4ff" stroke-width="2" />
+                <text x="40" y="46" text-anchor="middle" fill="#00d4ff" font-family="Orbitron" font-size="16" font-weight="900">AI</text>
+            </svg>
+        </div>
+
+        <h1>SOVEREIGN</h1>
+        <div class="subtitle">Agape Sovereign Enclave 2026</div>
+
+        <div class="hero-section">
+            <p class="hero-text">
+                Reclaim your digital existence. We map your <span>16 Identity Vectors</span>
+                through a zero-knowledge pipeline, consolidating your federated footprint
+                into a single, verified, and encrypted sovereign identity.
+            </p>
+            <button class="cta-button" onclick="window.location.href='/dashboard'">
+                Begin Vectorization
+            </button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-links">
+            <a href="https://sovereign.nyc/terms">TERMS OF SERVICE</a>
+            <a href="https://sovereign.nyc/privacy">PRIVACY POLICY</a>
+            <a href="https://sovereign.nyc/contact">CONTACT</a>
+        </div>
+        <div class="zk-proof" id="zk-hash">ZK-PROOF: GENERATING...</div>
+        <div style="margin-top: 10px;">© 2026 AGAPE SOVEREIGN AI</div>
+    </div>
+
+    <script>
+        function generateHash() {
+            const data = "sovereign-landing-" + Math.random().toString(36).substring(2);
+            // Simple hash simulation for static HTML
+            let hash = 0;
+            for (let i = 0; i < data.length; i++) {
+                hash = ((hash << 5) - hash) + data.charCodeAt(i);
+                hash |= 0;
+            }
+            return 'SHA256-' + Math.abs(hash).toString(16).toUpperCase();
+        }
+        document.getElementById('zk-hash').innerText = 'ZK-PROOF: ' + generateHash();
+    </script>
+</body>
+</html>
