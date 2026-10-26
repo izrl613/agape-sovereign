@@ -45,6 +45,9 @@ jobs:
             echo '```' >> "$GITHUB_STEP_SUMMARY"
             tail -n 120 /tmp/firebase-deploy.log >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
+            # Also emit the CLI's own error lines as annotations (API-readable).
+            grep -aiE "error:|failed|unable|permission|denied|invalid|not found" /tmp/firebase-deploy.log | tail -n 10 | while IFS= read -r line; do echo "::error::FIREBASE-DEPLOY: $line"; done
+            tail -n 5 /tmp/firebase-deploy.log | while IFS= read -r line; do echo "::error::FIREBASE-DEPLOY-TAIL: $line"; done
             exit 1
           }
 
