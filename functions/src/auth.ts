@@ -1,5 +1,6 @@
 import {onRequest} from "firebase-functions/https";
 import {logger} from "firebase-functions";
+import {defineString} from "firebase-functions/params";
 import {randomBytes} from "crypto";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue, QueryDocumentSnapshot} from "firebase-admin/firestore";
@@ -91,12 +92,21 @@ const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS
  * Challenges also live in Firestore, so ceremonies survive instance
  * recycling — but the owner SHOULD set a stable secret.
  */
-// Both names are bound as SECRET env vars on the deployed service
-// (see `secrets:` in the authApi options below). They must NOT also be
-// declared as plain params/env vars: Cloud Run rejects the update
-// with "Secret environment variable overlaps non secret environment
-// variable". Rotate with: firebase functions:secrets:set PASSKEY_COOKIE_SECRET
+// Why the new name: the long-deployed authApi service already carries
+// PASSKEY_COOKIE_SECRET / COOKIE_SECRET as SECRET env vars, and the CI
+// service account has no secretmanager.versions.get permission, so
+// secret-bound deploys fail validation — while re-declaring the same
+// names as plain env vars fails Cloud Run overlap checks. A NEW plain
+// param name sidesteps both: deploys pass, and at runtime the legacy
+// secret env vars still injected by the existing service config keep
+// working via the process.env reads below. To rotate: set the
+// PASSKEY_COOKIE_SIGNING_KEY secret in GitHub Actions (injected by CI
+// into functions/.env.agape-sovereign) or update Secret Manager.
+const cookieSigningKeyParam = defineString("PASSKEY_COOKIE_SIGNING_KEY", {default: ""});
+
 const configuredCookieSecret =
+  cookieSigningKeyParam.value() ||
+  process.env.PASSKEY_COOKIE_SIGNING_KEY ||
   process.env.PASSKEY_COOKIE_SECRET ||
   process.env.COOKIE_SECRET ||
   "";
@@ -961,7 +971,11 @@ export const authApi = onRequest(
     invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"],
+    // Deliberately NO secret bindings here: the CI deployer cannot
+    // validate Secret-Manager versions (403), and same-named plain
+    // env vars collide with the service's existing secret env vars.
+    // Cookie key comes from PASSKEY_COOKIE_SIGNING_KEY (param) with
+    // legacy process.env fallbacks — see configuredCookieSecret.
   },
   authApp
 );

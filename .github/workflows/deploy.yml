@@ -48,12 +48,15 @@ jobs:
         shell: bash
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PASSKEY_COOKIE_SIGNING_KEY: ${{ secrets.PASSKEY_COOKIE_SIGNING_KEY }}
         run: |
-          # Only GEMINI_API_KEY is a plain param. The passkey cookie
-          # secrets are Secret-Manager bindings on authApi — declaring
-          # them here too makes Cloud Run reject the update (secret /
-          # non-secret env overlap).
-          echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > functions/.env.agape-sovereign
+          # Plain params only. The legacy PASSKEY_COOKIE_SECRET /
+          # COOKIE_SECRET names exist on the service as SECRET env
+          # vars and must not be re-declared here (overlap rejection).
+          {
+            echo "GEMINI_API_KEY=${GEMINI_API_KEY}"
+            echo "PASSKEY_COOKIE_SIGNING_KEY=${PASSKEY_COOKIE_SIGNING_KEY}"
+          } > functions/.env.agape-sovereign
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
