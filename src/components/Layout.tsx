@@ -28,13 +28,13 @@ interface DocumentSealModalProps {
 const DOC_META = {
   TERMS: {
     label: 'Terms of Service',
-    href: '/terms/YERMS.PDF',
+    href: '/terms/TERMS.pdf',
     icon: '📋',
     color: '#FF7A18',
   },
   PRIVACY: {
     label: 'Privacy Policy',
-    href: '/privacy/PRIVACY.PDF',
+    href: '/privacy/PRIVACY.pdf',
     icon: '🛡️',
     color: '#00D4FF',
   },

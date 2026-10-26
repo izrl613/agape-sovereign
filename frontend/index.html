@@ -647,22 +647,105 @@
     .site-footer {
       position: relative;
       z-index: 1;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
-      padding: 24px 48px;
-      display: flex;
+      /* The house rule: magenta → blue → orange, three colours, nothing else. */
+      border-top: 2px solid transparent;
+      border-image: linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%) 1;
+      padding: 22px 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 14px;
+      gap: 14px 28px;
       backdrop-filter: blur(12px);
       background: rgba(4, 8, 18, 0.6);
     }
 
     .footer-links {
       display: flex;
-      gap: 24px;
+      gap: 20px;
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    .footer-links.is-end {
+      justify-content: flex-end;
+    }
+
+    /* PDF download chips */
+    .footer-link-pdf {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-decoration: none;
+      color: #FFB27A;
+      border: 1px solid rgba(255, 122, 24, 0.28);
+      border-radius: 6px;
+      padding: 5px 10px;
+      background: rgba(255, 122, 24, 0.05);
+      transition: background 0.18s, border-color 0.18s, color 0.18s;
+    }
+
+    .footer-link-pdf:hover {
+      background: rgba(255, 122, 24, 0.13);
+      border-color: rgba(255, 122, 24, 0.62);
+      color: #FFD3B0;
+    }
+
+    .footer-pdf-icon {
+      color: #FF7A18;
+      font-size: 10px;
+    }
+
+    .footer-pdf-size {
+      color: rgba(180, 205, 230, 0.45);
+      font-size: 8.5px;
+      letter-spacing: 0.06em;
+      font-weight: 400;
+    }
+
+    /* Centre lock-up: copyright over the manifest digest */
+    .footer-mark {
+      text-align: center;
+      grid-column: 2;
+    }
+
+    .footer-copy {
+      font-size: 10px;
+      color: rgba(214, 232, 248, 0.62);
+      letter-spacing: 0.18em;
+      font-family: 'Share Tech Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .footer-copy b {
+      color: #fff;
+      font-weight: 400;
+    }
+
+    .footer-sha {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 5px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 8.5px;
+      letter-spacing: 0.05em;
+      color: rgba(126, 224, 255, 0.5);
+      cursor: help;
+    }
+
+    .footer-sha-key {
+      color: #FF2E9F;
+      letter-spacing: 0.16em;
+      font-size: 8px;
+    }
+
+    .footer-sha code {
+      font-family: inherit;
+      color: rgba(214, 232, 248, 0.72);
     }
 
     .footer-link-terms {
@@ -694,13 +777,13 @@
       font-weight: 700;
     }
 
+    /* Legacy class — the footer lock-up now uses .footer-copy / .footer-sha. */
     .footer-copyright {
       font-size: 10px;
-      color: #FF2E9F;
+      color: rgba(214, 232, 248, 0.62);
       letter-spacing: 0.18em;
       font-family: 'Share Tech Mono', monospace;
-      font-weight: 700;
-      text-shadow: 0 0 10px rgba(255, 46, 159, 0.4);
+      font-weight: 400;
     }
 
     @media (max-width: 680px) {
@@ -727,8 +810,20 @@
 
       .site-footer {
         padding: 20px;
-        flex-direction: column;
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
         text-align: center;
+        gap: 14px;
+      }
+
+      .footer-mark {
+        grid-column: auto;
+        order: -1;
+      }
+
+      .footer-links,
+      .footer-links.is-end {
+        justify-content: center;
       }
 
       .secure-badge {
@@ -984,9 +1079,30 @@
       <div class="footer-links">
         <a href="/terms" rel="terms-of-service" class="footer-link-terms" id="footer-terms">TERMS OF SERVICE</a>
         <a href="/privacy" rel="privacy-policy" class="footer-link-privacy" id="footer-privacy">PRIVACY POLICY</a>
+      </div>
+
+      <div class="footer-mark">
+        <div class="footer-copy">COPYRIGHT <b>2026</b> AGAPE SOVEREIGN AI</div>
+        <div class="footer-sha"
+          title="SHA-256 of the published legal manifest (TERMS.pdf + PRIVACY.pdf). Verify with: shasum -a 256 frontend/public/terms/TERMS.pdf">
+          <span class="footer-sha-key">SHA-256</span>
+          <code>e9773d658f25…251d</code>
+        </div>
+      </div>
+
+      <div class="footer-links is-end">
+        <a href="/terms/TERMS.pdf" rel="terms-of-service noopener noreferrer" type="application/pdf" target="_blank" class="footer-link-pdf" id="footer-terms-pdf"
+          title="Terms of Service, version 1.0 — 3.4 MB — opens in a new tab">
+          <span class="footer-pdf-icon" aria-hidden="true">↓</span>TERMS.PDF
+          <span class="footer-pdf-size">3.4 MB</span>
+        </a>
+        <a href="/privacy/PRIVACY.pdf" rel="privacy-policy noopener noreferrer" type="application/pdf" target="_blank" class="footer-link-pdf" id="footer-privacy-pdf"
+          title="Privacy Policy, version 1.0 — 17 KB — opens in a new tab">
+          <span class="footer-pdf-icon" aria-hidden="true">↓</span>PRIVACY.PDF
+          <span class="footer-pdf-size">17 KB</span>
+        </a>
         <a href="/contact" class="footer-link-contact" id="footer-contact">CONTACT</a>
       </div>
-      <span class="footer-copyright">COPYRIGHT 2026 AGAPE SOVEREIGN AI</span>
     </footer>
   </div>
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LegalDocument } from '../../content/legal/types';
+import { formatBytes, shortHash } from '../../content/legal/documentIds';
 import { LegalBlocks } from './LegalBlocks';
 import { LEGAL_CSS } from './legalStyles';
 
@@ -372,6 +373,17 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
               <span>READ {otherDoc.shortLabel}</span>
               <span aria-hidden="true">→</span>
             </a>
+            <a
+              className="legal-toc-action"
+              href={doc.pdf.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              type="application/pdf"
+              title={`${doc.pdf.label} — ${formatBytes(doc.pdf.bytes)} — SHA-256 ${doc.pdf.sha256}`}
+            >
+              <span>PDF · {formatBytes(doc.pdf.bytes)}</span>
+              <span aria-hidden="true">↓</span>
+            </a>
             <button type="button" className="legal-toc-action" onClick={goToTop}>
               <span>BACK TO TOP</span>
               <span aria-hidden="true">↑</span>
@@ -403,11 +415,27 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
               </div>
 
               <div className="legal-hero-actions">
-                <button type="button" className="legal-action is-orange" onClick={() => window.print()}>
-                  <span aria-hidden="true">⎙</span> PRINT / SAVE AS PDF
+                <a
+                  className="legal-action is-orange"
+                  href={doc.pdf.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  type="application/pdf"
+                  title={`Open the signed ${doc.title}, version ${doc.version} (PDF, ${formatBytes(doc.pdf.bytes)}) in a new tab`}
+                >
+                  <span aria-hidden="true">↓</span> {doc.pdf.label}
+                  <span className="legal-pdf-size">{formatBytes(doc.pdf.bytes)}</span>
+                </a>
+                <button
+                  type="button"
+                  className="legal-action"
+                  onClick={() => window.print()}
+                  title="Print this page or save the HTML version as a PDF"
+                >
+                  PRINT / SAVE AS PDF
                 </button>
-                <a className="legal-action" href={otherDoc.canonicalPath}>
-                  READ THE {otherDoc.title.toUpperCase()} <span aria-hidden="true">→</span>
+                <a className="legal-action is-pdf" href={otherDoc.canonicalPath}>
+                  {otherDoc.title.toUpperCase()} <span aria-hidden="true">→</span>
                 </a>
               </div>
 
@@ -488,6 +516,15 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
                 <a className="legal-action is-orange" href={`mailto:${doc.contactEmail}`}>
                   {doc.contactEmail}
                 </a>
+                <a
+                  className="legal-action"
+                  href={doc.pdf.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  type="application/pdf"
+                >
+                  <span aria-hidden="true">↓</span> {doc.pdf.label} · {formatBytes(doc.pdf.bytes)}
+                </a>
                 <a className="legal-action" href={otherDoc.canonicalPath}>
                   {otherDoc.title} <span aria-hidden="true">→</span>
                 </a>
@@ -499,12 +536,53 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
           </article>
 
           <footer className="legal-foot">
-            <span>© 2026 AGAPE SOVEREIGN AI · NUKED · KNOXED · DIFF</span>
-            <span style={{ display: 'flex', gap: 16 }}>
+            <nav className="legal-foot-links" aria-label="Signed document downloads">
+              <a
+                className="legal-foot-pdf"
+                href={doc.pdf.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                type="application/pdf"
+                download={doc.pdf.label}
+                title={`${doc.pdf.label} — ${formatBytes(doc.pdf.bytes)} — opens in a new tab; SHA-256 ${doc.pdf.sha256}`}
+              >
+                <span className="legal-pdf-icon" aria-hidden="true">↓</span>
+                {doc.pdf.label}
+                <span className="legal-pdf-size">{formatBytes(doc.pdf.bytes)}</span>
+              </a>
+              <a
+                className="legal-foot-pdf"
+                href={otherDoc.pdf.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                type="application/pdf"
+                download={otherDoc.pdf.label}
+                title={`${otherDoc.pdf.label} — ${formatBytes(otherDoc.pdf.bytes)} — opens in a new tab`}
+              >
+                <span className="legal-pdf-icon" aria-hidden="true">↓</span>
+                {otherDoc.pdf.label}
+                <span className="legal-pdf-size">{formatBytes(otherDoc.pdf.bytes)}</span>
+              </a>
+            </nav>
+
+            <div className="legal-foot-mark">
+              <div className="legal-foot-copy">
+                © <b>2026</b> AGAPE SOVEREIGN AI
+              </div>
+              <div
+                className="legal-foot-sha"
+                title={`SHA-256 of the published ${doc.pdf.label} — verify with: shasum -a 256 ${doc.pdf.href}`}
+              >
+                <span className="legal-shag-key">SHA-256</span>
+                <code>{shortHash(doc.pdf.sha256)}</code>
+              </div>
+            </div>
+
+            <nav className="legal-foot-links is-end" aria-label="Legal pages">
               <a href="/privacy">PRIVACY</a>
               <a href="/terms">TERMS</a>
               <a href="/contact">CONTACT</a>
-            </span>
+            </nav>
           </footer>
         </main>
       </div>

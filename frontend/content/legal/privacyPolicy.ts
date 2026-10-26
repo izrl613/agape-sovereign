@@ -1,4 +1,5 @@
 import type { LegalDocument } from './types';
+import { LEGAL_PDFS } from './documentIds';
 
 const CONTACT = 'agape@sovereign.nyc';
 
@@ -19,6 +20,7 @@ export const privacyPolicy: LegalDocument = {
   operator: 'Israel David, operating as Agape Sovereign',
   contactEmail: CONTACT,
   canonicalPath: '/privacy',
+  pdf: LEGAL_PDFS.privacy,
   intro: [
     {
       type: 'lead',

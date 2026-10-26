@@ -19,6 +19,10 @@ export const LEGAL_CSS = `
     --legal-magenta: #FF2E9F;
     --legal-line: rgba(0, 212, 255, 0.13);
     --legal-panel: rgba(7, 14, 28, 0.92);
+    /* The house accent line. Exactly three colours — magenta, blue, orange —
+       in brand order. Every rule/rail/underline in this stylesheet uses it. */
+    --legal-rainbow: linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%);
+    --legal-pink: #FF2E9F;
 
     position: relative;
     min-height: 100vh;
@@ -68,7 +72,7 @@ export const LEGAL_CSS = `
     top: 0; left: 0; right: 0;
     height: 2px;
     z-index: 60;
-    background: linear-gradient(90deg, var(--legal-blue), var(--legal-orange));
+    background: var(--legal-rainbow);
     transform-origin: 0 50%;
     transition: transform 0.12s linear;
     box-shadow: 0 0 12px rgba(255, 122, 24, 0.5);
@@ -284,8 +288,8 @@ export const LEGAL_CSS = `
     position: absolute;
     inset: 0 auto 0 0;
     border-radius: 2px;
-    background: linear-gradient(90deg, var(--legal-blue), var(--legal-orange));
-    box-shadow: 0 0 10px rgba(255, 122, 24, 0.45);
+    background: var(--legal-rainbow);
+    box-shadow: 0 0 10px rgba(255, 46, 159, 0.35);
     transition: width 0.15s linear;
   }
   .legal-meter-note {
@@ -461,8 +465,9 @@ export const LEGAL_CSS = `
   }
   .legal-eyebrow::before {
     content: '';
-    width: 22px; height: 1px;
-    background: linear-gradient(90deg, var(--legal-orange), transparent);
+    width: 26px; height: 2px;
+    border-radius: 2px;
+    background: var(--legal-rainbow);
   }
   .legal-h1 {
     font-family: 'Orbitron', sans-serif;
@@ -551,11 +556,30 @@ export const LEGAL_CSS = `
     border-color: rgba(255, 122, 24, 0.7);
     color: #FFCEA6;
   }
+  .legal-action.is-pdf {
+    border-color: rgba(255, 46, 159, 0.32);
+    background: rgba(255, 46, 159, 0.06);
+    color: #FF8FC8;
+  }
+  .legal-action.is-pdf:hover {
+    background: rgba(255, 46, 159, 0.13);
+    border-color: rgba(255, 46, 159, 0.6);
+    color: #FFC2DF;
+  }
+  .legal-action .legal-pdf-size {
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    color: rgba(180, 205, 230, 0.5);
+  }
 
   .legal-hero-rule {
-    height: 1px;
+    height: 2px;
     margin: 26px 0 4px;
-    background: linear-gradient(90deg, rgba(255, 122, 24, 0.55), rgba(0, 212, 255, 0.3), transparent);
+    border-radius: 2px;
+    background: var(--legal-rainbow);
+    box-shadow: 0 0 16px rgba(255, 46, 159, 0.22);
+    mask-image: linear-gradient(90deg, #000 0%, #000 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 92%, transparent 100%);
   }
 
   /* Section chrome */
@@ -589,6 +613,14 @@ export const LEGAL_CSS = `
     color: rgba(0, 212, 255, 0.5);
     margin-bottom: 5px;
   }
+  .legal-section-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 14px; height: 1px;
+    margin-right: 7px;
+    vertical-align: 3px;
+    background: var(--legal-rainbow);
+  }
   .legal-h2 {
     font-family: 'Orbitron', sans-serif;
     font-size: clamp(18px, 2.3vw, 23px);
@@ -604,8 +636,9 @@ export const LEGAL_CSS = `
     width: 54px;
     height: 2px;
     margin-top: 11px;
-    background: linear-gradient(90deg, var(--legal-blue), rgba(255, 122, 24, 0.85));
+    background: var(--legal-rainbow);
     border-radius: 2px;
+    box-shadow: 0 0 10px rgba(255, 46, 159, 0.2);
   }
 
   .legal-subsection {
@@ -788,7 +821,10 @@ export const LEGAL_CSS = `
   .legal-divider {
     height: 1px;
     margin: 26px 0;
-    background: linear-gradient(90deg, rgba(0, 212, 255, 0.25), transparent);
+    background: var(--legal-rainbow);
+    opacity: 0.4;
+    mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
   }
 
   /* Signature */
@@ -857,23 +893,98 @@ export const LEGAL_CSS = `
     margin: 0 0 14px;
   }
 
+  /* ── Footer: links · copyright + SHA-256 ID · links ─────── */
   .legal-foot {
+    position: relative;
     max-width: 780px;
-    margin-top: 40px;
-    padding-top: 18px;
+    margin-top: 44px;
+    padding-top: 22px;
     border-top: 1px solid rgba(0, 212, 255, 0.12);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
+    gap: 16px 14px;
     font-family: 'Share Tech Mono', monospace;
     font-size: 9.5px;
     letter-spacing: 0.14em;
     color: rgba(180, 205, 230, 0.42);
   }
-  .legal-foot a { color: rgba(126, 224, 255, 0.7); text-decoration: none; }
-  .legal-foot a:hover { color: var(--legal-blue); }
+  .legal-foot::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: 0;
+    width: 96px; height: 2px;
+    border-radius: 2px;
+    background: var(--legal-rainbow);
+  }
+  .legal-foot-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+  .legal-foot-links.is-end { justify-content: flex-end; }
+  .legal-foot a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(126, 224, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.16s;
+  }
+  .legal-foot a:hover { color: var(--legal-blue-bright); }
+  .legal-foot a:focus-visible { outline: 2px solid var(--legal-blue); outline-offset: 3px; }
+
+  /* PDF download link: icon + filename + weight */
+  .legal-foot-pdf {
+    white-space: nowrap;
+    padding: 5px 9px;
+    border: 1px solid rgba(255, 122, 24, 0.26);
+    border-radius: 6px;
+    background: rgba(255, 122, 24, 0.05);
+    color: #FFB27A !important;
+  }
+  .legal-foot-pdf:hover {
+    border-color: rgba(255, 122, 24, 0.6);
+    background: rgba(255, 122, 24, 0.12);
+    color: #FFD3B0 !important;
+  }
+  .legal-foot-pdf .legal-pdf-icon { color: var(--legal-orange); font-size: 10px; }
+  .legal-foot-pdf .legal-pdf-size {
+    color: rgba(180, 205, 230, 0.45);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+  }
+
+  /* Centre lock-up */
+  .legal-foot-mark { text-align: center; }
+  .legal-foot-copy {
+    color: rgba(214, 232, 248, 0.62);
+    letter-spacing: 0.18em;
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+  .legal-foot-copy b { color: #fff; font-weight: 400; }
+  .legal-foot-sha {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+    color: rgba(126, 224, 255, 0.5);
+    cursor: help;
+  }
+  .legal-foot-sha .legal-shag-key {
+    color: var(--legal-pink);
+    letter-spacing: 0.16em;
+    font-size: 8px;
+  }
+  .legal-foot-sha code {
+    font-family: inherit;
+    color: rgba(214, 232, 248, 0.72);
+    letter-spacing: 0.02em;
+  }
 
   /* Floating back-to-top (mobile friendly) */
   .legal-top-btn {
@@ -939,6 +1050,13 @@ export const LEGAL_CSS = `
     .legal-aside[data-open='true'] .legal-toc-foot .legal-legend { flex: 1 1 100%; }
     .legal-aside[data-open='true'] .legal-toc-foot .legal-toc-action { flex: 1 1 auto; justify-content: center; }
     .legal-doc, .legal-foot { max-width: none; }
+    .legal-foot {
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+      text-align: center;
+      gap: 14px;
+    }
+    .legal-foot-links, .legal-foot-links.is-end { justify-content: center; }
     .legal-section, .legal-subsection { scroll-margin-top: 128px; }
     .legal-header { padding: 12px 16px; }
     .legal-brand-sub { display: none; }
@@ -981,7 +1099,15 @@ export const LEGAL_CSS = `
     }
     .legal-layout { display: block; padding: 0; max-width: none; }
     .legal-hero, .legal-doc, .legal-foot { max-width: none; }
-    .legal-foot { margin-top: 18pt; border-top: 1px solid #ddd; }
+    .legal-foot {
+      margin-top: 18pt;
+      border-top: 1px solid #ddd;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
+      gap: 6pt;
+    }
+    .legal-foot::before { display: none; }
+    .legal-foot-pdf { border-color: #bbb !important; background: #fff !important; }
 
     .legal-h1 {
       background: none !important;
@@ -996,7 +1122,9 @@ export const LEGAL_CSS = `
     .legal-p, .legal-li, .legal-lead, .legal-p a, .legal-li a, .legal-note a,
     .legal-note-text, .legal-fact-k, .legal-fact-v, .legal-fact-v a,
     .legal-signature-role, .legal-signature-meta, .legal-signature-meta a,
-    .legal-contact-card p, .legal-foot, .legal-foot a,
+    .legal-contact-card p, .legal-foot, .legal-foot a, .legal-foot-pdf,
+    .legal-foot-pdf .legal-pdf-size, .legal-foot-copy, .legal-foot-copy b,
+    .legal-foot-sha, .legal-foot-sha code, .legal-foot-sha .legal-shag-key,
     .legal-section-eyebrow, .legal-h3-num, .legal-eyebrow,
     .legal-brand-main, .legal-brand-sub, .legal-tagline {
       color: #111 !important;

@@ -47,6 +47,8 @@ export type LegalSection = {
   subsections?: LegalSubsection[];
 };
 
+import type { LegalPdf } from './documentIds';
+
 export type LegalDocument = {
   kind: 'privacy' | 'terms';
   /** Short label used by the nav switcher, e.g. "PRIVACY". */
@@ -63,6 +65,8 @@ export type LegalDocument = {
   contactEmail: string;
   /** Absolute URL used for canonical / meta tags. */
   canonicalPath: string;
+  /** The signed PDF this page mirrors, served from /public. */
+  pdf: LegalPdf;
   intro: LegalBlock[];
   sections: LegalSection[];
   /** Closing "Document Details" fact table. */

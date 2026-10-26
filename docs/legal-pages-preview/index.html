@@ -103,12 +103,15 @@
   <p class="lede">
     Captured from the running dev server with the real typefaces (Orbitron, Rajdhani, Share Tech Mono, Inter)
     at 1440×1000, 900×1100, and 430×932 plus print emulation. Every shot shows the live page — no mockups.
+    Footers and the tri-colour accent were added in the second pass and are captured below.
   </p>
   <div class="chips">
     <span class="chip"><b>BRANCH</b> arena/8229b373-agape-sovereign</span>
     <span class="chip"><b>ROUTES</b> /privacy · /terms</span>
     <span class="chip"><b>VIEWPORTS</b> 1440 · 900 · 430 · print</span>
     <span class="chip is-orange"><b>ACCENT</b> orange box = your position</span>
+    <span class="chip"><b>RAINBOW</b> #FF2E9F → #00D4FF → #FF7A18</span>
+    <span class="chip"><b>PDFs</b> /terms/TERMS.pdf · /privacy/PRIVACY.pdf</span>
   </div>
 
   <!-- 1 -->
@@ -241,6 +244,76 @@
       <figcaption><span>print media · §2 fact table</span><span>hairline rules, no fills</span></figcaption>
     </figure>
   </section>
+
+
+  <!-- 10 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">10</span><h2>Document footer — links · copyright · SHA-256</h2></div>
+    <p class="cap">
+      The page footer is a three-column lock-up. <b>Left:</b> both signed PDFs as orange download chips with their
+      exact file weight. <b>Middle:</b> the copyright line with the <b>SHA-256</b> digest of the published PDF
+      underneath it. <b>Right:</b> PRIVACY / TERMS / CONTACT. The 96px rule above it is the tri-colour accent.
+    </p>
+    <figure>
+      <img src="16-foot-legal-terms.png" alt="Terms page footer with PDF links, copyright and SHA-256 line" />
+      <figcaption><span>/terms · .legal-foot</span><span>SHA-256 d0718ae0afd0…9734</span></figcaption>
+    </figure>
+    <figure style="margin-top:18px">
+      <img src="17-foot-legal-privacy.png" alt="Privacy page footer with PDF links, copyright and SHA-256 line" />
+      <figcaption><span>/privacy · .legal-foot</span><span>SHA-256 37948367c429…3e0</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 11 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">11</span><h2>PDF entry points</h2></div>
+    <p class="cap">
+      Every document surface links the signed PDF: the hero action (<b>↓ PRIVACY.PDF 17 KB</b>), a PDF button in the
+      left-nav footer (<b>PDF · 17 KB</b>), the contact card, and both footer chips. Links carry
+      <code>type="application/pdf"</code>, open in a new tab, and expose the digest in their tooltip.
+    </p>
+    <figure>
+      <img src="20-hero-actions.png" alt="Hero action row with PDF download, print and cross-document link" />
+      <figcaption><span>.legal-hero-actions</span><span>↓ PDF · PRINT / SAVE AS PDF · cross-doc</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 12 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">12</span><h2>The tri-colour accent</h2></div>
+    <p class="cap">
+      One token drives every rule on both pages — <b>#FF2E9F → #00D4FF → #FF7A18</b>, magenta first, orange last,
+      nothing else in the gradient. The hero rule below is the widest instance of it.
+    </p>
+    <figure>
+      <img src="21-hero-rule.png" alt="Tri-colour gradient rule" />
+      <figcaption><span>.legal-hero-rule</span><span>linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%)</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 13 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">13</span><h2>Landing + login footers</h2></div>
+    <p class="cap">
+      The same lock-up on the public landing page (rendered with JavaScript off, i.e. what crawlers and the Google
+      OAuth verifier see) and on the login card. Both carry the tri-colour border/divider, the PDF chips, the
+      centred copyright, and the manifest digest.
+    </p>
+    <figure>
+      <img src="18-foot-landing.png" alt="Landing page footer with tri-colour rule, PDF chips, copyright and digest" />
+      <figcaption><span>/ · .site-footer · JS disabled</span><span>2px border-image gradient</span></figcaption>
+    </figure>
+    <figure style="margin-top:18px">
+      <img src="19-foot-login.png" alt="Login page footer with PDF links, copyright and digest" />
+      <figcaption><span>/login · .login-footer</span><span>SHA-256 manifest e9773d658f25…251d</span></figcaption>
+    </figure>
+  </section>
+
+  <div class="note">
+    <b>Integrity, not decoration.</b> The SHA-256 shown under the copyright is the digest of the exact bytes served at
+    <code>/terms/TERMS.pdf</code> and <code>/privacy/PRIVACY.pdf</code> — verified by hashing the live response, not the
+    file on disk. Re-run <code>node scripts/hash-legal-docs.mjs --write</code> if either PDF is ever replaced.
+  </div>
 
   <div class="note">
     <b>Two bugs these shots caught.</b> (1) <code>overflow-x: hidden</code> on the page wrapper turned it into a

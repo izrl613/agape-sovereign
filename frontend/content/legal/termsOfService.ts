@@ -1,4 +1,5 @@
 import type { LegalDocument } from './types';
+import { LEGAL_PDFS } from './documentIds';
 
 /**
  * Agape Sovereign – Architect AI: Terms of Service, Version 1.0.
@@ -19,6 +20,7 @@ export const termsOfService: LegalDocument = {
   operator: 'Israel David, operating as Agape Sovereign',
   contactEmail: 'agape@sovereign.nyc',
   canonicalPath: '/terms',
+  pdf: LEGAL_PDFS.terms,
   intro: [
     {
       type: 'lead',

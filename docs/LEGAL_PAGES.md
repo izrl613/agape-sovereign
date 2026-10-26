@@ -10,6 +10,31 @@ Public, unauthenticated pages served by the `frontend/` app at:
 Both pages must stay reachable **without signing in** — Google OAuth brand
 verification, app review, and crawlers all fetch them anonymously.
 
+## Signed PDFs + integrity
+
+The signed source documents are published verbatim from `frontend/public/`:
+
+| Path | Document | Size | SHA-256 |
+|------|----------|------|---------|
+| `/terms/TERMS.pdf` | Terms of Service v1.0 | 3.4 MB | `d0718ae0afd0…9734` |
+| `/privacy/PRIVACY.pdf` | Privacy Policy v1.0 | 17 KB | `37948367c429…3e0` |
+
+Static files in `public/` win over the `** → /index.html` rewrite, so these
+resolve on Firebase Hosting without touching `firebase.json`.
+
+Identifiers live in `frontend/content/legal/documentIds.ts`. The page footers
+show the relevant digest, and the landing/login footers show the manifest digest
+of the pair. After replacing a PDF:
+
+```bash
+node scripts/hash-legal-docs.mjs           # print the new digests
+node scripts/hash-legal-docs.mjs --write   # rewrite documentIds.ts
+```
+
+Every PDF entry point carries `type="application/pdf"`, `target="_blank"`,
+`rel="noopener noreferrer"`, a human-readable weight, and the digest in its
+tooltip.
+
 ## Layout
 
 Both documents share one shell so they can never drift apart visually:
@@ -27,6 +52,22 @@ frontend/
     ├── PrivacyPolicyPage.tsx # /privacy
     └── TermsOfServicePage.tsx# /terms
 ```
+
+### Colour rules
+
+- **Neon blue** (`#00D4FF` family) is the only colour for navigation labels.
+- **Orange** (`#FF7A18`) is reserved for position ("you are here") and PDF
+  affordances.
+- **The accent line** is exactly three colours, in this order:
+
+  ```css
+  linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%)
+  ```
+
+  It is defined once as `--legal-rainbow` and reused for the reading rail, the
+  hero rule, heading underlines, the eyebrow tick, dividers, the footer rule,
+  the landing-page footer border and the login-card divider. No other gradient
+  belongs on a legal surface.
 
 ### The left nav (design spec)
 
