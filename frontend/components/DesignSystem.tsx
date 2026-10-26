@@ -1,79 +1,40 @@
 import React from 'react';
-import { NEON, GRADIENT_BORDER } from '../theme';
+import { VectorScanStatus } from '../services/moduleAgents';
 
-export const NeonText = ({ children, color = NEON.blue, size = "1rem", weight = 700, style = {} }) => (
-  <span style={{
-    fontFamily: "'Orbitron', monospace",
-    color,
-    fontSize: size,
-    fontWeight: weight,
-    textShadow: `0 0 10px ${color}66`,
-    letterSpacing: "0.05em",
-    ...style
-  }}>
-    {children}
-  </span>
-);
-
-export const GlassCard = ({ children, style = {}, className = "", onClick }) => (
-  <div className={`neon-border ${className}`} onClick={onClick} style={{
-    background: NEON.bgCard,
-    backdropFilter: "blur(20px)",
-    borderRadius: 12,
-    border: "1px solid rgba(0,212,255,0.15)",
-    position: "relative",
-    ...style
-  }}>
-    {children}
-  </div>
-);
-
-export const NeonButton = ({ children, onClick, color = NEON.blue, style = {}, disabled = false, size = "md" }) => {
-  const pad = size === "sm" ? "8px 18px" : size === "lg" ? "14px 32px" : "10px 24px";
-  const fs = size === "sm" ? "0.75rem" : size === "lg" ? "1rem" : "0.85rem";
-
-  // Convert hex to rgba for background
-  const rgbaColor = color === NEON.blue ? "rgba(0,212,255,0.1)" : color === NEON.magenta ? "rgba(255,46,159,0.1)" : "rgba(255,122,24,0.1)";
-
-  return (
-    <button className="btn-neon neon-border" onClick={disabled ? undefined : onClick} disabled={disabled} style={{
-      padding: pad,
-      borderRadius: 8,
-      background: rgbaColor,
-      color,
-      fontFamily: "'Orbitron', monospace",
-      fontSize: fs,
-      fontWeight: 600,
-      letterSpacing: "0.08em",
-      cursor: disabled ? "not-allowed" : "pointer",
-      opacity: disabled ? 0.5 : 1,
-      ...style
-    }}>
-      {children}
-    </button>
-  );
-};
-
-export const StatusBadge = ({ type }) => {
-  const cfg = {
-    NUKED: { color: NEON.magenta, bg: "rgba(255,46,159,0.12)", label: "🔥 NUKED" },
-    KNOXED: { color: NEON.blue, bg: "rgba(0,212,255,0.12)", label: "🛡️ KNOXED" },
-    MONITORED: { color: NEON.orange, bg: "rgba(255,122,24,0.12)", label: "👁️ MONITORED" },
-    SCANNING: { color: "#FFD700", bg: "rgba(255,215,0,0.12)", label: "⟳ SCANNING" },
+export const StatusBadge: React.FC<{ status: VectorScanStatus }> = ({ status }) => {
+  const map: Record<VectorScanStatus, { label: string; cls: string }> = {
+    IDLE: {
+      label: 'AWAITING SCAN',
+      cls: 'border-slate-700 bg-slate-900/90 text-slate-400',
+    },
+    SCANNING: {
+      label: 'AGENT VERIFYING…',
+      cls: 'border-cyan-400/60 bg-cyan-500/15 text-cyan-200 animate-pulse',
+    },
+    VERIFIED_SAFE: {
+      label: 'VERIFIED HARDENED',
+      cls: 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300',
+    },
+    ELEVATED_RISK: {
+      label: 'ELEVATED RISK',
+      cls: 'border-amber-400/60 bg-amber-500/15 text-amber-300',
+    },
+    EXPOSED: {
+      label: 'EXPOSURE DETECTED',
+      cls: 'border-rose-500/70 bg-rose-500/15 text-rose-300',
+    },
+    API_DEGRADED: {
+      label: 'API RATE-LIMITED',
+      cls: 'border-purple-400/50 bg-purple-500/15 text-purple-200',
+    },
   };
-  const c = cfg[type] || cfg.MONITORED;
+
+  const item = map[status];
   return (
-    <span style={{
-      background: c.bg,
-      color: c.color,
-      padding: "3px 10px",
-      borderRadius: 20,
-      fontSize: "0.7rem",
-      fontWeight: 700,
-      fontFamily: "'Orbitron', monospace",
-      border: `1px solid ${c.color}44`
-    }}>
-      {c.label}
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase font-mono-code ${item.cls}`}
+    >
+      {item.label}
     </span>
   );
 };

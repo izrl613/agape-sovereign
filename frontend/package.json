@@ -1,29 +1,31 @@
 {
   "name": "architect-ai-agape-sovereign-enclave-2026-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "node ../scripts/check-frontend-quality.mjs",
-    "check": "npm run lint"
+    "check": "npm run lint && tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "latest",
-    "@simplewebauthn/browser": "latest",
-    "lucide-react": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "recharts": "latest"
+    "@simplewebauthn/browser": "^13.1.0",
+    "firebase": "^12.19.0",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
   }
 }

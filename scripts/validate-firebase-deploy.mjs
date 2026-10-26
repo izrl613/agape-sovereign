@@ -39,7 +39,6 @@ function fileExists(p) { return fs.existsSync(p); }
   const workspaces = [
     { name: 'frontend', files: ['.eslintrc.cjs', '.eslintrc.json', '.eslintrc.js'] },
     { name: 'backend', files: ['.eslintrc.cjs', '.eslintrc.json', '.eslintrc.js'] },
-    { name: 'vscode-extension', files: ['.eslintrc.json', '.eslintrc.cjs', '.eslintrc.js'] },
     { name: 'functions', files: ['.eslintrc.js', '.eslintrc.cjs', '.eslintrc.json'] },
   ];
   const missing = [];
@@ -48,8 +47,8 @@ function fileExists(p) { return fs.existsSync(p); }
     if (!hasConfig) missing.push(ws.name);
   }
   const pass = missing.length === 0;
-  const detail = pass ? 'all 4 workspaces have eslint configs' : `missing in: ${missing.join(', ')}`;
-  check('eslint-configs', 'Eslint configs exist for frontend, backend, vscode-extension, functions', pass, detail);
+  const detail = pass ? 'all 3 workspaces have eslint configs' : `missing in: ${missing.join(', ')}`;
+  check('eslint-configs', 'Eslint configs exist for frontend, backend, functions', pass, detail);
 })();
 
 // ── Check 2: firebase.json apphosting is a single object (not duplicate array) ─

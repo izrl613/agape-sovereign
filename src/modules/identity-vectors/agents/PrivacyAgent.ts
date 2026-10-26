@@ -5,14 +5,12 @@ export class PrivacyAgent extends EncryptionAgent {
     super('agent_privacy', 'Privacy');
   }
 
-  /**
-   * Simulate a privacy retention operation that anonymizes data and schedules deletion.
-   */
-  async processAndEncrypt(data: any): Promise<string> {
-    // For demo, we simply stringify and prepend a marker.
-    const payload = JSON.stringify({ masked: true, timestamp: Date.now(), data });
-    const encrypted = btoa(unescape(encodeURIComponent(payload)));
-    console.log('[PrivacyAgent] Data processed and masked.');
-    return encrypted;
+  async processAndEncrypt(data: unknown): Promise<string> {
+    const sealed = await super.processAndEncrypt({
+      retentionMonths: 26,
+      sealedAtIso: new Date().toISOString(),
+      data,
+    });
+    return `PRIV_${sealed}`;
   }
 }

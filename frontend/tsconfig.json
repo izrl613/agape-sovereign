@@ -2,18 +2,42 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
+    "moduleDetection": "force",
     "jsx": "react-jsx",
-    "strict": false,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
     "paths": {
       "@/*": ["./*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "vite.config.ts"]
+  "include": [
+    "index.tsx",
+    "App.tsx",
+    "firebase.ts",
+    "theme.ts",
+    "types.ts",
+    "constants.ts",
+    "config.ts",
+    "module-config.ts",
+    "module-registry.ts",
+    "vite-env.d.ts",
+    "auth/**/*.ts",
+    "context/**/*.tsx",
+    "services/**/*.ts",
+    "utils/**/*.ts",
+    "components/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

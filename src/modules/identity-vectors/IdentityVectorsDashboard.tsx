@@ -95,8 +95,8 @@ export const IdentityVectorsDashboard: React.FC = () => {
         if (vector.id === 'v1') agent = new BiometricAgent();
         else if (vector.id === 'v3') agent = new PrivacyAgent();
         else if (vector.id === 'v6') agent = new LocationAgent();
-        addLog('[' + vector.name + '] Processing data stream...');
-        const encrypted = await agent.processAndEncrypt({ dummy: 'data' });
+        addLog('[' + vector.name + '] Sealing vector telemetry with SHA256...');
+        const encrypted = await agent.processAndEncrypt({ vectorId: vector.id, timestampIso: new Date().toISOString() });
         addLog('[' + vector.name + '] Encrypted: ' + String(encrypted).slice(0, 48) + '...');
         setVectors(prev => prev.map(v => v.id === id ? { ...v, status: 'Active' } : v));
         setTimeout(() => setVectors(prev => prev.map(v => v.id === id ? { ...v, status: 'Idle' } : v)), 3000);

@@ -5,15 +5,12 @@ export class LocationAgent extends EncryptionAgent {
     super('agent_loc_alpha', 'Location');
   }
 
-  async processAndEncrypt(data: any): Promise<string> {
-    console.log(`[LocationAgent] Injecting spatial noise into geospatial coordinates...`);
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const noiseLat = (Math.random() * 0.05).toFixed(4);
-    const noiseLng = (Math.random() * 0.05).toFixed(4);
-    console.log(`[LocationAgent] Coordinates offset by +${noiseLat}, -${noiseLng}`);
-    
-    // Simulate encryption of the spoofed location
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return `GEO_SECURE_${btoa(`spoofed_${noiseLat}_${noiseLng}`).substring(0, 24)}`;
+  async processAndEncrypt(data: unknown): Promise<string> {
+    const entropy = crypto.getRandomValues(new Uint32Array(2));
+    const sealed = await super.processAndEncrypt({
+      payload: data,
+      csprngSalt: `${entropy[0].toString(16)}-${entropy[1].toString(16)}`,
+    });
+    return `GEO_${sealed}`;
   }
 }

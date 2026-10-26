@@ -1,222 +1,154 @@
-import React, { useState, useEffect } from 'react';
-import { NEON } from '../theme';
-import { NeonText, NeonButton, GlassCard } from './DesignSystem';
-import { ZkFooter } from './ZkFooter';
+import React, { useState } from 'react';
+import { Bot, Send, ShieldCheck, Sparkles, User as UserIcon } from 'lucide-react';
+import { useSovereign } from '../context/SovereignContext';
+import { formatSha256Display } from '../services/sovereignCrypto';
 
-interface ArchitectAIViewProps {
-  userId: string;
-  collectedVectors: string[];
-}
+const QUICK_PROMPTS = [
+  'Summarize my verified Identity Vector Module risks and top fixes.',
+  'How does my lit SHA256 ID enforce zero-knowledge and stop data leaks?',
+  'Explain Dual Security (Passkey + Google) and saving my 26-month PDF to Google Drive.',
+  'Verify sovereign.nyc DMARC and DNSSEC anti-spoofing posture.',
+];
 
-export const ArchitectAIView: React.FC<ArchitectAIViewProps> = ({ userId, collectedVectors }) => {
-  const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'COMPLETE'>('IDLE');
-  const [synthesis, setSynthesis] = useState<any>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+export const ArchitectAIView: React.FC = () => {
+  const {
+    architectMessages,
+    architectThinking,
+    sendArchitectInquiry,
+    sha256Id,
+    setActiveView,
+    setSelectedModuleId,
+  } = useSovereign();
 
-  const addLog = (msg: string) => {
-    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-  };
+  const [draft, setDraft] = useState('');
 
-  const startSynthesis = async () => {
-    setStatus('PROCESSING');
-    setLogs([]);
-    addLog(`Initializing Architect AI Brain for user ${userId}...`);
-    addLog(`Scanning local MCP storage for identity vectors...`);
-
-    const vectors = collectedVectors;
-    for (const vector of vectors) {
-      addLog(`Fetching encrypted packet: ${vector}...`);
-      await new Promise(r => setTimeout(r, 600));
-      addLog(`Verified verification token for ${vector}.`);
-    }
-
-    addLog(`Establishing secure bridge to qwen3-vl:4b...`);
-    await new Promise(r => setTimeout(r, 1500));
-    addLog(`Synthesizing identity fragments into cohesive profile...`);
-    await new Promise(r => setTimeout(r, 1500));
-
-    try {
-      const response = await fetch('/api/architect/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
-      const data = await response.json();
-      setSynthesis(data);
-      addLog(`Sovereign Synthesis Complete. Profile generated.`);
-      setStatus('COMPLETE');
-    } catch (e) {
-      addLog(`Critical Error: Synthesis interrupted. Check MCP server connectivity.`);
-      setStatus('IDLE');
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draft.trim() || architectThinking) return;
+    const q = draft;
+    setDraft('');
+    await sendArchitectInquiry(q);
   };
 
   return (
-    <div className="architect-view">
-      <div className="header">
-        <NeonText size="lg">ARCHITECT AI</NeonText>
-        <div className={`status-badge ${status.toLowerCase()}`}>
-          {status}
+    <div className="rounded-2xl border border-slate-800 bg-[#091224] flex flex-col min-h-[640px]">
+      {/* Header */}
+      <div className="border-b border-slate-800 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/50 bg-cyan-500/15 text-cyan-300">
+            <Bot className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-base sm:text-lg font-extrabold text-white">
+              Architect AI — Privacy, Security &amp; Module Telemetry Backbone
+            </h2>
+            <p className="text-xs text-slate-400">
+              Zero-cost deterministic &amp; live DoH security reasoning bound to{' '}
+              <span className="font-mono-code text-emerald-300">{formatSha256Display(sha256Id, true)}</span>
+            </p>
+          </div>
         </div>
+
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/50 bg-emerald-500/15 px-3 py-1 text-[11px] font-bold text-emerald-300">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          ZERO DATA EXFILTRATION
+        </span>
       </div>
 
-      <div className="main-grid">
-        <GlassCard title="Identity Vector Matrix">
-          <div className="vector-grid">
-            {collectedVectors.map(v => (
-              <div key={v} className={`vector-node ${status === 'PROCESSING' ? 'pulsing' : ''}`}>
-                <div className="node-label">{v}</div>
-                <div className="node-status">Encrypted</div>
+      {/* Starter Prompt Bar */}
+      <div className="border-b border-slate-800/80 bg-slate-950/50 px-4 py-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-300">
+          <Sparkles className="h-3.5 w-3.5" />
+          Quick Inquiries:
+        </span>
+        {QUICK_PROMPTS.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            disabled={architectThinking}
+            onClick={() => sendArchitectInquiry(prompt)}
+            className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-300 hover:border-cyan-400/60 hover:text-cyan-200 transition disabled:opacity-50"
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Conversation Stream */}
+      <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5 max-h-[500px]">
+        {architectMessages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            {msg.role === 'architect' && (
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-cyan-400/40 bg-cyan-500/15 text-cyan-300">
+                <Bot className="h-4 w-4" />
               </div>
-            ))}
-            {collectedVectors.length < 16 && (
-              <div className="vector-node empty">
-                <div className="node-label">Slot {collectedVectors.length + 1}</div>
-                <div className="node-status">Pending</div>
+            )}
+
+            <div
+              className={`max-w-3xl rounded-2xl border p-4 text-xs sm:text-sm leading-relaxed space-y-2.5 ${
+                msg.role === 'user'
+                  ? 'border-emerald-400/40 bg-emerald-950/40 text-emerald-100'
+                  : 'border-slate-800 bg-slate-950/85 text-slate-200'
+              }`}
+            >
+              <div className="whitespace-pre-wrap">{msg.content}</div>
+
+              {msg.referencedModules && msg.referencedModules.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800">
+                  <span className="text-[11px] text-slate-400">Inspect Module Gate:</span>
+                  {msg.referencedModules.map((modId) => (
+                    <button
+                      key={modId}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModuleId(modId);
+                        setActiveView('modules');
+                      }}
+                      className="rounded bg-cyan-500/15 border border-cyan-400/40 px-2 py-0.5 font-mono-code text-[11px] font-bold text-cyan-300 hover:bg-cyan-500/25"
+                    >
+                      {modId} →
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {msg.role === 'user' && (
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/15 text-emerald-300">
+                <UserIcon className="h-4 w-4" />
               </div>
             )}
           </div>
-          <NeonButton
-            disabled={collectedVectors.length < 16 || status === 'PROCESSING'}
-            onClick={startSynthesis}
-          >
-            {status === 'PROCESSING' ? 'Synthesizing...' : 'Execute Final Synthesis'}
-          </NeonButton>
-        </GlassCard>
+        ))}
 
-        <GlassCard title="Neural Logic Log">
-          <div className="log-container">
-            {logs.map((log, i) => (
-              <div key={i} className="log-entry">{log}</div>
-            ))}
-            {logs.length === 0 && <div className="log-empty">Awaiting synthesis trigger...</div>}
+        {architectThinking && (
+          <div className="text-xs text-cyan-300 font-mono-code animate-pulse">
+            Architect AI evaluating zero-knowledge module seals &amp; live DNS/advisory posture…
           </div>
-        </GlassCard>
+        )}
       </div>
 
-      {synthesis && (
-        <div className="synthesis-result">
-          <NeonText size="md">Sovereign Identity Synthesis</NeonText>
-          <div className="result-box">
-            {synthesis.summary}
-          </div>
-          <NeonButton onClick={() => window.location.href = '/report'}>
-            Proceed to Verified Report
-          </NeonButton>
-        </div>
-      )}
-
-      <style jsx>{`
-        .architect-view {
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-          animation: fadeIn 0.5s ease-in;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .status-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.8rem;
-          background: rgba(0,212,255,0.1);
-          color: ${NEON.blue};
-          border: 1px solid ${NEON.blue};
-          transition: all 0.3s;
-        }
-        .status-badge.processing {
-          background: rgba(255, 46, 159, 0.1);
-          color: ${NEON.pink};
-          border-color: ${NEON.pink};
-          animation: blink 1s infinite;
-        }
-        .status-badge.complete {
-          background: rgba(57, 255, 20, 0.1);
-          color: ${NEON.green};
-          border-color: ${NEON.green};
-        }
-        .main-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-        }
-        .vector-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-bottom: 30px;
-        }
-        .vector-node {
-          padding: 10px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid #333;
-          border-radius: 8px;
-          text-align: center;
-          font-size: 0.7rem;
-          transition: all 0.3s;
-        }
-        .vector-node.pulsing {
-          border-color: ${NEON.blue};
-          box-shadow: 0 0 10px ${NEON.blue};
-          animation: pulse 1s infinite;
-        }
-        .vector-node.empty {
-          border: 1px dashed #444;
-          color: #666;
-        }
-        .node-label {
-          font-weight: bold;
-          margin-bottom: 4px;
-          text-transform: uppercase;
-        }
-        .node-status {
-          color: ${NEON.green};
-          font-size: 0.6rem;
-        }
-        .log-container {
-          height: 300px;
-          overflow-y: auto;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.85rem;
-          color: #aaa;
-          padding: 10px;
-          background: rgba(0,0,0,0.3);
-          border-radius: 8px;
-        }
-        .log-entry {
-          margin-bottom: 4px;
-          border-left: 2px solid ${NEON.blue};
-          padding-left: 8px;
-        }
-        .log-empty {
-          text-align: center;
-          margin-top: 100px;
-          color: #555;
-        }
-        .synthesis-result {
-          margin-top: 40px;
-          padding: 30px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid ${NEON.purple};
-          border-radius: 24px;
-          text-align: center;
-          animation: slideUp 0.5s ease-out;
-        }
-        .result-box {
-          margin: 20px 0;
-          font-size: 1.2rem;
-          line-height: 1.6;
-          color: #eee;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      {/* Input Composer */}
+      <form onSubmit={handleSubmit} className="border-t border-slate-800 p-4 flex items-center gap-2.5">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Ask Architect AI about privacy, zero-knowledge security, Dual Auth, or any module V-01..V-16…"
+          className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={architectThinking || !draft.trim()}
+          className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/70 bg-cyan-500/20 px-4 py-2.5 text-xs font-bold text-cyan-200 hover:bg-cyan-500/30 transition disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+          Send
+        </button>
+      </form>
     </div>
   );
 };

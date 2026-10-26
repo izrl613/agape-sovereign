@@ -1,133 +1,120 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SovereignProvider, useSovereign } from './context/SovereignContext';
+import { AdminPortal } from './components/AdminPortal';
+import { ArchitectAIView } from './components/ArchitectAIView';
+import { DashboardView } from './components/DashboardView';
+import { LandingPage } from './components/LandingPage';
+import { LeftNav } from './components/LeftNav';
 import { LoginPage } from './components/LoginPage';
 import { ModuleInterface } from './components/ModuleInterface';
-import { ZkFooter } from './components/ZkFooter';
-import { DashboardView } from './components/DashboardView';
-import { ArchitectAIView } from './components/ArchitectAIView';
 import { ReportView } from './components/ReportView';
 import { TopHeader } from './components/TopHeader';
-import { LeftNav } from './components/LeftNav';
+import { ZkFooter } from './components/ZkFooter';
 
-export type AppView = 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
+type RouteScreen = 'landing' | 'login' | 'workspace';
 
-// Lightweight path matcher — Firebase hosting rewrites all paths to index.html
-// so we just inspect window.location.pathname to decide what to render.
-const isLoginPath = () => {
-  const p = window.location.pathname;
-  return p === '/login' || p === '/login/' || p === '/';
-};
+function resolveInitialScreen(): RouteScreen {
+  if (typeof window === 'undefined') return 'landing';
+  const pathname = window.location.pathname.toLowerCase();
+  if (pathname.startsWith('/login')) return 'login';
+  if (pathname.startsWith('/app') || pathname.startsWith('/dashboard')) return 'workspace';
+  return 'landing';
+}
 
-const AppContent: React.FC = () => {
-  const { user, setUser, collectedVectors, addVector, clearSession } = useSovereign();
-  const [view, setView] = useState<AppView>('DASHBOARD');
-  const [activeModule, setActiveModule] = useState<string | null>(null);
+const SovereignShell: React.FC = () => {
+  const {
+    user,
+    authLoading,
+    activeView,
+    signInWithGoogle,
+  } = useSovereign();
 
-  // Push browser URL to /login when not authed, /dashboard when authed
-  const pushPath = (path: string) => {
-    if (window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
-    }
-  };
+  const [screen, setScreen] = useState<RouteScreen>(resolveInitialScreen);
 
   useEffect(() => {
-    if (!user) {
-      pushPath('/login');
-    } else {
-      if (isLoginPath()) pushPath('/dashboard');
-    }
-    // Handle browser back/forward
-    const onPop = () => { /* re-render triggers login check automatically */ };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, [user]);
-
-  const handleModuleSubmit = async (data: any[]) => {
-    if (!user) return;
-    try {
-      const response = await fetch('/api/vector/collect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, moduleId: activeModule, data }),
-      });
-      if (response.ok) {
-        addVector(activeModule!);
-        setView('DASHBOARD');
+    if (user && screen !== 'workspace') {
+      setScreen('workspace');
+      if (window.location.pathname === '/login') {
+        window.history.replaceState({}, '', '/');
       }
-    } catch {
-      // silently handle — user stays on current module
+    }
+  }, [user, screen]);
+
+  const navigateScreen = (next: RouteScreen) => {
+    setScreen(next);
+    const nextPath = next === 'login' ? '/login' : next === 'workspace' ? '/app' : '/';
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({}, '', nextPath);
     }
   };
 
-  // ── Unauthenticated: always show the login portal ──────────────
-  if (!user) {
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#050914] text-emerald-300 flex items-center justify-center font-mono-code text-xs">
+        Initializing Web Crypto SHA-256 Zero-Knowledge Enclave…
+      </div>
+    );
+  }
+
+  if (screen === 'login') {
     return (
       <LoginPage
-        onSuccess={() => {
-          pushPath('/dashboard');
-          setView('DASHBOARD');
-        }}
-        onNavigateHome={() => { window.location.href = '/'; }}
+        onBackToLanding={() => navigateScreen('landing')}
+        onAuthenticated={() => navigateScreen('workspace')}
       />
     );
   }
 
-  // ── Authenticated: full app shell ───────────────────────────────
+  if (screen === 'landing' && !user) {
+    return (
+      <LandingPage
+        onOpenLogin={() => navigateScreen('login')}
+        onEnterWorkspacePreview={() => navigateScreen('workspace')}
+        onSignInGoogleQuick={async () => {
+          try {
+            await signInWithGoogle({ requestDriveScope: true });
+            navigateScreen('workspace');
+          } catch {
+            navigateScreen('login');
+          }
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="main-app">
-      <TopHeader user={user} onLogout={clearSession} />
-      <div className="app-body">
-        <LeftNav
-          activeView={view}
-          onNavigate={setView}
-          collectedVectors={collectedVectors}
-        />
-        <main className="content-area">
-          {view === 'DASHBOARD' && (
-            <DashboardView
-              collectedVectors={collectedVectors}
-              onSelectModule={(id) => {
-                setActiveModule(id);
-                setView('MODULE');
-              }}
-            />
-          )}
-          {view === 'MODULE' && activeModule && (
-            <ModuleInterface
-              moduleId={activeModule}
-              onSubmit={handleModuleSubmit}
-            />
-          )}
-          {view === 'ARCHITECT' && (
-            <ArchitectAIView userId={user?.id || ''} collectedVectors={collectedVectors} />
-          )}
-          {view === 'REPORT' && (
-            <ReportView userId={user?.id || ''} />
-          )}
+    <div className="min-h-screen bg-[#050914] text-[#e8f4ff] flex flex-col">
+      <TopHeader
+        onOpenLoginModal={() => navigateScreen('login')}
+        onGoHome={() => {
+          if (!user) {
+            navigateScreen('landing');
+          }
+        }}
+      />
+
+      <div className="flex flex-1 flex-col lg:flex-row">
+        <LeftNav />
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {activeView === 'dashboard' && <DashboardView />}
+          {activeView === 'modules' && <ModuleInterface />}
+          {activeView === 'architect' && <ArchitectAIView />}
+          {activeView === 'audit-pdf' && <ReportView />}
+          {activeView === 'admin' && <AdminPortal />}
         </main>
       </div>
-      <ZkFooter pageId={view.toLowerCase()} />
-      <style>{`
-        .main-app {
-          display: flex;
-          flex-direction: column;
-          height: 100vh;
-          background: #0a0a0a;
-          color: white;
-          font-family: 'Rajdhani', sans-serif;
-        }
-        .app-body { display: flex; flex: 1; overflow: hidden; }
-        .content-area { flex: 1; padding: 40px; overflow-y: auto; background: #0f0f0f; }
-      `}</style>
+
+      <ZkFooter />
     </div>
   );
 };
 
-export default function App() {
+const App: React.FC = () => {
   return (
     <SovereignProvider>
-      <AppContent />
+      <SovereignShell />
     </SovereignProvider>
   );
-}
+};
 
+export default App;
