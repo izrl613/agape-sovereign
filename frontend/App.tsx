@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SovereignProvider, useSovereign } from './context/SovereignContext';
-import { PasskeyService, AuthMethod } from './auth/passkey-service';
+import { LoginPage } from './components/LoginPage';
 import { ModuleInterface } from './components/ModuleInterface';
 import { ZkFooter } from './components/ZkFooter';
 import { DashboardView } from './components/DashboardView';
@@ -9,121 +9,70 @@ import { ReportView } from './components/ReportView';
 import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
 
-export type AppView = 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
+export type AppView = 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
+
+// Lightweight path matcher — Firebase hosting rewrites all paths to index.html
+// so we just inspect window.location.pathname to decide what to render.
+const isLoginPath = () => {
+  const p = window.location.pathname;
+  return p === '/login' || p === '/login/' || p === '/';
+};
 
 const AppContent: React.FC = () => {
   const { user, setUser, collectedVectors, addVector, clearSession } = useSovereign();
-  const [view, setView] = useState<AppView>('LOGIN');
+  const [view, setView] = useState<AppView>('DASHBOARD');
   const [activeModule, setActiveModule] = useState<string | null>(null);
 
-  const handleAuth = async (method: AuthMethod) => {
-    try {
-      const result = await PasskeyService.authenticate(method);
-      if (result.success || result.userId) {
-        setUser({
-          id: result.userId || 'user_session_123',
-          type: method === 'ANON' ? 'anonymous' : 'verified'
-        });
-        setView('DASHBOARD');
-      }
-    } catch (e) {
-      alert('Authentication failed');
+  // Push browser URL to /login when not authed, /dashboard when authed
+  const pushPath = (path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
     }
   };
 
+  useEffect(() => {
+    if (!user) {
+      pushPath('/login');
+    } else {
+      if (isLoginPath()) pushPath('/dashboard');
+    }
+    // Handle browser back/forward
+    const onPop = () => { /* re-render triggers login check automatically */ };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [user]);
+
   const handleModuleSubmit = async (data: any[]) => {
     if (!user) return;
-
     try {
       const response = await fetch('/api/vector/collect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.id,
-          moduleId: activeModule,
-          data
-        }),
+        body: JSON.stringify({ userId: user.id, moduleId: activeModule, data }),
       });
-
       if (response.ok) {
         addVector(activeModule!);
         setView('DASHBOARD');
       }
-    } catch (e) {
-      alert('Data submission failed');
+    } catch {
+      // silently handle — user stays on current module
     }
   };
 
-  if (view === 'LOGIN') {
+  // ── Unauthenticated: always show the login portal ──────────────
+  if (!user) {
     return (
-      <div className="login-screen">
-        <div className="login-box">
-          <h1 className="login-title">SOVEREIGN</h1>
-          <p className="login-subtitle">Enter your digital identity</p>
-          <div className="auth-grid">
-            <button className="auth-btn" onClick={() => handleAuth('PASSKEY')}>Passkey Auth</button>
-            <button className="auth-btn" onClick={() => handleAuth('GOOGLE')}>Google Sign-in</button>
-            <button className="auth-btn" onClick={() => handleAuth('ANON')}>ANON Bypass</button>
-          </div>
-        </div>
-        <ZkFooter pageId="login" />
-        <style jsx>{`
-          .login-screen {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            color: white;
-            font-family: 'Rajdhani', sans-serif;
-          }
-          .login-box {
-            text-align: center;
-            padding: 60px;
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 30px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-          }
-          .login-title {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 3rem;
-            letter-spacing: 10px;
-            margin-bottom: 10px;
-            background: linear-gradient(to right, #00d4ff, #bc13fe);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-          }
-          .login-subtitle {
-            font-size: 1.2rem;
-            color: #aaa;
-            margin-bottom: 40px;
-          }
-          .auth-grid {
-            display: grid;
-            gap: 20px;
-          }
-          .auth-btn {
-            padding: 15px 30px;
-            background: transparent;
-            color: white;
-            border: 1px solid #444;
-            border-radius: 12px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s;
-          }
-          .auth-btn:hover {
-            background: rgba(255,255,255,0.1);
-            border-color: #00d4ff;
-            box-shadow: 0 0 15px rgba(0,212,255,0.3);
-          }
-        `}</style>
-      </div>
+      <LoginPage
+        onSuccess={() => {
+          pushPath('/dashboard');
+          setView('DASHBOARD');
+        }}
+        onNavigateHome={() => { window.location.href = '/'; }}
+      />
     );
   }
 
+  // ── Authenticated: full app shell ───────────────────────────────
   return (
     <div className="main-app">
       <TopHeader user={user} onLogout={clearSession} />
@@ -158,7 +107,7 @@ const AppContent: React.FC = () => {
         </main>
       </div>
       <ZkFooter pageId={view.toLowerCase()} />
-      <style jsx global>{`
+      <style>{`
         .main-app {
           display: flex;
           flex-direction: column;
@@ -167,17 +116,8 @@ const AppContent: React.FC = () => {
           color: white;
           font-family: 'Rajdhani', sans-serif;
         }
-        .app-body {
-          display: flex;
-          flex: 1;
-          overflow: hidden;
-        }
-        .content-area {
-          flex: 1;
-          padding: 40px;
-          overflow-y: auto;
-          background: #0f0f0f;
-        }
+        .app-body { display: flex; flex: 1; overflow: hidden; }
+        .content-area { flex: 1; padding: 40px; overflow-y: auto; background: #0f0f0f; }
       `}</style>
     </div>
   );
@@ -190,3 +130,4 @@ export default function App() {
     </SovereignProvider>
   );
 }
+
