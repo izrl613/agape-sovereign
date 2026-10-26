@@ -189,7 +189,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # >=22: @google-cloud/firestore is optional+engines>=22; on
+          # Node 20 npm omits it and functions types degrade to any.
+          node-version: '22'
           cache: 'npm'
 
       - run: npm ci
