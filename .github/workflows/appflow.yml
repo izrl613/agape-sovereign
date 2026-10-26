@@ -262,15 +262,13 @@ jobs:
       - name: Write functions env params file
         shell: bash
         env:
-          PASSKEY_COOKIE_SECRET: ${{ secrets.PASSKEY_COOKIE_SECRET }}
-          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          {
-            echo "PASSKEY_COOKIE_SECRET=${PASSKEY_COOKIE_SECRET}"
-            echo "COOKIE_SECRET=${COOKIE_SECRET}"
-            echo "GEMINI_API_KEY=${GEMINI_API_KEY}"
-          } > functions/.env.agape-sovereign
+          # Only GEMINI_API_KEY is a plain param. The passkey cookie
+          # secrets are Secret-Manager bindings on authApi — declaring
+          # them here too makes Cloud Run reject the update (secret /
+          # non-secret env overlap).
+          echo "GEMINI_API_KEY=${GEMINI_API_KEY}" > functions/.env.agape-sovereign
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@latest

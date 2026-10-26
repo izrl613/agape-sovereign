@@ -1,6 +1,5 @@
 import {onRequest} from "firebase-functions/https";
 import {logger} from "firebase-functions";
-import {defineString} from "firebase-functions/params";
 import {randomBytes} from "crypto";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getFirestore, FieldValue, QueryDocumentSnapshot} from "firebase-admin/firestore";
@@ -83,8 +82,8 @@ const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS
  * `firebase deploy` FAIL until both secrets exist, which kept the
  * production deploy pipeline red. Defaulted string params instead:
  * the owner supplies a real secret via a gitignored
- * functions/.env.agape-sovereign file (PASSKEY_COOKIE_SECRET=...)
- * or the Firebase console env vars.
+ * Secret Manager (firebase functions:secrets:set PASSKEY_COOKIE_SECRET);
+ * both cookie secrets already exist there for this project.
  *
  * Until then: production gets an ephemeral per-instance random
  * secret (cookies are signed with an unknown key, never a published
@@ -92,12 +91,12 @@ const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS
  * Challenges also live in Firestore, so ceremonies survive instance
  * recycling — but the owner SHOULD set a stable secret.
  */
-const passkeyCookieSecretParam = defineString("PASSKEY_COOKIE_SECRET", {default: ""});
-const legacyCookieSecretParam = defineString("COOKIE_SECRET", {default: ""});
-
+// Both names are bound as SECRET env vars on the deployed service
+// (see `secrets:` in the authApi options below). They must NOT also be
+// declared as plain params/env vars: Cloud Run rejects the update
+// with "Secret environment variable overlaps non secret environment
+// variable". Rotate with: firebase functions:secrets:set PASSKEY_COOKIE_SECRET
 const configuredCookieSecret =
-  passkeyCookieSecretParam.value() ||
-  legacyCookieSecretParam.value() ||
   process.env.PASSKEY_COOKIE_SECRET ||
   process.env.COOKIE_SECRET ||
   "";
@@ -110,8 +109,8 @@ const COOKIE_SECRET: string = configuredCookieSecret ||
 if (isProductionEnv && !configuredCookieSecret) {
   logger.warn(
     "[authApi] PASSKEY_COOKIE_SECRET not configured — using an ephemeral " +
-    "per-instance cookie secret. Set PASSKEY_COOKIE_SECRET in " +
-    "functions/.env.agape-sovereign (gitignored) or the Firebase console."
+    "per-instance cookie secret. Set it with: " +
+    "firebase functions:secrets:set PASSKEY_COOKIE_SECRET"
   );
 }
 
@@ -962,8 +961,7 @@ export const authApi = onRequest(
     invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    // No Secret-Manager bindings: they block `firebase deploy` until
-    // the secrets exist. Secrets arrive via defaulted params / env file.
+    secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"],
   },
   authApp
 );
