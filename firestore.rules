@@ -19,7 +19,7 @@ service cloud.firestore {
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
       allow read, write: if isOwner(userId);
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
 
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);

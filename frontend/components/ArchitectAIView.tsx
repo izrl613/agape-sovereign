@@ -1,222 +1,119 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
+import { Send } from 'lucide-react';
 import { NEON } from '../theme';
-import { NeonText, NeonButton, GlassCard } from './DesignSystem';
-import { ZkFooter } from './ZkFooter';
+import { useSovereign } from '../context/SovereignContext';
+import { askArchitect, ArchitectSource } from '../services/architect';
+import { Sha256Badge } from './Sha256Badge';
 
-interface ArchitectAIViewProps {
-  userId: string;
-  collectedVectors: string[];
+interface Msg {
+  role: 'user' | 'architect';
+  text: string;
+  source?: ArchitectSource;
 }
 
-export const ArchitectAIView: React.FC<ArchitectAIViewProps> = ({ userId, collectedVectors }) => {
-  const [status, setStatus] = useState<'IDLE' | 'PROCESSING' | 'COMPLETE'>('IDLE');
-  const [synthesis, setSynthesis] = useState<any>(null);
-  const [logs, setLogs] = useState<string[]>([]);
+const STARTERS = [
+  'What is my status?',
+  'Explain my SHA-256 ID',
+  'How do I erase myself from data brokers?',
+  'Passkey vs Google — which protects me more?',
+  'What does zero-knowledge mean here?',
+  'Tell me about the 26-month audit',
+];
 
-  const addLog = (msg: string) => {
-    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
-  };
+/**
+ * Architect AI — privacy/security backbone. Answers come from the
+ * Cloud Function (Gemini free tier) when configured, otherwise from
+ * the on-device knowledge engine over the user's real receipts.
+ * Every answer is labelled with its true source.
+ */
+export const ArchitectAIView: React.FC = () => {
+  const { receipts, sovereignId } = useSovereign();
+  const [messages, setMessages] = useState<Msg[]>([
+    {
+      role: 'architect',
+      text: `I am Architect AI. I reason over your real sealed receipts (${receipts.length} so far) — hashes and verification outcomes only, never your plaintext. Ask me about your results, any module, or any privacy/security question.`,
+      source: 'LOCAL_KB',
+    },
+  ]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const startSynthesis = async () => {
-    setStatus('PROCESSING');
-    setLogs([]);
-    addLog(`Initializing Architect AI Brain for user ${userId}...`);
-    addLog(`Scanning local MCP storage for identity vectors...`);
-
-    const vectors = collectedVectors;
-    for (const vector of vectors) {
-      addLog(`Fetching encrypted packet: ${vector}...`);
-      await new Promise(r => setTimeout(r, 600));
-      addLog(`Verified verification token for ${vector}.`);
-    }
-
-    addLog(`Establishing secure bridge to qwen3-vl:4b...`);
-    await new Promise(r => setTimeout(r, 1500));
-    addLog(`Synthesizing identity fragments into cohesive profile...`);
-    await new Promise(r => setTimeout(r, 1500));
-
+  const send = async (raw?: string) => {
+    const question = (raw ?? input).trim();
+    if (!question || busy) return;
+    setInput('');
+    const userMsg: Msg = { role: 'user', text: question };
+    const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.text }));
+    setMessages((p) => [...p, userMsg]);
+    setBusy(true);
     try {
-      const response = await fetch('/api/architect/synthesize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
-      const data = await response.json();
-      setSynthesis(data);
-      addLog(`Sovereign Synthesis Complete. Profile generated.`);
-      setStatus('COMPLETE');
-    } catch (e) {
-      addLog(`Critical Error: Synthesis interrupted. Check MCP server connectivity.`);
-      setStatus('IDLE');
+      const answer = await askArchitect(question, receipts, history);
+      setMessages((p) => [...p, { role: 'architect', text: answer.text, source: answer.source }]);
+    } finally {
+      setBusy(false);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
     }
   };
 
   return (
-    <div className="architect-view">
-      <div className="header">
-        <NeonText size="lg">ARCHITECT AI</NeonText>
-        <div className={`status-badge ${status.toLowerCase()}`}>
-          {status}
+    <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', minHeight: '70vh', paddingBottom: 80 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>PRIVACY & SECURITY BACKBONE</div>
+          <h1 style={{ margin: '6px 0 4px', fontFamily: "'Orbitron', sans-serif", fontSize: '1.45rem', fontWeight: 900, color: NEON.blue, textShadow: `0 0 14px ${NEON.blue}55` }}>ARCHITECT AI</h1>
+          <p style={{ color: NEON.textMuted, fontSize: '0.82rem', margin: 0, maxWidth: 560 }}>
+            Answers are labelled <strong style={{ color: NEON.green }}>GEMINI</strong> (cloud function) or{' '}
+            <strong style={{ color: NEON.orange }}>LOCAL KB</strong> (on-device engine over your receipts). No plaintext identity data is ever sent.
+          </p>
         </div>
+        {sovereignId && <Sha256Badge hash={sovereignId} label="SESSION SEALED UNDER" />}
       </div>
 
-      <div className="main-grid">
-        <GlassCard title="Identity Vector Matrix">
-          <div className="vector-grid">
-            {collectedVectors.map(v => (
-              <div key={v} className={`vector-node ${status === 'PROCESSING' ? 'pulsing' : ''}`}>
-                <div className="node-label">{v}</div>
-                <div className="node-status">Encrypted</div>
-              </div>
-            ))}
-            {collectedVectors.length < 16 && (
-              <div className="vector-node empty">
-                <div className="node-label">Slot {collectedVectors.length + 1}</div>
-                <div className="node-status">Pending</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 16 }}>
+        {STARTERS.map((s) => (
+          <button key={s} type="button" onClick={() => void send(s)} style={{ padding: '6px 12px', borderRadius: 999, border: '1px solid rgba(0,212,255,0.3)', background: 'rgba(0,212,255,0.06)', color: NEON.blue, fontSize: '0.7rem', cursor: 'pointer' }}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }} aria-live="polite">
+        {messages.map((m, i) => (
+          <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+            <div style={{
+              background: m.role === 'user' ? 'rgba(255,46,159,0.09)' : NEON.bgCard,
+              border: `1px solid ${m.role === 'user' ? NEON.magenta + '44' : 'rgba(0,212,255,0.2)'}`,
+              borderRadius: 13, padding: '12px 15px', color: NEON.text, fontSize: '0.85rem', lineHeight: 1.6,
+              whiteSpace: 'pre-wrap',
+            }}>
+              {m.text}
+            </div>
+            {m.role === 'architect' && m.source && (
+              <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.56rem', marginTop: 4, color: m.source === 'GEMINI' ? NEON.green : NEON.orange, letterSpacing: '0.08em' }}>
+                {m.source === 'GEMINI' ? '◈ ARCHITECT AI · GEMINI VIA CLOUD FUNCTION' : '◈ ARCHITECT AI · LOCAL KNOWLEDGE ENGINE (ON-DEVICE)'}
               </div>
             )}
           </div>
-          <NeonButton
-            disabled={collectedVectors.length < 16 || status === 'PROCESSING'}
-            onClick={startSynthesis}
-          >
-            {status === 'PROCESSING' ? 'Synthesizing...' : 'Execute Final Synthesis'}
-          </NeonButton>
-        </GlassCard>
-
-        <GlassCard title="Neural Logic Log">
-          <div className="log-container">
-            {logs.map((log, i) => (
-              <div key={i} className="log-entry">{log}</div>
-            ))}
-            {logs.length === 0 && <div className="log-empty">Awaiting synthesis trigger...</div>}
-          </div>
-        </GlassCard>
+        ))}
+        {busy && <div style={{ color: NEON.blue, fontFamily: "'Share Tech Mono', monospace", fontSize: '0.68rem' }}>Architect is checking your sealed ledger…</div>}
+        <div ref={bottomRef} />
       </div>
 
-      {synthesis && (
-        <div className="synthesis-result">
-          <NeonText size="md">Sovereign Identity Synthesis</NeonText>
-          <div className="result-box">
-            {synthesis.summary}
-          </div>
-          <NeonButton onClick={() => window.location.href = '/report'}>
-            Proceed to Verified Report
-          </NeonButton>
-        </div>
-      )}
-
-      <style jsx>{`
-        .architect-view {
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-          animation: fadeIn 0.5s ease-in;
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .status-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.8rem;
-          background: rgba(0,212,255,0.1);
-          color: ${NEON.blue};
-          border: 1px solid ${NEON.blue};
-          transition: all 0.3s;
-        }
-        .status-badge.processing {
-          background: rgba(255, 46, 159, 0.1);
-          color: ${NEON.pink};
-          border-color: ${NEON.pink};
-          animation: blink 1s infinite;
-        }
-        .status-badge.complete {
-          background: rgba(57, 255, 20, 0.1);
-          color: ${NEON.green};
-          border-color: ${NEON.green};
-        }
-        .main-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-        }
-        .vector-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 10px;
-          margin-bottom: 30px;
-        }
-        .vector-node {
-          padding: 10px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid #333;
-          border-radius: 8px;
-          text-align: center;
-          font-size: 0.7rem;
-          transition: all 0.3s;
-        }
-        .vector-node.pulsing {
-          border-color: ${NEON.blue};
-          box-shadow: 0 0 10px ${NEON.blue};
-          animation: pulse 1s infinite;
-        }
-        .vector-node.empty {
-          border: 1px dashed #444;
-          color: #666;
-        }
-        .node-label {
-          font-weight: bold;
-          margin-bottom: 4px;
-          text-transform: uppercase;
-        }
-        .node-status {
-          color: ${NEON.green};
-          font-size: 0.6rem;
-        }
-        .log-container {
-          height: 300px;
-          overflow-y: auto;
-          font-family: 'Share Tech Mono', monospace;
-          font-size: 0.85rem;
-          color: #aaa;
-          padding: 10px;
-          background: rgba(0,0,0,0.3);
-          border-radius: 8px;
-        }
-        .log-entry {
-          margin-bottom: 4px;
-          border-left: 2px solid ${NEON.blue};
-          padding-left: 8px;
-        }
-        .log-empty {
-          text-align: center;
-          margin-top: 100px;
-          color: #555;
-        }
-        .synthesis-result {
-          margin-top: 40px;
-          padding: 30px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid ${NEON.purple};
-          border-radius: 24px;
-          text-align: center;
-          animation: slideUp 0.5s ease-out;
-        }
-        .result-box {
-          margin: 20px 0;
-          font-size: 1.2rem;
-          line-height: 1.6;
-          color: #eee;
-        }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+      <form
+        onSubmit={(e) => { e.preventDefault(); void send(); }}
+        style={{ display: 'flex', gap: 9, position: 'sticky', bottom: 64, background: 'rgba(6,12,26,0.92)', padding: 8, borderRadius: 12, border: '1px solid rgba(0,212,255,0.2)', backdropFilter: 'blur(12px)' }}
+      >
+        <input
+          value={input} onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about your results, a module, or any privacy/security question…"
+          aria-label="Ask Architect AI"
+          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: NEON.text, padding: '10px 8px', fontSize: '0.86rem' }}
+        />
+        <button type="submit" disabled={busy || !input.trim()} aria-label="Send" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 9, border: `1px solid ${NEON.blue}`, background: 'rgba(0,212,255,0.12)', color: NEON.blue, cursor: 'pointer', fontFamily: "'Orbitron', monospace", fontSize: '0.68rem', fontWeight: 700, opacity: busy || !input.trim() ? 0.5 : 1 }}>
+          <Send size={13} /> ASK
+        </button>
+      </form>
     </div>
   );
 };

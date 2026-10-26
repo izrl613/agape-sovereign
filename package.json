@@ -20,9 +20,7 @@
     "concurrently": "latest"
   },
   "dependencies": {
-    "audius": "^1.1.1",
     "firebase": "^10.11.0",
-    "openclaw": "^2026.10.3",
     "protobufjs": "^8.8.1"
   },
   "allowScripts": {
@@ -35,7 +33,6 @@
     "protobufjs@7.6.6": true,
     "protobufjs@6.11.6": true,
     "fsevents@1.2.13": true,
-    "openclaw@2026.10.4": true,
     "nodemon@1.14.10": true
   }
 }

@@ -1,42 +1,236 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import {
+  auth,
+  db,
+  onAuthStateChanged,
+  fbSignOut,
+  signInWithGoogle,
+  linkGoogleToCurrentUser,
+  signInGuest,
+} from '../firebase';
+import { PasskeyService } from '../auth/passkey-service';
+import { sovereignIdFor } from '../services/sha256Vault';
+import { ModuleReceipt } from '../services/moduleAgents';
 
-interface UserSession {
+export type LoginMethod = 'PASSKEY' | 'GOOGLE' | 'ANON';
+
+export interface SovereignUser {
   id: string;
-  type: 'verified' | 'anonymous';
+  email: string;
+  method: LoginMethod;
+  isAdmin: boolean;
 }
 
 interface SovereignContextType {
-  user: UserSession | null;
+  user: SovereignUser | null;
+  authReady: boolean;
+  /** The session's lit-up SHA-256 Sovereign ID (null when signed out). */
+  sovereignId: string | null;
+  receipts: ModuleReceipt[];
+  /** Module ids with at least one sealed receipt. */
   collectedVectors: string[];
-  setUser: (user: UserSession | null) => void;
-  addVector: (moduleId: string) => void;
-  clearSession: () => void;
+  /** Session-only plaintext entries for the PDF (never persisted). */
+  sessionEntries: Record<string, Record<string, string>>;
+  googleAccessToken: string | null;
+  loginWithPasskey: (email?: string) => Promise<void>;
+  registerPasskey: (email: string) => Promise<void>;
+  loginWithGoogle: () => Promise<string | null>;
+  loginGuest: () => Promise<void>;
+  /** Attach Google (dual protection + Drive) to the current session. */
+  attachGoogle: () => Promise<string | null>;
+  addReceipt: (receipt: ModuleReceipt, entryValues: Record<string, string>) => Promise<ModuleReceipt>;
+  clearSession: () => Promise<void>;
 }
 
+const ADMIN_EMAILS = ['idin@agape.nyc', 'agape@sovereign.nyc'];
 const SovereignContext = createContext<SovereignContextType | undefined>(undefined);
 
+const receiptsKey = (uid: string) => `agape-receipts::${uid}`;
+const PASSKEY_SESSION_KEY = 'agape-passkey-session';
+
+function loadLocalReceipts(uid: string): ModuleReceipt[] {
+  try {
+    return JSON.parse(localStorage.getItem(receiptsKey(uid)) ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
 export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [collectedVectors, setCollectedVectors] = useState<string[]>([]);
+  const [user, setUserState] = useState<SovereignUser | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [sovereignId, setSovereignId] = useState<string | null>(null);
+  const [receipts, setReceipts] = useState<ModuleReceipt[]>([]);
+  const [sessionEntries, setSessionEntries] = useState<Record<string, Record<string, string>>>({});
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
+  const methodRef = useRef<LoginMethod>('GOOGLE');
 
-  const addVector = (moduleId: string) => {
-    setCollectedVectors(prev => prev.includes(moduleId) ? prev : [...prev, moduleId]);
-  };
+  const adoptUser = useCallback(async (u: SovereignUser) => {
+    methodRef.current = u.method;
+    setUserState(u);
+    setSovereignId(await sovereignIdFor(u.id, u.email, u.method));
+    const local = loadLocalReceipts(u.id);
+    setReceipts(local);
+    if (u.method !== 'PASSKEY') {
+      try {
+        const snap = await getDocs(collection(db, 'users', u.id, 'receipts'));
+        const remote = snap.docs.map((d) => d.data() as ModuleReceipt);
+        const merged = [...remote, ...local.filter((r) => !remote.some((x) => x.sha256Id === r.sha256Id))]
+          .sort((a, b) => a.sealedAt.localeCompare(b.sealedAt));
+        setReceipts(merged);
+        localStorage.setItem(receiptsKey(u.id), JSON.stringify(merged));
+      } catch {
+        // Firestore unavailable/rules — local sealed receipts remain authoritative on this device.
+      }
+    }
+  }, []);
 
-  const clearSession = () => {
-    setUser(null);
-    setCollectedVectors([]);
-  };
+  // Restore Firebase sessions (Google / Anonymous) and passkey sessions.
+  useEffect(() => {
+    const passkeyRaw = sessionStorage.getItem(PASSKEY_SESSION_KEY);
+    if (passkeyRaw) {
+      try {
+        const p = JSON.parse(passkeyRaw) as { userId: string; email: string };
+        void adoptUser({ id: p.userId, email: p.email, method: 'PASSKEY', isAdmin: ADMIN_EMAILS.includes(p.email) })
+          .finally(() => setAuthReady(true));
+        return;
+      } catch { sessionStorage.removeItem(PASSKEY_SESSION_KEY); }
+    }
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        const method: LoginMethod = fbUser.isAnonymous ? 'ANON' : 'GOOGLE';
+        await adoptUser({
+          id: fbUser.uid,
+          email: fbUser.email ?? '',
+          method,
+          isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
+        });
+      } else if (methodRef.current !== 'PASSKEY') {
+        setUserState(null);
+        setSovereignId(null);
+        setReceipts([]);
+      }
+      setAuthReady(true);
+    });
+    return unsub;
+  }, [adoptUser]);
+
+  const loginWithPasskey = useCallback(async (email?: string) => {
+    const result = await PasskeyService.login(email);
+    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
+  }, [adoptUser]);
+
+  const registerPasskey = useCallback(async (email: string) => {
+    await PasskeyService.register(email);
+    await loginWithPasskey(email);
+  }, [loginWithPasskey]);
+
+  const loginWithGoogle = useCallback(async (): Promise<string | null> => {
+    const { user: fbUser, accessToken } = await signInWithGoogle();
+    setGoogleAccessToken(accessToken);
+    await adoptUser({
+      id: fbUser.uid,
+      email: fbUser.email ?? '',
+      method: 'GOOGLE',
+      isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
+    });
+    return accessToken;
+  }, [adoptUser]);
+
+  const loginGuest = useCallback(async () => {
+    const fbUser = await signInGuest();
+    await adoptUser({ id: fbUser.uid, email: '', method: 'ANON', isAdmin: false });
+  }, [adoptUser]);
+
+  const attachGoogle = useCallback(async (): Promise<string | null> => {
+    if (user?.method === 'PASSKEY') {
+      // Passkey accounts live outside Firebase Auth, so "attaching" means
+      // a real Google sign-in; local passkey receipts stay on this device.
+      return loginWithGoogle();
+    }
+    const { user: fbUser, accessToken } = await linkGoogleToCurrentUser();
+    setGoogleAccessToken(accessToken);
+    await adoptUser({
+      id: fbUser.uid,
+      email: fbUser.email ?? '',
+      method: 'GOOGLE',
+      isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
+    });
+    return accessToken;
+  }, [adoptUser, loginWithGoogle, user]);
+
+  const addReceipt = useCallback(
+    async (receipt: ModuleReceipt, entryValues: Record<string, string>): Promise<ModuleReceipt> => {
+      if (!user) throw new Error('Not signed in.');
+      let stored = receipt;
+      if (user.method !== 'PASSKEY' && auth.currentUser) {
+        try {
+          await setDoc(doc(db, 'users', user.id, 'receipts', receipt.sha256Id), {
+            ...receipt,
+            storage: 'FIRESTORE+LOCAL',
+          });
+          stored = { ...receipt, storage: 'FIRESTORE+LOCAL' };
+        } catch {
+          stored = { ...receipt, storage: 'LOCAL_ONLY' };
+        }
+      }
+      setReceipts((prev) => {
+        const next = [...prev.filter((r) => r.sha256Id !== stored.sha256Id), stored];
+        localStorage.setItem(receiptsKey(user.id), JSON.stringify(next));
+        return next;
+      });
+      const safeValues = { ...entryValues };
+      delete safeValues.passwordCheck;
+      setSessionEntries((prev) => ({ ...prev, [stored.sha256Id]: safeValues }));
+      return stored;
+    },
+    [user],
+  );
+
+  const clearSession = useCallback(async () => {
+    sessionStorage.removeItem(PASSKEY_SESSION_KEY);
+    setGoogleAccessToken(null);
+    setSessionEntries({});
+    setReceipts([]);
+    setUserState(null);
+    setSovereignId(null);
+    methodRef.current = 'GOOGLE';
+    try { await fbSignOut(auth); } catch { /* passkey sessions have no Firebase user */ }
+  }, []);
 
   return (
-    <SovereignContext.Provider value={{ user, setUser, collectedVectors, addVector, clearSession }}>
+    <SovereignContext.Provider
+      value={{
+        user,
+        authReady,
+        sovereignId,
+        receipts,
+        collectedVectors: Array.from(new Set(receipts.map((r) => r.moduleId))),
+        sessionEntries,
+        googleAccessToken,
+        loginWithPasskey,
+        registerPasskey,
+        loginWithGoogle,
+        loginGuest,
+        attachGoogle,
+        addReceipt,
+        clearSession,
+      }}
+    >
       {children}
     </SovereignContext.Provider>
   );
 };
 
 export const useSovereign = () => {
-  const context = useContext(SovereignContext);
-  if (!context) throw new Error('useSovereign must be used within a SovereignProvider');
-  return context;
+  const ctx = useContext(SovereignContext);
+  if (!ctx) throw new Error('useSovereign must be used within a SovereignProvider');
+  return ctx;
 };
