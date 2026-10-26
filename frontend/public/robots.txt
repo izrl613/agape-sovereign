@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /privacy
+Allow: /terms
+Allow: /contact
+Sitemap: https://sovereign.nyc/sitemap.xml
