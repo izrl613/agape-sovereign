@@ -160,6 +160,13 @@ authApp.use(cors({
 authApp.use(express.json({limit: "256kb"}));
 // COOKIE_SECRET is always a non-empty string (configured secret,
 // ephemeral per-instance secret, or the dev-only constant off-prod).
+// CodeQL js/missing-csrf-protection: FALSE POSITIVE for dismissal in
+// the Security tab. This app layers three real CSRF defences —
+// double-submit tokens (csrf-csrf below, applied at app + router
+// level), SameSite=Strict session cookies, and an Origin allowlist
+// guard — plus origin-bound WebAuthn assertions on every ceremony.
+// GitHub's default-setup CodeQL model does not yet recognise the
+// csrf-csrf package, so the query still fires on this line.
 authApp.use(cookieParser(COOKIE_SECRET));
 
 /**
