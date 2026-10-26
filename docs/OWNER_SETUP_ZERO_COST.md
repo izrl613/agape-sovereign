@@ -51,15 +51,18 @@ exists. To enable the cloud model at zero cost:
 
 Only receipt hashes + verification outcomes are ever sent to the model.
 
-## 3. Passkey cookie secret (required for stable passkey login)
+## 3. Passkey cookie signing key (how rotation works now)
 
-`PASSKEY_COOKIE_SECRET` + `COOKIE_SECRET` already exist in Secret
-Manager for this project and are bound to `authApi` as secret env
-vars — production is correctly configured. To ROTATE:
-`firebase functions:secrets:set PASSKEY_COOKIE_SECRET` then redeploy.
-Do NOT also put these names in `functions/.env.agape-sovereign`:
-Cloud Run rejects updates where a secret env var overlaps a plain
-env var. Locally (emulator), a dev fallback/ephemeral key is used.
+The live `authApi` service carries legacy SECRET env vars
+(`PASSKEY_COOKIE_SECRET` / `COOKIE_SECRET`) from its first deployment,
+and CI lacks `secretmanager.versions.get`, so code binds no secrets.
+Instead the signing key resolves at runtime from, in order:
+`PASSKEY_COOKIE_SIGNING_KEY` (plain param) → the legacy secret env
+vars still injected by the existing service → ephemeral per-instance
+key. To rotate without GCP console access: add a GitHub Actions repo
+secret named `PASSKEY_COOKIE_SIGNING_KEY` — CI writes it into the
+deploy env file on the next merge. Do NOT add the legacy names to
+`functions/.env.agape-sovereign` (secret/plain overlap is rejected).
 
 ## 4. Deploy
 
