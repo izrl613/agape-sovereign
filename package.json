@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "audius": "^1.1.1",
-    "firebase": "^10.11.0",
-    "openclaw": "^2026.10.3",
+    "firebase": "^11.0.0",
+    "openclaw": "^2026.10.5",
     "protobufjs": "^8.8.1"
   },
   "allowScripts": {
