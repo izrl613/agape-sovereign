@@ -42,8 +42,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Only publish the compiled output, never the repo root
-          # Vite builds the frontend workspace into frontend/dist
-          path: 'frontend/dist'
+          path: 'dist'
 
   deploy:
     needs: build

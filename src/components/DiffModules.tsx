@@ -28,7 +28,7 @@ interface ModuleProps {
 }
 
 export const DiffModule = ({ title, description, icon, vector, moduleId, scanLabel, pillar, techniques }: ModuleProps) => {
-  const { user,  } = useAuth();
+  const { user } = useAuth();
   const { findings: allFindings, triggerModuleScan, isScanning, scanProgress, currentModule, currentSubTask } = useScan();
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -92,8 +92,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
           console.error(e);
         }
       }
-      return;
-    }
 
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
@@ -158,14 +156,13 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const newHash = await generateSHA256(stringified);
       const encrypted = await encryptClientSide(stringified, user.uid);
 
-      
-      // demo mode removed
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
+      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
+      const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
+      parsed.data[moduleId] = encrypted;
+      parsed.hashes[moduleId + "Hash"] = newHash;
+      localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
+
+      {
         const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
         await setDoc(docRef, {
           data: {
@@ -246,10 +243,9 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       }
 
       
-      // demo mode removed
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
-        filtered.push({
+      const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
+      const filtered = localFindings.filter((f: any) => f.module !== moduleId);
+      filtered.push({
           id: `local-${moduleId}-${Date.now()}`,
           userId: user.uid,
           module: moduleId,
@@ -260,24 +256,19 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         });
         localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
 
-        // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-
         const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
         history.push({
           userId: user.uid,
-          score: newScore,
+          score: Math.max(45, 100 - (filtered.filter((f: any) => f.status === 'NUKED').length * 15)),
           timestamp: new Date().toISOString(),
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
+          nukedCount: filtered.filter((f: any) => f.status === 'NUKED').length,
+          knoxedCount: filtered.filter((f: any) => f.status === 'KNOXED').length,
+          monitoredCount: filtered.filter((f: any) => f.status === 'MONITORED').length,
           findings: filtered
         });
         localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
-      } else {
+
+      {
         const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
         const snap = await getDocs(q);
         
@@ -505,6 +496,28 @@ const displayFindings = findings.length > 0 ? findings.map(f => ({
           </div>
         ))}
       </div>
+
+      <GlassCard className="p-5 mb-6" style={{ borderLeft: `4px solid ${sevColor}` }}>
+        <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.orange, letterSpacing: '0.16em', marginBottom: 6 }}>
+          {vector} · YOUR PICTURE IN THIS VECTOR
+        </div>
+        <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: '0.95rem', color: NEON.text, lineHeight: 1.45 }}>
+          {decryptedValue
+            ? `Sealed value on file${showValue ? `: ${decryptedValue}` : ' (masked)'}. ${
+                nuked
+                  ? `${nuked} live exposure${nuked > 1 ? 's' : ''} need a human look — read the findings below, then NUKE or KNOX.`
+                  : knoxed
+                    ? 'This vector is hardened. Re-scan after any account change so the briefing stays honest.'
+                    : 'Watching this surface. Add or update fields, seal, and scan to refresh the story.'
+              }`
+            : 'Nothing sealed yet. Enter the fields below — Architect AI will turn them into a briefing you can actually read, not a hash dump.'}
+        </div>
+        {findings[0] && (
+          <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: '0.85rem', color: sevColor, marginTop: 8 }}>
+            Next: {findings[0].details || findings[0].finding}
+          </div>
+        )}
+      </GlassCard>
 
       {/* PARAMETER EDITOR / ACTIVE FEDERATED VALUES */}
       <GlassCard className="p-6 mb-6 relative overflow-hidden neon-wrap">
@@ -925,17 +938,17 @@ export const SystemModule = () => <DiffModule title="Mobile System Security" des
 export const LaptopModule = () => <DiffModule title="Laptop System Security" description="Firmware integrity and disk encryption audit. Prisma AIRS monitors AI agents running on the host for exfiltration risk." icon="💻" vector="V-05" moduleId="laptop" pillar="Prisma AIRS" techniques={["Full-disk encryption (FileVault/BitLocker) status", "Firmware secure-boot verification", "AI agent runtime exfiltration scan (AIRS)", "Open port / firewall posture check"]} />;
 export const DeepWebModule = () => <DiffModule title="Deep Web Exposure Monitoring" description="Pattern-based lookup and public data indexing scan. PrivacyProctor provides real-time leak detection across indexed surfaces." icon="◉" vector="V-06" moduleId="deepweb" pillar="PrivacyProctor" techniques={["Public index leak detection", "Image reverse-lookup scan", "Forum/paste mention monitoring", "Real-time alert on new exposure"]} />;
 export const DataBrokerModule = () => <DiffModule title="Data Broker Removal Engine" description="Automated request templates for data broker removal. Polymer DLP ensures PII isn't re-exposed during the opt-out flow." icon="⧫" vector="V-07" moduleId="broker" pillar="Polymer" techniques={["Broker database enumeration (200+ brokers)", "CCPA/GDPR opt-out template generation", "Removal request status tracking", "Re-exposure DLP guard on submission"]} />;
-export const PasswordModule = () => <DiffModule title="Password Vault Audit" description="Checks for weak, reused, or compromised credentials. Nymiz pseudonymizes vault data during export/analysis." icon="⬟" vector="V-07" moduleId="password" pillar="Nymiz" techniques={["Weak/reused password scoring", "HaveIBeenPwned hash check", "Vault export pseudonymization", "Passkey upgrade recommendations"]} />;
+export const PasswordModule = () => <DiffModule title="Password Vault Audit" description="Checks for weak, reused, or compromised credentials. Nymiz pseudonymizes vault data during export/analysis." icon="⬟" vector="V-08" moduleId="password" pillar="Nymiz" techniques={["Weak/reused password scoring", "HaveIBeenPwned hash check", "Vault export pseudonymization", "Passkey upgrade recommendations"]} />;
 export const NetworkModule = () => <DiffModule title="Network & DNS Security Posture" description="Analyzes DNS leaks and insecure network protocols. PrivacyProctor monitors live traffic for data-leak signatures." icon="◎" vector="V-09" moduleId="network" pillar="PrivacyProctor" techniques={["DNS-over-HTTPS compliance check", "VPN leak detection (IPv6/WebRTC)", "Insecure protocol audit (HTTP/FTP)", "Live traffic PII leak monitoring"]} />;
-export const CloudModule = () => <DiffModule title="Cloud Storage Exposure" description="Scans for misconfigured S3 buckets or Drive permissions. Prisma AIRS blocks AI-agent cloud exfiltration." icon="⊞" vector="V-13" moduleId="cloud" pillar="Prisma AIRS" techniques={["Public bucket/folder permission audit", "Sharing link expiry enforcement", "AI agent cloud sync exfiltration block (AIRS)", "Sensitive file encryption check"]} />;
+export const CloudModule = () => <DiffModule title="Cloud Storage Exposure" description="Scans for misconfigured S3 buckets or Drive permissions. Prisma AIRS blocks AI-agent cloud exfiltration." icon="⊞" vector="V-10" moduleId="cloud" pillar="Prisma AIRS" techniques={["Public bucket/folder permission audit", "Sharing link expiry enforcement", "AI agent cloud sync exfiltration block (AIRS)", "Sensitive file encryption check"]} />;
 export const CommunicationModule = () => <DiffModule title="Communication Privacy Audit" description="Analyzes E2EE status and metadata in messages. Polymer DLP intercepts PII in plaintext channels." icon="💬" vector="V-11" moduleId="comm" pillar="Polymer" techniques={["E2EE enforcement status (Signal/iMessage)", "Message metadata exposure scoring", "Outbound PII DLP on message drafts", "Third-party messaging app audit"]} />;
 export const FinancialModule = () => <DiffModule title="Financial Identity Surface" description="Monitor financial accounts, dark web bank leaks, and transaction metadata privacy." icon="⬡" vector="V-12" moduleId="financial" pillar="PrivacyProctor" techniques={["Bank account data dark-web monitoring", "Transaction metadata PII exposure", "Fintech app OAuth scope audit", "Real-time suspicious-charge alert"]} />;
 export const PrivacyReclaimModule = () => <DiffModule title="Privacy Reclaim" description="Empowers users to reclaim and secure their personal data across all identity vectors. Third-party verification APIs hand off encrypted data to Architect AI. Users maintain full sovereign control with passkey verification before any data export." icon="🔐" vector="V-PR" moduleId="privacy-reclaim" pillar="PrivacyProctor" techniques={["Third-party API verification handoff", "Encrypted data packaging for Architect AI", "Passkey-verified data export", "Multi-vector privacy remediation"] } />;
-export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents. Nymiz masks PII before any document sharing." icon="📄" vector="V-EXT" moduleId="docs" pillar="Nymiz" techniques={["Passport/DL OCR PII detection", "Document metadata stripping", "Pre-share PII masking & tokenization", "Secure vault storage recommendation"]} />;
-export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens. Unosecur flags over-privileged OAuth grants." icon="🔑" vector="V-EXT" moduleId="oauth" pillar="Unosecur" techniques={["OAuth token scope over-privilege scoring", "Stale token revocation recommendations", "Non-human identity mapping", "Principle-of-least-privilege enforcement"]} />;
-export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records for PII exposure. PrivacyProctor monitors for new record appearances." icon="⚖" vector="V-EXT" moduleId="legal" pillar="PrivacyProctor" techniques={["Court records PII pattern scan", "Public deed/voter roll monitoring", "PACER filing exposure check", "Real-time new-record alert"]} />;
+export const DocumentModule = () => <DiffModule title="Identity Document Exposure" description="Checks for leaks in sensitive identity documents. Nymiz masks PII before any document sharing." icon="📄" vector="V-13" moduleId="docs" pillar="Nymiz" techniques={["Passport/DL OCR PII detection", "Document metadata stripping", "Pre-share PII masking & tokenization", "Secure vault storage recommendation"]} />;
+export const OauthModule = () => <DiffModule title="Third-Party App OAuth Audit" description="Reviews third-party app permissions and access tokens. Unosecur flags over-privileged OAuth grants." icon="🔑" vector="V-14" moduleId="oauth" pillar="Unosecur" techniques={["OAuth token scope over-privilege scoring", "Stale token revocation recommendations", "Non-human identity mapping", "Principle-of-least-privilege enforcement"]} />;
+export const LegalModule = () => <DiffModule title="Public Records & Legal Exposure" description="Scans public legal filings and court records for PII exposure. PrivacyProctor monitors for new record appearances." icon="⚖" vector="V-15" moduleId="legal" pillar="PrivacyProctor" techniques={["Court records PII pattern scan", "Public deed/voter roll monitoring", "PACER filing exposure check", "Real-time new-record alert"]} />;
 // Legacy /ai route — AI & biometric exposure (no vector number conflict)
-export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data. Prisma AIRS blocks AI model misuse of biometric data." icon="⊛" vector="V-AI" moduleId="ai" pillar="Prisma AIRS" techniques={["Facial recognition database lookup", "Voice print exposure scan", "AI model inference attack surface (AIRS)", "Biometric data exfiltration guard"]} />;
+export const BiometricModule = () => <DiffModule title="AI & Biometric Data Exposure" description="Analyzes exposure of facial or voice recognition data. Prisma AIRS blocks AI model misuse of biometric data." icon="⊛" vector="V-16" moduleId="ai" pillar="Prisma AIRS" techniques={["Facial recognition database lookup", "Voice print exposure scan", "AI model inference attack surface (AIRS)", "Biometric data exfiltration guard"]} />;
 // V-11 — dedicated biometric identity vector used by /dashboard/biometric
 export const BiometricIdentityModule = () => <DiffModule title="Voice & Biometric Data Exposure" description="Scans for biometric identifiers (voice, face, fingerprint) leaked via apps, cloud services, or third-party SDKs. Nymiz pseudonymizes detected biometric identifiers." icon="⊛" vector="V-11" moduleId="biometric" pillar="Nymiz" techniques={["Biometric SDK permission audit", "Voice-print cloud sync exposure check", "Face-ID/fingerprint data broker lookup", "Biometric field pseudonymization (Nymiz)"]} />;
 

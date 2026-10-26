@@ -14,18 +14,19 @@
     "typecheck": "node scripts/check-frontend-quality.mjs",
     "build": "npm run build --prefix frontend",
     "postdeploy:cdn": "node scripts/purge-cdn-cache.mjs",
-    "deploy": "firebase deploy",
-    "build:frontend": "npm run build --prefix frontend",
-    "build:functions": "npm run build --prefix functions"
+    "deploy": "firebase deploy"
   },
   "devDependencies": {
     "concurrently": "latest"
   },
   "dependencies": {
-    "firebase": "^13.1.0",
+    "audius": "^1.1.1",
+    "firebase": "^10.11.0",
+    "openclaw": "^2026.10.3",
     "protobufjs": "^8.8.1"
   },
   "allowScripts": {
+    "@google/genai@2.24.0": true,
     "@firebase/util@1.15.3": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
@@ -34,9 +35,7 @@
     "protobufjs@7.6.6": true,
     "protobufjs@6.11.6": true,
     "fsevents@1.2.13": true,
+    "openclaw@2026.10.4": true,
     "nodemon@1.14.10": true
-  },
-  "overrides": {
-    "@grpc/grpc-js": "^1.14.4"
   }
 }

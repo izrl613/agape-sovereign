@@ -30,6 +30,26 @@ export const MODULE_IDS = [
   'shadow-purge',
 ] as const;
 
+/** UI DIFF module id → agent module id */
+export const UI_TO_AGENT: Record<string, ModuleId> = {
+  email: 'email-scanner',
+  social: 'social-map',
+  device: 'device-health',
+  mobile: 'system-security',
+  laptop: 'kernel-health',
+  deepweb: 'deep-web',
+  broker: 'broker-removal',
+  password: 'network-vector',
+  network: 'network-vector',
+  cloud: 'cloud-enclave',
+  comm: 'metadata-purge',
+  financial: 'crypto-assets',
+  docs: 'metadata-purge',
+  oauth: 'social-map',
+  legal: 'sovereign-id',
+  ai: 'biometrics',
+};
+
 export type ModuleId = (typeof MODULE_IDS)[number];
 
 // ── Vectors ────────────────────────────────────────────────────────────────────

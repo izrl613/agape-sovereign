@@ -1,154 +1,251 @@
 import React, { useMemo, useState } from 'react';
-import { FileDown, FolderUp } from 'lucide-react';
-import { NEON } from '../theme';
+import { NEON, FONTS } from '../theme';
+import { NeonText, GlassCard, NeonButton } from './DesignSystem';
+import { MODULE_AGENTS } from '../module-catalog';
 import { useSovereign } from '../context/SovereignContext';
-import { MODULE_CONFIGS } from '../module-config';
+import { buildModuleBriefing, statusColor } from '../utils/briefing';
+import { confirmWithBiometrics } from '../services/biometricGate';
 import {
-  AUDIT_MONTHS,
-  auditExpiry,
-  buildAuditPdf,
-  checkpointSchedule,
-  downloadPdf,
-  savePdfToGoogleDrive,
-} from '../services/auditPdf';
-import { Sha256Badge } from './Sha256Badge';
-import { GOOGLE_CANCELLED } from '../firebase';
+  AUDIT_PAGE_RANGE,
+  auditPagePlan,
+  buildAuditPayload,
+  downloadBlob,
+  generateIdentityAuditPdf,
+} from '../services/auditReportPdf';
+import { getGoogleDriveAccessToken, uploadPdfToGoogleDrive } from '../services/driveExport';
 
-/**
- * 26-Month Identity Audit. Generated on-device from real receipts.
- * Google (federated) users save it directly to their own Google Drive;
- * passkey/guest users download it, or attach Google for Drive saving.
- */
+type Phase = 'preview' | 'verifying' | 'saving' | 'done';
+
 export const ReportView: React.FC = () => {
-  const { user, sovereignId, receipts, sessionEntries, googleAccessToken, attachGoogle, loginWithGoogle } = useSovereign();
-  const [busy, setBusy] = useState<'DOWNLOAD' | 'DRIVE' | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const { modules, dossier, user, pipeline, patchFindingStatus } = useSovereign();
+  const [phase, setPhase] = useState<Phase>('preview');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [driveLink, setDriveLink] = useState<string | null>(null);
-  const [documentHash, setDocumentHash] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [hash, setHash] = useState<string | null>(null);
+  const [pages, setPages] = useState<number | null>(null);
 
-  const sensitiveKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const mod of Object.values(MODULE_CONFIGS)) {
-      for (const f of mod.dataFields) if (f.sensitive) keys.add(f.key);
+  const planned = useMemo(() => auditPagePlan(modules, pipeline), [modules, pipeline]);
+  const cards = useMemo(
+    () =>
+      MODULE_AGENTS.map((m) => {
+        const row = modules[m.id] || { record: {}, findings: [] };
+        const briefing = buildModuleBriefing(m, row.record, row.findings, user?.displayName || 'You');
+        return { m, briefing, findings: row.findings || [] };
+      }),
+    [modules, user]
+  );
+  const nuked = cards.flatMap((c) => c.findings.filter((f) => f.status === 'NUKED').map((f) => ({ ...c, f })));
+  const knoxed = cards.flatMap((c) => c.findings.filter((f) => f.status === 'KNOXED').map((f) => ({ ...c, f })));
+
+  const compile = async (sink: 'device' | 'drive') => {
+    if (!user) {
+      setError('Sign in first.');
+      return;
     }
-    return keys;
-  }, []);
-
-  const build = async () => {
-    if (!user || !sovereignId) throw new Error('Not signed in.');
-    return buildAuditPdf({
-      email: user.email,
-      method: user.method,
-      sovereignId,
-      receipts,
-      sessionEntries,
-      sensitiveKeys,
-    });
-  };
-
-  const onDownload = async () => {
-    setError(null); setStatus(null); setDriveLink(null); setBusy('DOWNLOAD');
+    setError(null);
+    setNotice(null);
+    setDriveLink(null);
+    setPhase('verifying');
     try {
-      const { blob, filename, documentHash: hash } = await build();
-      downloadPdf(blob, filename);
-      setDocumentHash(hash);
-      setStatus(`Audit downloaded: ${filename}. Keep it with your records — it is the owner copy of your sealed ledger.`);
-    } catch (err: any) {
-      setError(err?.message ?? 'Could not generate the PDF.');
-    } finally { setBusy(null); }
-  };
-
-  const onDrive = async () => {
-    setError(null); setStatus(null); setDriveLink(null); setBusy('DRIVE');
-    try {
-      let token = googleAccessToken;
-      if (!token) {
-        // Fresh Google consent (also refreshes an expired access token and,
-        // for passkey/guest sessions, upgrades to dual protection first).
-        token = user?.method === 'GOOGLE' ? await loginWithGoogle() : await attachGoogle();
+      const payload = await buildAuditPayload(
+        {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
+          authMethod: user.authMethod,
+        },
+        dossier,
+        modules,
+        pipeline
+      );
+      setHash(payload.masterHash);
+      const proof = await confirmWithBiometrics(payload.masterHash, {
+        uid: user.id,
+        email: user.email,
+        name: user.displayName,
+      });
+      payload.biometric = proof;
+      setPhase('saving');
+      const pdf = await generateIdentityAuditPdf(payload);
+      setFileName(pdf.fileName);
+      setPages(pdf.pages);
+      if (sink === 'device') {
+        downloadBlob(pdf.blob, pdf.fileName);
+        setNotice(`Saved ${pdf.fileName} (${pdf.pages} pages) to this device.`);
+      } else {
+        const token = await getGoogleDriveAccessToken();
+        const uploaded = await uploadPdfToGoogleDrive(pdf.blob, pdf.fileName, token);
+        setDriveLink(uploaded.webViewLink);
+        setNotice(`Uploaded ${pdf.fileName} (${pdf.pages} pages) to your Google Drive.`);
       }
-      if (!token) throw new Error('Google did not return a Drive access token (the drive.file scope may have been declined). Nothing was uploaded — download the PDF or retry and accept the Drive permission.');
-      const { blob, filename, documentHash: hash } = await build();
-      const saved = await savePdfToGoogleDrive(blob, filename, token);
-      setDocumentHash(hash);
-      if (saved.webViewLink) setDriveLink(saved.webViewLink);
-      setStatus(`Saved to your Google Drive (file ${saved.id}). It lives in your federated Google account under your control — Agape keeps no copy of the PDF.`);
-    } catch (err: any) {
-      if (err?.message === GOOGLE_CANCELLED) setError('Google sign-in was cancelled — nothing was uploaded.');
-      else if (err?.message === 'DRIVE_TOKEN_EXPIRED') setError('Your Google session token expired. Tap "Save to Google Drive" again to re-consent, then retry.');
-      else setError(err?.message ?? 'Drive save failed. You can download the PDF instead — nothing was partially uploaded by this app.');
-    } finally { setBusy(null); }
+      setPhase('done');
+    } catch (err) {
+      setPhase('preview');
+      setError(err instanceof Error ? err.message : 'Handoff failed.');
+    }
   };
-
-  const expiry = auditExpiry();
-  const checkpoints = checkpointSchedule();
-  const isGoogle = user?.method === 'GOOGLE';
 
   return (
-    <div style={{ maxWidth: 880, margin: '0 auto', paddingBottom: 90 }}>
-      <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
-        IDENTITY AUDIT · {AUDIT_MONTHS}-MONTH WINDOW
+    <div style={{ padding: 24, overflowY: 'auto', height: '100%', animation: 'fade-in 0.35s ease' }}>
+      <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
+        IDENTITY AUDIT · ARCHITECT → VALIDATOR → ARCHITECT · {AUDIT_PAGE_RANGE} PAGES
       </div>
-      <h1 style={{ margin: '6px 0 6px', fontFamily: "'Orbitron', sans-serif", fontSize: '1.5rem', fontWeight: 900, color: NEON.blue, textShadow: `0 0 14px ${NEON.blue}55` }}>
-        26-MONTH IDENTITY AUDIT PDF
-      </h1>
-      <p style={{ color: NEON.textMuted, fontSize: '0.86rem', lineHeight: 1.6, maxWidth: 680 }}>
-        Generated on this device from your <strong style={{ color: NEON.text }}>{receipts.length} real sealed receipt(s)</strong> across{' '}
-        {new Set(receipts.map((r) => r.moduleId)).size} of 16 modules — every SHA-256 ID, every named verification
-        source, and a monthly re-verification schedule until <strong style={{ color: NEON.green }}>{expiry.toISOString().slice(0, 10)}</strong>.
-        Sensitive values are masked in the document; nothing is invented.
+      <NeonText color={NEON.blue} size="1.4rem" weight={900}>
+        IDENTITY AUDIT REPORT
+      </NeonText>
+      <p style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted, maxWidth: 760, margin: '8px 0 20px', lineHeight: 1.55 }}>
+        Architect AI hands the 16 sealed vectors to the Third-Party Validator Agent, then compiles this report. Confirm with
+        biometrics. Save a real PDF to this device or your federated Google account. NUKED findings stay NUKED until you knox
+        them.
       </p>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '16px 0 22px' }}>
-        {sovereignId && <Sha256Badge hash={sovereignId} label="AUDIT SOVEREIGN SHA-256" size="md" />}
-        {documentHash && <Sha256Badge hash={documentHash} label="DOCUMENT SHA-256" size="md" />}
-      </div>
+      <GlassCard style={{ padding: 18, marginBottom: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+          <Stat label="Score" value={String(dossier.score)} color={NEON.blue} />
+          <Stat label="Nuked" value={String(dossier.nuked)} color={NEON.magenta} />
+          <Stat label="Knoxed" value={String(dossier.knoxed)} color={NEON.blue} />
+          <Stat label="Pages" value={String(pages || planned.length)} color={NEON.orange} />
+          <Stat label="Compile" value={pipeline?.valid ? 'OK' : 'WAIT'} color={pipeline?.valid ? NEON.blue : NEON.orange} />
+        </div>
+        <div style={{ fontFamily: FONTS.mono, fontSize: '0.62rem', color: NEON.textMuted, marginTop: 12 }}>
+          Operator {user?.displayName} · {dossier.emailMasked} · {dossier.authLabel} · {planned.length} pages from this handoff
+          {pipeline ? ` · SHA ${pipeline.compileHash.slice(0, 12)}…` : ' · run Architect validator handoff for extra pages'}
+        </div>
+        {hash && (
+          <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.blue, marginTop: 8, wordBreak: 'break-all' }}>
+            SHA-256 · {hash}
+          </div>
+        )}
+      </GlassCard>
 
-      {receipts.length === 0 && (
-        <div style={{ border: `1px dashed ${NEON.orange}77`, borderRadius: 12, padding: '14px 16px', marginBottom: 20, fontSize: '0.84rem', color: NEON.text }}>
-          <strong style={{ color: NEON.orange }}>Honest empty state:</strong> you have no sealed modules yet, so this audit would
-          contain only your Sovereign ID and the schedule. Seal at least the Communication module first for a meaningful report —
-          we will not pad it with template findings.
+      {error && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: '1px solid rgba(255,122,24,0.35)',
+            background: 'rgba(255,122,24,0.08)',
+            color: '#ffaa66',
+            fontFamily: FONTS.mono,
+            fontSize: 12,
+          }}
+        >
+          ⚠ {error}
+        </div>
+      )}
+      {notice && (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: '1px solid rgba(0,212,255,0.25)',
+            background: 'rgba(0,212,255,0.08)',
+            color: NEON.blue,
+            fontFamily: FONTS.mono,
+            fontSize: 12,
+          }}
+        >
+          {notice}
+          {driveLink && (
+            <>
+              {' '}
+              <a href={driveLink} target="_blank" rel="noreferrer" style={{ color: NEON.orange }}>
+                Open in Drive
+              </a>
+            </>
+          )}
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <button
-          type="button" onClick={() => void onDownload()} disabled={busy !== null}
-          style={{ display: 'inline-flex', gap: 8, alignItems: 'center', padding: '13px 22px', borderRadius: 10, border: `1px solid ${NEON.blue}`, background: 'rgba(0,212,255,0.1)', color: NEON.blue, cursor: 'pointer', fontFamily: "'Orbitron', monospace", fontSize: '0.72rem', fontWeight: 800, opacity: busy ? 0.6 : 1 }}
-        >
-          <FileDown size={15} /> {busy === 'DOWNLOAD' ? 'GENERATING…' : 'DOWNLOAD AUDIT PDF'}
-        </button>
-        <button
-          type="button" onClick={() => void onDrive()} disabled={busy !== null}
-          style={{ display: 'inline-flex', gap: 8, alignItems: 'center', padding: '13px 22px', borderRadius: 10, border: `1px solid ${NEON.green}`, background: 'rgba(0,255,135,0.09)', color: NEON.green, cursor: 'pointer', fontFamily: "'Orbitron', monospace", fontSize: '0.72rem', fontWeight: 800, boxShadow: '0 0 16px rgba(0,255,135,0.15)', opacity: busy ? 0.6 : 1 }}
-        >
-          <FolderUp size={15} /> {busy === 'DRIVE' ? 'SAVING TO DRIVE…' : isGoogle ? 'SAVE TO MY GOOGLE DRIVE' : 'ATTACH GOOGLE · SAVE TO DRIVE'}
-        </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
+        <NeonButton color={NEON.blue} disabled={phase === 'verifying' || phase === 'saving'} onClick={() => compile('device')}>
+          {phase === 'verifying' ? 'VERIFY BIOMETRICS…' : phase === 'saving' ? 'WRITING PDF…' : '🔑 VERIFY · SAVE TO DEVICE'}
+        </NeonButton>
+        <NeonButton color={NEON.orange} disabled={phase === 'verifying' || phase === 'saving'} onClick={() => compile('drive')}>
+          {phase === 'verifying' ? 'VERIFY BIOMETRICS…' : 'G VERIFY · SAVE TO GOOGLE'}
+        </NeonButton>
+      </div>
+      <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.textMuted, marginBottom: 18, letterSpacing: '0.06em' }}>
+        Device download uses the browser file picker. Google Drive requests drive.file only after biometrics, never at login.
+        {fileName ? ` Last file: ${fileName}` : ''}
       </div>
 
-      <p style={{ fontSize: '0.74rem', color: NEON.textMuted, lineHeight: 1.55, maxWidth: 680 }}>
-        {isGoogle
-          ? 'You are signed in with Google (federated). Saving uses the least-privilege drive.file scope: Agape can only create this file in your Drive; it cannot read the rest of it. That is the dual-protection path — Google account security around your long-term audit archive.'
-          : user?.method === 'PASSKEY'
-            ? 'Passkey sessions are maximally private but have no cloud archive. Attaching Google gives you dual protection (device passkey + federated Google account) and lets the audit PDF live in your own Drive. Your sealed receipts on this device are untouched either way.'
-            : 'Guest sessions are ephemeral. Attach Google to upgrade this same account (your receipts carry over) and save the audit PDF to your federated Drive, or download it now before you close the session.'}
-      </p>
+      {(nuked.length > 0 || knoxed.length > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+          <GlassCard style={{ padding: 14, borderLeft: `4px solid ${NEON.magenta}` }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.magenta, marginBottom: 8 }}>NUKED · LIVE EXPOSURES</div>
+            {nuked.length === 0 && <div style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted }}>None. Keep it that way.</div>}
+            {nuked.slice(0, 8).map(({ m, f }) => (
+              <div key={`${m.id}-${f.id}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.72rem', color: NEON.magenta }}>{m.vector} · {f.label}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.78rem', color: NEON.textMuted }}>{f.detail}</div>
+                </div>
+                <button
+                  onClick={() => patchFindingStatus(m.id, f.id, 'KNOXED')}
+                  style={{
+                    background: 'rgba(0,212,255,0.12)',
+                    border: `1px solid ${NEON.blue}66`,
+                    color: NEON.blue,
+                    fontFamily: FONTS.mono,
+                    fontSize: '0.5rem',
+                    letterSpacing: '0.08em',
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    height: 28,
+                  }}
+                >
+                  KNOX
+                </button>
+              </div>
+            ))}
+          </GlassCard>
+          <GlassCard style={{ padding: 14, borderLeft: `4px solid ${NEON.blue}` }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.blue, marginBottom: 8 }}>KNOXED · HARDENED</div>
+            {knoxed.length === 0 && <div style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted }}>Nothing knoxed yet. After you remediate, knox the finding.</div>}
+            {knoxed.slice(0, 8).map(({ m, f }) => (
+              <div key={`${m.id}-${f.id}`} style={{ marginBottom: 8 }}>
+                <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.72rem', color: NEON.blue }}>{m.vector} · {f.label}</div>
+                <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.78rem', color: NEON.textMuted }}>{f.detail}</div>
+              </div>
+            ))}
+          </GlassCard>
+        </div>
+      )}
 
-      {status && <div role="status" style={{ marginTop: 14, border: `1px solid ${NEON.green}66`, background: 'rgba(0,255,135,0.06)', borderRadius: 10, padding: '11px 14px', fontSize: '0.8rem', color: NEON.text }}>{status} {driveLink && <a href={driveLink} target="_blank" rel="noreferrer" style={{ color: NEON.blue }}>Open in Google Drive →</a>}</div>}
-      {error && <div role="alert" style={{ marginTop: 14, border: `1px solid ${NEON.magenta}66`, background: 'rgba(255,46,159,0.07)', borderRadius: 10, padding: '11px 14px', fontSize: '0.8rem', color: '#ffb3d9' }}>⚠ {error}</div>}
-
-      <h2 style={{ fontFamily: "'Orbitron', monospace", fontSize: '0.74rem', color: NEON.textMuted, letterSpacing: '0.1em', marginTop: 30 }}>
-        RE-VERIFICATION CHECKPOINTS ({AUDIT_MONTHS})
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 7 }}>
-        {checkpoints.map((d, i) => (
-          <div key={d.toISOString()} style={{ border: '1px solid rgba(0,212,255,0.14)', borderRadius: 9, padding: '8px 11px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.62rem', color: NEON.textMuted }}>
-            MONTH {String(i + 1).padStart(2, '0')} · <span style={{ color: NEON.text }}>{d.toISOString().slice(0, 10)}</span>
-          </div>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 40 }}>
+        {cards.map(({ m, briefing }) => {
+          const c = statusColor(briefing.status);
+          return (
+            <GlassCard key={m.id} style={{ padding: 16, borderLeft: `4px solid ${c}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.orange }}>
+                    {m.vector} · {m.icon} {m.name} · SPLASH {m.vector.replace('V-0', '').replace('V-', '')}/16 · {briefing.status}
+                  </div>
+                  <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.95rem', color: c, margin: '4px 0' }}>{briefing.headline}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.9rem', color: NEON.text, lineHeight: 1.45 }}>{briefing.plainEnglish}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.8rem', color: NEON.blue, marginTop: 6 }}>Next: {briefing.nextAction}</div>
+                </div>
+                <div style={{ fontFamily: FONTS.orbitron, fontSize: '1.4rem', color: c, fontWeight: 800 }}>{briefing.score}</div>
+              </div>
+            </GlassCard>
+          );
+        })}
       </div>
     </div>
   );
 };
+
+const Stat = ({ label, value, color }: { label: string; value: string; color: string }) => (
+  <div>
+    <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>{label.toUpperCase()}</div>
+    <div style={{ fontFamily: FONTS.orbitron, fontSize: '1.4rem', fontWeight: 800, color }}>{value}</div>
+  </div>
+);

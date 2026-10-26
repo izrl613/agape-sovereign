@@ -12,18 +12,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Owner allowlist (verified Google identities) or a Firebase
-      // custom claim. Owner: idin@agape.nyc (Agape Sovereign).
-      return isSignedIn() && (
-             request.auth.token.admin == true ||
-             (request.auth.token.email_verified == true &&
-              request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc']));
+      return isSignedIn() &&
+             request.auth.token.admin == true;
     }
 
     // Sovereign user accounts & private sandboxes
     match /users/{userId} {
       allow read, write: if isOwner(userId);
-      allow list: if isAdmin();
+      allow list: if isSignedIn();
 
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);

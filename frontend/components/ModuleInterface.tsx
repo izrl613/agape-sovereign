@@ -1,232 +1,346 @@
-import React, { useMemo, useState } from 'react';
-import { ShieldCheck, Lock, Hash, SearchCheck, Stamp, ArrowLeft, Download } from 'lucide-react';
-import { NEON } from '../theme';
+import React, { useState } from 'react';
+import { MODULE_REGISTRY } from '../module-registry';
 import { MODULE_CONFIGS } from '../module-config';
-import { useSovereign } from '../context/SovereignContext';
-import {
-  AgentStep,
-  ModuleReceipt,
-  runModuleAgent,
-  validateEntry,
-} from '../services/moduleAgents';
-import { Sha256Badge } from './Sha256Badge';
+import { ZkFooter } from './ZkFooter';
 
-interface Props {
+interface ModuleInterfaceProps {
   moduleId: string;
-  onBack: () => void;
+  onSubmit: (data: any[]) => void;
 }
 
-const STEPS: { id: AgentStep; label: string; icon: React.ReactNode }[] = [
-  { id: 'VALIDATE', label: 'Validate', icon: <ShieldCheck size={14} /> },
-  { id: 'HASH', label: 'SHA-256 Hash', icon: <Hash size={14} /> },
-  { id: 'ENCRYPT', label: 'AES-256-GCM Encrypt', icon: <Lock size={14} /> },
-  { id: 'VERIFY', label: 'Third-Party Verify', icon: <SearchCheck size={14} /> },
-  { id: 'SEAL', label: 'Seal Receipt', icon: <Stamp size={14} /> },
-];
-
-/**
- * One identity-vector module, gated by its Module Agent. Every pipeline
- * step shown is a real awaited operation — progress is the agent's own
- * step callbacks, never a timed animation.
- */
-export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
+export const ModuleInterface: React.FC<ModuleInterfaceProps> = ({ moduleId, onSubmit }) => {
+  const registryModule = MODULE_REGISTRY[moduleId];
   const config = MODULE_CONFIGS[moduleId];
-  const { user, sovereignId, receipts, addReceipt } = useSovereign();
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [running, setRunning] = useState(false);
-  const [stepState, setStepState] = useState<Partial<Record<AgentStep, string>>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [receipt, setReceipt] = useState<ModuleReceipt | null>(null);
-  const [artefact, setArtefact] = useState<{ filename: string; text: string } | null>(null);
+  const [view, setView] = useState<'splash' | 'entry'>('splash');
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [currentAccount, setCurrentAccount] = useState<any>({});
 
-  const priorReceipts = useMemo(
-    () => receipts.filter((r) => r.moduleId === moduleId),
-    [receipts, moduleId],
-  );
-  if (!config) return <p style={{ color: NEON.magenta }}>Unknown module.</p>;
+  if (!registryModule || !config) return <div className="error">Module not found</div>;
 
-  const set = (key: string, value: string) => setValues((p) => ({ ...p, [key]: value }));
-
-  const run = async () => {
-    if (!user || !sovereignId) return;
-    setError(null);
-    setReceipt(null);
-    setArtefact(null);
-    const errors = validateEntry(moduleId, values);
-    if (errors.length) { setError(errors.join(' ')); return; }
-    setRunning(true);
-    setStepState({});
-    try {
-      const { receipt: raw, artefact: art } = await runModuleAgent(
-        moduleId, values, user.id, sovereignId,
-        (step, state) => setStepState((p) => ({ ...p, [step]: state })),
-      );
-      const stored = await addReceipt(raw, values);
-      setReceipt(stored);
-      setArtefact(art ?? null);
-      setValues((p) => ({ ...p, passwordCheck: '' }));
-    } catch (err: any) {
-      setError(err?.message ?? 'The Module Agent rejected this entry.');
-    } finally {
-      setRunning(false);
-    }
+  const addAccount = () => {
+    if (Object.keys(currentAccount).length === 0) return;
+    setAccounts([...accounts, { ...currentAccount, id: Date.now() }]);
+    setCurrentAccount({});
   };
 
-  const downloadArtefact = () => {
-    if (!artefact) return;
-    const url = URL.createObjectURL(new Blob([artefact.text], { type: 'text/plain' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = artefact.filename; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  const removeAccount = (id: number) => {
+    setAccounts(accounts.filter(acc => acc.id !== id));
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', padding: '11px 13px', borderRadius: 9,
-    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(0,212,255,0.25)',
-    color: NEON.text, fontSize: '0.85rem', fontFamily: "'Rajdhani', sans-serif",
-  };
+  if (view === 'splash') {
+    return (
+      <div className="sovereign-splash">
+        <ZkFooter pageId={`${moduleId}-splash`} />
+
+        <div className="splash-content">
+          <div className="vector-icon">{config.name[0]}</div>
+          <h1 className="splash-headline">{config.splash.headline}</h1>
+          <p className="description">{config.splash.narrative}</p>
+
+          <div className="privacy-pledge">
+            <span className="pledge-label">Privacy Pledge:</span> {config.splash.privacyPledge}
+          </div>
+
+          <button className="begin-btn" onClick={() => setView('entry')}>
+            Begin Vectorization
+          </button>
+        </div>
+
+        <style jsx>{`
+          .sovereign-splash {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            text-align: center;
+            padding: 20px;
+          }
+          .splash-content {
+            max-width: 600px;
+            animation: fadeIn 0.8s ease-out;
+          }
+          .vector-icon {
+            font-size: 64px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            width: 100px;
+            height: 100px;
+            line-height: 100px;
+            border-radius: 50%;
+            background: white;
+            margin-left: auto;
+            margin-right: auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+          }
+          .splash-headline {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 800;
+          }
+          .description {
+            font-size: 1.2rem;
+            color: #555;
+            margin-bottom: 30px;
+            line-height: 1.6;
+          }
+          .privacy-pledge {
+            background: rgba(255,255,255,0.5);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 40px;
+            border-left: 4px solid #2c3e50;
+            text-align: left;
+          }
+          .pledge-label {
+            font-weight: bold;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 5px;
+          }
+          .begin-btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s;
+          }
+          .begin-btn:hover { transform: scale(1.05); }
+          @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 860, margin: '0 auto', paddingBottom: 90 }}>
-      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: NEON.blue, cursor: 'pointer', display: 'flex', gap: 6, alignItems: 'center', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.68rem', marginBottom: 14, padding: 0 }}>
-        <ArrowLeft size={13} /> DASHBOARD
-      </button>
+    <div className="sovereign-entry">
+      <ZkFooter pageId={`${moduleId}-entry`} />
 
-      <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
-        MODULE AGENT · IDENTITY VECTOR
-      </div>
-      <h1 style={{ margin: '6px 0 4px', fontFamily: "'Orbitron', sans-serif", fontSize: '1.45rem', fontWeight: 900, color: NEON.text }}>
-        {config.splash.headline}
-      </h1>
-      <p style={{ color: NEON.textMuted, fontSize: '0.88rem', lineHeight: 1.55, maxWidth: 680 }}>{config.splash.narrative}</p>
+      <header className="entry-header">
+        <h2>{config.name}</h2>
+        <button className="back-btn" onClick={() => setView('splash')}>← Info</button>
+      </header>
 
-      <div style={{ borderLeft: `3px solid ${NEON.green}`, background: 'rgba(0,255,135,0.05)', padding: '11px 14px', borderRadius: '0 10px 10px 0', margin: '16px 0 22px', fontSize: '0.78rem', color: NEON.text, lineHeight: 1.5 }}>
-        <strong style={{ color: NEON.green, fontFamily: "'Share Tech Mono', monospace", fontSize: '0.62rem', letterSpacing: '0.1em' }}>PRIVACY PLEDGE · </strong>
-        {config.splash.privacyPledge}
-      </div>
-
-      {sovereignId && (
-        <div style={{ marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Sha256Badge hash={sovereignId} label="SEALING UNDER SOVEREIGN SHA-256" />
-          <span style={{ fontSize: '0.7rem', color: NEON.textMuted }}>This hash binds every receipt below to your zero-knowledge session.</span>
+      <div className="main-layout">
+        <div className="entry-slot">
+          <h3 className="slot-title">{config.thematicHook}</h3>
+          <div className="input-grid">
+            {config.dataFields.map(field => (
+              <div key={field.key} className="field-container">
+                <label>{field.label}</label>
+                {field.type === 'select' ? (
+                  <div className="provider-cloud">
+                    {field.options?.map(opt => (
+                      <div
+                        key={opt}
+                        className={`provider-chip ${currentAccount[field.key] === opt ? 'active' : ''}`}
+                        onClick={() => setCurrentAccount({...currentAccount, [field.key]: opt})}
+                      >
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type={field.type}
+                    placeholder={`Enter ${field.label.toLowerCase()}...`}
+                    value={currentAccount[field.key] || ''}
+                    onChange={(e) => setCurrentAccount({...currentAccount, [field.key]: e.target.value})}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <button className="add-btn" onClick={addAccount}>Add to Vector</button>
         </div>
-      )}
 
-      <form onSubmit={(e) => { e.preventDefault(); void run(); }} style={{ background: NEON.bgCard, border: '1px solid rgba(0,212,255,0.16)', borderRadius: 14, padding: 22 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          {config.dataFields.filter((f) => f.type !== 'hidden').map((field) => (
-            <label key={field.key} style={{ display: 'block' }}>
-              <span style={{ display: 'block', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.62rem', color: NEON.blue, letterSpacing: '0.08em', marginBottom: 7 }}>
-                {field.label.toUpperCase()}{field.optional ? ' (OPTIONAL)' : ''}{field.sensitive ? ' · 🔒 ON-DEVICE ONLY' : ''}
-              </span>
-              {field.type === 'select' ? (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
-                  {field.options?.map((opt) => (
-                    <button
-                      key={opt} type="button" onClick={() => set(field.key, opt)}
-                      style={{
-                        padding: '7px 13px', borderRadius: 999, cursor: 'pointer', fontSize: '0.75rem',
-                        background: values[field.key] === opt ? 'rgba(0,212,255,0.16)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${values[field.key] === opt ? NEON.blue : 'rgba(255,255,255,0.14)'}`,
-                        color: values[field.key] === opt ? NEON.blue : NEON.textMuted,
-                      }}
-                    >{opt}</button>
+        <div className="identity-feed">
+          <h3 className="feed-title">Verified Fragments</h3>
+          <div className="feed-container">
+            {accounts.length === 0 && <div className="empty-state">No data vectorized yet.</div>}
+            {accounts.map(acc => (
+              <div key={acc.id} className="identity-card">
+                <div className="card-content">
+                  {config.dataFields.map(f => (
+                    <div key={f.key} className="card-item">
+                      <strong className="card-label">{f.label}:</strong> {acc[f.key]}
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <input
-                  type={field.type === 'date' ? 'date' : field.type === 'password' ? 'password' : field.type === 'email' ? 'email' : 'text'}
-                  value={values[field.key] ?? ''}
-                  onChange={(e) => set(field.key, e.target.value)}
-                  placeholder={field.sensitive ? 'Hashed on-device — never transmitted' : `Enter ${field.label.toLowerCase()}…`}
-                  autoComplete="off"
-                  style={inputStyle}
-                />
-              )}
-              {field.help && <span style={{ display: 'block', fontSize: '0.66rem', color: NEON.textMuted, marginTop: 6, lineHeight: 1.45 }}>{field.help}</span>}
-            </label>
-          ))}
-        </div>
-
-        {(running || Object.keys(stepState).length > 0) && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 22 }} aria-live="polite">
-            {STEPS.map((s) => {
-              const state = stepState[s.id];
-              const color = state === 'DONE' ? NEON.green : state === 'FAILED' ? NEON.magenta : state === 'RUNNING' ? NEON.blue : 'rgba(255,255,255,0.25)';
-              return (
-                <span key={s.id} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', border: `1px solid ${color}66`, color, borderRadius: 999, padding: '5px 11px', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', boxShadow: state === 'DONE' ? `0 0 10px ${color}33` : 'none' }}>
-                  {s.icon} {s.label}{state === 'DONE' ? ' ✓' : state === 'FAILED' ? ' — see receipt' : state === 'RUNNING' ? ' …' : ''}
-                </span>
-              );
-            })}
+                <button className="remove-btn" onClick={() => removeAccount(acc.id)}>×</button>
+              </div>
+            ))}
           </div>
-        )}
-
-        {error && (
-          <div role="alert" style={{ marginTop: 16, border: `1px solid ${NEON.magenta}66`, background: 'rgba(255,46,159,0.07)', color: '#ffb3d9', borderRadius: 10, padding: '11px 14px', fontSize: '0.78rem' }}>
-            ⚠ Agent gate: {error}
-          </div>
-        )}
-
-        <button
-          type="submit" disabled={running}
-          style={{
-            marginTop: 22, padding: '13px 26px', borderRadius: 10, border: `1px solid ${NEON.green}88`,
-            background: 'rgba(0,255,135,0.1)', color: NEON.green, cursor: running ? 'wait' : 'pointer',
-            fontFamily: "'Orbitron', monospace", fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.08em',
-            boxShadow: '0 0 16px rgba(0,255,135,0.18)', opacity: running ? 0.6 : 1,
-          }}
-        >
-          {running ? 'MODULE AGENT RUNNING…' : '⬡ HASH · ENCRYPT · VERIFY · SEAL'}
-        </button>
-      </form>
-
-      {receipt && (
-        <section aria-label="Sealed receipt" style={{ marginTop: 22, background: 'rgba(0,255,135,0.04)', border: `1px solid ${NEON.green}55`, borderRadius: 14, padding: 20, boxShadow: '0 0 22px rgba(0,255,135,0.1)' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-            <strong style={{ fontFamily: "'Orbitron', monospace", color: NEON.green, fontSize: '0.8rem' }}>SEALED ✓</strong>
-            <Sha256Badge hash={receipt.sha256Id} label="ENTRY SHA-256 ID" size="md" />
-            <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.textMuted }}>
-              {receipt.storage} · {receipt.sealedAt.slice(0, 19).replace('T', ' ')}Z
-            </span>
-          </div>
-          <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.58rem', color: NEON.textMuted, wordBreak: 'break-all', marginBottom: 12 }}>
-            FULL SHA-256: {receipt.sha256Id}
-          </div>
-          <p style={{ fontSize: '0.84rem', color: NEON.text, lineHeight: 1.55, margin: '0 0 8px' }}>
-            <strong style={{ color: NEON.blue }}>{receipt.verification.status.replace(/_/g, ' ')}</strong> · {receipt.verification.detail}
-          </p>
-          <p style={{ fontSize: '0.7rem', color: NEON.textMuted, margin: '0 0 10px' }}>
-            Verified by: {receipt.verification.source} · {receipt.verification.checkedAt.slice(0, 10)}
-          </p>
-          {receipt.verification.findings.map((f) => (
-            <div key={f.label} style={{ fontSize: '0.78rem', color: NEON.text, padding: '6px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ color: NEON.textMuted }}>{f.label}: </span>{f.value}
-            </div>
-          ))}
-          {artefact && (
-            <button type="button" onClick={downloadArtefact} style={{ marginTop: 14, display: 'inline-flex', gap: 7, alignItems: 'center', padding: '10px 18px', borderRadius: 9, border: `1px solid ${NEON.blue}`, background: 'rgba(0,212,255,0.1)', color: NEON.blue, cursor: 'pointer', fontFamily: "'Orbitron', monospace", fontSize: '0.68rem', fontWeight: 700 }}>
-              <Download size={13} /> DOWNLOAD ERASURE LETTER (.TXT)
+          {accounts.length > 0 && (
+            <button className="submit-btn" onClick={() => onSubmit(accounts)}>
+              Commit to Architect AI
             </button>
           )}
-        </section>
-      )}
+        </div>
+      </div>
 
-      {priorReceipts.length > 0 && (
-        <section style={{ marginTop: 26 }}>
-          <h2 style={{ fontFamily: "'Orbitron', monospace", fontSize: '0.72rem', color: NEON.textMuted, letterSpacing: '0.1em' }}>
-            SEALED RECEIPTS IN THIS MODULE ({priorReceipts.length})
-          </h2>
-          {priorReceipts.map((r) => (
-            <div key={r.sha256Id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <Sha256Badge hash={r.sha256Id} />
-              <span style={{ fontSize: '0.7rem', color: NEON.textMuted }}>
-                {r.verification.status.replace(/_/g, ' ')} · {r.sealedAt.slice(0, 10)} · {r.storage}
-              </span>
-            </div>
-          ))}
-        </section>
-      )}
+      <style jsx>{`
+        .sovereign-entry {
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+          background: #fdfdfd;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        .entry-header {
+          padding: 20px 40px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-bottom: 1px solid #eee;
+        }
+        .back-btn {
+          background: none;
+          border: 1px solid #ddd;
+          padding: 5px 15px;
+          border-radius: 15px;
+          cursor: pointer;
+        }
+        .main-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 40px;
+          padding: 40px;
+          flex: 1;
+          overflow: hidden;
+        }
+        .entry-slot {
+          background: white;
+          padding: 30px;
+          border-radius: 24px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+          border: 1px solid #eee;
+        }
+        .slot-title {
+          font-size: 1rem;
+          color: #888;
+          font-style: italic;
+          margin-bottom: 20px;
+        }
+        .input-grid {
+          margin: 20px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 25px;
+        }
+        .field-container label {
+          display: block;
+          font-size: 0.9rem;
+          color: #888;
+          margin-bottom: 10px;
+        }
+        .field-container input {
+          width: 100%;
+          padding: 12px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          font-size: 1rem;
+        }
+        .provider-cloud {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .provider-chip {
+          padding: 8px 16px;
+          border: 1px solid #ddd;
+          border-radius: 20px;
+          cursor: pointer;
+          font-size: 0.9rem;
+          transition: all 0.2s;
+        }
+        .provider-chip.active {
+          background: #2c3e50;
+          color: white;
+          border-color: #2c3e50;
+        }
+        .add-btn {
+          width: 100%;
+          padding: 15px;
+          background: #3498db;
+          color: white;
+          border: none;
+          border-radius: 12px;
+          font-weight: bold;
+          cursor: pointer;
+        }
+        .identity-feed {
+          display: flex;
+          flex-direction: column;
+        }
+        .feed-title {
+          font-size: 1.1rem;
+          color: #2c3e50;
+          margin-bottom: 20px;
+        }
+        .feed-container {
+          flex: 1;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+          padding-right: 10px;
+        }
+        .identity-card {
+          background: #fff;
+          padding: 20px;
+          border-radius: 16px;
+          border: 1px solid #eee;
+          position: relative;
+          animation: slideIn 0.3s ease-out;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .card-item {
+          font-size: 0.9rem;
+          margin-bottom: 4px;
+        }
+        .card-label {
+          font-weight: 600;
+          color: #666;
+        }
+        .remove-btn {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          background: none;
+          border: none;
+          font-size: 20px;
+          cursor: pointer;
+          color: #ccc;
+        }
+        .remove-btn:hover { color: #e74c3c; }
+        .empty-state {
+          text-align: center;
+          color: #bbb;
+          margin-top: 100px;
+        }
+        .submit-btn {
+          margin-top: 20px;
+          padding: 20px;
+          background: #2ecc71;
+          color: white;
+          border: none;
+          border-radius: 16px;
+          font-size: 1.1rem;
+          font-weight: bold;
+          cursor: pointer;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+      `}</style>
     </div>
   );
 };
+

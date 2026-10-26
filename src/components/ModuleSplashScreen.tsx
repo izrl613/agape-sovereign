@@ -11,7 +11,7 @@ import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
 // security status. Auto-dismisses after AUTO_DISMISS_MS.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const AUTO_DISMISS_MS = 1800;
+const AUTO_DISMISS_MS = 6500;
 
 interface ModuleSplashProps {
   moduleId: string;
@@ -225,14 +225,21 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
             }}>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.55rem', color: NEON.textMuted, letterSpacing: '0.15em', marginBottom: 4 }}>
-                  VECTOR PARAMETER
+                  YOUR PICTURE IN THIS VECTOR
                 </div>
                 <div style={{
-                  fontFamily: "'Share Tech Mono'", fontSize: '0.8rem',
+                  fontFamily: "'Rajdhani', sans-serif", fontSize: '0.9rem',
                   color: hasData ? NEON.text : NEON.textMuted,
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.02em',
+                  lineHeight: 1.35,
                 }}>
-                  {hasData ? '●●●●●●●●●●●●●●●●' : '— NOT CONFIGURED —'}
+                  {hasData
+                    ? (status === 'NUKED'
+                        ? 'Live exposure on file. Open the module for the plain-English briefing and the one next step.'
+                        : status === 'KNOXED'
+                          ? 'This vector is sealed and hardened. Re-scan after any account change.'
+                          : 'Watching this surface. Nothing critical — still worth a 30-second read.')
+                    : 'Nothing sealed yet. We will turn the fields you enter into a briefing you can actually read — not a hash dump.'}
                 </div>
               </div>
               <div style={{
@@ -300,6 +307,25 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
                 {formatHex(displayHash)}
               </div>
             </div>
+
+            <button
+              onClick={() => { setVisible(false); setTimeout(onDismiss, 200); }}
+              style={{
+                marginTop: 4,
+                background: `${statusColor}18`,
+                border: `1px solid ${statusColor}55`,
+                color: statusColor,
+                fontFamily: "'Orbitron', monospace",
+                fontSize: '0.7rem',
+                letterSpacing: '0.12em',
+                padding: '10px 18px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              ENTER MODULE
+            </button>
 
             {/* Auto-dismiss progress bar */}
             <div style={{ width: '100%', height: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 1, overflow: 'hidden' }}>

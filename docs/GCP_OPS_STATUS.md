@@ -39,7 +39,8 @@ Updated: 2026-09-30 (local)
 Also present: gemma MCP, several gen* / sovereign* function-backed services (some dual-region rows show False without URL).
 
 ### Cloud Functions
-ACTIVE include: `authApi`, analytics/diff/ECRA/passkey/policy/score/audit/pipeline helpers.
+ACTIVE include: `authApi`, analytics/diff/ECRA/passkey/policy/score/audit/pipeline helpers.  
+FAILED: `cleanupExpiredPipelineRuns`.
 
 ### Firestore DBs
 1. `(default)` — nam5  
@@ -80,5 +81,5 @@ ACTIVE include: `authApi`, analytics/diff/ECRA/passkey/policy/score/audit/pipeli
 1. **GitHub**: log in `gh auth login`, temporarily allow force-push on `main`, push cleaned tip (`9b0c3d7` history base + `172cb0720` dup purge), re-lock protection, re-clone other machines.
 2. **Secrets**: `GEMINI_API_KEY=<real> ./scripts/gcp/populate-secrets.sh`
 3. **Registry cost**: set cleanup policy / delete old `firebaseapphosting-images` digests.
-4. **Functions**: confirm all active functions are healthy after latest deploy.
+4. **Functions**: investigate `cleanupExpiredPipelineRuns` FAILED state.
 5. Keep auth WIP on a feature branch; do not mix with history force-push.
