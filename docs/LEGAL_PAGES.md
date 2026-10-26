@@ -53,6 +53,52 @@ frontend/
     └── TermsOfServicePage.tsx# /terms
 ```
 
+### Shared page anatomy (the schema both documents follow)
+
+`/privacy` and `/terms` are one component with two content files, and the anatomy below is
+identical on both — a reviewer should be able to put the pages side by side and see the same
+chrome, the same rhythm, and the same closing sequence. Only the copy and the number of
+sections differ.
+
+```
+header          brand lock-up · PRIVACY / TERMS switch · ← APP
+progress rail   2px tri-colour rail pinned to the top of the viewport
+sidebar         ON THIS PAGE eyebrow
+                SECTION 04 / 16 · 38 % meter
+                index (fixed 448px viewport — see below)
+                document specimen: VERSION · SECTIONS · EFFECTIVE · PDF
+                legend (orange frame = your position)
+                READ <other doc> · PDF · BACK TO TOP
+body            eyebrow → H1 → tagline → meta chips → hero actions → tri-colour rule
+                intro lead
+                §01..§NN  (number chip, SECTION NN eyebrow, H2, rule, then blocks)
+                subsections  (NN.N heading with a blue bar)
+                §  APPENDIX — Document Details fact table
+                SIGNED & EFFECTIVE signature block
+                contact card
+                footer  (both PDF chips · copyright + SHA-256 · PRIVACY / TERMS / CONTACT)
+```
+
+Rules that keep the pair aligned:
+
+- **The index viewport is fixed at 448px** (`.legal-toc`). `/privacy`'s 12 entries fit exactly;
+  `/terms`' 17 entries scroll inside the same box. Because the sidebar height is therefore not
+  content-driven, the specimen strip and the three footer actions land on the same pixel on both
+  pages, at every viewport height. On short windows the box shrinks via `flex-shrink` and scrolls.
+- **Overflow is faded, not clipped.** When the index overflows, the CSS masks the cut row on the
+  side that actually has more entries (`is-fade-top` / `is-fade-bottom`). A `↓ N MORE` counter
+  rides the bottom edge and reports how many entries are still below; it fades out at the last
+  entry. It is pulled over the index with a negative margin so appearing/disappearing can never
+  change the panel height.
+- **The document specimen strip** (version, section count, effective date, PDF weight) is the same
+  2×2 grid on both pages, so the sidebar never ends in dead space on the shorter document.
+- **The closing sequence is mandatory on both**: appendix table → signature block → contact card.
+  A document without a `signatureName` simply omits it — which is why the Privacy Policy carries
+  the same operator block as the Terms.
+- **Section anatomy never varies**: number chip + `SECTION NN` eyebrow + H2 + tri-colour underline,
+  followed by blocks; the `allcaps` block type renders as a boxed clause and is used only where the
+  signed PDF has such a clause (four times in the Terms, never in the Privacy Policy).
+
 ### Colour rules
 
 - **Neon blue** (`#00D4FF` family) is the only colour for navigation labels.

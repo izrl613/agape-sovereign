@@ -24,6 +24,13 @@ type TocEntry = {
 
 const pad = (num: string) => (num.length === 1 ? `0${num}` : num);
 
+/** "March 11, 2026" → "2026-03-11"; falls back to the raw string. */
+const isoDate = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString().slice(0, 10);
+};
+
 const HexMark: React.FC = () => (
   <svg viewBox="0 0 32 36" width="26" height="29" aria-hidden="true">
     <polygon points="16,2 30,10 30,26 16,34 2,26 2,10" fill="none" stroke="#00D4FF" strokeWidth="1.6" />
@@ -106,8 +113,10 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
   const [progress, setProgress] = useState(0);
   const [showTopBtn, setShowTopBtn] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [tocFade, setTocFade] = useState({ top: false, bottom: false, hidden: 0 });
 
-  const tocRef = useRef<HTMLDivElement | null>(null);
+  const tocRef = useRef<HTMLElement | null>(null);
+  const tocScrollRef = useRef<HTMLElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useLegalMeta(doc);
@@ -169,6 +178,51 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, [anchors]);
+
+  /* Flag an index that overflows its capped height, so the CSS can fade the
+     rows cut by the cap instead of clipping them mid-label. The fade is only
+     drawn on the side that actually has more entries. */
+  useEffect(() => {
+    const el = tocScrollRef.current;
+    if (!el) return;
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
+      const overflowing = el.scrollHeight > el.clientHeight + 2;
+      const top = overflowing && el.scrollTop > 4;
+      const bottom = overflowing && el.scrollTop + el.clientHeight < el.scrollHeight - 4;
+
+      // How many entries are still below the fold — the "↓ 6 MORE" affordance.
+      const listBottom = el.getBoundingClientRect().bottom;
+      let hidden = 0;
+      if (bottom) {
+        el.querySelectorAll('.legal-toc-item').forEach((item) => {
+          if (item.getBoundingClientRect().top > listBottom - 10) hidden += 1;
+        });
+      }
+
+      setTocFade((prev) =>
+        prev.top === top && prev.bottom === bottom && prev.hidden === hidden ? prev : { top, bottom, hidden },
+      );
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', measure);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   /* Keep the orange box in view inside the sidebar without moving the page. */
   useEffect(() => {
@@ -298,7 +352,15 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
             </div>
           </div>
 
-          <nav className="legal-toc" id="legal-toc" ref={tocRef} aria-label={`${doc.title} sections`}>
+          <nav
+            className={`legal-toc${tocFade.top ? ' is-fade-top' : ''}${tocFade.bottom ? ' is-fade-bottom' : ''}`}
+            id="legal-toc"
+            ref={(node) => {
+              tocRef.current = node;
+              tocScrollRef.current = node;
+            }}
+            aria-label={`${doc.title} sections`}
+          >
             {doc.sections.map((section) => {
               const isActiveSection = activeSectionId === section.id;
               const showSubs = Boolean(section.subsections?.length) && isActiveSection;
@@ -363,6 +425,31 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
               <span className="legal-toc-label">Document Details</span>
             </a>
           </nav>
+
+          <div className={`legal-toc-more${tocFade.bottom ? ' is-visible' : ''}`} aria-hidden="true">
+            ↓ {tocFade.hidden || ''} MORE
+          </div>
+
+          {/* Same specimen strip on both documents, so the sidebar keeps an
+              identical anatomy whether the index has 12 entries or 17. */}
+          <div className="legal-toc-meta" aria-label="Document facts">
+            <div className="legal-toc-meta-cell">
+              <span>VERSION</span>
+              <b>v{doc.version}</b>
+            </div>
+            <div className="legal-toc-meta-cell">
+              <span>SECTIONS</span>
+              <b>{pad(String(doc.sections.length))}</b>
+            </div>
+            <div className="legal-toc-meta-cell">
+              <span>EFFECTIVE</span>
+              <b>{isoDate(doc.effectiveDate)}</b>
+            </div>
+            <div className="legal-toc-meta-cell">
+              <span>PDF</span>
+              <b>{formatBytes(doc.pdf.bytes)}</b>
+            </div>
+          </div>
 
           <div className="legal-toc-foot">
             <div className="legal-legend">

@@ -495,4 +495,8 @@ export const privacyPolicy: LegalDocument = {
     { k: 'Google Policy Compliance', v: 'Google API Services User Data Policy — Limited Use' },
     { k: 'Compliance Frameworks', v: 'ECRA 2026 | GDPR | CCPA/CPRA | COPPA' },
   ],
+  // Same closing sequence as the Terms of Service: details → signature → contact.
+  signatureName: 'Israel David',
+  signatureRole: 'Operator, Agape Sovereign',
+  signatureContacts: ['agape@sovereign.nyc'],
 };

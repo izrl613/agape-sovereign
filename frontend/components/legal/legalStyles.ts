@@ -190,6 +190,9 @@ export const LEGAL_CSS = `
     display: flex;
     flex-direction: column;
     gap: 12px;
+    /* The panel hugs its content but the index is capped, so /privacy (12
+       entries) and /terms (17) produce the same card instead of one short panel
+       and one stretched to the viewport. A longer index scrolls in place. */
     max-height: calc(100vh - 112px);
     padding: 16px 14px;
     border: 1px solid rgba(0, 212, 255, 0.16);
@@ -307,8 +310,12 @@ export const LEGAL_CSS = `
 
   .legal-toc {
     display: flex;
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-height: 0;
+    /* One index viewport for both documents: /privacy's 12 rows fit exactly,
+       /terms' 17 rows scroll. Short windows shrink it via flex-shrink. */
+    height: 448px;
+    max-height: 448px;
     flex-direction: column;
     gap: 2px;
     overflow-y: auto;
@@ -317,6 +324,45 @@ export const LEGAL_CSS = `
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 212, 255, 0.4) transparent;
   }
+  /* Fade the row cut by the cap, and the rows above the fold once scrolled. */
+  .legal-toc.is-fade-bottom {
+    mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 24px), transparent 100%);
+  }
+  .legal-toc.is-fade-top.is-fade-bottom {
+    mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .legal-toc.is-fade-top {
+    mask-image: linear-gradient(180deg, transparent 0, #000 22px);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22px);
+  }
+
+  /* Sticky counter for a capped index: the cut row is covered, the count says
+     how much is left, and it rides the bottom edge until the list ends. */
+  .legal-toc-more {
+    position: relative;
+    z-index: 2;
+    /* Overlaps the bottom of the index by exactly its own height, so it never
+       changes the panel height when it appears. */
+    height: 24px;
+    /* -24px pulls it over the index; -12px cancels the flex gap it would
+       otherwise add, so the panel height is unchanged on both documents. */
+    margin: -24px -4px -12px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 3px;
+    background: linear-gradient(180deg, rgba(6, 12, 26, 0) 0, rgba(6, 12, 26, 0.96) 55%, rgba(6, 12, 26, 1) 100%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8.6px;
+    letter-spacing: 0.16em;
+    color: var(--legal-blue-soft);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+  .legal-toc-more.is-visible { opacity: 1; }
   .legal-toc::-webkit-scrollbar { width: 3px; }
   .legal-toc::-webkit-scrollbar-thumb {
     background: rgba(0, 212, 255, 0.4);
@@ -397,6 +443,39 @@ export const LEGAL_CSS = `
   .legal-toc-sub .legal-toc-num {
     font-size: 9.6px;
     min-width: 24px;
+  }
+
+  /* Document facts — the same 2×2 specimen on /privacy and /terms. */
+  .legal-toc-meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .legal-toc-meta-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 7px 9px;
+    border: 1px solid var(--legal-line);
+    border-radius: 8px;
+    background: rgba(0, 212, 255, 0.03);
+  }
+  .legal-toc-meta-cell span {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8.2px;
+    letter-spacing: 0.16em;
+    color: rgba(180, 205, 230, 0.5);
+  }
+  .legal-toc-meta-cell b {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: var(--legal-blue-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .legal-toc-foot {
@@ -1028,6 +1107,8 @@ export const LEGAL_CSS = `
       position: sticky;
       top: 52px;
       z-index: 30;
+      height: auto;
+      min-height: 0;
       max-height: none;
       padding: 10px 12px 12px;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 32px rgba(0, 0, 0, 0.5);
@@ -1039,9 +1120,12 @@ export const LEGAL_CSS = `
     .legal-meter { display: none; }
     .legal-aside[data-open='true'] .legal-meter { display: flex; }
     .legal-aside[data-open='true'] .legal-toc-current { display: none; }
-    .legal-toc { display: none; max-height: 44vh; }
+    .legal-toc { display: none; height: auto; max-height: 44vh; }
+    .legal-aside[data-open='true'] .legal-toc { height: auto; max-height: 44vh; }
     .legal-aside[data-open='true'] .legal-toc { display: flex; }
-    .legal-aside[data-open='false'] .legal-toc-foot { display: none; }
+    .legal-aside[data-open='false'] .legal-toc-foot,
+    .legal-aside[data-open='false'] .legal-toc-meta { display: none; }
+    .legal-toc-meta { grid-template-columns: 1fr 1fr 1fr 1fr; }
     .legal-aside[data-open='true'] .legal-toc-foot {
       flex-direction: row;
       flex-wrap: wrap;
