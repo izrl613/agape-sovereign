@@ -25,11 +25,17 @@ jobs:
       - name: Build Frontend
         run: npm run build
 
+      # working-directory, NOT --prefix: inside a workspaces repo,
+      # `npm --prefix functions ci` installs the ROOT tree, leaving
+      # functions/node_modules without @google-cloud/firestore and
+      # firebase's codebase analysis fails ("Cannot find module").
       - name: Install Functions Dependencies
-        run: npm --prefix functions ci
+        working-directory: functions
+        run: npm ci
 
       - name: Build Functions
-        run: npm --prefix functions run build
+        working-directory: functions
+        run: npm run build
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3

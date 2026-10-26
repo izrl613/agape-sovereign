@@ -263,10 +263,16 @@ jobs:
         run: npm install -g firebase-tools@latest
 
       - name: Deploy to Firebase
+        shell: bash
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             echo "Deploying to PRODUCTION (hosting + functions)..."
-            firebase deploy --only hosting,functions --project ${{ env.FIREBASE_PROJECT }} --non-interactive
+            set -o pipefail
+            firebase deploy --only hosting,functions --project ${{ env.FIREBASE_PROJECT }} --non-interactive 2>&1 | tee /tmp/appflow-deploy.log || {
+              grep -aiE "error:|failed|unable|permission|denied|invalid|not found|cannot find module" /tmp/appflow-deploy.log | tail -n 10 | while IFS= read -r line; do echo "::error::APPFLOW-DEPLOY: $line"; done
+              tail -n 5 /tmp/appflow-deploy.log | while IFS= read -r line; do echo "::error::APPFLOW-DEPLOY-TAIL: $line"; done
+              exit 1
+            }
             echo "Deploying security rules (firestore + storage)..."
             firebase deploy --only firestore,storage --project ${{ env.FIREBASE_PROJECT }} --non-interactive || echo "::warning::RULES NOT DEPLOYED — CI service account needs roles/firebaserules.admin (see docs/OWNER_SETUP_ZERO_COST.md). Hosting + Functions ARE live."
           else
