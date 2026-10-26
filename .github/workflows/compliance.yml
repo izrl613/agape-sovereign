@@ -194,8 +194,16 @@ jobs:
 
       - run: npm ci
 
-      - name: TypeScript type check
-        run: npx tsc --noEmit
+      # Type-check the code that actually ships: Firebase Hosting serves
+      # frontend/dist and Cloud Functions run functions/lib (see
+      # firebase.json). The repo-root src/ tree is the frozen legacy
+      # duplicate app; it no longer parses and is not deployed, so the
+      # old root `npx tsc --noEmit` failed on main before ever building.
+      - name: TypeScript type check (frontend)
+        run: npm run typecheck --prefix frontend
+
+      - name: TypeScript type check (functions)
+        run: npm ci --prefix functions && npm run typecheck --prefix functions
 
       - name: Build
         run: npm run build
