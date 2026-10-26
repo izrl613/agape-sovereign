@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
-import { MODULE_AGENTS, ModuleFinding } from '../module-catalog';
+import { MODULE_AGENTS, ModuleFinding, FindingStatus } from '../module-catalog';
 import { buildDossier, IdentityDossier } from '../utils/briefing';
 import { calculateSha256 } from '../services/cryptoService';
+import { ArchitectPipelineResult } from '../services/architectPipeline';
 
 export type AuthMethod = 'PASSKEY' | 'GOOGLE' | 'ANON';
 
@@ -27,7 +28,11 @@ interface SovereignContextType {
   modules: Record<string, ModuleState>;
   updateRecord: (moduleId: string, record: Record<string, string>) => Promise<void>;
   setFindings: (moduleId: string, findings: ModuleFinding[]) => void;
+  patchFindingStatus: (moduleId: string, findingId: string, status: FindingStatus) => void;
+  markVector: (moduleId: string, status: FindingStatus) => void;
   dossier: IdentityDossier;
+  pipeline: ArchitectPipelineResult | null;
+  setPipeline: (p: ArchitectPipelineResult | null) => void;
   clearSession: () => void;
   seedDemo: () => void;
 }
@@ -63,6 +68,7 @@ const storageKey = (uid: string) => `agape.module-state.${uid}`;
 export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUserState] = useState<UserSession | null>(null);
   const [modules, setModules] = useState<Record<string, ModuleState>>(emptyState);
+  const [pipeline, setPipeline] = useState<ArchitectPipelineResult | null>(null);
 
   const persist = (uid: string, next: Record<string, ModuleState>) => {
     try {
@@ -137,6 +143,42 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   };
 
+  const patchFindingStatus = (moduleId: string, findingId: string, status: FindingStatus) => {
+    setModules((prev) => {
+      const row = prev[moduleId];
+      if (!row) return prev;
+      const next = {
+        ...prev,
+        [moduleId]: {
+          ...row,
+          findings: row.findings.map((f) => (f.id === findingId ? { ...f, status } : f)),
+        },
+      };
+      if (user) persist(user.id, next);
+      return next;
+    });
+  };
+
+  const markVector = (moduleId: string, status: FindingStatus) => {
+    setModules((prev) => {
+      const row = prev[moduleId] || emptyState()[moduleId];
+      const findings = (row.findings.length ? row.findings : [{
+        id: `${moduleId}-vector`,
+        status,
+        label: status === 'NUKED' ? 'Vector marked NUKED' : status === 'KNOXED' ? 'Vector marked KNOXED' : 'Vector watched',
+        detail: status === 'NUKED'
+          ? 'Operator flagged this entire vector as live exposure. Architect will treat it as NUKED until it is knoxed.'
+          : status === 'KNOXED'
+            ? 'Operator hardened this entire vector. Re-scan after any account change.'
+            : 'Operator is watching this vector.',
+        remediation: status === 'NUKED' ? 'Remediate, then tap KNOX.' : 'Keep sealed. Re-run Architect compile before export.',
+      }]).map((f) => ({ ...f, status }));
+      const next = { ...prev, [moduleId]: { ...row, findings, lastScanned: new Date().toISOString() } };
+      if (user) persist(user.id, next);
+      return next;
+    });
+  };
+
   const seedDemo = () => {
     const seeded = demoState();
     setModules(seeded);
@@ -153,6 +195,7 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
     setUserState(null);
     setModules(emptyState());
+    setPipeline(null);
   };
 
   const dossier = useMemo(
@@ -199,7 +242,20 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   return (
     <SovereignContext.Provider
-      value={{ user, setUser, modules, updateRecord, setFindings, dossier, clearSession, seedDemo }}
+      value={{
+        user,
+        setUser,
+        modules,
+        updateRecord,
+        setFindings,
+        patchFindingStatus,
+        markVector,
+        dossier,
+        pipeline,
+        setPipeline,
+        clearSession,
+        seedDemo,
+      }}
     >
       {children}
     </SovereignContext.Provider>

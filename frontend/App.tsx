@@ -167,7 +167,7 @@ const AppContent: React.FC = () => {
             <ModuleWorkspace key={`${activeModule}-${moduleKey}`} module={getModule(activeModule)!} />
           )}
           {!activeModule && section === 'architect' && (
-            <ArchitectAIView userId={user.id} collectedVectors={collected} />
+            <ArchitectAIView userId={user.id} collectedVectors={collected} onOpenReport={() => goSection('report')} />
           )}
           {!activeModule && section === 'report' && <ReportView />}
         </main>

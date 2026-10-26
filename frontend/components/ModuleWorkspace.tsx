@@ -13,7 +13,7 @@ interface Props {
 }
 
 export const ModuleWorkspace: React.FC<Props> = ({ module }) => {
-  const { user, modules, updateRecord, setFindings, dossier } = useSovereign();
+  const { user, modules, updateRecord, setFindings, markVector, dossier } = useSovereign();
   const state = modules[module.id] || { record: {}, findings: [], hash: '', lastScanned: null, customized: false };
   const [draft, setDraft] = useState<Record<string, string>>(state.record);
   const [showSplash, setShowSplash] = useState(true);
@@ -98,6 +98,14 @@ export const ModuleWorkspace: React.FC<Props> = ({ module }) => {
             <NeonButton size="sm" color={NEON.blue} onClick={handleScan} disabled={scanning}>
               {scanning ? 'SCANNING…' : 'SCAN THIS VECTOR'}
             </NeonButton>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <MiniAction color={NEON.magenta} onClick={() => markVector(module.id, 'NUKED')}>
+                NUKE VECTOR
+              </MiniAction>
+              <MiniAction color={NEON.blue} onClick={() => markVector(module.id, 'KNOXED')}>
+                KNOX VECTOR
+              </MiniAction>
+            </div>
             <button
               onClick={() => setShowSplash(true)}
               style={{

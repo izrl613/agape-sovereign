@@ -43,7 +43,7 @@ export const DashboardView: React.FC<{ onModuleClick: (id: string) => void }> = 
           { label: 'VECTORS SEALED', value: `${dossier.sealed}/16`, sub: 'Identity modules with data', color: NEON.blue },
           { label: 'EXPOSURES', value: dossier.nuked, sub: 'Live NUKED findings', color: NEON.magenta },
           { label: 'SECURED', value: dossier.knoxed, sub: 'KNOXED & hardened', color: NEON.blue },
-          { label: 'AUDIT PAGES', value: '22', sub: 'Identity report after biometrics', color: NEON.orange },
+          { label: 'AUDIT PAGES', value: '22–30', sub: 'Identity report after Architect compile', color: NEON.orange },
         ].map((kpi) => (
           <GlassCard key={kpi.label} style={{ padding: 16 }}>
             <div style={{ fontFamily: FONTS.mono, fontSize: '0.58rem', color: NEON.textMuted, letterSpacing: '0.1em', marginBottom: 6 }}>

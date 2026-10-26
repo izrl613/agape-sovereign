@@ -5,29 +5,39 @@ import { MODULE_AGENTS } from '../module-catalog';
 import { useSovereign } from '../context/SovereignContext';
 import { buildModuleBriefing, statusColor } from '../utils/briefing';
 import { confirmWithBiometrics } from '../services/biometricGate';
-import { AUDIT_PAGE_COUNT, buildAuditPayload, downloadBlob, generateIdentityAuditPdf } from '../services/auditReportPdf';
+import {
+  AUDIT_PAGE_RANGE,
+  auditPagePlan,
+  buildAuditPayload,
+  downloadBlob,
+  generateIdentityAuditPdf,
+} from '../services/auditReportPdf';
 import { getGoogleDriveAccessToken, uploadPdfToGoogleDrive } from '../services/driveExport';
 
 type Phase = 'preview' | 'verifying' | 'saving' | 'done';
 
 export const ReportView: React.FC = () => {
-  const { modules, dossier, user } = useSovereign();
+  const { modules, dossier, user, pipeline, patchFindingStatus } = useSovereign();
   const [phase, setPhase] = useState<Phase>('preview');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [driveLink, setDriveLink] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [hash, setHash] = useState<string | null>(null);
+  const [pages, setPages] = useState<number | null>(null);
 
+  const planned = useMemo(() => auditPagePlan(modules, pipeline), [modules, pipeline]);
   const cards = useMemo(
     () =>
       MODULE_AGENTS.map((m) => {
         const row = modules[m.id] || { record: {}, findings: [] };
         const briefing = buildModuleBriefing(m, row.record, row.findings, user?.displayName || 'You');
-        return { m, briefing };
+        return { m, briefing, findings: row.findings || [] };
       }),
     [modules, user]
   );
+  const nuked = cards.flatMap((c) => c.findings.filter((f) => f.status === 'NUKED').map((f) => ({ ...c, f })));
+  const knoxed = cards.flatMap((c) => c.findings.filter((f) => f.status === 'KNOXED').map((f) => ({ ...c, f })));
 
   const compile = async (sink: 'device' | 'drive') => {
     if (!user) {
@@ -47,7 +57,8 @@ export const ReportView: React.FC = () => {
           authMethod: user.authMethod,
         },
         dossier,
-        modules
+        modules,
+        pipeline
       );
       setHash(payload.masterHash);
       const proof = await confirmWithBiometrics(payload.masterHash, {
@@ -59,6 +70,7 @@ export const ReportView: React.FC = () => {
       setPhase('saving');
       const pdf = await generateIdentityAuditPdf(payload);
       setFileName(pdf.fileName);
+      setPages(pdf.pages);
       if (sink === 'device') {
         downloadBlob(pdf.blob, pdf.fileName);
         setNotice(`Saved ${pdf.fileName} (${pdf.pages} pages) to this device.`);
@@ -66,7 +78,7 @@ export const ReportView: React.FC = () => {
         const token = await getGoogleDriveAccessToken();
         const uploaded = await uploadPdfToGoogleDrive(pdf.blob, pdf.fileName, token);
         setDriveLink(uploaded.webViewLink);
-        setNotice(`Uploaded ${pdf.fileName} to your Google Drive.`);
+        setNotice(`Uploaded ${pdf.fileName} (${pdf.pages} pages) to your Google Drive.`);
       }
       setPhase('done');
     } catch (err) {
@@ -78,24 +90,28 @@ export const ReportView: React.FC = () => {
   return (
     <div style={{ padding: 24, overflowY: 'auto', height: '100%', animation: 'fade-in 0.35s ease' }}>
       <div style={{ fontFamily: FONTS.mono, fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
-        IDENTITY AUDIT · 16 MODULE AGENTS · {AUDIT_PAGE_COUNT}-PAGE HANDOFF
+        IDENTITY AUDIT · ARCHITECT → VALIDATOR → ARCHITECT · {AUDIT_PAGE_RANGE} PAGES
       </div>
       <NeonText color={NEON.blue} size="1.4rem" weight={900}>
         IDENTITY AUDIT REPORT
       </NeonText>
       <p style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted, maxWidth: 760, margin: '8px 0 20px', lineHeight: 1.55 }}>
-        Preview the same 16 splash briefings the agents told you. Confirm with biometrics (Face ID, Touch ID, Windows Hello, or a security key). Then keep a real PDF on this device or in your federated Google account. Nothing is written until you verify.
+        Architect AI hands the 16 sealed vectors to the Third-Party Validator Agent, then compiles this report. Confirm with
+        biometrics. Save a real PDF to this device or your federated Google account. NUKED findings stay NUKED until you knox
+        them.
       </p>
 
       <GlassCard style={{ padding: 18, marginBottom: 18 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
           <Stat label="Score" value={String(dossier.score)} color={NEON.blue} />
           <Stat label="Nuked" value={String(dossier.nuked)} color={NEON.magenta} />
           <Stat label="Knoxed" value={String(dossier.knoxed)} color={NEON.blue} />
-          <Stat label="Pages" value={String(AUDIT_PAGE_COUNT)} color={NEON.orange} />
+          <Stat label="Pages" value={String(pages || planned.length)} color={NEON.orange} />
+          <Stat label="Compile" value={pipeline?.valid ? 'OK' : 'WAIT'} color={pipeline?.valid ? NEON.blue : NEON.orange} />
         </div>
         <div style={{ fontFamily: FONTS.mono, fontSize: '0.62rem', color: NEON.textMuted, marginTop: 12 }}>
-          Operator {user?.displayName} · {dossier.emailMasked} · {dossier.authLabel} · 16 splash screens compiled
+          Operator {user?.displayName} · {dossier.emailMasked} · {dossier.authLabel} · {planned.length} pages from this handoff
+          {pipeline ? ` · SHA ${pipeline.compileHash.slice(0, 12)}…` : ' · run Architect validator handoff for extra pages'}
         </div>
         {hash && (
           <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.blue, marginTop: 8, wordBreak: 'break-all' }}>
@@ -105,12 +121,35 @@ export const ReportView: React.FC = () => {
       </GlassCard>
 
       {error && (
-        <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,122,24,0.35)', background: 'rgba(255,122,24,0.08)', color: '#ffaa66', fontFamily: FONTS.mono, fontSize: 12 }}>
+        <div
+          role="alert"
+          style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: '1px solid rgba(255,122,24,0.35)',
+            background: 'rgba(255,122,24,0.08)',
+            color: '#ffaa66',
+            fontFamily: FONTS.mono,
+            fontSize: 12,
+          }}
+        >
           ⚠ {error}
         </div>
       )}
       {notice && (
-        <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(0,212,255,0.25)', background: 'rgba(0,212,255,0.08)', color: NEON.blue, fontFamily: FONTS.mono, fontSize: 12 }}>
+        <div
+          style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: '1px solid rgba(0,212,255,0.25)',
+            background: 'rgba(0,212,255,0.08)',
+            color: NEON.blue,
+            fontFamily: FONTS.mono,
+            fontSize: 12,
+          }}
+        >
           {notice}
           {driveLink && (
             <>
@@ -124,18 +163,10 @@ export const ReportView: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 22 }}>
-        <NeonButton
-          color={NEON.blue}
-          disabled={phase === 'verifying' || phase === 'saving'}
-          onClick={() => compile('device')}
-        >
+        <NeonButton color={NEON.blue} disabled={phase === 'verifying' || phase === 'saving'} onClick={() => compile('device')}>
           {phase === 'verifying' ? 'VERIFY BIOMETRICS…' : phase === 'saving' ? 'WRITING PDF…' : '🔑 VERIFY · SAVE TO DEVICE'}
         </NeonButton>
-        <NeonButton
-          color={NEON.orange}
-          disabled={phase === 'verifying' || phase === 'saving'}
-          onClick={() => compile('drive')}
-        >
+        <NeonButton color={NEON.orange} disabled={phase === 'verifying' || phase === 'saving'} onClick={() => compile('drive')}>
           {phase === 'verifying' ? 'VERIFY BIOMETRICS…' : 'G VERIFY · SAVE TO GOOGLE'}
         </NeonButton>
       </div>
@@ -143,6 +174,50 @@ export const ReportView: React.FC = () => {
         Device download uses the browser file picker. Google Drive requests drive.file only after biometrics, never at login.
         {fileName ? ` Last file: ${fileName}` : ''}
       </div>
+
+      {(nuked.length > 0 || knoxed.length > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
+          <GlassCard style={{ padding: 14, borderLeft: `4px solid ${NEON.magenta}` }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.magenta, marginBottom: 8 }}>NUKED · LIVE EXPOSURES</div>
+            {nuked.length === 0 && <div style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted }}>None. Keep it that way.</div>}
+            {nuked.slice(0, 8).map(({ m, f }) => (
+              <div key={`${m.id}-${f.id}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                <div>
+                  <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.72rem', color: NEON.magenta }}>{m.vector} · {f.label}</div>
+                  <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.78rem', color: NEON.textMuted }}>{f.detail}</div>
+                </div>
+                <button
+                  onClick={() => patchFindingStatus(m.id, f.id, 'KNOXED')}
+                  style={{
+                    background: 'rgba(0,212,255,0.12)',
+                    border: `1px solid ${NEON.blue}66`,
+                    color: NEON.blue,
+                    fontFamily: FONTS.mono,
+                    fontSize: '0.5rem',
+                    letterSpacing: '0.08em',
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    height: 28,
+                  }}
+                >
+                  KNOX
+                </button>
+              </div>
+            ))}
+          </GlassCard>
+          <GlassCard style={{ padding: 14, borderLeft: `4px solid ${NEON.blue}` }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.blue, marginBottom: 8 }}>KNOXED · HARDENED</div>
+            {knoxed.length === 0 && <div style={{ fontFamily: FONTS.rajdhani, color: NEON.textMuted }}>Nothing knoxed yet. After you remediate, knox the finding.</div>}
+            {knoxed.slice(0, 8).map(({ m, f }) => (
+              <div key={`${m.id}-${f.id}`} style={{ marginBottom: 8 }}>
+                <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.72rem', color: NEON.blue }}>{m.vector} · {f.label}</div>
+                <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.78rem', color: NEON.textMuted }}>{f.detail}</div>
+              </div>
+            ))}
+          </GlassCard>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 40 }}>
         {cards.map(({ m, briefing }) => {
@@ -152,7 +227,7 @@ export const ReportView: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <div>
                   <div style={{ fontFamily: FONTS.mono, fontSize: '0.55rem', color: NEON.orange }}>
-                    {m.vector} · {m.icon} {m.name} · SPLASH {m.vector.replace('V-0', '').replace('V-', '')}/16
+                    {m.vector} · {m.icon} {m.name} · SPLASH {m.vector.replace('V-0', '').replace('V-', '')}/16 · {briefing.status}
                   </div>
                   <div style={{ fontFamily: FONTS.orbitron, fontSize: '0.95rem', color: c, margin: '4px 0' }}>{briefing.headline}</div>
                   <div style={{ fontFamily: FONTS.rajdhani, fontSize: '0.9rem', color: NEON.text, lineHeight: 1.45 }}>{briefing.plainEnglish}</div>
