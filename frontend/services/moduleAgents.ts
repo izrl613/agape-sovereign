@@ -5,6 +5,7 @@
  */
 
 import { MODULE_BY_ID, ModuleFinding, FindingStatus } from '../module-catalog';
+import { runLiveValidators } from './validators';
 
 export interface AgentResult {
   moduleId: string;
@@ -148,7 +149,27 @@ async function runHeuristics(
       break;
   }
 
-  if (!findings.some((f) => f.status === 'NUKED')) {
+  onProgress?.(88, 'Consulting third-party validators…');
+  try {
+    const live = await runLiveValidators(moduleId, record);
+    for (const extra of live.findingsHint) {
+      if (!findings.some((f) => f.id === extra.id)) findings.push(extra);
+    }
+  } catch {
+    /* validators are best-effort */
+  }
+
+  if (!findings.some((f) => f.status === 'NUKED') && findings.length === 0) {
+    findings.push(
+      finding(
+        `${moduleId}-sealed`,
+        'KNOXED',
+        `${mod?.shortLabel || 'Vector'} sealed cleanly`,
+        `The fields you entered did not trip a high-risk heuristic. Keep the SHA-256 seal and re-scan after any account change.`,
+        'Leave monitoring on. Revisit this tile if you add a new device, inbox, or handle.'
+      )
+    );
+  } else if (!findings.some((f) => f.status === 'NUKED') && !findings.some((f) => f.id === `${moduleId}-sealed`)) {
     findings.push(
       finding(
         `${moduleId}-sealed`,

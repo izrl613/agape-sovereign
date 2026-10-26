@@ -74,7 +74,7 @@ export const ModuleSplash: React.FC<Props> = ({ module, briefing, hash, uid, onE
               padding: '4px 12px',
             }}
           >
-            {module.vector} · DIFF AGENT
+            {module.vector} · DIFF AGENT {module.vector.replace('V-', '')}/16
           </span>
           <span style={{ fontFamily: FONTS.mono, fontSize: '0.58rem', color: color }}>{briefing.status}</span>
         </div>
