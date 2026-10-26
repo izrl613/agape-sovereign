@@ -27,3 +27,21 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN }}
           channelId: live
           projectId: agape-sovereign
+  deploy_auth_api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN }}
+      - name: Build and deploy authApi
+        run: |
+          npm --prefix functions ci
+          npm --prefix functions run lint
+          npm --prefix functions run build
+          npx firebase-tools deploy --only functions:authApi --project agape-sovereign --non-interactive --force

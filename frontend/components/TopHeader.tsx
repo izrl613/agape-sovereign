@@ -7,7 +7,8 @@ import { useSovereign } from '../context/SovereignContext';
 export const TopHeader: React.FC<{
   currentLabel?: string;
   onLogout: () => void;
-}> = ({ currentLabel, onLogout }) => {
+  onBindPasskey?: () => void;
+}> = ({ currentLabel, onLogout, onBindPasskey }) => {
   const { user, dossier } = useSovereign();
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -61,6 +62,11 @@ export const TopHeader: React.FC<{
 
       <DossierStrip dossier={dossier} current={currentLabel} />
 
+      {onBindPasskey && (
+        <NeonButton color={NEON.blue} size="sm" onClick={onBindPasskey}>
+          🔑 ADD DEVICE
+        </NeonButton>
+      )}
       {isAdmin && (
         <NeonButton color={NEON.orange} size="sm">
           ⬡ ADMIN

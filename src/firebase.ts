@@ -6,6 +6,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInAnonymously as firebaseSignInAnonymously,
+  signInWithCustomToken,
   signOut,
   setPersistence,
   browserLocalPersistence,
@@ -57,8 +58,32 @@ export const completeGoogleRedirect = () => getRedirectResult(auth);
 
 export const loginAnonymously = async () => {
   await setPersistence(auth, browserLocalPersistence);
-  const result = await firebaseSignInAnonymously(auth);
-  return result.user;
+  try {
+    const result = await firebaseSignInAnonymously(auth);
+    return result.user;
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? String((error as { code: string }).code) : '';
+    if (
+      code !== 'auth/operation-not-allowed' &&
+      code !== 'auth/admin-restricted-operation' &&
+      code !== 'auth/unauthorized-domain' &&
+      code !== 'auth/internal-error'
+    ) {
+      throw error;
+    }
+    const res = await fetch('/api/auth/anon-session', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.token) {
+      throw new Error(body.error || `Anonymous session failed (${res.status}).`);
+    }
+    const cred = await signInWithCustomToken(auth, body.token);
+    return cred.user;
+  }
 };
 
 export const logout = async () => {

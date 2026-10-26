@@ -99,20 +99,23 @@ authApp.use(cors({
       return;
     }
 
-    // In production, restrict to sovereign.nyc and Firebase Hosting domains only
+    // Production: custom domain, Firebase Hosting, and preview channels.
     if (isProduction) {
-      const allowedProdOrigins = [
-        "https://sovereign.nyc",
-        "https://www.sovereign.nyc",
-        "https://agape-sovereign.web.app",
-        "https://agape-sovereign.firebaseapp.com",
-      ];
-      if (allowedProdOrigins.includes(origin)) {
-        callback(null, true);
+      try {
+        const host = new URL(origin).hostname;
+        const allowed =
+          host === "sovereign.nyc" ||
+          host === "www.sovereign.nyc" ||
+          host === "agape-sovereign.web.app" ||
+          host === "agape-sovereign.firebaseapp.com" ||
+          (host.endsWith(".web.app") && host.includes("agape-sovereign")) ||
+          (host.endsWith(".firebaseapp.com") && host.includes("agape-sovereign"));
+        callback(null, allowed);
+        return;
+      } catch {
+        callback(null, false);
         return;
       }
-      callback(null, false);
-      return;
     }
 
     // Development: allow localhost and other dev origins
@@ -148,7 +151,7 @@ authApp.use(helmet({
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: 20, // 20 attempts per window (tri-auth + device registration)
   message: {error: "Too many authentication attempts, please try again later"},
   standardHeaders: true,
   legacyHeaders: false,
@@ -396,24 +399,102 @@ async function requireRegisteredUser(
   const decoded = await auth.verifyIdToken(token);
   const tokenEmail = normalizeEmail(decoded.email || "");
   const want = normalizeEmail(email);
-  if (!tokenEmail || tokenEmail !== want) {
+  if (want && tokenEmail && tokenEmail !== want) {
     throw new Error("The passkey email must match the signed-in account.");
   }
 
-  return {uid: decoded.uid, email: tokenEmail};
+  return {
+    uid: decoded.uid,
+    email: tokenEmail || want || `${decoded.uid}@guest.sovereign.nyc`,
+  };
 }
+
+/**
+ * Resolves the Auth user for passkey registration.
+ * Signed-in callers may add any device. Unsigned callers may create a first
+ * passkey only when the email does not already have credentials.
+ * @param {Request} req Express request.
+ * @param {string} email Normalized email.
+ * @return {Promise<{uid: string, email: string}>} Target user.
+ */
+async function resolveRegistrationUser(
+  req: Request,
+  email: string
+): Promise<{uid: string; email: string}> {
+  const authorization = req.get("authorization");
+  if (authorization?.startsWith("Bearer ")) {
+    return requireRegisteredUser(req, email);
+  }
+
+  if (!email) {
+    throw new Error("Enter an email to register a passkey on this device.");
+  }
+
+  let record;
+  try {
+    record = await auth.getUserByEmail(email);
+  } catch (error: unknown) {
+    const code = error && typeof error === "object" && "code" in error ?
+      String((error as {code?: string}).code || "") : "";
+    if (code !== "auth/user-not-found") {
+      throw error;
+    }
+    record = await auth.createUser({
+      email,
+      emailVerified: false,
+      displayName: email.split("@")[0] || "Sovereign Operator",
+    });
+  }
+
+  const userRef = db.collection("users").doc(record.uid);
+  const credsSnap = await userRef.collection("passkeyCredentials").get();
+  if (!credsSnap.empty) {
+    throw new Error(
+      "This email already has a passkey. Sign in with it, then add another device from the command center."
+    );
+  }
+
+  await userRef.set({
+    email,
+    uid: record.uid,
+    createdAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+
+  return {uid: record.uid, email};
+}
+
+// POST /anon-session
+// Issues a Firebase custom token for a guest operator when Anonymous Auth
+// is disabled on the Identity Toolkit provider list.
+router.post("/anon-session", authLimiter, async (_req: Request, res: Response) => {
+  try {
+    const guest = await auth.createUser({
+      displayName: "Guest Operator",
+      disabled: false,
+    });
+    await db.collection("users").doc(guest.uid).set({
+      uid: guest.uid,
+      email: "",
+      displayName: "Guest Operator",
+      authType: "anonymous",
+      createdAt: FieldValue.serverTimestamp(),
+      lastLoginAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+    const token = await auth.createCustomToken(guest.uid, {authMethod: "anonymous"});
+    res.json({token, uid: guest.uid, authMethod: "anonymous"});
+  } catch (error) {
+    logger.error("Anon Session Error:", error);
+    errors.report(error as Error);
+    res.status(500).json({error: "Unable to open a guest Firebase session."});
+  }
+});
 
 // POST /register-options
 router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
     const email = normalizeEmail(req.body?.email || "");
-    if (!email) {
-      res.status(400).json({error: "Missing user email"});
-      return;
-    }
-
     const {uid: userId, email: userEmail} =
-      await requireRegisteredUser(req, email);
+      await resolveRegistrationUser(req, email);
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -477,6 +558,14 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
       message === "The passkey email must match the signed-in account."
     ) {
       res.status(401).json({error: message});
+      return;
+    }
+    if (message === "Enter an email to register a passkey on this device.") {
+      res.status(400).json({error: message});
+      return;
+    }
+    if (message.includes("already has a passkey")) {
+      res.status(409).json({error: message});
       return;
     }
     res.status(500).json({error: "Internal Server Error"});

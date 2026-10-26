@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { completeGoogleRedirect, loginAnonymously, loginWithGoogle, loginWithPasskey } from '../firebase';
+import {
+  completeGoogleRedirect,
+  loginAnonymously,
+  loginWithDiscoverablePasskey,
+  loginWithGoogle,
+  loginWithPasskey,
+  registerPasskey,
+} from '../firebase';
 import { NEON, FONTS, GRADIENT } from '../theme';
 
-type Step = 'landing' | 'passkey-email' | 'busy';
-type Method = 'google' | 'passkey' | 'anonymous' | null;
+type Step = 'landing' | 'passkey-email' | 'passkey-register';
+type Method = 'google' | 'passkey' | 'register' | 'anonymous' | null;
 
 const GoogleIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
@@ -20,18 +27,14 @@ function formatAuthError(err: unknown): string {
   if (code === 'auth/popup-closed-by-user' || msg.includes('popup was closed')) return 'Sign-in popup was closed. Try again.';
   if (code === 'auth/unauthorized-domain') return 'This site is not on the Firebase authorized domain list.';
   if (code === 'auth/operation-not-allowed') return 'That sign-in method is not enabled for this project.';
-  if (code === 'auth/admin-restricted-operation') return 'Anonymous sign-in is restricted. Use Google or a passkey.';
-  if (msg.includes('No passkey') || msg.includes('No account found')) return msg;
+  if (msg.includes('No passkey') || msg.includes('No account found') || msg.includes('already has a passkey')) return msg;
   if (msg.startsWith('Firebase:')) {
     return msg.replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\s*\.?$/, '').trim();
   }
   return msg || 'Authentication failed. Please try again.';
 }
 
-export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?: () => void }> = ({
-  onAuthenticated,
-  onGuestFallback,
-}) => {
+export const LoginPage: React.FC<{ onAuthenticated: () => void }> = ({ onAuthenticated }) => {
   const [step, setStep] = useState<Step>('landing');
   const [method, setMethod] = useState<Method>(null);
   const [email, setEmail] = useState('');
@@ -61,25 +64,8 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
   };
 
   const handleGoogle = () => run(() => loginWithGoogle(false), 'google');
-
-  const handleAnon = () =>
-    run(async () => {
-      try {
-        await loginAnonymously();
-      } catch (err) {
-        const code = err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code || '') : '';
-        const allowFallback =
-          onGuestFallback &&
-          (code === 'auth/operation-not-allowed' ||
-            code === 'auth/admin-restricted-operation' ||
-            code === 'auth/unauthorized-domain');
-        if (allowFallback) {
-          onGuestFallback();
-          return;
-        }
-        throw err;
-      }
-    }, 'anonymous');
+  const handleAnon = () => run(() => loginAnonymously(), 'anonymous');
+  const handleDiscoverable = () => run(() => loginWithDiscoverablePasskey(), 'passkey');
 
   const handlePasskey = () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -87,6 +73,14 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
       return;
     }
     run(() => loginWithPasskey(email), 'passkey');
+  };
+
+  const handleRegister = () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Enter an email to register this device.');
+      return;
+    }
+    run(() => registerPasskey(email), 'register');
   };
 
   return (
@@ -161,7 +155,7 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
             AUTHENTICATE
           </div>
           <p style={{ color: NEON.textMuted, fontSize: 14, lineHeight: 1.5, marginBottom: 22 }}>
-            Google OAuth 2.0, device-bound passkeys, or a guest bypass. Privacy Policy and Terms are always one tap away — required for OAuth verification.
+            Three Firebase Auth paths: Google OAuth 2.0, FIDO2 passkeys on any device, or an anonymous guest session. Privacy Policy and Terms stay one tap away for OAuth verification.
           </p>
 
           {error && (
@@ -187,7 +181,8 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
             <div style={{ color: NEON.blue, fontFamily: FONTS.mono, fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
               {method === 'google' && 'Opening Google…'}
               {method === 'passkey' && 'Waiting for authenticator…'}
-              {method === 'anonymous' && 'Opening guest enclave…'}
+              {method === 'register' && 'Registering this device…'}
+              {method === 'anonymous' && 'Opening Firebase guest session…'}
               {!method && 'Securing channel…'}
             </div>
           )}
@@ -198,7 +193,15 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
                 <span style={iconWrap('#00D4FF')}>🔑</span>
                 <span style={{ flex: 1, textAlign: 'left' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>Passkey / WebAuthn</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Device-bound · FIDO2</span>
+                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Sign in · any registered device</span>
+                </span>
+              </button>
+
+              <button type="button" onClick={() => { setError(null); setEmail(''); setStep('passkey-register'); }} id="register-passkey-btn" style={rowStyle('rgba(0,255,135,0.08)', 'rgba(0,255,135,0.3)')} aria-label="Register a passkey">
+                <span style={iconWrap('#00FF87')}>🧬</span>
+                <span style={{ flex: 1, textAlign: 'left' }}>
+                  <strong style={{ display: 'block', fontSize: 14 }}>Register a passkey</strong>
+                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>New account · Face ID, Touch ID, security key</span>
                 </span>
               </button>
 
@@ -216,7 +219,7 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
                 <span style={iconWrap(NEON.orange)}>🚀</span>
                 <span style={{ flex: 1, textAlign: 'left' }}>
                   <strong style={{ display: 'block', fontSize: 14 }}>ANON Bypass</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Guest session · link Google later</span>
+                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Firebase guest session · link Google later</span>
                 </span>
               </button>
             </div>
@@ -224,7 +227,7 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
 
           {step === 'passkey-email' && !busy && (
             <div>
-              <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: NEON.blue, letterSpacing: '0.14em', marginBottom: 8 }}>PASSKEY AUTHENTICATION</div>
+              <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: NEON.blue, letterSpacing: '0.14em', marginBottom: 8 }}>PASSKEY SIGN-IN</div>
               <input
                 type="email"
                 autoFocus
@@ -233,23 +236,40 @@ export const LoginPage: React.FC<{ onAuthenticated: () => void; onGuestFallback?
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handlePasskey()}
                 aria-label="Email for passkey"
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(0,212,255,0.25)',
-                  background: 'rgba(0,0,0,0.35)',
-                  color: '#fff',
-                  fontFamily: FONTS.mono,
-                  fontSize: 13,
-                  marginBottom: 12,
-                  outline: 'none',
-                }}
+                style={inputStyle}
               />
               <button type="button" onClick={handlePasskey} style={{ ...rowStyle('rgba(0,212,255,0.12)', 'rgba(0,212,255,0.4)'), justifyContent: 'center' }}>
                 Continue with passkey
               </button>
-              <button type="button" onClick={() => { setStep('landing'); setError(null); }} style={{ marginTop: 12, background: 'none', border: 'none', color: NEON.textMuted, fontFamily: FONTS.mono, fontSize: 11, cursor: 'pointer' }}>
+              <button type="button" onClick={handleDiscoverable} style={{ ...rowStyle('rgba(0,255,135,0.08)', 'rgba(0,255,135,0.25)'), justifyContent: 'center', marginTop: 10 }}>
+                Use passkey on this device
+              </button>
+              <button type="button" onClick={() => { setStep('landing'); setError(null); }} style={backStyle}>
+                ← Back to sign-in options
+              </button>
+            </div>
+          )}
+
+          {step === 'passkey-register' && !busy && (
+            <div>
+              <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: '#00FF87', letterSpacing: '0.14em', marginBottom: 8 }}>REGISTER THIS DEVICE</div>
+              <p style={{ color: NEON.textMuted, fontSize: 13, lineHeight: 1.5, marginBottom: 14, textAlign: 'left' }}>
+                Creates a Firebase Auth user and binds a FIDO2 credential. Platform biometrics and roaming security keys are both allowed.
+              </p>
+              <input
+                type="email"
+                autoFocus
+                value={email}
+                placeholder="you@sovereign.nyc"
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
+                aria-label="Email for passkey registration"
+                style={inputStyle}
+              />
+              <button type="button" onClick={handleRegister} id="register-passkey-submit" style={{ ...rowStyle('rgba(0,255,135,0.12)', 'rgba(0,255,135,0.4)'), justifyContent: 'center' }}>
+                Register passkey on this device
+              </button>
+              <button type="button" onClick={() => { setStep('landing'); setError(null); }} style={backStyle}>
                 ← Back to sign-in options
               </button>
             </div>
@@ -276,6 +296,29 @@ const legalLink: React.CSSProperties = {
   textDecoration: 'none',
   letterSpacing: '0.1em',
   fontFamily: "'Share Tech Mono', monospace",
+};
+
+const backStyle: React.CSSProperties = {
+  marginTop: 12,
+  background: 'none',
+  border: 'none',
+  color: NEON.textMuted,
+  fontFamily: FONTS.mono,
+  fontSize: 11,
+  cursor: 'pointer',
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  borderRadius: 10,
+  border: '1px solid rgba(0,212,255,0.25)',
+  background: 'rgba(0,0,0,0.35)',
+  color: '#fff',
+  fontFamily: FONTS.mono,
+  fontSize: 13,
+  marginBottom: 12,
+  outline: 'none',
 };
 
 function rowStyle(bg: string, border: string): React.CSSProperties {

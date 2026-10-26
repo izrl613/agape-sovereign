@@ -10,7 +10,7 @@ import { ReportView } from './components/ReportView';
 import { LoginPage } from './components/LoginPage';
 import { GlobalStyles } from './styles/global-styles';
 import { NEON, FONTS } from './theme';
-import { auth, completeGoogleRedirect, logout, onAuthStateChanged, type User } from './firebase';
+import { auth, bindPasskey, completeGoogleRedirect, logout, onAuthStateChanged, type User } from './firebase';
 
 function currentPath() {
   return window.location.pathname.replace(/\/+$/, '') || '/';
@@ -23,27 +23,21 @@ function navigate(to: string) {
 }
 
 function sessionFromFirebase(fbUser: User): UserSession {
-  const method: AuthMethod = fbUser.isAnonymous
+  const isAnon =
+    fbUser.isAnonymous ||
+    sessionStorage.getItem('sovereign_anon_auth') === 'true' ||
+    (!fbUser.email && (fbUser.providerData?.length ?? 0) === 0);
+  const method: AuthMethod = isAnon
     ? 'ANON'
     : sessionStorage.getItem('sovereign_passkey_auth') === 'true'
       ? 'PASSKEY'
       : 'GOOGLE';
   return {
     id: fbUser.uid,
-    type: fbUser.isAnonymous ? 'anonymous' : 'verified',
-    email: fbUser.email || (fbUser.isAnonymous ? 'guest@sovereign.nyc' : 'operator@sovereign.nyc'),
-    displayName: fbUser.displayName || (fbUser.isAnonymous ? 'Guest Operator' : 'Sovereign Operator'),
+    type: isAnon ? 'anonymous' : 'verified',
+    email: fbUser.email || (isAnon ? 'guest@sovereign.nyc' : 'operator@sovereign.nyc'),
+    displayName: fbUser.displayName || (isAnon ? 'Guest Operator' : 'Sovereign Operator'),
     authMethod: method,
-  };
-}
-
-function localGuestSession(): UserSession {
-  return {
-    id: `guest-${Date.now()}`,
-    type: 'anonymous',
-    email: 'guest@sovereign.nyc',
-    displayName: 'Guest Operator',
-    authMethod: 'ANON',
   };
 }
 
@@ -54,6 +48,7 @@ const AppContent: React.FC = () => {
   const [section, setSection] = useState<AppSection>('dashboard');
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [moduleKey, setModuleKey] = useState(0);
+  const [passkeyNotice, setPasskeyNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (document.getElementById('agape-global-styles')) return;
@@ -73,10 +68,7 @@ const AppContent: React.FC = () => {
     completeGoogleRedirect().catch((err) => console.warn('[auth] redirect result', err));
     const unsub = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        sessionStorage.removeItem('sovereign_local_guest');
         setUser(sessionFromFirebase(fbUser));
-      } else if (sessionStorage.getItem('sovereign_local_guest') === '1') {
-        setUser(localGuestSession());
       } else {
         setUser(null);
       }
@@ -102,7 +94,7 @@ const AppContent: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    sessionStorage.removeItem('sovereign_local_guest');
+    sessionStorage.removeItem('sovereign_anon_auth');
     sessionStorage.removeItem('sovereign_passkey_auth');
     try {
       await logout();
@@ -114,15 +106,19 @@ const AppContent: React.FC = () => {
   };
 
   const handleAuthenticated = () => {
-    // Firebase onAuthStateChanged maps the session; the effect below routes /login → /dashboard.
+    // Firebase onAuthStateChanged maps the session; the effect routes /login → /dashboard.
   };
 
-  const handleGuestFallback = () => {
-    sessionStorage.setItem('sovereign_local_guest', '1');
-    setUser(localGuestSession());
+  const handleBindPasskey = async () => {
+    setPasskeyNotice('Waiting for authenticator…');
+    try {
+      await bindPasskey();
+      setPasskeyNotice('Passkey bound to this device.');
+    } catch (err) {
+      setPasskeyNotice(err instanceof Error ? err.message : 'Passkey registration failed.');
+    }
   };
 
-  // Homepage stays as the static OAuth prerender — React must not cover it.
   if (path === '/') {
     return null;
   }
@@ -130,14 +126,14 @@ const AppContent: React.FC = () => {
   if (path === '/login') {
     if (!authReady) return null;
     if (user) return null;
-    return <LoginPage onAuthenticated={handleAuthenticated} onGuestFallback={handleGuestFallback} />;
+    return <LoginPage onAuthenticated={handleAuthenticated} />;
   }
 
   if (!authReady) return null;
 
   if (!user) {
     navigate('/login');
-    return <LoginPage onAuthenticated={handleAuthenticated} onGuestFallback={handleGuestFallback} />;
+    return <LoginPage onAuthenticated={handleAuthenticated} />;
   }
 
   const currentLabel = activeModule
@@ -152,7 +148,12 @@ const AppContent: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: NEON.bg, color: NEON.text, fontFamily: FONTS.rajdhani }}>
-      <TopHeader currentLabel={currentLabel} onLogout={handleLogout} />
+      <TopHeader currentLabel={currentLabel} onLogout={handleLogout} onBindPasskey={handleBindPasskey} />
+      {passkeyNotice && (
+        <div style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: '0.08em', padding: '6px 16px', background: 'rgba(0,212,255,0.08)', color: NEON.blue }}>
+          {passkeyNotice}
+        </div>
+      )}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <LeftNav
           section={activeModule ? 'module' : section}
