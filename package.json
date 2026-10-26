@@ -14,13 +14,15 @@
     "typecheck": "node scripts/check-frontend-quality.mjs",
     "build": "npm run build --prefix frontend",
     "postdeploy:cdn": "node scripts/purge-cdn-cache.mjs",
-    "deploy": "firebase deploy"
+    "deploy": "firebase deploy",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:functions": "npm run build --prefix functions"
   },
   "devDependencies": {
     "concurrently": "latest"
   },
   "dependencies": {
-    "firebase": "^10.11.0",
+    "firebase": "^13.1.0",
     "protobufjs": "^8.8.1"
   },
   "allowScripts": {
@@ -33,5 +35,8 @@
     "protobufjs@6.11.6": true,
     "fsevents@1.2.13": true,
     "nodemon@1.14.10": true
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.4"
   }
 }

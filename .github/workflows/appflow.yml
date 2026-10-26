@@ -124,7 +124,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: frontend/dist/
           retention-days: 7
 
       - name: Upload functions build artifact
@@ -231,7 +231,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: frontend/dist/
 
       - name: Download functions build artifact
         uses: actions/download-artifact@v4
@@ -276,7 +276,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: dist/
+          path: frontend/dist/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
