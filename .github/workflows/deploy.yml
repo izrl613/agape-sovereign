@@ -16,7 +16,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node >=22 is REQUIRED: @google-cloud/firestore (firebase-admin
+          # dep) is optional with engines>=22, so npm ci on Node 20
+          # silently omits it and firebase analysis cannot find it.
+          node-version: 22
           cache: 'npm'
 
       - name: Install Frontend Dependencies
@@ -36,6 +39,23 @@ jobs:
       - name: Build Functions
         working-directory: functions
         run: npm run build
+
+      # firebase-functions params need values in non-interactive mode.
+      # Values come from GitHub Secrets when the owner sets them
+      # (PASSKEY_COOKIE_SECRET / GEMINI_API_KEY); empty = documented
+      # runtime fallbacks. This file is gitignored and only exists in CI.
+      - name: Write functions env params file
+        shell: bash
+        env:
+          PASSKEY_COOKIE_SECRET: ${{ secrets.PASSKEY_COOKIE_SECRET }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          {
+            echo "PASSKEY_COOKIE_SECRET=${PASSKEY_COOKIE_SECRET}"
+            echo "COOKIE_SECRET=${COOKIE_SECRET}"
+            echo "GEMINI_API_KEY=${GEMINI_API_KEY}"
+          } > functions/.env.agape-sovereign
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
