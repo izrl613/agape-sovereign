@@ -202,8 +202,11 @@ jobs:
       - name: TypeScript type check (frontend)
         run: npm run typecheck --prefix frontend
 
+      # working-directory (not --prefix): npm workspace-root detection
+      # otherwise installs the root tree and functions types degrade to any.
       - name: TypeScript type check (functions)
-        run: npm ci --prefix functions && npm run typecheck --prefix functions
+        working-directory: functions
+        run: npm ci && npm run typecheck
 
       - name: Build
         run: npm run build
