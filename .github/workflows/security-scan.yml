@@ -1,21 +1,30 @@
 name: Sovereign Security Audit
 
+# Kept in lockstep with the Compliance Gate's secret scan:
+# gitleaks-action v3 + full history + the repo .gitleaks.toml
+# (v2 ignored the current config semantics and stayed red on main).
+# The old `grep -r "secret"` steps could never fail and only added
+# noise; real coverage comes from gitleaks + the compliance workflow.
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Secret Scan
-        run: |
-          grep -r "secret" . || echo "No plain secrets found"
-          grep -r "key" . || echo "No plain keys found"
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

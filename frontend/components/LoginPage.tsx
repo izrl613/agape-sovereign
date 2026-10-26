@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Fingerprint, ArrowLeft, Shield, EyeOff, KeyRound, Sparkles } from 'lucide-react';
-import { PasskeyService, AuthMethod } from '../auth/passkey-service';
 import { useSovereign } from '../context/SovereignContext';
+import { GOOGLE_CANCELLED } from '../firebase';
+
+type AuthMethod = 'PASSKEY' | 'PASSKEY_REGISTER' | 'GOOGLE' | 'ANON';
 
 interface LoginPageProps {
   onSuccess?: () => void;
@@ -55,7 +57,7 @@ const LOADING_STEPS = [
 ];
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome }) => {
-  const { setUser } = useSovereign();
+  const { loginWithPasskey, registerPasskey, loginWithGoogle, loginGuest } = useSovereign();
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -91,25 +93,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
   const handleAuth = async (method: AuthMethod) => {
     setAuthError(null);
     setLoading(true);
-
     try {
-      const result = await PasskeyService.authenticate(method, email);
-      if (result.success || result.userId) {
-        setUser({
-          id: result.userId || `user_${Date.now()}`,
-          type: method === 'ANON' ? 'anonymous' : 'verified',
-        });
-        if (onSuccess) {
-          onSuccess();
-        }
-      } else {
-        throw new Error(result.error || 'Authentication ceremony was rejected.');
-      }
+      // Real ceremonies only — every failure below is a real failure,
+      // surfaced honestly. No invented sessions.
+      if (method === 'PASSKEY') await loginWithPasskey(email);
+      else if (method === 'PASSKEY_REGISTER') await registerPasskey(email);
+      else if (method === 'GOOGLE') await loginWithGoogle();
+      else await loginGuest();
+      if (onSuccess) onSuccess();
     } catch (err: any) {
       setLoading(false);
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('cancelled') || msg.includes('NotAllowedError')) {
-        setAuthError('Passkey prompt dismissed. Try again or use Google Sign-In.');
+      if (msg === GOOGLE_CANCELLED) {
+        setAuthError('Google sign-in was cancelled before it completed. Nothing was created.');
+      } else if (msg.includes('auth/operation-not-allowed')) {
+        setAuthError('This sign-in method is not enabled yet in Firebase Authentication for agape-sovereign. Enable Google + Anonymous providers in the Firebase console (owner: idin@agape.nyc), then retry.');
+      } else if (msg.includes('auth/unauthorized-domain')) {
+        setAuthError('This domain is not authorised for Firebase Auth. Add it under Authentication → Settings → Authorized domains in the Firebase console, then retry.');
       } else {
         setAuthError(msg || 'Authentication failed. Please retry.');
       }
@@ -215,7 +215,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                 </div>
                 <div className="btn-text-content">
                   <div className="btn-title">Passkey / WebAuthn</div>
-                  <div className="btn-subtitle">Device-bound · Touch ID / Face ID / Windows Hello / YubiKey</div>
+                  <div className="btn-subtitle">Method 1 · Device-bound · Touch ID / Face ID / Windows Hello / YubiKey</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="auth-row-btn passkey-btn"
+                onClick={() => { if (!showEmailInput) { setShowEmailInput(true); setAuthError('Enter your email above, then tap Create Passkey again so the new passkey is bound to it.'); } else { void handleAuth('PASSKEY_REGISTER'); } }}
+                id="btn-register-passkey"
+              >
+                <div className="btn-icon-box passkey-icon-box">
+                  <KeyRound size={20} color={C.green} />
+                </div>
+                <div className="btn-text-content">
+                  <div className="btn-title">New here? Create a Passkey</div>
+                  <div className="btn-subtitle">Binds a real FIDO2 credential to your email on this device</div>
                 </div>
               </button>
 
@@ -225,7 +240,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                   className="link-btn"
                   onClick={() => setShowEmailInput(!showEmailInput)}
                 >
-                  {showEmailInput ? 'Direct resident key mode' : 'Specify email for passkey →'}
+                  {showEmailInput ? 'Hide email field' : 'Use an email-bound passkey →'}
                 </button>
               </div>
 
@@ -240,8 +255,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                   <GoogleLogo />
                 </div>
                 <div className="btn-text-content">
-                  <div className="btn-title">Continue with Google</div>
-                  <div className="btn-subtitle">OAuth 2.0 · Verified Enclave Identity</div>
+                  <div className="btn-title">Sign in with Google</div>
+                  <div className="btn-subtitle">Method 2 · Federated dual protection · Save your 26-month audit PDF to your Google Drive</div>
                 </div>
               </button>
 
@@ -257,7 +272,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                 </div>
                 <div className="btn-text-content">
                   <div className="btn-title">Guest / Anonymous Bypass</div>
-                  <div className="btn-subtitle">Ephemeral zero-knowledge evaluation</div>
+                  <div className="btn-subtitle">Real anonymous session · No Drive save · Attach Google later to keep your receipts</div>
                 </div>
               </button>
             </div>

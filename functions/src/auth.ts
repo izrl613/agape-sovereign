@@ -1,7 +1,7 @@
 import {onRequest} from "firebase-functions/https";
 import {logger} from "firebase-functions";
 import {initializeApp, getApps} from "firebase-admin/app";
-import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {getFirestore, FieldValue, QueryDocumentSnapshot} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
 import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
@@ -426,7 +426,7 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
     }
 
     const credsSnap = await userRef.collection("passkeyCredentials").get();
-    const excludeCredentials = credsSnap.docs.map((docSnap) => {
+    const excludeCredentials = credsSnap.docs.map((docSnap: QueryDocumentSnapshot) => {
       const data = docSnap.data();
       return {
         id: data.credentialID || docSnap.id,
@@ -653,7 +653,7 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
       return;
     }
 
-    const allowCredentials = credsSnap.docs.map((docSnap) => {
+    const allowCredentials = credsSnap.docs.map((docSnap: QueryDocumentSnapshot) => {
       const data = docSnap.data();
       return {
         id: (data.credentialID || docSnap.id) as string,

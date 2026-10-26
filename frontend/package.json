@@ -8,15 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "node ../scripts/check-frontend-quality.mjs",
-    "check": "npm run lint"
+    "check": "npm run lint && npm run typecheck",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "latest",
     "@simplewebauthn/browser": "latest",
+    "firebase": "^13.1.0",
+    "jspdf": "^4.2.1",
     "lucide-react": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "recharts": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
