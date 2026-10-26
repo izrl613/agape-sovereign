@@ -265,8 +265,10 @@ jobs:
       - name: Deploy to Firebase
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "Deploying to PRODUCTION..."
-            firebase deploy --project ${{ env.FIREBASE_PROJECT }} --non-interactive
+            echo "Deploying to PRODUCTION (hosting + functions)..."
+            firebase deploy --only hosting,functions --project ${{ env.FIREBASE_PROJECT }} --non-interactive
+            echo "Deploying security rules (firestore + storage)..."
+            firebase deploy --only firestore,storage --project ${{ env.FIREBASE_PROJECT }} --non-interactive || echo "::warning::RULES NOT DEPLOYED — CI service account needs roles/firebaserules.admin (see docs/OWNER_SETUP_ZERO_COST.md). Hosting + Functions ARE live."
           else
             echo "Deploying to PREVIEW CHANNEL..."
             firebase hosting:channel:deploy PR-${{ github.event.number }} --project ${{ env.FIREBASE_PROJECT }} --expires 7d --non-interactive

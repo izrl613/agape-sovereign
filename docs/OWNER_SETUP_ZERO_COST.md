@@ -4,6 +4,24 @@ The code is deploy-ready. These one-time console steps are the only
 things that cannot be done from the repository. Everything below is on
 free tiers; the app is designed to run at zero marginal cost.
 
+## 0. CI service-account IAM (required for rules deploys — currently missing)
+
+Production `firebase deploy` fails in the Firestore phase with
+`403 … firebaserules.googleapis.com … caller does not have permission`
+until the GitHub Actions service account can manage Firebase Rules.
+One-time owner grant (use the email from the
+`FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN` secret JSON):
+
+```bash
+gcloud projects add-iam-policy-binding agape-sovereign \
+  --member="serviceAccount:<CI-SERVICE-ACCOUNT-EMAIL>" \
+  --role="roles/firebaserules.admin"
+```
+
+Hosting + Functions deploys no longer wait on this (split pipeline);
+the rules step warns loudly until the grant exists, after which the
+`continue-on-error` in `.github/workflows/deploy.yml` can be removed.
+
 ## 1. Firebase Authentication providers (required for real logins)
 
 Firebase Console → project **agape-sovereign** → Authentication → Sign-in method:
