@@ -13,6 +13,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: true,
+    fs: { allow: ['..'] }, // import ../firebase-applet-config.json (single source)
     proxy: {
       // Local development against the Firebase emulator suite
       // (`firebase emulators:start`); production uses Hosting rewrites.

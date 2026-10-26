@@ -24,7 +24,6 @@
     "protobufjs": "^8.8.1"
   },
   "allowScripts": {
-    "@google/genai@2.24.0": true,
     "@firebase/util@1.15.3": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,

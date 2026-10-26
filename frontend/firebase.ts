@@ -24,20 +24,21 @@ import {
   User,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import appletConfig from '../firebase-applet-config.json';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g',
-  authDomain: 'sovereign.nyc',
-  projectId: 'agape-sovereign',
-  storageBucket: 'agape-sovereign.firebasestorage.app',
-  messagingSenderId: '956088455461',
-  appId: '1:956088455461:web:5d83545efc8961e4904acc',
-  measurementId: 'G-6YG9BGTWDD',
+  apiKey: appletConfig.apiKey,
+  authDomain: appletConfig.authDomain,
+  projectId: appletConfig.projectId,
+  storageBucket: appletConfig.storageBucket,
+  messagingSenderId: appletConfig.messagingSenderId,
+  appId: appletConfig.appId,
+  measurementId: appletConfig.measurementId,
 };
 
 export const app: FirebaseApp = getApps()[0] ?? initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, 'agape-sovereign');
+export const db = getFirestore(app, appletConfig.firestoreDatabaseId);
 
 /** Thrown when the user closes a Google popup before completing it. */
 export const GOOGLE_CANCELLED = 'GOOGLE_SIGNIN_CANCELLED';
