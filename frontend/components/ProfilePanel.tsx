@@ -3,7 +3,7 @@ import { NEON } from '../theme';
 import { NeonButton, GlassCard } from './DesignSystem';
 import { StatusBadge } from './DesignSystem';
 
-export const ProfilePanel = ({ user, onClose }) => {
+export const ProfilePanel = ({ user, onClose, onSignOut }) => {
   const [email, setEmail] = useState("");
   const [savedEmails, setSavedEmails] = useState(["user@agape.nyc"]);
 
@@ -46,11 +46,19 @@ export const ProfilePanel = ({ user, onClose }) => {
         <div style={{ height: 1, background: `${NEON.blue}22`, margin: "12px 0" }} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[["🔑", "Passkey Settings", NEON.blue], ["☁️", "Backup to Google Account", NEON.blue], ["🍎", "Backup to Apple Account", NEON.textMuted], ["🔓", "Sign Out", NEON.magenta]].map(([icon, label, color]) => (
-            <button key={label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "transparent", border: `1px solid ${color}22`, borderRadius: 6, color, fontFamily: "'Rajdhani'", fontSize: "0.8rem", cursor: "pointer", textAlign: "left" }}>
+          {[["⚙", "Passkey Settings", NEON.blue], ["◌", "Backup to Google Account", NEON.blue], ["◍", "Backup to Apple Account", NEON.textMuted]].map(([icon, label, color]) => (
+            <button key={label as string} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "transparent", border: `1px solid ${color}22`, borderRadius: 6, color: color as string, fontFamily: "'Rajdhani'", fontSize: "0.8rem", cursor: "pointer", textAlign: "left" }}>
               <span>{icon}</span>{label}
             </button>
           ))}
+          <button
+            onClick={() => { onClose?.(); onSignOut?.(); }}
+            disabled={!onSignOut}
+            title="Clear this session and return to the login portal"
+            style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "rgba(255,46,159,0.06)", border: `1px solid ${NEON.magenta}44`, borderRadius: 6, color: NEON.magenta, fontFamily: "'Rajdhani'", fontSize: "0.8rem", cursor: onSignOut ? "pointer" : "not-allowed", textAlign: "left", opacity: onSignOut ? 1 : 0.5 }}
+          >
+            <span>⏏</span>Sign Out
+          </button>
         </div>
       </GlassCard>
     </div>

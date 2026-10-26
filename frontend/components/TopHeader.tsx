@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NEON, GRADIENT_BORDER } from '../theme';
 import { NeonButton } from './DesignSystem';
 
-export const TopHeader = ({ user, onAdmin, onProfile }) => {
+export const TopHeader = ({ user, onAdmin, onProfile, onLogout }) => {
   const [time, setTime] = useState(new Date());
   useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
   const isAdmin = ["idin@agape.nyc", "agape@sovereign.nyc"].includes(user?.email);
@@ -36,9 +36,34 @@ export const TopHeader = ({ user, onAdmin, onProfile }) => {
       {isAdmin && (
         <NeonButton onClick={onAdmin} color={NEON.orange} size="sm">⬡ ADMIN</NeonButton>
       )}
-      <button className="btn-neon neon-border" onClick={onProfile} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,46,159,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: NEON.magenta, fontSize: "1rem" }}>
-        {user?.provider === "google" ? "G" : "U"}
+      <button
+        className="btn-neon neon-border"
+        onClick={onProfile}
+        title={user?.email ? `${user.email} · session profile` : 'Session profile'}
+        aria-label="Open sovereign profile"
+        style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,46,159,0.1)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: NEON.magenta, fontSize: "1rem" }}
+      >
+        {user?.provider === "google" ? "G" : user?.provider === "anonymous" ? "◌" : "U"}
       </button>
+      {onLogout && (
+        <button
+          onClick={onLogout}
+          title="End this session"
+          style={{
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: "0.6rem",
+            letterSpacing: "0.1em",
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid rgba(255,46,159,0.35)",
+            background: "rgba(255,46,159,0.08)",
+            color: NEON.magenta,
+            cursor: "pointer",
+          }}
+        >
+          SIGN OUT
+        </button>
+      )}
     </div>
   );
 };

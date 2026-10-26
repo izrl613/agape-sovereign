@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Fingerprint, ArrowLeft, Shield, EyeOff, KeyRound, Sparkles } from 'lucide-react';
 import { PasskeyService, AuthMethod } from '../auth/passkey-service';
-import { useSovereign } from '../context/SovereignContext';
+import { useSovereign, type UserSession } from '../context/SovereignContext';
 
 interface LoginPageProps {
-  onSuccess?: () => void;
+  /**
+   * Called once authentication succeeds. The shell performs the redirect to
+   * /dashboard, so this must fire *after* the session object is final.
+   */
+  onSuccess?: (session: UserSession) => void;
   onNavigateHome?: () => void;
 }
 
@@ -95,12 +99,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
     try {
       const result = await PasskeyService.authenticate(method, email);
       if (result.success || result.userId) {
-        setUser({
+        const provider =
+          method === 'ANON' ? 'anonymous' : method === 'GOOGLE' ? 'google' : 'passkey';
+        const identity = (result.email || email || '').trim();
+        const session: UserSession = {
           id: result.userId || `user_${Date.now()}`,
           type: method === 'ANON' ? 'anonymous' : 'verified',
-        });
+          email: identity || undefined,
+          name: identity ? identity.split('@')[0] : undefined,
+          provider,
+          method,
+        };
+
+        setUser(session);
+        // Release the spinner so the shell can take over immediately.
+        setLoading(false);
         if (onSuccess) {
-          onSuccess();
+          onSuccess(session);
         }
       } else {
         throw new Error(result.error || 'Authentication ceremony was rejected.');
@@ -278,12 +293,37 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
         <div className="login-footer-links">
           <a href="/terms" className="footer-link">TERMS OF SERVICE</a>
           <span className="dot-sep">•</span>
+          <a
+            href="/terms/TERMS.pdf"
+            className="footer-link is-pdf"
+            type="application/pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Terms of Service v1.0 — PDF, 3.4 MB"
+          >
+            TERMS.PDF ↓
+          </a>
+          <span className="dot-sep">•</span>
           <a href="/privacy" className="footer-link">PRIVACY POLICY</a>
+          <span className="dot-sep">•</span>
+          <a
+            href="/privacy/PRIVACY.pdf"
+            className="footer-link is-pdf"
+            type="application/pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Privacy Policy v1.0 — PDF, 17 KB"
+          >
+            PRIVACY.PDF ↓
+          </a>
           <span className="dot-sep">•</span>
           <a href="/contact" className="footer-link">CONTACT</a>
         </div>
         <div className="footer-copyright">
-          © {new Date().getFullYear()} AGAPE SOVEREIGN AI • 2026 ECRA LTS CERTIFIED
+          © 2026 AGAPE SOVEREIGN AI • 2026 ECRA LTS CERTIFIED
+        </div>
+        <div className="footer-copyright" style={{ marginTop: 4, fontSize: 9 }}>
+          SHA-256 {`e9773d658f25…251d`}
         </div>
       </footer>
 
@@ -458,9 +498,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
         }
 
         .card-divider {
-          height: 1px;
+          height: 2px;
           margin-bottom: 24px;
-          background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), rgba(255, 46, 159, 0.4), transparent);
+          border-radius: 2px;
+          /* magenta → blue → orange: the house rule, three colours only */
+          background: linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%);
+          opacity: 0.75;
+          mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
         }
 
         .incognito-alert {
@@ -748,6 +793,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
 
         .footer-link:hover {
           color: #00D4FF;
+        }
+
+        .footer-link.is-pdf {
+          color: #FFB27A;
+          border-bottom: 1px dotted rgba(255, 122, 24, 0.45);
+        }
+
+        .footer-link.is-pdf:hover {
+          color: #FFD3B0;
+          border-bottom-color: #FF7A18;
         }
 
         .dot-sep {

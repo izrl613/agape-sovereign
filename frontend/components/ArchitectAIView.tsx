@@ -106,8 +106,9 @@ export const ArchitectAIView: React.FC<ArchitectAIViewProps> = ({ userId, collec
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .architect-view {
+          padding: 24px 28px 72px;
           display: flex;
           flex-direction: column;
           gap: 30px;

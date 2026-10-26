@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Legal Pages — Visual Review · sovereign.nyc/privacy + /terms</title>
+<style>
+  :root {
+    --bg: #060C1A;
+    --ink: #E8F4FF;
+    --blue: #00D4FF;
+    --blue-soft: rgba(126,224,255,.6);
+    --orange: #FF7A18;
+    --line: rgba(0,212,255,.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    background-image:
+      linear-gradient(rgba(0,212,255,.026) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.026) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 28px 120px; }
+  .eyebrow {
+    font-family: 'Share Tech Mono', ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .26em; color: var(--orange);
+    display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  }
+  .eyebrow::before { content: ''; width: 26px; height: 1px; background: linear-gradient(90deg, var(--orange), transparent); }
+  h1 {
+    font-family: 'Orbitron', sans-serif; font-size: clamp(28px, 4vw, 44px);
+    font-weight: 900; letter-spacing: -.02em; line-height: 1.08; margin-bottom: 14px;
+    background: linear-gradient(125deg, #fff 22%, #9BE9FF 58%, #FF9A48 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .lede { color: rgba(214,232,248,.66); font-size: 15.5px; line-height: 1.7; max-width: 720px; margin-bottom: 22px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 44px; }
+  .chip {
+    font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: .08em;
+    color: rgba(214,232,248,.75); border: 1px solid var(--line); border-radius: 100px;
+    padding: 5px 12px; background: rgba(255,255,255,.025);
+  }
+  .chip b { color: var(--blue); font-weight: 400; letter-spacing: .16em; font-size: 9px; margin-right: 4px; }
+  .chip.is-orange { border-color: rgba(255,122,24,.45); color: #FFB27A; }
+  .chip.is-orange b { color: var(--orange); }
+
+  section { margin-bottom: 54px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .sec-num {
+    font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: 11px;
+    color: var(--orange); letter-spacing: .12em;
+  }
+  h2 {
+    font-family: 'Orbitron', sans-serif; font-size: 19px; font-weight: 700;
+    letter-spacing: -.01em; color: #fff;
+  }
+  .cap { font-size: 13.6px; line-height: 1.7; color: rgba(214,232,248,.6); margin: 8px 0 16px; max-width: 780px; }
+  .cap b { color: #BFEEFF; font-weight: 600; }
+  .cap .tag {
+    display: inline-block; font-family: 'Share Tech Mono', ui-monospace, monospace;
+    font-size: 9px; letter-spacing: .16em; color: var(--orange);
+    border: 1px solid rgba(255,122,24,.4); border-radius: 4px; padding: 2px 6px;
+    margin-right: 8px; vertical-align: 1px;
+  }
+  figure {
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: rgba(255,255,255,.02);
+    box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: 10px;
+    letter-spacing: .1em; color: rgba(180,205,230,.45);
+    padding: 10px 14px; border-top: 1px solid rgba(0,212,255,.09);
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .pair figure { max-width: 380px; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+  .note {
+    margin-top: 40px; padding: 16px 18px; border-radius: 10px;
+    border: 1px solid rgba(0,212,255,.2); border-left: 3px solid var(--orange);
+    background: linear-gradient(100deg, rgba(0,212,255,.07), rgba(0,212,255,.02));
+    font-size: 13.4px; line-height: 1.75; color: rgba(191,238,255,.88);
+  }
+  .note b { color: #fff; }
+  footer {
+    margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: 9.5px;
+    letter-spacing: .14em; color: rgba(180,205,230,.4);
+    display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">VISUAL REVIEW · SOVEREIGN.NYC</div>
+  <h1>Privacy Policy &amp; Terms of Service</h1>
+  <p class="lede">
+    Captured from the running dev server with the real typefaces (Orbitron, Rajdhani, Share Tech Mono, Inter)
+    at 1440×1000, 900×1100, and 430×932 plus print emulation. Every shot shows the live page — no mockups.
+    Footers and the tri-colour accent were added in the second pass and are captured below.
+  </p>
+  <div class="chips">
+    <span class="chip"><b>BRANCH</b> arena/8229b373-agape-sovereign</span>
+    <span class="chip"><b>ROUTES</b> /privacy · /terms</span>
+    <span class="chip"><b>VIEWPORTS</b> 1440 · 900 · 430 · print</span>
+    <span class="chip is-orange"><b>ACCENT</b> orange box = your position</span>
+    <span class="chip"><b>RAINBOW</b> #FF2E9F → #00D4FF → #FF7A18</span>
+    <span class="chip"><b>PDFs</b> /terms/TERMS.pdf · /privacy/PRIVACY.pdf</span>
+  </div>
+
+  <!-- 1 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Privacy Policy — top of document</h2></div>
+    <p class="cap">
+      The left nav lists all 11 sections in <b>neon blue</b>. The reader's current clause —
+      <span class="tag">01</span> Our Privacy Philosophy — is wrapped in the <b>orange box</b>: 1px border,
+      orange-tinted fill, glow, orange numeral. Under it, the <b>SECTION 01/11 · 0%</b> meter.
+    </p>
+    <figure>
+      <img src="01-privacy-top.png" alt="Privacy Policy top of page with left table of contents" />
+      <figcaption><span>1440 × 1000 · /privacy · scrollY 0</span><span>active: 01 Our Privacy Philosophy</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Privacy §3 — subsection reveal</h2></div>
+    <p class="cap">
+      Sections with sub-clauses expand <b>only while active</b>. Here §3 exposes 3.1–3.6 and the orange box
+      has moved to <b>3.2 Google OAuth Authentication Data</b> while the parent §3 dims to normal blue.
+      The header and the slate stay pinned while the article scrolls.
+    </p>
+    <figure>
+      <img src="02-privacy-subsection.png" alt="Privacy section 3 with expanded subsections and orange active item" />
+      <figcaption><span>1440 × 1000 · /privacy#sec-3-2 · scrollY 1 590</span><span>active: 3.2 · 24% read</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Privacy §6 — your rights</h2></div>
+    <p class="cap">
+      Mid-document: the nav auto-scrolled its own list so the orange box is always visible, the progress rail
+      across the top of the window is at <b>73%</b>, and the meter reads <b>SECTION 07/11</b>.
+    </p>
+    <figure>
+      <img src="03-privacy-rights.png" alt="Privacy rights section with orange active nav item" />
+      <figcaption><span>1440 × 1000 · /privacy#sec-6-4 · scrollY 5 057</span><span>active: 6.4 Right to Data Portability</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Terms of Service — top of document</h2></div>
+    <p class="cap">
+      Same shell, 16 sections. The header toggle shows <b>TERMS</b> framed in orange because it is the
+      current page; <b>PRIVACY</b> sits beside it as a link.
+    </p>
+    <figure>
+      <img src="04-terms-top.png" alt="Terms of Service top of page with left table of contents" />
+      <figcaption><span>1440 × 1000 · /terms · scrollY 0</span><span>active: 01 Acceptance of Terms</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Terms §10 — the long clauses</h2></div>
+    <p class="cap">
+      The densest section of the document: ALL-CAPS liability disclaimers render as boxed clause blocks,
+      each "In Plain English" note keeps its orange spine, and the orange box sits on
+      <b>10.2 Limitation of Liability</b> inside an expanded §10.
+    </p>
+    <figure>
+      <img src="05-terms-clause.png" alt="Terms limitation of liability clauses with orange active nav item" />
+      <figcaption><span>1440 × 1000 · /terms#sec-10-2 · scrollY 5 057</span><span>active: 10.2 · 57% read</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>End matter — the shared closing schema</h2></div>
+    <p class="cap">
+      Both documents close on the identical sequence: appendix anchor (<b>§</b> Document Details) → fact table →
+      <b>SIGNED &amp; EFFECTIVE</b> signature block → contact card → footer. Same sidebar too: the index sits in a
+      fixed 448px viewport, so the fact strip and the three actions land at the same pixel on both pages.
+    </p>
+    <figure>
+      <img src="06-terms-end.png" alt="Terms document details, signature block and contact card" />
+      <figcaption><span>1440 × 1000 · /terms#sec-details · scrollY 11 249</span><span>active: § Document Details · 16 sections</span></figcaption>
+    </figure>
+    <figure style="margin-top:20px">
+      <img src="06b-privacy-end.png" alt="Privacy document details, signature block and contact card" />
+      <figcaption><span>1440 × 1000 · /privacy#sec-details · scrollY 7 560</span><span>active: § Document Details · 11 sections</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">07</span><h2>Mobile — 430 × 932</h2></div>
+    <p class="cap">
+      Below 1080px the sidebar collapses into a sticky one-line bar: <b>ON THIS PAGE · 05 How We Share Your
+      Information · SECTIONS</b>. Tapping expands the full list, which keeps the orange box and stacks the
+      action buttons.
+    </p>
+    <div class="pair">
+      <figure>
+        <img src="07-mobile-collapsed.png" alt="Mobile collapsed sticky table of contents bar" />
+        <figcaption><span>collapsed</span><span>bar: 05 How We Share…</span></figcaption>
+      </figure>
+      <figure>
+        <img src="08-mobile-expanded.png" alt="Mobile expanded table of contents" />
+        <figcaption><span>expanded</span><span>orange box preserved</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">08</span><h2>Tablet — 900 × 1100</h2></div>
+    <p class="cap">
+      Below 1080px the full-height rail gives way to the compact bar so the document keeps the width;
+      above 1080px it returns as the sticky slate.
+    </p>
+    <figure>
+      <img src="09-tablet.png" alt="Tablet layout with compact table of contents bar" />
+      <figcaption><span>900 × 1100 · /terms#sec-4-2</span><span>active: 4.1 Permitted Use</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 9 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">09</span><h2>Print / Save as PDF</h2></div>
+    <p class="cap">
+      The <b>PRINT / SAVE AS PDF</b> action drops the nav, the rail and the buttons, then flattens every colour
+      token to ink-on-white so the result is a clean paper document rather than a screenshot of a dark UI.
+    </p>
+    <figure>
+      <img src="10-print-privacy.png" alt="Print stylesheet rendering of the Privacy Policy" />
+      <figcaption><span>print media · 900 wide</span><span>nav / rail / actions hidden</span></figcaption>
+    </figure>
+    <figure style="margin-top:20px">
+      <img src="11-print-details.png" alt="Print stylesheet fact table rendering" />
+      <figcaption><span>print media · §2 fact table</span><span>hairline rules, no fills</span></figcaption>
+    </figure>
+  </section>
+
+
+  <!-- 10 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">10</span><h2>Document footer — links · copyright · SHA-256</h2></div>
+    <p class="cap">
+      The page footer is a three-column lock-up. <b>Left:</b> both signed PDFs as orange download chips with their
+      exact file weight. <b>Middle:</b> the copyright line with the <b>SHA-256</b> digest of the published PDF
+      underneath it. <b>Right:</b> PRIVACY / TERMS / CONTACT. The 96px rule above it is the tri-colour accent.
+    </p>
+    <figure>
+      <img src="16-foot-legal-terms.png" alt="Terms page footer with PDF links, copyright and SHA-256 line" />
+      <figcaption><span>/terms · .legal-foot</span><span>SHA-256 d0718ae0afd0…9734</span></figcaption>
+    </figure>
+    <figure style="margin-top:18px">
+      <img src="17-foot-legal-privacy.png" alt="Privacy page footer with PDF links, copyright and SHA-256 line" />
+      <figcaption><span>/privacy · .legal-foot</span><span>SHA-256 37948367c429…3e0</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 11 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">11</span><h2>PDF entry points</h2></div>
+    <p class="cap">
+      Every document surface links the signed PDF: the hero action (<b>↓ PRIVACY.PDF 17 KB</b>), a PDF button in the
+      left-nav footer (<b>PDF · 17 KB</b>), the contact card, and both footer chips. Links carry
+      <code>type="application/pdf"</code>, open in a new tab, and expose the digest in their tooltip.
+    </p>
+    <figure>
+      <img src="20-hero-actions.png" alt="Hero action row with PDF download, print and cross-document link" />
+      <figcaption><span>.legal-hero-actions</span><span>↓ PDF · PRINT / SAVE AS PDF · cross-doc</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 12 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">12</span><h2>The tri-colour accent</h2></div>
+    <p class="cap">
+      One token drives every rule on both pages — <b>#FF2E9F → #00D4FF → #FF7A18</b>, magenta first, orange last,
+      nothing else in the gradient. The hero rule below is the widest instance of it.
+    </p>
+    <figure>
+      <img src="21-hero-rule.png" alt="Tri-colour gradient rule" />
+      <figcaption><span>.legal-hero-rule</span><span>linear-gradient(90deg, #FF2E9F 0%, #00D4FF 52%, #FF7A18 100%)</span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 13 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">13</span><h2>Landing + login footers</h2></div>
+    <p class="cap">
+      The same lock-up on the public landing page (rendered with JavaScript off, i.e. what crawlers and the Google
+      OAuth verifier see) and on the login card. Both carry the tri-colour border/divider, the PDF chips, the
+      centred copyright, and the manifest digest.
+    </p>
+    <figure>
+      <img src="18-foot-landing.png" alt="Landing page footer with tri-colour rule, PDF chips, copyright and digest" />
+      <figcaption><span>/ · .site-footer · JS disabled</span><span>2px border-image gradient</span></figcaption>
+    </figure>
+    <figure style="margin-top:18px">
+      <img src="19-foot-login.png" alt="Login page footer with PDF links, copyright and digest" />
+      <figcaption><span>/login · .login-footer</span><span>SHA-256 manifest e9773d658f25…251d</span></figcaption>
+    </figure>
+  </section>
+
+  <div class="note">
+    <b>Integrity, not decoration.</b> The SHA-256 shown under the copyright is the digest of the exact bytes served at
+    <code>/terms/TERMS.pdf</code> and <code>/privacy/PRIVACY.pdf</code> — verified by hashing the live response, not the
+    file on disk. Re-run <code>node scripts/hash-legal-docs.mjs --write</code> if either PDF is ever replaced.
+  </div>
+
+  <div class="note">
+    <b>Two bugs these shots caught.</b> (1) <code>overflow-x: hidden</code> on the page wrapper turned it into a
+    scroll container, which silently killed <code>position: sticky</code> — the header and the whole nav scrolled
+    away. Replaced with <code>overflow-x: clip</code>. (2) The print stylesheet was overriding body colours but not
+    <code>-webkit-text-fill-color</code>, so the H1, lead paragraph, chips and fact table printed near-white on
+    white. Both are fixed and re-verified above.
+  </div>
+
+  <footer>
+    <span>© 2026 AGAPE SOVEREIGN AI · NUKED · KNOXED · DIFF</span>
+    <span>docs/legal-pages-preview · captured 2026-10-26</span>
+  </footer>
+</div>
+</body>
+</html>

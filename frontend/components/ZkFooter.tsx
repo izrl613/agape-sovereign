@@ -12,24 +12,25 @@ export const ZkFooter: React.FC<ZkFooterProps> = ({ pageId, sessionToken }) => {
   return (
     <footer style={{
       position: 'fixed',
-      bottom: '20px',
+      bottom: '8px',
       left: '0',
       right: '0',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      fontFamily: 'monospace',
-      fontSize: '10px',
-      color: '#666',
+      fontFamily: "'Share Tech Mono', monospace",
+      fontSize: '9px',
+      color: '#00D4FF',
       pointerEvents: 'none',
-      zIndex: 1000
+      zIndex: 20
     }}>
       <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        padding: '4px 12px',
+        backgroundColor: 'rgba(6,12,26,0.92)',
+        opacity: 0.9,
+        padding: '3px 12px',
         borderRadius: '20px',
-        border: '1px solid #ddd',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+        border: '1px solid rgba(0,212,255,0.22)',
+        letterSpacing: '0.08em'
       }}>
         ZK-PROOF: {zkHash}
       </div>

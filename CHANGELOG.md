@@ -1,7 +1,7 @@
 # Agape Sovereign — Full Journey Changelog
 
 > _From Project Genesis to v2.0 — every commit, issue, and milestone documented._
-> _Repo created: 2026-04-20 · Last updated: 2026-07-21_
+> _Repo created: 2026-04-20 · Last updated: 2026-10-26_
 
 ---
 
@@ -13,6 +13,19 @@
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-10-26 | `fix` | **Login now lands on a rendered `/dashboard`.** The auth gate passed `collectedVectors`/`onSelectModule` to `DashboardView`/`LeftNav`, which destructure `diffModules`/`onModuleClick` — the resulting `undefined.reduce` threw and left a blank screen after a successful sign-in. Props now come from the new `frontend/module-status.ts` derivation (`buildDiffModules`), and the route is set before the first authenticated render |
+| 2026-10-26 | `feat` | URL-backed navigation: `/dashboard`, `/architect`, `/report`, `/modules/:id` with `pushState`/`popstate`, plus an auth guard (unauthenticated → `/login`, authenticated on `/` or `/login` → `/dashboard` via replaceState so Back never reopens the form) |
+| 2026-10-26 | `feat` | Session persistence — `sessionStorage['sovereign.session']` / `['sovereign.vectors']` hydrate synchronously, so reloading `/dashboard` no longer flashes the login portal |
+| 2026-10-26 | `feat` | `AppErrorBoundary` shell-fault screen (retry / reload) so a component fault can never present as a blank page again |
+| 2026-10-26 | `fix` | Real sign-out: `TopHeader` gained `onLogout`, `ProfilePanel` gained `onSignOut`, both clear the session and return to `/login` (previously inert controls) |
+| 2026-10-26 | `fix` | Browser-safe ZK proof — `utils/zk-crypto.ts` imported Node `crypto`, which Vite externalises and which threw inside `<ZkFooter>` on every screen. Replaced with a dependency-free SHA-256 (`frontend/utils/sha256.ts`, FIPS 180-4, verified against Node's `crypto`) |
+| 2026-10-26 | `fix` | `LeftNav` section clicks re-routed to the dashboard: the handler called `setActiveModule(null)`, which App mapped to `goToSection('modules', null)` → `/dashboard`. Section switching now only sets the section |
+| 2026-10-26 | `fix` | `MODULE_CONFIGS` fallback in `ModuleInterface` (privacy-reclaim had no config and rendered "Module not found"), plus a `← Dashboard` control on module screens |
+| 2026-10-26 | `style` | Dashboard shell, module splash/entry, Architect AI and Diff Report aligned to the `#060C1A` brand palette; `theme.ts` gained the missing `magenta`/`orange`/`bg`/`bgCard`/`text`/`textMuted` tokens; emoji status glyphs replaced with font-safe symbols; preview captured in `docs/dashboard-preview/` |
+| 2026-10-26 | `feat` | Public Privacy Policy (`/privacy`) + Terms of Service (`/terms`) pages — unauthenticated, mirrored 1:1 from the signed PDFs, with a sticky neon-blue table of contents that wraps the reader's current clause in an orange position box |
+| 2026-10-26 | `fix` | `/privacy` and `/terms` now share one page schema: the left index sits in a fixed 448px viewport (was content-driven, so the two sidebars ended at different heights), cut rows fade with a directional mask plus a `↓ N MORE` counter, the sidebar gained the same VERSION / SECTIONS / EFFECTIVE / PDF specimen strip on both documents, and the Privacy Policy closes with the same SIGNED & EFFECTIVE block → contact card sequence as the Terms |
+| 2026-10-26 | `feat` | Shared legal document shell (`frontend/components/legal/*`) — scroll-spy nav with expandable subsections, reading-progress rail, mobile sticky TOC bar, print stylesheet, per-document meta/OG tags |
+| 2026-10-26 | `docs` | Add `docs/LEGAL_PAGES.md` — routes, content model, design spec, and copy-editing rules for the legal pages |
 | 2026-07-21 | `fix` | Resolve 10 Firebase deploy failure root causes (lint configs, apphosting, workspaces, deps, workflows) |
 | 2026-07-21 | `feat` | Add `scripts/validate-firebase-deploy.mjs` — autonomous agentic validation of all 10 deploy conditions |
 | 2026-07-21 | `feat` | Integrate Firebase deploy validation into `agentic-sovereign-updater` (6h), `gcp-monitoring-agent` (daily), `compliance-agent` (weekly) |
