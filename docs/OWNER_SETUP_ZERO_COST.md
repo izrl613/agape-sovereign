@@ -53,13 +53,13 @@ Only receipt hashes + verification outcomes are ever sent to the model.
 
 ## 3. Passkey cookie secret (required for stable passkey login)
 
-Add a long random value as `PASSKEY_COOKIE_SECRET` to the same
-gitignored `functions/.env.agape-sovereign` file. Without it the auth
-function still deploys and signs cookies with an ephemeral
-per-instance key (Firestore-backed challenges keep ceremonies
-working), but a stable secret is the correct production setting.
-Secret-Manager bindings are intentionally not used: they make
-`firebase deploy` fail until the secrets exist.
+`PASSKEY_COOKIE_SECRET` + `COOKIE_SECRET` already exist in Secret
+Manager for this project and are bound to `authApi` as secret env
+vars — production is correctly configured. To ROTATE:
+`firebase functions:secrets:set PASSKEY_COOKIE_SECRET` then redeploy.
+Do NOT also put these names in `functions/.env.agape-sovereign`:
+Cloud Run rejects updates where a secret env var overlaps a plain
+env var. Locally (emulator), a dev fallback/ephemeral key is used.
 
 ## 4. Deploy
 
