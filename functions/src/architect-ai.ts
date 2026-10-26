@@ -1,16 +1,21 @@
 /* eslint-disable require-jsdoc, new-cap, max-len */
 import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
-import {defineSecret} from "firebase-functions/params";
+import {defineString} from "firebase-functions/params";
 
 /**
  * Architect AI runs on the Gemini free tier (zero marginal cost).
- * Owner setup (one time): firebase functions:secrets:set GEMINI_API_KEY
- * Until the secret exists this endpoint returns 501
- * ARCHITECT_AI_NOT_CONFIGURED and the web app answers with its labelled
- * on-device knowledge engine. Canned/fake AI replies are banned.
+ * Owner setup (one time): put GEMINI_API_KEY=<free AI Studio key> in a
+ * gitignored functions/.env.agape-sovereign file and redeploy, OR set
+ * it in the Firebase console (Functions > architectApi > env vars).
+ * A defaulted string param (not defineSecret) is used on purpose: a
+ * secret binding makes `firebase deploy` FAIL until the secret exists,
+ * which would block production deploys. Until a key is provided this
+ * endpoint returns 501 ARCHITECT_AI_NOT_CONFIGURED and the web app
+ * answers with its labelled on-device knowledge engine.
+ * Canned/fake AI replies are banned.
  */
-const geminiApiKey = defineSecret("GEMINI_API_KEY");
+const geminiApiKey = defineString("GEMINI_API_KEY", {default: ""});
 const GEMINI_MODEL = "gemini-2.0-flash";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getAppCheck} from "firebase-admin/app-check";
@@ -194,7 +199,7 @@ export const architectApi = onRequest(
     timeoutSeconds: 60,
     memory: "512MiB",
     invoker: "public",
-    secrets: [geminiApiKey],
+    // GEMINI_API_KEY arrives via the defaulted param above; no secret binding.
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
   },
   architectApp
