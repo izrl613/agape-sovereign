@@ -418,6 +418,7 @@ export function encodeCredentialId(id: string | Uint8Array): string {
 
 // Router used at both / (direct URL) and /api/auth (Hosting rewrite)
 const router = express.Router(); // eslint-disable-line new-cap
+router.use(doubleCsrfProtection);
 
 // Health check endpoint
 router.get("/", (_req: Request, res: Response) => {
