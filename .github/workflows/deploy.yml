@@ -36,11 +36,18 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN }}
 
-      - name: Deploy to Firebase
+      # Split on purpose: the CI service account currently lacks the
+      # Firebase Rules Admin role, so a combined deploy dies in the
+      # Firestore phase BEFORE Functions ship (403 on
+      # firebaserules.googleapis.com:test). Hosting+Functions must go
+      # live regardless; rules deploy is a separate, loudly-warned step
+      # until the owner grants roles/firebaserules.admin (see
+      # docs/OWNER_SETUP_ZERO_COST.md). Remove continue-on-error then.
+      - name: Deploy app (Hosting + Functions)
         shell: bash
         run: |
           set -o pipefail
-          npx firebase-tools deploy --only hosting,functions,firestore --non-interactive 2>&1 | tee /tmp/firebase-deploy.log || {
+          npx firebase-tools deploy --only hosting,functions --non-interactive 2>&1 | tee /tmp/firebase-deploy.log || {
             echo '## firebase deploy — last 120 log lines' >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
             tail -n 120 /tmp/firebase-deploy.log >> "$GITHUB_STEP_SUMMARY"
@@ -51,3 +58,13 @@ jobs:
             exit 1
           }
 
+
+      - name: Deploy security rules (Firestore + Storage)
+        continue-on-error: true
+        shell: bash
+        run: |
+          if npx firebase-tools deploy --only firestore,storage --non-interactive; then
+            echo "Firestore/Storage rules deployed."
+          else
+            echo "::warning::RULES NOT DEPLOYED — CI service account needs roles/firebaserules.admin on project agape-sovereign (one-time owner grant, see docs/OWNER_SETUP_ZERO_COST.md). Hosting + Functions ARE live; production still runs the previously deployed rules."
+          fi
