@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Fingerprint, ArrowLeft, Shield, EyeOff, KeyRound, Sparkles } from 'lucide-react';
 import { PasskeyService, AuthMethod } from '../auth/passkey-service';
-import { useSovereign } from '../context/SovereignContext';
+import { useSovereign, type UserSession } from '../context/SovereignContext';
 
 interface LoginPageProps {
-  onSuccess?: () => void;
+  /**
+   * Called once authentication succeeds. The shell performs the redirect to
+   * /dashboard, so this must fire *after* the session object is final.
+   */
+  onSuccess?: (session: UserSession) => void;
   onNavigateHome?: () => void;
 }
 
@@ -95,12 +99,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
     try {
       const result = await PasskeyService.authenticate(method, email);
       if (result.success || result.userId) {
-        setUser({
+        const provider =
+          method === 'ANON' ? 'anonymous' : method === 'GOOGLE' ? 'google' : 'passkey';
+        const identity = (result.email || email || '').trim();
+        const session: UserSession = {
           id: result.userId || `user_${Date.now()}`,
           type: method === 'ANON' ? 'anonymous' : 'verified',
-        });
+          email: identity || undefined,
+          name: identity ? identity.split('@')[0] : undefined,
+          provider,
+          method,
+        };
+
+        setUser(session);
+        // Release the spinner so the shell can take over immediately.
+        setLoading(false);
         if (onSuccess) {
-          onSuccess();
+          onSuccess(session);
         }
       } else {
         throw new Error(result.error || 'Authentication ceremony was rejected.');

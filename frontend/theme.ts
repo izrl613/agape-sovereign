@@ -4,6 +4,14 @@ export const NEON = {
   green: '#39ff14',
   pink: '#ff00ff',
   yellow: '#ffff00',
+  // Brand accents used across the dashboard / header / profile surfaces.
+  magenta: '#ff2e9f',
+  orange: '#FF7A18',
+  // Surfaces and type.
+  bg: '#060C1A',
+  bgCard: '#0b1224',
+  text: '#eaf4ff',
+  textMuted: '#8aa0bd',
 };
 
 export const GRADIENT_BORDER = 'linear-gradient(45deg, #00d4ff, #bc13fe)';

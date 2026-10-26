@@ -9,7 +9,7 @@ export const DashboardView = ({ diffModules, onModuleClick }) => {
   const criticalModules = diffModules.filter(m => m.severity < 60);
 
   return (
-    <div style={{ padding: "24px", overflowY: "auto", height: "100%", animation: "fade-in 0.4s ease" }}>
+    <div style={{ padding: "24px", paddingBottom: 72, overflowY: "auto", height: "100%", animation: "fade-in 0.4s ease" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 24, marginBottom: 28 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.6rem", color: NEON.orange, letterSpacing: "0.2em", marginBottom: 6 }}>DIGITAL IDENTITY FEDERATED FOOTPRINT</div>
@@ -44,7 +44,13 @@ export const DashboardView = ({ diffModules, onModuleClick }) => {
           const sev = m.severity;
           const sevColor = sev > 80 ? NEON.blue : sev > 60 ? NEON.orange : NEON.magenta;
           return (
-            <GlassCard key={m.id} className="module-card" onClick={() => onModuleClick(m.id)} style={{ padding: "14px", cursor: "pointer" }}>
+            <GlassCard
+              key={m.id}
+              className="module-card"
+              onClick={() => onModuleClick(m.id)}
+              style={{ padding: "14px", cursor: "pointer" }}
+              {...{ role: "button", tabIndex: 0, "aria-label": `Open ${m.label} module`, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onModuleClick(m.id); } } }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                 <span style={{ color: sevColor, fontSize: "1.2rem" }}>{m.icon}</span>
                 <div style={{ textAlign: "right" }}>
@@ -57,9 +63,9 @@ export const DashboardView = ({ diffModules, onModuleClick }) => {
                 <div style={{ height: "100%", width: `${sev}%`, background: sevColor, borderRadius: 1, boxShadow: `0 0 6px ${sevColor}`, transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.magenta }}>🔥{m.nuked}</span>
-                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.blue }}>🛡️{m.knoxed}</span>
-                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.orange }}>👁️{m.monitored}</span>
+                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.magenta }}>✕ {m.nuked}</span>
+                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.blue }}>✓ {m.knoxed}</span>
+                <span style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.58rem", color: NEON.orange }}>◉ {m.monitored}</span>
               </div>
             </GlassCard>
           );

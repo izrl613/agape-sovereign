@@ -44,7 +44,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ userId }) => {
           <div className="vault-content">
             {status === 'LOCKED' && (
               <div className="locked-state">
-                <div className="lock-icon">🔒</div>
+                <div className="lock-icon">⌾</div>
                 <NeonText size="md">Identity Report Encrypted</NeonText>
                 <p>Your sovereign identity report is encrypted and locked. To release the document, a hardware-backed Passkey verification is required.</p>
                 <NeonButton onClick={handleVerifyAndRelease}>
@@ -63,7 +63,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ userId }) => {
 
             {status === 'RELEASED' && (
               <div className="released-state">
-                <div className="success-icon">✅</div>
+                <div className="success-icon">✓</div>
                 <NeonText size="md">Identity Released</NeonText>
                 <p>Your verified sovereign report is now available for download.</p>
                 <a href={reportUrl} download className="download-btn">
@@ -78,13 +78,15 @@ export const ReportView: React.FC<ReportViewProps> = ({ userId }) => {
         </GlassCard>
       </div>
       <ZkFooter pageId="report" />
-      <style jsx>{`
+      <style>{`
         .report-view {
-          height: 100vh;
+          height: 100%;
+          min-height: 0;
           display: flex;
           justify-content: center;
           align-items: center;
-          background: #0a0a0a;
+          padding: 24px 24px 64px;
+          background: #060C1A;
           color: white;
           font-family: 'Rajdhani', sans-serif;
         }

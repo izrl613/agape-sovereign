@@ -42,7 +42,7 @@ export const LeftNav = ({ diffModules, activeModule, setActiveModule, activeSect
 
       <div style={{ padding: "12px 8px 4px" }}>
         {sections.map(s => (
-          <div key={s.id} className={`nav-item ${activeSection === s.id ? "active" : ""}`} onClick={() => { setActiveSection(s.id); setActiveModule(null); }} style={{ padding: "10px 12px", borderRadius: 8, marginBottom: 2, display: "flex", alignItems: "center", gap: 10, borderLeft: activeSection === s.id ? `2px solid ${NEON.blue}` : "2px solid transparent" }}>
+          <div key={s.id} className={`nav-item ${activeSection === s.id ? "active" : ""}`} onClick={() => setActiveSection(s.id)} style={{ padding: "10px 12px", borderRadius: 8, marginBottom: 2, display: "flex", alignItems: "center", gap: 10, borderLeft: activeSection === s.id ? `2px solid ${NEON.blue}` : "2px solid transparent" }}>
             <span style={{ color: NEON.blue, fontSize: "1rem", width: 20 }}>{s.icon}</span>
             <span style={{ fontFamily: "'Orbitron', monospace", fontSize: "0.68rem", fontWeight: 600, color: activeSection === s.id ? NEON.blue : NEON.text, letterSpacing: "0.08em" }}>{s.label}</span>
           </div>
@@ -67,7 +67,7 @@ export const LeftNav = ({ diffModules, activeModule, setActiveModule, activeSect
               <span style={{ color: sevColor, fontSize: "0.85rem", width: 16, textAlign: "center", flexShrink: 0 }}>{m.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Rajdhani', sans-serif", fontSize: "0.72rem", fontWeight: 600, color: isActive ? sevColor : NEON.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.label}</div>
-                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.55rem", color: NEON.textMuted }}>{m.vector} · {m.nuked}🔥 {m.knoxed}🛡️</div>
+                <div style={{ fontFamily: "'Share Tech Mono'", fontSize: "0.55rem", color: NEON.textMuted }}>{m.vector} · {m.nuked}✕ {m.knoxed}✓</div>
               </div>
               <div style={{ width: 24, height: 24, borderRadius: "50%", border: `1.5px solid ${sevColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <span style={{ fontFamily: "'Orbitron'", fontSize: "0.5rem", color: sevColor, fontWeight: 700 }}>{sev}</span>
