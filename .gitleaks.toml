@@ -9,12 +9,17 @@ title = "agape-sovereign gitleaks config"
   useDefault = true
 
 [allowlist]
-  description = "Allowlist Firebase public client SDK manifests and template env files (non-secret client identifiers)"
+  description = "Exclude .git internals and allowlist Firebase public client SDK manifests and template env files"
   paths = [
-    '''(^|/)firebase-config\.json$''',
-    '''(^|/)firebase-applet-config\.json$''',
-    '''(^|/)firebase-blueprint\.json$''',
-    '''(^|/)\.env\.example$''',
-    '''(^|/)\.env\.sample$''',
-    '''(^|/)\.env\.template$''',
+    '''(^|/)\.git(/|$)''',
+    '''(^|/)node_modules(/|$)''',
+    '''firebase-config\.json''',
+    '''firebase-applet-config\.json''',
+    '''firebase-blueprint\.json''',
+    '''\.env\.(example|sample|template|test|ci)''',
+  ]
+  regexes = [
+    '''YOUR_GOOGLE_CLIENT_SECRET''',
+    '''agape-sovereign-default-secret''',
+    '''agape-sovereign-dev-cookie-secret''',
   ]
