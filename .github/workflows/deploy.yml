@@ -37,5 +37,14 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AGAPE_SOVEREIGN }}
 
       - name: Deploy to Firebase
-        run: npx firebase-tools deploy --only hosting,functions,firestore
+        shell: bash
+        run: |
+          set -o pipefail
+          npx firebase-tools deploy --only hosting,functions,firestore --non-interactive 2>&1 | tee /tmp/firebase-deploy.log || {
+            echo '## firebase deploy — last 120 log lines' >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 120 /tmp/firebase-deploy.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
 
