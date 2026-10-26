@@ -27,7 +27,7 @@ firebase use agape-sovereign
 ### 3. Create `.env.local`
 ```bash
 cat > .env.local << 'EOF'
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g
+NEXT_PUBLIC_FIREBASE_API_KEY=<your-firebase-public-web-api-key>
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=agape-sovereign.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=agape-sovereign
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=agape-sovereign.firebasestorage.app

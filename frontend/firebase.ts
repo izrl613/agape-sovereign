@@ -36,6 +36,7 @@ import {
   startRegistration,
 } from '@simplewebauthn/browser';
 import type { EncryptedSovereignEnvelope } from './services/sovereignCrypto';
+import firebaseClientConfig from '../firebase-config.json';
 
 export const ADMIN_ALLOWLIST = ['idin@agape.nyc', 'agape@sovereign.nyc'] as const;
 
@@ -44,12 +45,12 @@ const isCustomDomain =
   (window.location.hostname === 'sovereign.nyc' || window.location.hostname === 'www.sovereign.nyc');
 
 export const FIREBASE_CONFIG = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseClientConfig.apiKey,
   authDomain: isCustomDomain ? 'sovereign.nyc' : 'agape-sovereign.firebaseapp.com',
-  projectId: 'agape-sovereign',
-  storageBucket: 'agape-sovereign.firebasestorage.app',
-  messagingSenderId: '956088455461',
-  appId: '1:956088455461:web:5d83545efc8961e4904acc',
+  projectId: firebaseClientConfig.projectId,
+  storageBucket: firebaseClientConfig.storageBucket,
+  messagingSenderId: firebaseClientConfig.messagingSenderId,
+  appId: firebaseClientConfig.appId,
 };
 
 export const FIRESTORE_DATABASE_ID = 'agape-sovereign';
