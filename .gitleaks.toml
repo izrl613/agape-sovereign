@@ -8,7 +8,7 @@ title = "agape-sovereign gitleaks config"
 [extend]
   useDefault = true
 
-[allowlist]
+[[allowlists]]
   description = "Exclude .git internals and allowlist Firebase public client SDK manifests and template env files"
   paths = [
     '''(^|/)\.git(/|$)''',
