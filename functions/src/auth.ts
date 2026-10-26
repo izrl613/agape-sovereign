@@ -8,6 +8,7 @@ import {getAuth} from "firebase-admin/auth";
 import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
+import {doubleCsrf} from "csrf-csrf";
 import cors from "cors";
 import {rateLimit} from "express-rate-limit";
 import helmet from "helmet";
@@ -160,6 +161,29 @@ authApp.use(express.json({limit: "256kb"}));
 // COOKIE_SECRET is always a non-empty string (configured secret,
 // ephemeral per-instance secret, or the dev-only constant off-prod).
 authApp.use(cookieParser(COOKIE_SECRET));
+
+/**
+ * Double-submit-cookie CSRF protection (csrf-csrf), layered with the
+ * SameSite=Strict __session cookie and the Origin allowlist guard.
+ * Clients fetch a token from GET /api/auth/csrf-token (sets the CSRF
+ * cookie) and echo it in the x-csrf-token header on every POST.
+ */
+const {doubleCsrfProtection, generateCsrfToken} = doubleCsrf({
+  getSecret: () => COOKIE_SECRET,
+  getSessionIdentifier: (req: Request) => {
+    const forwarded = (req.get("x-forwarded-for") || "").split(",")[0].trim();
+    return `${forwarded || req.ip || "unknown-ip"}|${req.get("user-agent") || "unknown-ua"}`;
+  },
+  cookieName: "agape.x-csrf-token",
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    secure: isProductionEnv,
+  },
+  getCsrfTokenFromRequest: (req: Request) => req.headers["x-csrf-token"],
+  errorConfig: {statusCode: 403, message: "Invalid CSRF token", code: "EBADCSRFTOKEN"},
+});
 
 // Security headers with helmet
 authApp.use(helmet({
@@ -905,7 +929,22 @@ authApp.use((req: Request, res: Response, next: express.NextFunction) => {
   next();
 });
 
+// CSRF token issuer (GET is exempt from doubleCsrfProtection).
+authApp.get("/api/auth/csrf-token", (req: Request, res: Response) => {
+  res.json({csrfToken: generateCsrfToken(req, res)});
+});
+authApp.use(doubleCsrfProtection);
 authApp.use("/api/auth", router);
+
+// JSON error shape for CSRF rejections (Express would default to HTML).
+authApp.use((err: Error & {code?: string; status?: number},
+  _req: Request, res: Response, next: express.NextFunction) => {
+  if (err && err.code === "EBADCSRFTOKEN") {
+    res.status(403).json({error: "Invalid CSRF token"});
+    return;
+  }
+  next(err);
+});
 
 export const authApi = onRequest(
   {

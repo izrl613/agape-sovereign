@@ -22,6 +22,18 @@ export interface PasskeyResult {
 
 const BASE = '/api/auth';
 
+let csrfTokenCache: string | null = null;
+
+/** Double-submit CSRF: server sets the cookie here; we echo the token. */
+async function csrfHeaders(forceFresh = false): Promise<Record<string, string>> {
+  if (!csrfTokenCache || forceFresh) {
+    const res = await fetch(`${BASE}/csrf-token`, { credentials: 'include' });
+    if (!res.ok) throw new Error(PASSKEY_BACKEND_DOWN);
+    csrfTokenCache = (await res.json()).csrfToken as string;
+  }
+  return { 'x-csrf-token': csrfTokenCache };
+}
+
 export const PASSKEY_BACKEND_DOWN =
   'Passkey sign-in is unavailable right now — the authentication service did not respond. No account was created. Use Sign in with Google, or try again later.';
 
@@ -35,7 +47,7 @@ export class PasskeyService {
       optionsRes = await fetch(`${BASE}/login-options`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
         body: JSON.stringify({ email: normalizedEmail }),
       });
     } catch {
@@ -65,6 +77,7 @@ export class PasskeyService {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...(await csrfHeaders()),
         ...(normalizedEmail ? { 'X-Passkey-Email': normalizedEmail } : {}),
       },
       body: JSON.stringify({ ...assertion, email: normalizedEmail }),
@@ -89,7 +102,7 @@ export class PasskeyService {
       optionsRes = await fetch(`${BASE}/register-options`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
         body: JSON.stringify({ email: normalizedEmail }),
       });
     } catch {
@@ -111,7 +124,7 @@ export class PasskeyService {
     const verifyRes = await fetch(`${BASE}/verify-registration`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
       body: JSON.stringify({ ...attestation, email: normalizedEmail }),
     });
     if (!verifyRes.ok) throw new Error('The server could not verify the new passkey. Please try again.');
