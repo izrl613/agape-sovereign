@@ -882,6 +882,29 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
 
 // Mount router at / (direct URL) and /api/auth (Hosting rewrite)
 authApp.use("/", router);
+/**
+ * CSRF defence for the cookie-bearing auth API.
+ *
+ * The __session cookie is SameSite=Strict in production (browsers
+ * never attach it to cross-site POSTs), and every ceremony also
+ * requires an unforgeable WebAuthn assertion bound to this origin.
+ * As explicit defence-in-depth, state-changing requests must carry
+ * an Origin header from the allowlist; cross-site form/fetch CSRF
+ * cannot forge that. Safe methods pass through.
+ */
+authApp.use((req: Request, res: Response, next: express.NextFunction) => {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    next();
+    return;
+  }
+  const origin = req.get("origin");
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
+    res.status(403).json({error: "Cross-origin request blocked"});
+    return;
+  }
+  next();
+});
+
 authApp.use("/api/auth", router);
 
 export const authApi = onRequest(
