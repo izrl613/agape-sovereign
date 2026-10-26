@@ -13,6 +13,9 @@
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-10-26 | `feat` | Public Privacy Policy (`/privacy`) + Terms of Service (`/terms`) pages — unauthenticated, mirrored 1:1 from the signed PDFs, with a sticky neon-blue table of contents that wraps the reader's current clause in an orange position box |
+| 2026-10-26 | `feat` | Shared legal document shell (`frontend/components/legal/*`) — scroll-spy nav with expandable subsections, reading-progress rail, mobile sticky TOC bar, print stylesheet, per-document meta/OG tags |
+| 2026-10-26 | `docs` | Add `docs/LEGAL_PAGES.md` — routes, content model, design spec, and copy-editing rules for the legal pages |
 | 2026-07-21 | `fix` | Resolve 10 Firebase deploy failure root causes (lint configs, apphosting, workspaces, deps, workflows) |
 | 2026-07-21 | `feat` | Add `scripts/validate-firebase-deploy.mjs` — autonomous agentic validation of all 10 deploy conditions |
 | 2026-07-21 | `feat` | Integrate Firebase deploy validation into `agentic-sovereign-updater` (6h), `gcp-monitoring-agent` (daily), `compliance-agent` (weekly) |

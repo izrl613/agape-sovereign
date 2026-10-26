@@ -8,14 +8,30 @@ import { ArchitectAIView } from './components/ArchitectAIView';
 import { ReportView } from './components/ReportView';
 import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
+import { PrivacyPolicyPage } from './components/legal/PrivacyPolicyPage';
+import { TermsOfServicePage } from './components/legal/TermsOfServicePage';
 
 export type AppView = 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
 
+export type LegalRoute = 'privacy' | 'terms' | null;
+
 // Lightweight path matcher — Firebase hosting rewrites all paths to index.html
 // so we just inspect window.location.pathname to decide what to render.
+const normalizePath = () => window.location.pathname.replace(/\/+$/, '').toLowerCase();
+
 const isLoginPath = () => {
-  const p = window.location.pathname;
-  return p === '/login' || p === '/login/' || p === '/';
+  const p = normalizePath();
+  return p === '/login' || p === '';
+};
+
+// Public legal pages: /privacy and /terms (+ /legal/* aliases). These must
+// resolve without authentication — Google OAuth verification, app-store review,
+// and crawlers all fetch them anonymously.
+export const getLegalRoute = (): LegalRoute => {
+  const p = normalizePath();
+  if (p === '/privacy' || p === '/legal/privacy') return 'privacy';
+  if (p === '/terms' || p === '/legal/terms' || p === '/terms-of-service') return 'terms';
+  return null;
 };
 
 const AppContent: React.FC = () => {
@@ -31,6 +47,9 @@ const AppContent: React.FC = () => {
   };
 
   useEffect(() => {
+    // Never rewrite the URL while a public legal document is on screen.
+    if (getLegalRoute()) return;
+
     if (!user) {
       pushPath('/login');
     } else {
@@ -58,6 +77,15 @@ const AppContent: React.FC = () => {
       // silently handle — user stays on current module
     }
   };
+
+  // ── Public legal pages (no auth required) ──────────────────────
+  const legalRoute = getLegalRoute();
+  if (legalRoute === 'privacy') {
+    return <PrivacyPolicyPage />;
+  }
+  if (legalRoute === 'terms') {
+    return <TermsOfServicePage />;
+  }
 
   // ── Unauthenticated: always show the login portal ──────────────
   if (!user) {
