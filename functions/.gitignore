@@ -8,3 +8,6 @@ typings/
 # Node.js dependency directory
 node_modules/
 *.local
+# Local param files (may contain GEMINI_API_KEY) — never commit
+.env.*
+!.env.example

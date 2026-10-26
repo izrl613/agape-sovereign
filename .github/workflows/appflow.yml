@@ -189,6 +189,7 @@ jobs:
 
       # Dependency Review
       - name: Dependency Review
+        if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
@@ -301,7 +302,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: frontend/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

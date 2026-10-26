@@ -28,7 +28,7 @@ Architect AI answers on-device (labelled "LOCAL KB") until a Gemini key
 exists. To enable the cloud model at zero cost:
 
 1. Create a free key at Google AI Studio (aistudio.google.com).
-2. `firebase functions:secrets:set GEMINI_API_KEY` (project `agape-sovereign`).
+2. Put `GEMINI_API_KEY=<key>` in `functions/.env.agape-sovereign` (gitignored — never commit it). A Secret-Manager binding is deliberately NOT used because it blocks `firebase deploy` until the secret exists.
 3. Redeploy functions (step 3). Answers are then labelled "GEMINI".
 
 Only receipt hashes + verification outcomes are ever sent to the model.
