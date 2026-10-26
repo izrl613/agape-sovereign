@@ -10,8 +10,13 @@ export interface ModuleConfig {
   dataFields: {
     label: string;
     key: string;
-    type: 'text' | 'select' | 'date' | 'hidden';
+    type: 'text' | 'select' | 'date' | 'hidden' | 'email' | 'password';
     options?: string[];
+    /** Optional fields may be left blank and are excluded from the hash when empty. */
+    optional?: boolean;
+    /** Sensitive fields are hashed/encrypted on-device and NEVER sent to any verification API. */
+    sensitive?: boolean;
+    help?: string;
   }[];
 }
 
@@ -23,12 +28,13 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Establish Your Primary Node.',
       narrative: 'Your email is the anchor of your digital existence. By verifying your primary and secondary communication channels, you create a verifiable link between your physical identity and your digital presence.',
-      privacyPledge: 'Emails are verified via OAuth2; only the verification status and encrypted identifiers are passed to the Architect AI.',
+      privacyPledge: 'Your email is hashed (SHA-256) and encrypted on this device. Only the checks you run leave the device: breach lookup sends the email to XposedOrNot, MX lookup sends the domain to Cloudflare DNS, and the optional password check sends only the first 5 characters of its hash (k-anonymity).',
     },
     dataFields: [
-      { label: 'Email Address', key: 'email', type: 'text' },
+      { label: 'Email Address', key: 'email', type: 'email' },
       { label: 'Provider', key: 'provider', type: 'select', options: ['Gmail', 'Outlook', 'Custom'] },
       { label: 'Usage Type', key: 'usageType', type: 'select', options: ['Work', 'Personal', 'Secure'] },
+      { label: 'Password to breach-check (optional)', key: 'passwordCheck', type: 'password', optional: true, sensitive: true, help: 'Checked against Have I Been Pwned using k-anonymity: only the first 5 of 40 hash characters leave this device, and the password itself is never stored or hashed into your receipt.' },
     ],
   },
   social: {
@@ -38,12 +44,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Map Your Social Graph.',
       narrative: 'Your social presence is a living record of your interactions and influence. Mapping these handles creates a verifiable "Proof of Presence" across the social web.',
-      privacyPledge: 'We do not scrape your posts. We only verify the ownership of the handle via API.',
+      privacyPledge: 'No scraping. GitHub handles are verified against the public GitHub API. Other platforms offer no free verification API, so those entries are sealed as self-attested — the receipt says so honestly.',
     },
     dataFields: [
-      { label: 'Platform', key: 'platform', type: 'select', options: ['X', 'LinkedIn', 'Meta', 'TikTok'] },
+      { label: 'Platform', key: 'platform', type: 'select', options: ['GitHub', 'X', 'LinkedIn', 'Meta', 'TikTok'] },
       { label: 'Handle', key: 'handle', type: 'text' },
-      { label: 'Profile URL', key: 'url', type: 'text' },
+      { label: 'Profile URL', key: 'url', type: 'text', optional: true },
     ],
   },
   privacy_reclaim: {
@@ -53,12 +59,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Reclaim Your Data Shadow.',
       narrative: 'Your financial and personal data is scattered across a thousand corporate ledgers. This module audits your connections to these institutions, preparing you to reclaim ownership of your "data shadow."',
-      privacyPledge: 'Read-only access via secure financial aggregators. No credentials are stored.',
+      privacyPledge: 'No aggregator has access to your accounts. This agent generates a real CCPA/GDPR erasure-request letter on this device for you to send; only the sealed hash of your entry is stored.',
     },
     dataFields: [
       { label: 'Institution Name', key: 'institution', type: 'text' },
       { label: 'Account Type', key: 'accountType', type: 'select', options: ['Checking', 'Savings', 'Credit'] },
-      { label: 'Connection Status', key: 'status', type: 'hidden' },
+      { label: 'Jurisdiction', key: 'jurisdiction', type: 'select', options: ['CCPA/CPRA (California)', 'GDPR Art. 17 (EU/EEA)', 'Other'] },
     ],
   },
   legal: {
@@ -68,12 +74,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Anchor to the Physical Realm.',
       narrative: 'Sovereignty begins with the ability to prove your legal existence. By linking your government-issued identity, you bridge the gap between the state\'s ledger and your digital fortress.',
-      privacyPledge: 'ID documents are processed in a secure enclave; only a "Verified Legal" token is stored.',
+      privacyPledge: 'Your document number NEVER leaves this device. It is SHA-256 hashed and AES-encrypted locally; the agent only checks its format on-device. No government database is queried — none offers a free public API.',
     },
     dataFields: [
       { label: 'ID Type', key: 'idType', type: 'select', options: ['Passport', 'Driver License', 'National ID'] },
       { label: 'Issuing Country', key: 'country', type: 'text' },
-      { label: 'Document Number', key: 'docNumber', type: 'text' },
+      { label: 'Document Number', key: 'docNumber', type: 'password', sensitive: true, help: 'Hashed on-device only. Never transmitted, never stored in plaintext.' },
     ],
   },
   professional: {
@@ -88,8 +94,8 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     dataFields: [
       { label: 'Job Title', key: 'jobTitle', type: 'text' },
       { label: 'Company', key: 'company', type: 'text' },
-      { label: 'Certification ID', key: 'certId', type: 'text' },
-      { label: 'License Number', key: 'licenseNum', type: 'text' },
+      { label: 'Certification ID', key: 'certId', type: 'text', optional: true },
+      { label: 'License Number', key: 'licenseNum', type: 'password', sensitive: true, optional: true, help: 'Hashed on-device only.' },
     ],
   },
   health: {
@@ -99,12 +105,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Own Your Biological Ledger.',
       narrative: 'Your health data is the most intimate information you possess. By sovereignly managing your health records, you ensure that you—and only you—control who sees your biological blueprint.',
-      privacyPledge: 'Zero-knowledge encryption. Data is verified via FHIR standards and never leaves your control.',
+      privacyPledge: 'Health identifiers NEVER leave this device. There is no free public API that can verify a health record, so this entry is sealed as self-attested with on-device encryption only.',
     },
     dataFields: [
       { label: 'Provider', key: 'provider', type: 'text' },
       { label: 'Record Type', key: 'recordType', type: 'select', options: ['Immunization', 'General', 'Specialist'] },
-      { label: 'Insurance Policy ID', key: 'policyId', type: 'text' },
+      { label: 'Insurance Policy ID', key: 'policyId', type: 'password', sensitive: true, help: 'Hashed on-device only. Never transmitted.' },
     ],
   },
   educational: {
@@ -120,7 +126,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
       { label: 'Institution', key: 'institution', type: 'text' },
       { label: 'Degree', key: 'degree', type: 'text' },
       { label: 'Graduation Year', key: 'year', type: 'date' },
-      { label: 'Student ID', key: 'studentId', type: 'text' },
+      { label: 'Student ID', key: 'studentId', type: 'password', sensitive: true, optional: true, help: 'Hashed on-device only.' },
     ],
   },
   network: {
@@ -130,12 +136,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Map Your Hardware Signature.',
       narrative: 'Every device you use leaves a network trail. By claiming your IP and MAC addresses, you turn a trackable footprint into a controlled network identity.',
-      privacyPledge: 'We store the hash of your hardware IDs, not the raw addresses.',
+      privacyPledge: 'The IP you enter is looked up for real against ipwho.is (free IP intelligence). MAC/UUID cannot be verified by any remote API and are sealed as self-attested.',
     },
     dataFields: [
       { label: 'IP Address', key: 'ip', type: 'text' },
-      { label: 'MAC Address', key: 'mac', type: 'text' },
-      { label: 'Device UUID', key: 'uuid', type: 'text' },
+      { label: 'MAC Address', key: 'mac', type: 'text', optional: true },
+      { label: 'Device UUID', key: 'uuid', type: 'text', optional: true },
     ],
   },
   cryptographic: {
@@ -145,12 +151,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Claim Your Cryptographic Keys.',
       narrative: 'In the new world, mathematics is the only truth. Your wallets and public keys are the ultimate proof of ownership and autonomy.',
-      privacyPledge: 'We only verify ownership of the public key; your private keys never leave your wallet.',
+      privacyPledge: 'Public addresses only — never enter a private key or seed phrase anywhere. BTC is verified against mempool.space and ETH via a public JSON-RPC node; both are free and keyless.',
     },
     dataFields: [
       { label: 'Wallet Address', key: 'address', type: 'text' },
-      { label: 'ENS Name', key: 'ens', type: 'text' },
-      { label: 'Public Key', key: 'publicKey', type: 'text' },
+      { label: 'ENS Name', key: 'ens', type: 'text', optional: true },
+      { label: 'Public Key', key: 'publicKey', type: 'text', optional: true },
     ],
   },
   biometric: {
@@ -160,11 +166,11 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Secure Your Biological Key.',
       narrative: 'Your body is the only key that cannot be stolen or duplicated. By linking your biometric hashes, you create an unforgeable link between your physical self and your digital identity.',
-      privacyPledge: 'We store only the one-way hash of the biometric template. We never store raw biometric images.',
+      privacyPledge: 'Raw biometrics cannot be read by a web app — by design. This agent verifies the real capability that matters: whether this device has a user-verifying platform authenticator (Face ID / Touch ID / Windows Hello) via the WebAuthn API.',
     },
     dataFields: [
       { label: 'Biometric Type', key: 'type', type: 'select', options: ['Face', 'Fingerprint', 'Iris'] },
-      { label: 'Template Hash', key: 'hash', type: 'text' },
+      { label: 'Template Hash (optional, if an external enclave issued one)', key: 'hash', type: 'text', optional: true },
     ],
   },
   reputation: {
@@ -179,7 +185,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     dataFields: [
       { label: 'Platform', key: 'platform', type: 'select', options: ['Uber', 'Airbnb', 'Yelp', 'Google'] },
       { label: 'Trust Score', key: 'score', type: 'text' },
-      { label: 'Review Count', key: 'count', type: 'text' },
+      { label: 'Review Count', key: 'count', type: 'text', optional: true },
     ],
   },
   subscription: {
@@ -194,7 +200,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     dataFields: [
       { label: 'Service Name', key: 'service', type: 'text' },
       { label: 'Tier', key: 'tier', type: 'select', options: ['Free', 'Pro', 'Enterprise'] },
-      { label: 'Billing ID', key: 'billingId', type: 'text' },
+      { label: 'Billing ID', key: 'billingId', type: 'password', sensitive: true, optional: true, help: 'Hashed on-device only. Never enter a card number.' },
     ],
   },
   location: {
@@ -204,12 +210,12 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     splash: {
       headline: 'Verify Your Physical Presence.',
       narrative: 'Identity is not just who you are, but where you are. By verifying your residency and citizenship, you anchor your digital identity to a physical jurisdiction.',
-      privacyPledge: 'Addresses are hashed; only the jurisdiction and residency status are verified.',
+      privacyPledge: 'With your consent, the address text is geocoded once against OpenStreetMap Nominatim (free) to confirm it resolves to a real place. Only the hash and the matched place type are kept; do not enter an address you are not comfortable geocoding.',
     },
     dataFields: [
       { label: 'Physical Address', key: 'address', type: 'text' },
       { label: 'Citizenship', key: 'citizenship', type: 'text' },
-      { label: 'Residency History', key: 'history', type: 'text' },
+      { label: 'Residency History', key: 'history', type: 'text', optional: true },
     ],
   },
   behavioral: {
@@ -239,7 +245,7 @@ export const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     dataFields: [
       { label: 'Organization Name', key: 'org', type: 'text' },
       { label: 'Role', key: 'role', type: 'select', options: ['Member', 'Board', 'Fellow'] },
-      { label: 'Member ID', key: 'memberId', type: 'text' },
+      { label: 'Member ID', key: 'memberId', type: 'text', optional: true },
     ],
   },
   permissions: {

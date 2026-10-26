@@ -50,7 +50,7 @@ CLOUD_RUN_SERVICES = {
 }
 
 CLOUD_FUNCTIONS = [
-    "authApi", "cleanupAuditLogs", "cleanupExpiredPipelineRuns",
+    "authApi", "cleanupAuditLogs",
     "fetchAnalyticsData", "generateDiffReport", "generateECRAOptOut",
     "generatePasskeyChallenge", "generatePolicyDocument",
     "recalculateSovereignScore", "sovereignAuditRecord",

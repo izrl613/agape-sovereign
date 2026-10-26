@@ -151,7 +151,7 @@ const LoadingSpinner = () => {
 
 // ── Main Login component ───────────────────────────────────────
 export const Login = () => {
-  const { login, loginAnonymously, upgradeAnonymousWithGoogle, loginWithPasskey, user } = useAuth();
+  const { login, loginAnonymously, upgradeAnonymousWithGoogle, loginWithPasskey, user,  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -165,7 +165,7 @@ export const Login = () => {
     if (user) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, , navigate]);
 
   const handleAnonymousLogin = async () => {
     setAuthError(null);

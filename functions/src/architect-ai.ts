@@ -1,6 +1,22 @@
 /* eslint-disable require-jsdoc, new-cap, max-len */
 import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
+import {defineString} from "firebase-functions/params";
+
+/**
+ * Architect AI runs on the Gemini free tier (zero marginal cost).
+ * Owner setup (one time): put GEMINI_API_KEY=<free AI Studio key> in a
+ * gitignored functions/.env.agape-sovereign file and redeploy, OR set
+ * it in the Firebase console (Functions > architectApi > env vars).
+ * A defaulted string param (not defineSecret) is used on purpose: a
+ * secret binding makes `firebase deploy` FAIL until the secret exists,
+ * which would block production deploys. Until a key is provided this
+ * endpoint returns 501 ARCHITECT_AI_NOT_CONFIGURED and the web app
+ * answers with its labelled on-device knowledge engine.
+ * Canned/fake AI replies are banned.
+ */
+const geminiApiKey = defineString("GEMINI_API_KEY", {default: ""});
+const GEMINI_MODEL = "gemini-2.0-flash";
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getAppCheck} from "firebase-admin/app-check";
 import {getAuth} from "firebase-admin/auth";
@@ -101,28 +117,69 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
       history.slice(-10).map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join("\n") :
       "";
 
-    // Call Gemini API (using Vertex AI or direct)
-    // For now, return structured response
-    const reply = `Greetings, Sovereign. I am Architect AI — your Digital Identity Federated Footprint intelligence engine.
+    const apiKey = geminiApiKey.value();
+    if (!apiKey) {
+      res.status(501).json({
+        error: "ARCHITECT_AI_NOT_CONFIGURED",
+        detail: "Set the GEMINI_API_KEY secret (Gemini free tier) to enable cloud Architect AI.",
+      });
+      return;
+    }
 
-I have analyzed your query: "${message}"
+    const receipts = Array.isArray(req.body.receipts) ? req.body.receipts.slice(0, 64) : [];
+    const receiptLines = receipts.length ?
+      receipts.map((r: {module: string; status: string; source: string; sealedAt: string; sha256Id: string}) =>
+        `- ${r.module}: ${r.status} via ${r.source} (sealed ${r.sealedAt}, SHA-256 ${r.sha256Id}...)`).join("\n") :
+      "No sealed module receipts yet.";
 
-**Context from session:** ${context || "No prior history"}
+    const systemPrompt = [
+      "You are Architect AI, the privacy and security assistant inside",
+      "Agape Sovereign AI, a zero-knowledge digital-identity protection app.",
+      "Rules you must follow:",
+      "1. Only reason over the sealed receipt ledger provided below.",
+      "   Never invent findings, scores, breach data, or scan results.",
+      "2. Plaintext identity data is encrypted on the user device;",
+      "   you never receive it and must never ask for passwords, document",
+      "   numbers, seed phrases, or other secrets.",
+      "3. Verification sources are free keyless APIs where they honestly",
+      "   exist; otherwise receipts say SELF_ATTESTED. Respect that nuance.",
+      "4. Be practical: give concrete next actions tied to receipts,",
+      "   especially any MATCH_FOUND (confirmed third-party exposure).",
+      "5. Answer general privacy/security questions accurately and plainly.",
+      "",
+      "USER SEALED LEDGER (hashes + verification outcomes only):",
+      receiptLines,
+      context ? `\nRECENT CONVERSATION:\n${context}` : "",
+    ].join("\n");
 
-**Analysis:**
-- Your 16-layer identity vector profile is actively monitored
-- Current Sovereign Score reflects real-time threat intelligence
-- NUKED exposures are prioritized for immediate remediation
-- KNOXED vectors are hardened with AES-256-GCM encryption
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          systemInstruction: {parts: [{text: systemPrompt}]},
+          contents: [{role: "user", parts: [{text: String(message).slice(0, 4000)}]}],
+          generationConfig: {temperature: 0.3, maxOutputTokens: 1024},
+        }),
+      }
+    );
+    if (!geminiRes.ok) {
+      logger.error("Gemini request failed", {status: geminiRes.status});
+      res.status(502).json({error: "ARCHITECT_AI_UPSTREAM_ERROR"});
+      return;
+    }
+    const geminiJson = (await geminiRes.json()) as {
+      candidates?: {content?: {parts?: {text?: string}[]}}[];
+    };
+    const reply = geminiJson?.candidates?.[0]?.content?.parts
+      ?.map((p: {text?: string}) => p.text || "").join("") || "";
+    if (!reply) {
+      res.status(502).json({error: "ARCHITECT_AI_EMPTY_RESPONSE"});
+      return;
+    }
 
-**Recommendations:**
-1. Review NUKED exposures in the Dashboard
-2. Initiate Vector Sweep on critical modules
-3. Bind Passkey for Level 3 sovereignty
-
-What aspect of your digital sovereignty would you like to explore?`;
-
-    res.json({reply, uid});
+    res.json({reply, uid, model: GEMINI_MODEL});
   } catch (error) {
     logger.error("Architect AI Error:", error);
     const message = error instanceof Error ? error.message : "Internal Server Error";
@@ -142,6 +199,7 @@ export const architectApi = onRequest(
     timeoutSeconds: 60,
     memory: "512MiB",
     invoker: "public",
+    // GEMINI_API_KEY arrives via the defaulted param above; no secret binding.
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
   },
   architectApp

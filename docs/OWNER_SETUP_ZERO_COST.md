@@ -29,11 +29,21 @@ exists. To enable the cloud model at zero cost:
 
 1. Create a free key at Google AI Studio (aistudio.google.com).
 2. Put `GEMINI_API_KEY=<key>` in `functions/.env.agape-sovereign` (gitignored — never commit it). A Secret-Manager binding is deliberately NOT used because it blocks `firebase deploy` until the secret exists.
-3. Redeploy functions (step 3). Answers are then labelled "GEMINI".
+3. Redeploy functions (step 4). Answers are then labelled "GEMINI".
 
 Only receipt hashes + verification outcomes are ever sent to the model.
 
-## 3. Deploy
+## 3. Passkey cookie secret (required for stable passkey login)
+
+Add a long random value as `PASSKEY_COOKIE_SECRET` to the same
+gitignored `functions/.env.agape-sovereign` file. Without it the auth
+function still deploys and signs cookies with an ephemeral
+per-instance key (Firestore-backed challenges keep ceremonies
+working), but a stable secret is the correct production setting.
+Secret-Manager bindings are intentionally not used: they make
+`firebase deploy` fail until the secrets exist.
+
+## 4. Deploy
 
 ```bash
 npm ci                       # root (workspaces: frontend, backend)

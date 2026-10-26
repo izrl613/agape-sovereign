@@ -1,31 +1,30 @@
+/**
+ * Agape Sovereign — neon design tokens (single source of truth).
+ * Superset palette: every key referenced by any component is defined here.
+ */
 export const NEON = {
-  magenta: '#FF2E9F',
-  blue: '#00D4FF',
-  orange: '#FF7A18',
+  blue: '#00d4ff',
   purple: '#bc13fe',
-  green: '#00FF87',
-  pink: '#ff00ff',
-  yellow: '#ffff00',
-  bg: '#060D1F',
-  bgCard: 'rgba(8, 18, 40, 0.85)',
-  bgGlass: 'rgba(0, 212, 255, 0.04)',
-  text: '#E8F4FF',
-  textMuted: '#7B9BB5',
-};
+  magenta: '#ff2e9f',
+  pink: '#ff2e9f',
+  orange: '#ff7a18',
+  green: '#00ff87',
+  yellow: '#ffd700',
+  bg: '#060c1a',
+  bgCard: 'rgba(10, 18, 38, 0.85)',
+  surface: 'rgba(255,255,255,0.03)',
+  text: '#e8f4ff',
+  textMuted: 'rgba(180,190,220,0.55)',
+  border: 'rgba(0,212,255,0.18)',
+} as const;
 
-export const GRADIENT = `linear-gradient(135deg, ${NEON.magenta}, ${NEON.blue}, ${NEON.orange})`;
-export const GRADIENT_BORDER = `linear-gradient(135deg, ${NEON.magenta} 0%, ${NEON.blue} 50%, ${NEON.orange} 100%)`;
+export const GRADIENT_BORDER =
+  'linear-gradient(90deg, #ff2e9f, #00d4ff, #ff7a18, #00ff87)';
 
 export const COLORS = {
   background: NEON.bg,
-  surface: '#0B1020',
+  surface: '#0a1226',
   text: NEON.text,
   textMuted: NEON.textMuted,
-  border: 'rgba(0,212,255,0.15)',
-};
-
-export const FONTS = {
-  orbitron: "'Orbitron', monospace",
-  rajdhani: "'Rajdhani', sans-serif",
-  mono: "'Share Tech Mono', monospace",
-};
+  border: NEON.border,
+} as const;

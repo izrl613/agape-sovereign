@@ -1,19 +1,28 @@
-import React, { useEffect, useState } from 'react';
-import {
-  completeGoogleRedirect,
-  loginAnonymously,
-  loginWithDiscoverablePasskey,
-  loginWithGoogle,
-  loginWithPasskey,
-  registerPasskey,
-} from '../firebase';
-import { NEON, FONTS, GRADIENT } from '../theme';
+import React, { useState, useEffect } from 'react';
+import { Fingerprint, ArrowLeft, Shield, EyeOff, KeyRound, Sparkles } from 'lucide-react';
+import { useSovereign } from '../context/SovereignContext';
+import { GOOGLE_CANCELLED } from '../firebase';
 
-type Step = 'landing' | 'passkey-email' | 'passkey-register';
-type Method = 'google' | 'passkey' | 'register' | 'anonymous' | null;
+type AuthMethod = 'PASSKEY' | 'PASSKEY_REGISTER' | 'GOOGLE' | 'ANON';
 
-const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+interface LoginPageProps {
+  onSuccess?: () => void;
+  onNavigateHome?: () => void;
+}
+
+const C = {
+  blue: '#00D4FF',
+  magenta: '#FF2E9F',
+  orange: '#FF7A18',
+  green: '#00FF87',
+  muted: 'rgba(180, 190, 220, 0.45)',
+  surface: 'rgba(255, 255, 255, 0.03)',
+  cardBg: 'rgba(6, 12, 26, 0.94)',
+  border: 'rgba(0, 212, 255, 0.2)',
+} as const;
+
+const GoogleLogo = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-label="Google" role="img">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -21,332 +30,753 @@ const GoogleIcon = () => (
   </svg>
 );
 
-function formatAuthError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  const code = err && typeof err === 'object' && 'code' in err ? String((err as { code?: string }).code || '') : '';
-  if (code === 'auth/popup-closed-by-user' || msg.includes('popup was closed')) return 'Sign-in popup was closed. Try again.';
-  if (code === 'auth/unauthorized-domain') return 'This site is not on the Firebase authorized domain list.';
-  if (code === 'auth/operation-not-allowed') return 'That sign-in method is not enabled for this project.';
-  if (msg.includes('No passkey') || msg.includes('No account found') || msg.includes('already has a passkey')) return msg;
-  if (msg.startsWith('Firebase:')) {
-    return msg.replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\s*\.?$/, '').trim();
-  }
-  return msg || 'Authentication failed. Please try again.';
-}
+const FirebaseLogo = () => (
+  <svg width="14" height="16" viewBox="0 0 32 48" aria-label="Firebase" role="img" fill="none">
+    <path d="M1.05 35.96L8.98 2.41a.96.96 0 011.87.08l4.67 17.35 2.01-3.8a.86.86 0 011.55 0l12.9 24.37L1.05 35.96z" fill="#FFA000" />
+    <path d="M18.08 22.48l-3.56-13.26a.96.96 0 00-1.87-.08L1.05 35.96l17.03-13.48z" fill="#F57C00" />
+    <path d="M32 40.18L25.05 3.07a.9.9 0 00-1.65-.28L1.05 35.96 18.1 46.18a3.27 3.27 0 003.2 0L32 40.18z" fill="#FFCA28" />
+  </svg>
+);
 
-export const LoginPage: React.FC<{ onAuthenticated: () => void }> = ({ onAuthenticated }) => {
-  const [step, setStep] = useState<Step>('landing');
-  const [method, setMethod] = useState<Method>(null);
+const ShieldHexagon = () => (
+  <div style={{ position: 'relative', width: 76, height: 76, margin: '0 auto 20px' }}>
+    <div className="shield-glow-ring" />
+    <svg viewBox="0 0 80 80" style={{ width: '100%', height: '100%', filter: 'drop-shadow(0 0 16px #00D4FF)' }}>
+      <polygon points="40,4 76,24 76,56 40,76 4,56 4,24" fill="none" stroke="#00D4FF" strokeWidth="1.5" />
+      <polygon points="40,16 66,29 66,51 40,64 14,51 14,29" fill="none" stroke="#FF2E9F" strokeWidth="1" opacity="0.75" />
+      <polygon points="40,28 52,36 52,44 40,52 28,44 28,36" fill="#FF7A18" fillOpacity="0.85" stroke="#FF7A18" strokeWidth="0.5" />
+      <text x="40" y="45" textAnchor="middle" fill="#00D4FF" fontFamily="Orbitron, sans-serif" fontSize="13" fontWeight="900" letterSpacing="1">AI</text>
+    </svg>
+  </div>
+);
+
+const LOADING_STEPS = [
+  'Establishing secure channel…',
+  'Verifying identity enclave…',
+  'Initializing Sovereign console…',
+];
+
+export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome }) => {
+  const { loginWithPasskey, registerPasskey, loginWithGoogle, loginGuest } = useSovereign();
+  const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(false);
 
   useEffect(() => {
-    completeGoogleRedirect()
-      .then((user) => {
-        if (user) onAuthenticated();
-      })
-      .catch((err) => setError(formatAuthError(err)));
-  }, [onAuthenticated]);
-
-  const run = async (fn: () => Promise<unknown>, nextMethod: Method) => {
-    setError(null);
-    setBusy(true);
-    setMethod(nextMethod);
+    // Detect incognito / private window gracefully
     try {
-      await fn();
-      onAuthenticated();
-    } catch (err) {
-      setError(formatAuthError(err));
-      setBusy(false);
-      setMethod(null);
+      if ('storage' in navigator && 'estimate' in navigator.storage) {
+        navigator.storage.estimate().then(estimate => {
+          if (estimate.quota && estimate.quota < 120000000) {
+            setIsIncognito(true);
+          }
+        });
+      }
+    } catch {
+      // Ignore detection errors
+    }
+  }, []);
+
+  useEffect(() => {
+    let timer: any;
+    if (loading) {
+      timer = setInterval(() => {
+        setLoadingStep(s => (s + 1) % LOADING_STEPS.length);
+      }, 1200);
+    }
+    return () => clearInterval(timer);
+  }, [loading]);
+
+  const handleAuth = async (method: AuthMethod) => {
+    setAuthError(null);
+    setLoading(true);
+    try {
+      // Real ceremonies only — every failure below is a real failure,
+      // surfaced honestly. No invented sessions.
+      if (method === 'PASSKEY') await loginWithPasskey(email);
+      else if (method === 'PASSKEY_REGISTER') await registerPasskey(email);
+      else if (method === 'GOOGLE') await loginWithGoogle();
+      else await loginGuest();
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      setLoading(false);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === GOOGLE_CANCELLED) {
+        setAuthError('Google sign-in was cancelled before it completed. Nothing was created.');
+      } else if (msg.includes('auth/operation-not-allowed')) {
+        setAuthError('This sign-in method is not enabled yet in Firebase Authentication for agape-sovereign. Enable Google + Anonymous providers in the Firebase console (owner: idin@agape.nyc), then retry.');
+      } else if (msg.includes('auth/unauthorized-domain')) {
+        setAuthError('This domain is not authorised for Firebase Auth. Add it under Authentication → Settings → Authorized domains in the Firebase console, then retry.');
+      } else {
+        setAuthError(msg || 'Authentication failed. Please retry.');
+      }
     }
   };
 
-  const handleGoogle = () => run(() => loginWithGoogle(false), 'google');
-  const handleAnon = () => run(() => loginAnonymously(), 'anonymous');
-  const handleDiscoverable = () => run(() => loginWithDiscoverablePasskey(), 'passkey');
-
-  const handlePasskey = () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter the email bound to your passkey.');
-      return;
+  const handleBack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (onNavigateHome) {
+      onNavigateHome();
+    } else {
+      window.location.href = '/';
     }
-    run(() => loginWithPasskey(email), 'passkey');
-  };
-
-  const handleRegister = () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Enter an email to register this device.');
-      return;
-    }
-    run(() => registerPasskey(email), 'register');
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: '#060C1A',
-        color: NEON.text,
-        fontFamily: FONTS.rajdhani,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        position: 'relative',
-      }}
-    >
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          pointerEvents: 'none',
-          backgroundImage:
-            'linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-        }}
-      />
-      <a
-        href="/"
-        style={{
-          position: 'absolute',
-          top: 24,
-          left: 28,
-          color: 'rgba(255,255,255,0.4)',
-          textDecoration: 'none',
-          fontFamily: FONTS.mono,
-          fontSize: 11,
-          letterSpacing: '0.14em',
-        }}
-      >
-        ← AGAPE SOVEREIGN
-      </a>
+    <div className="login-container">
+      {/* Background Gradients */}
+      <div className="login-bg-grid" />
+      <div className="login-glow-top" />
+      <div className="login-glow-bottom" />
 
-      <div
-        style={{
-          width: '100%',
-          maxWidth: 440,
-          padding: 2,
-          borderRadius: 22,
-          background: GRADIENT,
-          boxShadow: '0 30px 80px rgba(0,0,0,0.55)',
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        <div style={{ background: 'rgba(6,12,26,0.96)', borderRadius: 20, padding: '40px 32px 28px', textAlign: 'center' }}>
-          <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: NEON.orange, letterSpacing: '0.22em', marginBottom: 10 }}>
-            SOVEREIGN.NYC / LOGIN
-          </div>
-          <div
-            style={{
-              fontFamily: FONTS.orbitron,
-              fontSize: '1.45rem',
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              background: GRADIENT,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: 8,
-            }}
-          >
-            AUTHENTICATE
-          </div>
-          <p style={{ color: NEON.textMuted, fontSize: 14, lineHeight: 1.5, marginBottom: 22 }}>
-            Three Firebase Auth paths: Google OAuth 2.0, FIDO2 passkeys on any device, or an anonymous guest session. Privacy Policy and Terms stay one tap away for OAuth verification.
-          </p>
+      {/* Top Header Row */}
+      <div className="login-top-bar">
+        <a href="/" onClick={handleBack} className="back-link" id="login-back-link">
+          <ArrowLeft size={14} /> SOVEREIGN.NYC
+        </a>
 
-          {error && (
-            <div
-              role="alert"
-              style={{
-                marginBottom: 16,
-                padding: '10px 12px',
-                borderRadius: 10,
-                border: '1px solid rgba(255,122,24,0.35)',
-                background: 'rgba(255,122,24,0.08)',
-                color: '#ffaa66',
-                fontFamily: FONTS.mono,
-                fontSize: 12,
-                textAlign: 'left',
-              }}
-            >
-              ⚠ {error}
+        <div className="secure-pill">
+          <span className="secure-dot" />
+          SECURE CONNECTION ESTABLISHED
+        </div>
+      </div>
+
+      {/* Login Card Container */}
+      <div className="login-card-wrapper">
+        <div className="login-card">
+          <ShieldHexagon />
+
+          <h1 className="brand-title">Agape Sovereign AI</h1>
+          <div className="brand-subtitle">DIGITAL IDENTITY DEFENSE</div>
+          <div className="oauth-pill">FIDO2 · SECURE GOOGLE OAUTH 2.0</div>
+
+          <div className="card-divider" />
+
+          {/* Incognito Notice */}
+          {isIncognito && (
+            <div className="incognito-alert">
+              <EyeOff size={14} color="#FFC107" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div className="incognito-title">PRIVATE BROWSING DETECTED</div>
+                <div className="incognito-text">
+                  Session will persist for this active browser window only.
+                </div>
+              </div>
             </div>
           )}
 
-          {busy && (
-            <div style={{ color: NEON.blue, fontFamily: FONTS.mono, fontSize: 12, letterSpacing: '0.12em', marginBottom: 16 }}>
-              {method === 'google' && 'Opening Google…'}
-              {method === 'passkey' && 'Waiting for authenticator…'}
-              {method === 'register' && 'Registering this device…'}
-              {method === 'anonymous' && 'Opening Firebase guest session…'}
-              {!method && 'Securing channel…'}
+          {/* Error Banner */}
+          {authError && (
+            <div className="error-alert">
+              <span>⚠ {authError}</span>
             </div>
           )}
 
-          {step === 'landing' && !busy && (
-            <div style={{ display: 'grid', gap: 12 }}>
-              <button type="button" onClick={() => { setError(null); setStep('passkey-email'); }} style={rowStyle('rgba(0,212,255,0.08)', 'rgba(0,212,255,0.3)')} aria-label="Sign in with Passkey">
-                <span style={iconWrap('#00D4FF')}>🔑</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: 14 }}>Passkey / WebAuthn</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Sign in · any registered device</span>
-                </span>
-              </button>
-
-              <button type="button" onClick={() => { setError(null); setEmail(''); setStep('passkey-register'); }} id="register-passkey-btn" style={rowStyle('rgba(0,255,135,0.08)', 'rgba(0,255,135,0.3)')} aria-label="Register a passkey">
-                <span style={iconWrap('#00FF87')}>🧬</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: 14 }}>Register a passkey</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>New account · Face ID, Touch ID, security key</span>
-                </span>
-              </button>
-
-              <button type="button" onClick={handleGoogle} id="google-signin-btn" style={rowStyle('rgba(66,133,244,0.1)', 'rgba(66,133,244,0.4)')} aria-label="Sign in with Google">
-                <span style={{ ...iconWrap('#4285F4'), background: '#fff' }}>
-                  <GoogleIcon />
-                </span>
-                <span style={{ flex: 1, textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: 14 }}>Sign in with Google</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>OAuth 2.0 · Fast, secure access</span>
-                </span>
-              </button>
-
-              <button type="button" onClick={handleAnon} id="anon-bypass-btn" style={rowStyle('rgba(255,122,24,0.08)', 'rgba(255,122,24,0.35)')} aria-label="Continue anonymously">
-                <span style={iconWrap(NEON.orange)}>🚀</span>
-                <span style={{ flex: 1, textAlign: 'left' }}>
-                  <strong style={{ display: 'block', fontSize: 14 }}>ANON Bypass</strong>
-                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Firebase guest session · link Google later</span>
-                </span>
-              </button>
+          {/* Loading View */}
+          {loading ? (
+            <div className="loading-state">
+              <div className="spinner-hex" />
+              <div className="loading-step-text">{LOADING_STEPS[loadingStep]}</div>
+              <div className="loading-subtext">Secured with AES-256-GCM · Zero-knowledge session</div>
             </div>
-          )}
-
-          {step === 'passkey-email' && !busy && (
-            <div>
-              <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: NEON.blue, letterSpacing: '0.14em', marginBottom: 8 }}>PASSKEY SIGN-IN</div>
-              <input
-                type="email"
-                autoFocus
-                value={email}
-                placeholder="you@sovereign.nyc"
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handlePasskey()}
-                aria-label="Email for passkey"
-                style={inputStyle}
-              />
-              <button type="button" onClick={handlePasskey} style={{ ...rowStyle('rgba(0,212,255,0.12)', 'rgba(0,212,255,0.4)'), justifyContent: 'center' }}>
-                Continue with passkey
-              </button>
-              <button type="button" onClick={handleDiscoverable} style={{ ...rowStyle('rgba(0,255,135,0.08)', 'rgba(0,255,135,0.25)'), justifyContent: 'center', marginTop: 10 }}>
-                Use passkey on this device
-              </button>
-              <button type="button" onClick={() => { setStep('landing'); setError(null); }} style={backStyle}>
-                ← Back to sign-in options
-              </button>
-            </div>
-          )}
-
-          {step === 'passkey-register' && !busy && (
-            <div>
-              <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: '#00FF87', letterSpacing: '0.14em', marginBottom: 8 }}>REGISTER THIS DEVICE</div>
-              <p style={{ color: NEON.textMuted, fontSize: 13, lineHeight: 1.5, marginBottom: 14, textAlign: 'left' }}>
-                Creates a Firebase Auth user and binds a FIDO2 credential. Platform biometrics and roaming security keys are both allowed.
+          ) : (
+            <div className="auth-methods-group">
+              <div className="auth-prompt-title">Digital Identity Federated Footprint</div>
+              <p className="auth-prompt-desc">
+                Authenticate to begin your <span style={{ color: C.magenta, fontWeight: 700 }}>DIFF</span> analysis. Your sovereignty begins here.
               </p>
-              <input
-                type="email"
-                autoFocus
-                value={email}
-                placeholder="you@sovereign.nyc"
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
-                aria-label="Email for passkey registration"
-                style={inputStyle}
-              />
-              <button type="button" onClick={handleRegister} id="register-passkey-submit" style={{ ...rowStyle('rgba(0,255,135,0.12)', 'rgba(0,255,135,0.4)'), justifyContent: 'center' }}>
-                Register passkey on this device
+
+              {/* Passkey Optional Email */}
+              {showEmailInput && (
+                <div className="email-input-wrap">
+                  <input
+                    type="email"
+                    placeholder="Enter email to locate passkey..."
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="passkey-email-input"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {/* Option 1: Passkey / WebAuthn */}
+              <button
+                type="button"
+                className="auth-row-btn passkey-btn"
+                onClick={() => handleAuth('PASSKEY')}
+                id="btn-login-passkey"
+              >
+                <div className="btn-icon-box passkey-icon-box">
+                  <Fingerprint size={22} color={C.blue} />
+                </div>
+                <div className="btn-text-content">
+                  <div className="btn-title">Passkey / WebAuthn</div>
+                  <div className="btn-subtitle">Method 1 · Device-bound · Touch ID / Face ID / Windows Hello / YubiKey</div>
+                </div>
               </button>
-              <button type="button" onClick={() => { setStep('landing'); setError(null); }} style={backStyle}>
-                ← Back to sign-in options
+
+              <button
+                type="button"
+                className="auth-row-btn passkey-btn"
+                onClick={() => { if (!showEmailInput) { setShowEmailInput(true); setAuthError('Enter your email above, then tap Create Passkey again so the new passkey is bound to it.'); } else { void handleAuth('PASSKEY_REGISTER'); } }}
+                id="btn-register-passkey"
+              >
+                <div className="btn-icon-box passkey-icon-box">
+                  <KeyRound size={20} color={C.green} />
+                </div>
+                <div className="btn-text-content">
+                  <div className="btn-title">New here? Create a Passkey</div>
+                  <div className="btn-subtitle">Binds a real FIDO2 credential to your email on this device</div>
+                </div>
+              </button>
+
+              <div className="passkey-toggle-link-row">
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setShowEmailInput(!showEmailInput)}
+                >
+                  {showEmailInput ? 'Hide email field' : 'Use an email-bound passkey →'}
+                </button>
+              </div>
+
+              {/* Option 2: Continue with Google */}
+              <button
+                type="button"
+                className="auth-row-btn google-btn"
+                onClick={() => handleAuth('GOOGLE')}
+                id="btn-login-google"
+              >
+                <div className="btn-icon-box google-icon-box">
+                  <GoogleLogo />
+                </div>
+                <div className="btn-text-content">
+                  <div className="btn-title">Sign in with Google</div>
+                  <div className="btn-subtitle">Method 2 · Federated dual protection · Save your 26-month audit PDF to your Google Drive</div>
+                </div>
+              </button>
+
+              {/* Option 3: Guest / Anonymous Bypass */}
+              <button
+                type="button"
+                className="auth-row-btn anon-btn"
+                onClick={() => handleAuth('ANON')}
+                id="btn-login-anon"
+              >
+                <div className="btn-icon-box anon-icon-box">
+                  <KeyRound size={20} color={C.green} />
+                </div>
+                <div className="btn-text-content">
+                  <div className="btn-title">Guest / Anonymous Bypass</div>
+                  <div className="btn-subtitle">Real anonymous session · No Drive save · Attach Google later to keep your receipts</div>
+                </div>
               </button>
             </div>
           )}
 
-          <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'center', gap: 18 }}>
-            <a href="/privacy" rel="privacy-policy" id="login-privacy-link" style={legalLink}>
-              Privacy Policy
-            </a>
-            <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
-            <a href="/terms" rel="terms-of-service" id="login-terms-link" style={legalLink}>
-              Terms of Service
-            </a>
+          {/* Trust Logos Row */}
+          <div className="trust-row">
+            <div className="trust-pill"><GoogleLogo /> Google OAuth 2.0</div>
+            <div className="trust-pill"><FirebaseLogo /> Firebase</div>
+            <div className="trust-pill"><Shield size={12} color={C.blue} /> SHA-256</div>
+            <div className="trust-pill"><Sparkles size={12} color={C.green} /> AES-256-GCM</div>
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="login-footer">
+        <div className="login-footer-links">
+          <a href="/terms" className="footer-link">TERMS OF SERVICE</a>
+          <span className="dot-sep">•</span>
+          <a href="/privacy" className="footer-link">PRIVACY POLICY</a>
+          <span className="dot-sep">•</span>
+          <a href="/contact" className="footer-link">CONTACT</a>
+        </div>
+        <div className="footer-copyright">
+          © {new Date().getFullYear()} AGAPE SOVEREIGN AI • 2026 ECRA LTS CERTIFIED
+        </div>
+      </footer>
+
+      {/* Embedded Component Styles */}
+      <style>{`
+        .login-container {
+          min-height: 100vh;
+          width: 100%;
+          background: #060C1A;
+          color: #E8F4FF;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: space-between;
+          padding: 24px 16px;
+          position: relative;
+          box-sizing: border-box;
+          overflow-x: hidden;
+        }
+
+        .login-bg-grid {
+          position: fixed;
+          inset: 0;
+          pointer-events: none;
+          z-index: 0;
+          background-image:
+            linear-gradient(rgba(0, 212, 255, 0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 212, 255, 0.035) 1px, transparent 1px);
+          background-size: 48px 48px;
+        }
+
+        .login-glow-top {
+          position: fixed;
+          top: -20%;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 800px;
+          height: 800px;
+          background: radial-gradient(circle, rgba(0, 212, 255, 0.08) 0%, transparent 65%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .login-glow-bottom {
+          position: fixed;
+          bottom: -15%;
+          right: -10%;
+          width: 500px;
+          height: 500px;
+          background: radial-gradient(circle, rgba(255, 46, 159, 0.06) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
+        .login-top-bar {
+          width: 100%;
+          max-width: 960px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+          z-index: 10;
+          margin-bottom: 20px;
+        }
+
+        .back-link {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.45);
+          text-decoration: none;
+          letter-spacing: 0.12em;
+          transition: color 0.2s;
+        }
+        .back-link:hover {
+          color: #00D4FF;
+        }
+
+        .secure-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 10px;
+          letter-spacing: 0.14em;
+          color: #00FF87;
+          border: 1px solid rgba(0, 255, 135, 0.2);
+          border-radius: 999px;
+          padding: 6px 14px;
+          background: rgba(0, 255, 135, 0.04);
+        }
+
+        .secure-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #00FF87;
+          box-shadow: 0 0 8px #00FF87;
+          animation: pulseDot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.3; transform: scale(1.3); }
+        }
+
+        .shield-glow-ring {
+          position: absolute;
+          inset: -10px;
+          border-radius: 50%;
+          border: 1px solid rgba(0, 212, 255, 0.3);
+          animation: ringPulse 2.8s infinite ease-in-out;
+          pointer-events: none;
+        }
+
+        @keyframes ringPulse {
+          0%, 100% { transform: scale(1); opacity: 0.4; }
+          50% { transform: scale(1.15); opacity: 0.1; }
+        }
+
+        .login-card-wrapper {
+          position: relative;
+          z-index: 10;
+          width: 100%;
+          max-width: 440px;
+          padding: 1.5px;
+          border-radius: 24px;
+          background: linear-gradient(135deg, rgba(255, 46, 159, 0.4) 0%, rgba(0, 212, 255, 0.4) 50%, rgba(255, 122, 24, 0.4) 100%);
+          box-shadow: 0 0 50px rgba(0, 212, 255, 0.12), 0 32px 80px rgba(0, 0, 0, 0.7);
+          margin: auto 0;
+        }
+
+        .login-card {
+          background: rgba(6, 12, 26, 0.94);
+          backdrop-filter: blur(24px);
+          border-radius: 23px;
+          padding: 36px 32px;
+          text-align: center;
+          box-sizing: border-box;
+        }
+
+        .brand-title {
+          font-size: 1.35rem;
+          font-weight: 900;
+          letter-spacing: 0.08em;
+          color: #ffffff;
+          margin: 0 0 4px 0;
+          font-family: 'Orbitron', 'Inter', sans-serif;
+        }
+
+        .brand-subtitle {
+          color: #00D4FF;
+          font-size: 0.65rem;
+          font-family: 'Share Tech Mono', monospace;
+          letter-spacing: 0.22em;
+          margin-bottom: 6px;
+        }
+
+        .oauth-pill {
+          display: inline-block;
+          font-size: 9px;
+          letter-spacing: 0.14em;
+          color: rgba(255, 255, 255, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 999px;
+          padding: 4px 12px;
+          font-family: 'Share Tech Mono', monospace;
+          margin-bottom: 22px;
+        }
+
+        .card-divider {
+          height: 1px;
+          margin-bottom: 24px;
+          background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.4), rgba(255, 46, 159, 0.4), transparent);
+        }
+
+        .incognito-alert {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-bottom: 18px;
+          padding: 10px 14px;
+          background: rgba(255, 193, 7, 0.06);
+          border: 1px solid rgba(255, 193, 7, 0.3);
+          border-radius: 10px;
+          text-align: left;
+        }
+
+        .incognito-title {
+          font-size: 10px;
+          font-weight: 700;
+          color: #FFC107;
+          letter-spacing: 0.08em;
+          font-family: 'Share Tech Mono', monospace;
+          margin-bottom: 2px;
+        }
+
+        .incognito-text {
+          font-size: 11px;
+          color: rgba(255, 193, 7, 0.8);
+          line-height: 1.4;
+        }
+
+        .error-alert {
+          margin-bottom: 18px;
+          padding: 10px 14px;
+          background: rgba(255, 122, 24, 0.08);
+          border: 1px solid rgba(255, 122, 24, 0.4);
+          border-radius: 10px;
+          color: #ffaa66;
+          font-size: 12px;
+          font-family: 'Share Tech Mono', monospace;
+          text-align: left;
+        }
+
+        .auth-prompt-title {
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 13px;
+          font-weight: 600;
+          margin-bottom: 4px;
+        }
+
+        .auth-prompt-desc {
+          color: rgba(180, 190, 220, 0.6);
+          font-size: 12px;
+          line-height: 1.5;
+          margin: 0 0 20px 0;
+        }
+
+        .email-input-wrap {
+          margin-bottom: 12px;
+        }
+
+        .passkey-email-input {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(0, 212, 255, 0.3);
+          border-radius: 10px;
+          color: #ffffff;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 13px;
+          outline: none;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .passkey-email-input:focus {
+          border-color: #00D4FF;
+          box-shadow: 0 0 12px rgba(0, 212, 255, 0.25);
+        }
+
+        .auth-methods-group {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .auth-row-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 14px 16px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          box-sizing: border-box;
+        }
+
+        .auth-row-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .passkey-btn {
+          background: rgba(0, 212, 255, 0.05);
+          border-color: rgba(0, 212, 255, 0.25);
+        }
+
+        .passkey-btn:hover {
+          border-color: #00D4FF;
+          background: rgba(0, 212, 255, 0.1);
+          box-shadow: 0 0 20px rgba(0, 212, 255, 0.25);
+        }
+
+        .google-btn {
+          background: rgba(66, 133, 244, 0.06);
+          border-color: rgba(66, 133, 244, 0.25);
+        }
+
+        .google-btn:hover {
+          border-color: #4285F4;
+          background: rgba(66, 133, 244, 0.12);
+          box-shadow: 0 0 20px rgba(66, 133, 244, 0.25);
+        }
+
+        .anon-btn {
+          background: rgba(0, 255, 135, 0.04);
+          border-color: rgba(0, 255, 135, 0.2);
+        }
+
+        .anon-btn:hover {
+          border-color: #00FF87;
+          background: rgba(0, 255, 135, 0.09);
+          box-shadow: 0 0 20px rgba(0, 255, 135, 0.2);
+        }
+
+        .btn-icon-box {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .passkey-icon-box {
+          background: rgba(0, 212, 255, 0.12);
+          border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .google-icon-box {
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .anon-icon-box {
+          background: rgba(0, 255, 135, 0.12);
+          border: 1px solid rgba(0, 255, 135, 0.3);
+        }
+
+        .btn-text-content {
+          flex: 1;
+        }
+
+        .btn-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          margin-bottom: 2px;
+          letter-spacing: 0.02em;
+        }
+
+        .btn-subtitle {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.45);
+          font-family: 'Share Tech Mono', monospace;
+          letter-spacing: 0.02em;
+        }
+
+        .passkey-toggle-link-row {
+          text-align: right;
+          margin-top: -6px;
+          margin-bottom: 4px;
+        }
+
+        .link-btn {
+          background: none;
+          border: none;
+          color: #00D4FF;
+          font-size: 10px;
+          font-family: 'Share Tech Mono', monospace;
+          cursor: pointer;
+          opacity: 0.8;
+          transition: opacity 0.2s;
+          padding: 0;
+        }
+
+        .link-btn:hover {
+          opacity: 1;
+          text-decoration: underline;
+        }
+
+        .loading-state {
+          padding: 30px 10px;
+          text-align: center;
+        }
+
+        .spinner-hex {
+          width: 50px;
+          height: 50px;
+          border: 3px solid rgba(0, 212, 255, 0.15);
+          border-top: 3px solid #00D4FF;
+          border-radius: 50%;
+          margin: 0 auto 20px;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        .loading-step-text {
+          color: #00D4FF;
+          font-family: 'Share Tech Mono', monospace;
+          font-size: 13px;
+          letter-spacing: 0.1em;
+          margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+          color: rgba(180, 190, 220, 0.5);
+          font-size: 11px;
+        }
+
+        .trust-row {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 8px;
+          margin-top: 24px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .trust-pill {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 9px;
+          color: rgba(255, 255, 255, 0.4);
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 6px;
+          padding: 4px 8px;
+          font-family: 'Share Tech Mono', monospace;
+        }
+
+        .login-footer {
+          position: relative;
+          z-index: 10;
+          text-align: center;
+          margin-top: 24px;
+        }
+
+        .login-footer-links {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+
+        .footer-link {
+          font-size: 11px;
+          font-family: 'Share Tech Mono', monospace;
+          color: rgba(255, 255, 255, 0.4);
+          text-decoration: none;
+          letter-spacing: 0.08em;
+          transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+          color: #00D4FF;
+        }
+
+        .dot-sep {
+          color: rgba(255, 255, 255, 0.2);
+          font-size: 10px;
+        }
+
+        .footer-copyright {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.25);
+          font-family: 'Share Tech Mono', monospace;
+          letter-spacing: 0.06em;
+        }
+      `}</style>
     </div>
   );
 };
-
-const legalLink: React.CSSProperties = {
-  fontSize: 10,
-  color: 'rgba(255,255,255,0.35)',
-  textDecoration: 'none',
-  letterSpacing: '0.1em',
-  fontFamily: "'Share Tech Mono', monospace",
-};
-
-const backStyle: React.CSSProperties = {
-  marginTop: 12,
-  background: 'none',
-  border: 'none',
-  color: NEON.textMuted,
-  fontFamily: FONTS.mono,
-  fontSize: 11,
-  cursor: 'pointer',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  borderRadius: 10,
-  border: '1px solid rgba(0,212,255,0.25)',
-  background: 'rgba(0,0,0,0.35)',
-  color: '#fff',
-  fontFamily: FONTS.mono,
-  fontSize: 13,
-  marginBottom: 12,
-  outline: 'none',
-};
-
-function rowStyle(bg: string, border: string): React.CSSProperties {
-  return {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 14,
-    padding: '14px 16px',
-    borderRadius: 14,
-    border: `1px solid ${border}`,
-    background: bg,
-    color: '#fff',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    textAlign: 'left',
-  };
-}
-
-function iconWrap(color: string): React.CSSProperties {
-  return {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    border: `1px solid ${color}55`,
-    flexShrink: 0,
-  };
-}

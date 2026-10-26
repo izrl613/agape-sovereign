@@ -7,13 +7,13 @@
  */
 
 const CACHE_VERSION = 'agape-sovereign-v2';
-const OFFLINE_URL = '/offline.html';
+const OFFLINE_URL = '/index.html'; // SPA shell doubles as offline fallback
 
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/agape-logo-120.png',
+  '/agape-logo-192.png',
   '/agape-logo-oauth.png',
   OFFLINE_URL,
 ];

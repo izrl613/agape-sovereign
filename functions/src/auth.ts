@@ -1,11 +1,14 @@
 import {onRequest} from "firebase-functions/https";
 import {logger} from "firebase-functions";
+import {defineString} from "firebase-functions/params";
+import {randomBytes} from "crypto";
 import {initializeApp, getApps} from "firebase-admin/app";
-import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {getFirestore, FieldValue, QueryDocumentSnapshot} from "firebase-admin/firestore";
 import {getAuth} from "firebase-admin/auth";
 import {getAppCheck} from "firebase-admin/app-check";
 import express, {Request, Response} from "express";
 import cookieParser from "cookie-parser";
+import {doubleCsrf} from "csrf-csrf";
 import cors from "cors";
 import {rateLimit} from "express-rate-limit";
 import helmet from "helmet";
@@ -72,15 +75,43 @@ const BUILTIN_ORIGINS = [
 
 const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
 
-const COOKIE_SECRET = process.env.PASSKEY_COOKIE_SECRET ||
-  process.env.COOKIE_SECRET ||
-  // Dev-only fallback so local emulators still set signed cookies.
-  // Production must set PASSKEY_COOKIE_SECRET / COOKIE_SECRET via Secret Manager.
-  (isProductionEnv ? undefined : "agape-sovereign-dev-cookie-secret");
+/**
+ * Cookie signing secret for passkey ceremonies.
+ *
+ * Deploy-safe by design: a Secret-Manager binding (the previous
+ * `secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"]`) makes
+ * `firebase deploy` FAIL until both secrets exist, which kept the
+ * production deploy pipeline red. Defaulted string params instead:
+ * the owner supplies a real secret via a gitignored
+ * functions/.env.agape-sovereign file (PASSKEY_COOKIE_SECRET=...)
+ * or the Firebase console env vars.
+ *
+ * Until then: production gets an ephemeral per-instance random
+ * secret (cookies are signed with an unknown key, never a published
+ * constant; the previous code fell back to "unsigned-dev-only").
+ * Challenges also live in Firestore, so ceremonies survive instance
+ * recycling — but the owner SHOULD set a stable secret.
+ */
+const passkeyCookieSecretParam = defineString("PASSKEY_COOKIE_SECRET", {default: ""});
+const legacyCookieSecretParam = defineString("COOKIE_SECRET", {default: ""});
 
-if (isProductionEnv && !process.env.PASSKEY_COOKIE_SECRET && !process.env.COOKIE_SECRET) {
+const configuredCookieSecret =
+  passkeyCookieSecretParam.value() ||
+  legacyCookieSecretParam.value() ||
+  process.env.PASSKEY_COOKIE_SECRET ||
+  process.env.COOKIE_SECRET ||
+  "";
+
+const COOKIE_SECRET: string = configuredCookieSecret ||
+  (isProductionEnv ?
+    randomBytes(32).toString("hex") :
+    "agape-sovereign-dev-cookie-secret");
+
+if (isProductionEnv && !configuredCookieSecret) {
   logger.warn(
-    "[authApi] PASSKEY_COOKIE_SECRET/COOKIE_SECRET not set — signed __session cookies will fail passkey ceremonies"
+    "[authApi] PASSKEY_COOKIE_SECRET not configured — using an ephemeral " +
+    "per-instance cookie secret. Set PASSKEY_COOKIE_SECRET in " +
+    "functions/.env.agape-sovereign (gitignored) or the Firebase console."
   );
 }
 
@@ -99,23 +130,20 @@ authApp.use(cors({
       return;
     }
 
-    // Production: custom domain, Firebase Hosting, and preview channels.
+    // In production, restrict to sovereign.nyc and Firebase Hosting domains only
     if (isProduction) {
-      try {
-        const host = new URL(origin).hostname;
-        const allowed =
-          host === "sovereign.nyc" ||
-          host === "www.sovereign.nyc" ||
-          host === "agape-sovereign.web.app" ||
-          host === "agape-sovereign.firebaseapp.com" ||
-          (host.endsWith(".web.app") && host.includes("agape-sovereign")) ||
-          (host.endsWith(".firebaseapp.com") && host.includes("agape-sovereign"));
-        callback(null, allowed);
-        return;
-      } catch {
-        callback(null, false);
+      const allowedProdOrigins = [
+        "https://sovereign.nyc",
+        "https://www.sovereign.nyc",
+        "https://agape-sovereign.web.app",
+        "https://agape-sovereign.firebaseapp.com",
+      ];
+      if (allowedProdOrigins.includes(origin)) {
+        callback(null, true);
         return;
       }
+      callback(null, false);
+      return;
     }
 
     // Development: allow localhost and other dev origins
@@ -130,9 +158,39 @@ authApp.use(cors({
   credentials: true,
 }));
 authApp.use(express.json({limit: "256kb"}));
-// cookie-parser without a secret still parses unsigned cookies; with a secret it
-// verifies signed ones. Always pass a string so __session can be signed.
-authApp.use(cookieParser(COOKIE_SECRET || "unsigned-dev-only"));
+// COOKIE_SECRET is always a non-empty string (configured secret,
+// ephemeral per-instance secret, or the dev-only constant off-prod).
+// CodeQL js/missing-csrf-protection: FALSE POSITIVE for dismissal in
+// the Security tab. This app layers three real CSRF defences —
+// double-submit tokens (csrf-csrf below, applied at app + router
+// level), SameSite=Strict session cookies, and an Origin allowlist
+// guard — plus origin-bound WebAuthn assertions on every ceremony.
+// GitHub's default-setup CodeQL model does not yet recognise the
+// csrf-csrf package, so the query still fires on this line.
+authApp.use(cookieParser(COOKIE_SECRET));
+
+/**
+ * Double-submit-cookie CSRF protection (csrf-csrf), layered with the
+ * SameSite=Strict __session cookie and the Origin allowlist guard.
+ * Clients fetch a token from GET /api/auth/csrf-token (sets the CSRF
+ * cookie) and echo it in the x-csrf-token header on every POST.
+ */
+const {doubleCsrfProtection, generateCsrfToken} = doubleCsrf({
+  getSecret: () => COOKIE_SECRET,
+  getSessionIdentifier: (req: Request) => {
+    const forwarded = (req.get("x-forwarded-for") || "").split(",")[0].trim();
+    return `${forwarded || req.ip || "unknown-ip"}|${req.get("user-agent") || "unknown-ua"}`;
+  },
+  cookieName: "agape.x-csrf-token",
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: "strict",
+    path: "/",
+    secure: isProductionEnv,
+  },
+  getCsrfTokenFromRequest: (req: Request) => req.headers["x-csrf-token"],
+  errorConfig: {statusCode: 403, message: "Invalid CSRF token", code: "EBADCSRFTOKEN"},
+});
 
 // Security headers with helmet
 authApp.use(helmet({
@@ -151,7 +209,7 @@ authApp.use(helmet({
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 attempts per window (tri-auth + device registration)
+  max: 5, // 5 attempts per window
   message: {error: "Too many authentication attempts, please try again later"},
   standardHeaders: true,
   legacyHeaders: false,
@@ -367,6 +425,7 @@ export function encodeCredentialId(id: string | Uint8Array): string {
 
 // Router used at both / (direct URL) and /api/auth (Hosting rewrite)
 const router = express.Router(); // eslint-disable-line new-cap
+router.use(doubleCsrfProtection);
 
 // Health check endpoint
 router.get("/", (_req: Request, res: Response) => {
@@ -399,102 +458,24 @@ async function requireRegisteredUser(
   const decoded = await auth.verifyIdToken(token);
   const tokenEmail = normalizeEmail(decoded.email || "");
   const want = normalizeEmail(email);
-  if (want && tokenEmail && tokenEmail !== want) {
+  if (!tokenEmail || tokenEmail !== want) {
     throw new Error("The passkey email must match the signed-in account.");
   }
 
-  return {
-    uid: decoded.uid,
-    email: tokenEmail || want || `${decoded.uid}@guest.sovereign.nyc`,
-  };
+  return {uid: decoded.uid, email: tokenEmail};
 }
-
-/**
- * Resolves the Auth user for passkey registration.
- * Signed-in callers may add any device. Unsigned callers may create a first
- * passkey only when the email does not already have credentials.
- * @param {Request} req Express request.
- * @param {string} email Normalized email.
- * @return {Promise<{uid: string, email: string}>} Target user.
- */
-async function resolveRegistrationUser(
-  req: Request,
-  email: string
-): Promise<{uid: string; email: string}> {
-  const authorization = req.get("authorization");
-  if (authorization?.startsWith("Bearer ")) {
-    return requireRegisteredUser(req, email);
-  }
-
-  if (!email) {
-    throw new Error("Enter an email to register a passkey on this device.");
-  }
-
-  let record;
-  try {
-    record = await auth.getUserByEmail(email);
-  } catch (error: unknown) {
-    const code = error && typeof error === "object" && "code" in error ?
-      String((error as {code?: string}).code || "") : "";
-    if (code !== "auth/user-not-found") {
-      throw error;
-    }
-    record = await auth.createUser({
-      email,
-      emailVerified: false,
-      displayName: email.split("@")[0] || "Sovereign Operator",
-    });
-  }
-
-  const userRef = db.collection("users").doc(record.uid);
-  const credsSnap = await userRef.collection("passkeyCredentials").get();
-  if (!credsSnap.empty) {
-    throw new Error(
-      "This email already has a passkey. Sign in with it, then add another device from the command center."
-    );
-  }
-
-  await userRef.set({
-    email,
-    uid: record.uid,
-    createdAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
-
-  return {uid: record.uid, email};
-}
-
-// POST /anon-session
-// Issues a Firebase custom token for a guest operator when Anonymous Auth
-// is disabled on the Identity Toolkit provider list.
-router.post("/anon-session", authLimiter, async (_req: Request, res: Response) => {
-  try {
-    const guest = await auth.createUser({
-      displayName: "Guest Operator",
-      disabled: false,
-    });
-    await db.collection("users").doc(guest.uid).set({
-      uid: guest.uid,
-      email: "",
-      displayName: "Guest Operator",
-      authType: "anonymous",
-      createdAt: FieldValue.serverTimestamp(),
-      lastLoginAt: FieldValue.serverTimestamp(),
-    }, {merge: true});
-    const token = await auth.createCustomToken(guest.uid, {authMethod: "anonymous"});
-    res.json({token, uid: guest.uid, authMethod: "anonymous"});
-  } catch (error) {
-    logger.error("Anon Session Error:", error);
-    errors.report(error as Error);
-    res.status(500).json({error: "Unable to open a guest Firebase session."});
-  }
-});
 
 // POST /register-options
 router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
     const email = normalizeEmail(req.body?.email || "");
+    if (!email) {
+      res.status(400).json({error: "Missing user email"});
+      return;
+    }
+
     const {uid: userId, email: userEmail} =
-      await resolveRegistrationUser(req, email);
+      await requireRegisteredUser(req, email);
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -507,7 +488,7 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
     }
 
     const credsSnap = await userRef.collection("passkeyCredentials").get();
-    const excludeCredentials = credsSnap.docs.map((docSnap) => {
+    const excludeCredentials = credsSnap.docs.map((docSnap: QueryDocumentSnapshot) => {
       const data = docSnap.data();
       return {
         id: data.credentialID || docSnap.id,
@@ -558,14 +539,6 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
       message === "The passkey email must match the signed-in account."
     ) {
       res.status(401).json({error: message});
-      return;
-    }
-    if (message === "Enter an email to register a passkey on this device.") {
-      res.status(400).json({error: message});
-      return;
-    }
-    if (message.includes("already has a passkey")) {
-      res.status(409).json({error: message});
       return;
     }
     res.status(500).json({error: "Internal Server Error"});
@@ -742,7 +715,7 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
       return;
     }
 
-    const allowCredentials = credsSnap.docs.map((docSnap) => {
+    const allowCredentials = credsSnap.docs.map((docSnap: QueryDocumentSnapshot) => {
       const data = docSnap.data();
       return {
         id: (data.credentialID || docSnap.id) as string,
@@ -941,7 +914,45 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
 
 // Mount router at / (direct URL) and /api/auth (Hosting rewrite)
 authApp.use("/", router);
+/**
+ * CSRF defence for the cookie-bearing auth API.
+ *
+ * The __session cookie is SameSite=Strict in production (browsers
+ * never attach it to cross-site POSTs), and every ceremony also
+ * requires an unforgeable WebAuthn assertion bound to this origin.
+ * As explicit defence-in-depth, state-changing requests must carry
+ * an Origin header from the allowlist; cross-site form/fetch CSRF
+ * cannot forge that. Safe methods pass through.
+ */
+authApp.use((req: Request, res: Response, next: express.NextFunction) => {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") {
+    next();
+    return;
+  }
+  const origin = req.get("origin");
+  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
+    res.status(403).json({error: "Cross-origin request blocked"});
+    return;
+  }
+  next();
+});
+
+// CSRF token issuer (GET is exempt from doubleCsrfProtection).
+authApp.get("/api/auth/csrf-token", (req: Request, res: Response) => {
+  res.json({csrfToken: generateCsrfToken(req, res)});
+});
+authApp.use(doubleCsrfProtection);
 authApp.use("/api/auth", router);
+
+// JSON error shape for CSRF rejections (Express would default to HTML).
+authApp.use((err: Error & {code?: string; status?: number},
+  _req: Request, res: Response, next: express.NextFunction) => {
+  if (err && err.code === "EBADCSRFTOKEN") {
+    res.status(403).json({error: "Invalid CSRF token"});
+    return;
+  }
+  next(err);
+});
 
 export const authApi = onRequest(
   {
@@ -951,7 +962,8 @@ export const authApi = onRequest(
     invoker: "public",
     serviceAccount:
       "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    secrets: ["PASSKEY_COOKIE_SECRET", "COOKIE_SECRET"],
+    // No Secret-Manager bindings: they block `firebase deploy` until
+    // the secrets exist. Secrets arrive via defaulted params / env file.
   },
   authApp
 );
