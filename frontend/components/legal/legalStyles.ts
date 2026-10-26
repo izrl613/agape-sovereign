@@ -25,7 +25,10 @@ export const LEGAL_CSS = `
     background: var(--legal-bg);
     color: var(--legal-ink);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    overflow-x: hidden;
+    /* NB: must NOT be overflow-x:hidden — that turns this element into a
+       scroll container and silently breaks position:sticky for the header
+       and the left nav; clip trims overflow without creating one. */
+    overflow-x: clip;
   }
 
   /* ── Atmosphere ─────────────────────────────────────────── */
@@ -81,7 +84,7 @@ export const LEGAL_CSS = `
     justify-content: space-between;
     gap: 16px;
     padding: 14px 32px;
-    background: rgba(6, 12, 26, 0.82);
+    background: rgba(6, 12, 26, 0.94);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--legal-line);
@@ -187,7 +190,7 @@ export const LEGAL_CSS = `
     padding: 16px 14px;
     border: 1px solid rgba(0, 212, 255, 0.16);
     border-radius: 14px;
-    background: linear-gradient(180deg, rgba(9, 18, 34, 0.94), rgba(6, 12, 26, 0.9));
+    background: linear-gradient(180deg, rgba(9, 18, 34, 0.985), rgba(6, 12, 26, 0.97));
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 18px 48px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -228,6 +231,27 @@ export const LEGAL_CSS = `
   @keyframes legal-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.35; transform: scale(0.72); }
+  }
+  .legal-toc-current {
+    display: none;
+    min-width: 0;
+    flex: 1 1 auto;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--legal-blue-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .legal-toc-current b {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: var(--legal-orange);
+    letter-spacing: 0.06em;
+    margin-right: 7px;
   }
   .legal-toc-toggle {
     display: none;
@@ -553,8 +577,8 @@ export const LEGAL_CSS = `
     font-weight: 900;
     line-height: 1;
     letter-spacing: -0.02em;
-    color: rgba(255, 122, 24, 0.22);
-    -webkit-text-stroke: 1px rgba(255, 122, 24, 0.75);
+    color: rgba(255, 122, 24, 0.18);
+    -webkit-text-stroke: 0.9px rgba(255, 122, 24, 0.72);
     padding-top: 3px;
     min-width: 34px;
   }
@@ -898,6 +922,12 @@ export const LEGAL_CSS = `
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 32px rgba(0, 0, 0, 0.5);
     }
     .legal-toc-toggle { display: inline-flex; }
+    .legal-toc-current { display: block; }
+    .legal-toc-head { gap: 6px; padding-bottom: 8px; }
+    .legal-toc-eyebrow { white-space: nowrap; font-size: 9px; letter-spacing: 0.16em; }
+    .legal-meter { display: none; }
+    .legal-aside[data-open='true'] .legal-meter { display: flex; }
+    .legal-aside[data-open='true'] .legal-toc-current { display: none; }
     .legal-toc { display: none; max-height: 44vh; }
     .legal-aside[data-open='true'] .legal-toc { display: flex; }
     .legal-aside[data-open='false'] .legal-toc-foot { display: none; }
@@ -932,43 +962,86 @@ export const LEGAL_CSS = `
     .legal-root * { animation: none !important; transition: none !important; }
   }
 
-  /* ── Print / Save-as-PDF ────────────────────────────────── */
+  /* ── Print / Save-as-PDF ──────────────────────────────────
+     Flatten everything to ink-on-white: the overlay UI disappears and every
+     colour token is overridden so nothing renders as pale grey on paper. */
   @media print {
+    @page { margin: 16mm 14mm; }
+
+    html, body { background: #fff !important; color: #111 !important; }
     .legal-root { background: #fff !important; color: #111 !important; }
     .legal-atmos, .legal-progress, .legal-aside, .legal-top-btn,
     .legal-hero-actions, .legal-header-actions { display: none !important; }
+
     .legal-header {
       position: static;
-      border-bottom: 1px solid #999;
+      border-bottom: 1px solid #bbb;
       background: #fff;
       padding: 0 0 8px;
     }
-    .legal-brand-main, .legal-brand-sub { color: #111 !important; }
     .legal-layout { display: block; padding: 0; max-width: none; }
-    .legal-hero, .legal-doc { max-width: none; }
+    .legal-hero, .legal-doc, .legal-foot { max-width: none; }
+    .legal-foot { margin-top: 18pt; border-top: 1px solid #ddd; }
+
     .legal-h1 {
-      background: none;
-      -webkit-text-fill-color: #111;
-      color: #111;
-      font-size: 26pt;
-      margin-top: 12px;
+      background: none !important;
+      -webkit-background-clip: border-box;
+      -webkit-text-fill-color: #111 !important;
+      color: #111 !important;
+      font-size: 24pt;
+      margin-top: 12pt;
     }
-    .legal-tagline, .legal-p, .legal-li, .legal-p a, .legal-li a { color: #222 !important; }
-    .legal-chip, .legal-meter, .legal-note, .legal-clause, .legal-signature,
-    .legal-contact-card, .legal-facts {
+
+    /* Every body-content element renders as solid ink. */
+    .legal-p, .legal-li, .legal-lead, .legal-p a, .legal-li a, .legal-note a,
+    .legal-note-text, .legal-fact-k, .legal-fact-v, .legal-fact-v a,
+    .legal-signature-role, .legal-signature-meta, .legal-signature-meta a,
+    .legal-contact-card p, .legal-foot, .legal-foot a,
+    .legal-section-eyebrow, .legal-h3-num, .legal-eyebrow,
+    .legal-brand-main, .legal-brand-sub, .legal-tagline {
+      color: #111 !important;
+      -webkit-text-fill-color: #111 !important;
+    }
+    .legal-p strong, .legal-li strong, .legal-fact-v strong { color: #000 !important; }
+    .legal-clause { color: #111 !important; }
+
+    .legal-h2, .legal-h3 { color: #111 !important; }
+    .legal-h2::after { background: #555 !important; }
+    .legal-h3 { border-left: 2px solid #555 !important; }
+
+    /* Outlined numerals don't survive a print renderer — use flat ink. */
+    .legal-section-num {
+      color: #111 !important;
+      -webkit-text-stroke: 0 !important;
+      opacity: 0.45;
+    }
+
+    /* Boxes lose their glow, keep a hairline frame. */
+    .legal-chip, .legal-note, .legal-clause, .legal-facts,
+    .legal-contact-card, .legal-signature, .legal-toc-action {
       background: #fff !important;
       border-color: #bbb !important;
       box-shadow: none !important;
     }
-    .legal-note { border-left: 3px solid #111 !important; }
-    .legal-section { page-break-inside: avoid; }
-    .legal-section-num { -webkit-text-stroke: 1px #555; color: #fff; }
-    .legal-h2, .legal-h3, .legal-section-eyebrow, .legal-h3-num { color: #111 !important; }
-    .legal-h2 { font-size: 15pt; }
-    .legal-h3 { font-size: 11pt; }
-    .legal-p { font-size: 10.4pt; }
-    .legal-li { font-size: 10.2pt; }
-    .legal-note-label { color: #444 !important; }
-    .legal-note-text { color: #222 !important; }
+    .legal-chip, .legal-chip b { color: #222 !important; -webkit-text-fill-color: #222 !important; }
+    .legal-chip b { color: #555 !important; -webkit-text-fill-color: #555 !important; }
+    .legal-note { border-left: 3px solid #444 !important; }
+    .legal-note-label, .legal-signature-chip { color: #444 !important; }
+    .legal-signature-chip { border-color: #bbb !important; }
+    .legal-signature-name, .legal-contact-card h3 { color: #111 !important; }
+    .legal-fact-k { background: #f3f3f3 !important; }
+    .legal-facts { border-top: 1px solid #bbb !important; border-bottom: 1px solid #bbb !important; }
+    .legal-fact-k, .legal-fact-v { border-bottom: 1px solid #e2e2e2 !important; }
+    .legal-ul > .legal-li::before {
+      border-color: #444 !important;
+      background: #444 !important;
+    }
+    .legal-lead { border-left: 2px solid #444 !important; }
+    .legal-ol > .legal-li::before { color: #444 !important; }
+    .legal-divider, .legal-hero-rule { background: #ddd !important; }
+
+    /* Keep the document from splitting awkwardly across pages. */
+    .legal-section { break-inside: auto; }
+    .legal-section-head, .legal-h2, .legal-h3 { break-after: avoid; }
   }
 `;

@@ -69,6 +69,12 @@ Both pages ship a `PRINT / SAVE AS PDF` action and a print stylesheet: the nav,
 progress rail, and action buttons drop out, and the document renders as a clean
 black-on-white legal document.
 
+## Visual review
+
+`docs/legal-pages-preview/index.html` is a self-contained gallery of screenshots
+(desktop 1440, tablet 900, mobile 430, print emulation) captured from the running
+dev server. Open it directly in a browser — no build step.
+
 ## Previewing locally
 
 ```bash

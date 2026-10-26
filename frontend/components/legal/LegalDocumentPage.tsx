@@ -269,6 +269,10 @@ export const LegalDocumentPage: React.FC<LegalDocumentPageProps> = ({ doc, other
         <aside className="legal-aside" data-open={tocOpen}>
           <div className="legal-toc-head">
             <span className="legal-toc-eyebrow">ON THIS PAGE</span>
+            <span className="legal-toc-current" aria-hidden="true">
+              <b>{activeEntry?.num}</b>
+              {currentLabel}
+            </span>
             <button
               type="button"
               className="legal-toc-toggle"
