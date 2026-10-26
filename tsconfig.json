@@ -1,58 +1,32 @@
 {
+  "extends": "./frontend/tsconfig.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
-    "module": "ESNext",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "allowJs": true,
-    "jsx": "react-jsx",
+    "baseUrl": "./frontend",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+      "@/*": ["./*"]
+    }
   },
   "include": [
-    "src/main.tsx",
-    "src/App.tsx",
-    "src/components/Layout.tsx",
-    "src/components/Login.tsx",
-    "src/components/Dashboard.tsx",
-    "src/components/DiffModules.tsx",
-    "src/components/ArchitectAI.tsx",
-    "src/components/AdminPortal.tsx",
-    "src/components/UserProfileSettings.tsx",
-    "src/components/SecurityTips.tsx",
-    "src/components/SplashEntry.tsx",
-    "src/components/UI.tsx",
-    "src/components/ErrorBoundary.tsx",
-    "src/AuthContext.tsx",
-    "src/ScanContext.tsx",
-    "src/firebase.ts",
-    "src/architectPrompt.ts"
+    "frontend/index.tsx",
+    "frontend/App.tsx",
+    "frontend/firebase.ts",
+    "frontend/theme.ts",
+    "frontend/types.ts",
+    "frontend/constants.ts",
+    "frontend/config.ts",
+    "frontend/vite-env.d.ts",
+    "frontend/auth/**/*.ts",
+    "frontend/context/**/*.tsx",
+    "frontend/services/**/*.ts",
+    "frontend/utils/**/*.ts",
+    "frontend/components/**/*.tsx"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "firebase-1",
-    "agape-sovereign",
+    "frontend/dist",
     "functions",
     "backend",
-    "frontend",
-    "src/app",
-    "src/lib",
-    "src/components/architect-ai-app.tsx",
-    "server.ts"
+    "src"
   ]
 }

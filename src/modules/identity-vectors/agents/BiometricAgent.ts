@@ -5,13 +5,8 @@ export class BiometricAgent extends EncryptionAgent {
     super('agent_bio_sigma', 'Biometric');
   }
 
-  async processAndEncrypt(data: any): Promise<string> {
-    console.log(`[BiometricAgent] Normalizing biometric hash patterns...`);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log(`[BiometricAgent] Applying Quantum-Resistant Lattices...`);
-    await new Promise(resolve => setTimeout(resolve, 700));
-
-    return `BIO_QR_HASH_${btoa('biometric_safe').substring(0, 48)}`;
+  async processAndEncrypt(data: unknown): Promise<string> {
+    const sealed = await super.processAndEncrypt(data);
+    return `BIO_${sealed}`;
   }
 }

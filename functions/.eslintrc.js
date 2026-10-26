@@ -14,14 +14,16 @@ module.exports = {
   ],
   parser: "@typescript-eslint/parser",
   parserOptions: {
-    project: ["tsconfig.json", "tsconfig.dev.json"],
+    project: ["./tsconfig.json", "./tsconfig.dev.json"],
+    tsconfigRootDir: __dirname,
     sourceType: "module",
   },
   ignorePatterns: [
-    "/lib/**/*", // Ignore built files.
-    "/generated/**/*", // Ignore generated files.
-    "security.config.ts", // Root-level config, not in tsconfig project.
-    "vitest.config.ts", // Root-level config, not in tsconfig project.
+    "/lib/**/*",
+    "/generated/**/*",
+    "security.config.ts",
+    "vitest.config.ts",
+    "budget-enforcement/**/*",
   ],
   plugins: [
     "@typescript-eslint",

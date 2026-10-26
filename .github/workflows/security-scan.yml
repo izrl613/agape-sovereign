@@ -10,12 +10,18 @@ jobs:
   security-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Secret Scan
+      - uses: actions/checkout@v4
+      - name: Run Gitleaks on Current Tree
         run: |
-          grep -r "secret" . || echo "No plain secrets found"
-          grep -r "key" . || echo "No plain keys found"
+          curl -fksSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks dir . --config .gitleaks.toml --no-banner --redact
+          rm -f /tmp/gitleaks /tmp/gitleaks.tar.gz
+      - name: Verify Zero Committed Credential Files
+        run: |
+          VIOLATIONS=$(git ls-files | grep -E '(\.env$|\.env\.local$|service[-_]account.*\.json$|credentials\.json$)' || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "::error::Committed credential file detected: $VIOLATIONS"
+            exit 1
+          fi
+          echo "Zero committed credential files."

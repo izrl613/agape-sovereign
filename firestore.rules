@@ -12,22 +12,30 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() &&
-             request.auth.token.admin == true;
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        (
+          request.auth.token.email_verified == true &&
+          request.auth.token.email in ['idin@agape.nyc', 'agape@sovereign.nyc']
+        )
+      );
     }
 
-    // Sovereign user accounts & private sandboxes
+    // Sovereign user accounts & zero-knowledge encrypted sandboxes
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      allow list: if isSignedIn();
+      allow read, write: if isOwner(userId) || isAdmin();
 
       match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
-    // Application Top-Level Collections
-    // Each collection should have owner-based access control
+    // Zero-knowledge SHA256-ID encrypted vector envelopes
+    match /sovereign_audits/{auditId} {
+      allow read: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
     match /diff_scans/{scanId} {
       allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
@@ -75,12 +83,8 @@ service cloud.firestore {
 
     match /audit_logs/{logId} {
       allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    match /sovereign_audits/{auditId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
     }
 
     match /pipeline_runs/{runId} {
@@ -104,13 +108,7 @@ service cloud.firestore {
     }
 
     match /system/{docId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
-    }
-
-    match /test/{testId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow write: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, write: if isAdmin();
     }
 
     // Global Safety Net: Default Deny All

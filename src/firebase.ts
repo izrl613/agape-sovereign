@@ -1,20 +1,39 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInAnonymously,
+  signOut,
+} from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import firebaseClientConfig from '../firebase-config.json';
 
 const firebaseConfig = {
-  apiKey: "mock-api-key",
-  authDomain: "sovereign-nyc.firebaseapp.com",
-  projectId: "sovereign-nyc",
-  storageBucket: "sovereign-nyc.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseClientConfig.apiKey,
+  authDomain: 'agape-sovereign.firebaseapp.com',
+  projectId: firebaseClientConfig.projectId,
+  storageBucket: firebaseClientConfig.storageBucket,
+  messagingSenderId: firebaseClientConfig.messagingSenderId,
+  appId: firebaseClientConfig.appId,
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = getFirestore(app, 'agape-sovereign');
+
 export const loginWithGoogle = async () => {
-  console.log('Google login triggered');
-  return { success: true };
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const cred = await signInWithPopup(auth, provider);
+  return { success: true, user: cred.user };
+};
+
+export const loginAnonymously = async () => {
+  const cred = await signInAnonymously(auth);
+  return cred.user;
+};
+
+export const logout = async () => {
+  await signOut(auth);
 };

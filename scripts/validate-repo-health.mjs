@@ -17,6 +17,7 @@ const REPO = process.env.GH_REPO || 'izrl613/agape-sovereign';
 const API = 'https://api.github.com';
 const HEADERS = {
   'Accept': 'application/vnd.github+json',
+  'User-Agent': 'agape-sovereign-health-validator',
   ...(GITHUB_TOKEN ? { 'Authorization': `Bearer ${GITHUB_TOKEN}` } : {}),
 };
 
@@ -127,7 +128,7 @@ async function main() {
 
   // ── 10. Commit Activity ────────────────────────────────────────────────────
   const commits = await ghFetch(`/repos/${REPO}/commits?per_page=1`) || [];
-  const commitCount = (await ghFetch(`/repos/${REPO}/commits?per_page=1&page=1`)).length > 0 ? '100+' : 'unknown';
+  const commitCount = ((await ghFetch(`/repos/${REPO}/commits?per_page=1&page=1`)) || []).length > 0 ? '100+' : 'unknown';
   let totalAdditions = 0, totalDeletions = 0;
   try {
     const codeFrequency = await ghFetch(`/repos/${REPO}/code-frequency`) || [];
