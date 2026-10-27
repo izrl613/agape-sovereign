@@ -1,4 +1,4 @@
-# Sovereign Digital Identity System
+3# Sovereign Digital Identity System
 
 A Zero-Knowledge Identity Sovereign platform allowing users to build, verify, and control their digital identity across 16 specialized vectors.
 
