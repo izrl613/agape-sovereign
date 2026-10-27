@@ -256,7 +256,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                 </div>
                 <div className="btn-text-content">
                   <div className="btn-title">Sign in with Google</div>
-                  <div className="btn-subtitle">Method 2 · Federated dual protection · Save your 26-month audit PDF to your Google Drive</div>
+                  <div className="btn-subtitle">Method 2 · Federated Google account · Drive save is requested only when you export the audit PDF</div>
                 </div>
               </button>
 

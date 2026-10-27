@@ -6,8 +6,9 @@ import {
   onAuthStateChanged,
   fbSignOut,
   signInWithGoogle,
-  linkGoogleToCurrentUser,
   signInGuest,
+  signInWithCustomToken,
+  requestDriveAccess,
 } from '../firebase';
 import { PasskeyService } from '../auth/passkey-service';
 import { sovereignIdFor } from '../services/sha256Vault';
@@ -119,6 +120,9 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   const loginWithPasskey = useCallback(async (email?: string) => {
     const result = await PasskeyService.login(email);
     sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    if (result.token) {
+      try { await signInWithCustomToken(auth, result.token); } catch { /* session still valid locally */ }
+    }
     await adoptUser({
       id: result.userId,
       email: result.email,
@@ -128,9 +132,21 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [adoptUser]);
 
   const registerPasskey = useCallback(async (email: string) => {
-    await PasskeyService.register(email);
+    const token = await PasskeyService.register(email);
+    if (token) {
+      const cred = await signInWithCustomToken(auth, token);
+      const result = { userId: cred.user.uid, email };
+      sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+      await adoptUser({
+        id: cred.user.uid,
+        email,
+        method: 'PASSKEY',
+        isAdmin: ADMIN_EMAILS.includes(email.toLowerCase()),
+      });
+      return;
+    }
     await loginWithPasskey(email);
-  }, [loginWithPasskey]);
+  }, [loginWithPasskey, adoptUser]);
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     const { user: fbUser, accessToken } = await signInWithGoogle();
@@ -150,21 +166,10 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [adoptUser]);
 
   const attachGoogle = useCallback(async (): Promise<string | null> => {
-    if (user?.method === 'PASSKEY') {
-      // Passkey accounts live outside Firebase Auth, so "attaching" means
-      // a real Google sign-in; local passkey receipts stay on this device.
-      return loginWithGoogle();
-    }
-    const { user: fbUser, accessToken } = await linkGoogleToCurrentUser();
-    setGoogleAccessToken(accessToken);
-    await adoptUser({
-      id: fbUser.uid,
-      email: fbUser.email ?? '',
-      method: 'GOOGLE',
-      isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
-    });
-    return accessToken;
-  }, [adoptUser, loginWithGoogle, user]);
+    const token = await requestDriveAccess();
+    setGoogleAccessToken(token);
+    return token;
+  }, []);
 
   const addReceipt = useCallback(
     async (receipt: ModuleReceipt, entryValues: Record<string, string>): Promise<ModuleReceipt> => {

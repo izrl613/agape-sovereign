@@ -15,10 +15,17 @@ export default defineConfig({
     allowedHosts: true,
     fs: { allow: ['..'] }, // import ../firebase-applet-config.json (single source)
     proxy: {
-      // Local development against the Firebase emulator suite
-      // (`firebase emulators:start`); production uses Hosting rewrites.
-      '/api/auth': 'http://localhost:5001/agape-sovereign/us-central1',
-      '/api/architect': 'http://localhost:5001/agape-sovereign/us-central1',
+      // Emulator functions are at /PROJECT/REGION/FUNCTION/path.
+      '/api/auth': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: true,
+        rewrite: (p) => `/agape-sovereign/us-central1/authApi${p}`,
+      },
+      '/api/architect': {
+        target: 'http://127.0.0.1:5001',
+        changeOrigin: true,
+        rewrite: (p) => `/agape-sovereign/us-central1/architectApi${p}`,
+      },
     },
   },
   preview: {

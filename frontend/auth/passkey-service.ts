@@ -93,7 +93,7 @@ export class PasskeyService {
   }
 
   /** Register a new passkey for an email (creates the credential server-side). */
-  static async register(email: string): Promise<void> {
+  static async register(email: string): Promise<string | undefined> {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) throw new Error('Enter your email first so the passkey can be bound to it.');
 
@@ -108,7 +108,10 @@ export class PasskeyService {
     } catch {
       throw new Error(PASSKEY_BACKEND_DOWN);
     }
-    if (!optionsRes.ok) throw new Error(PASSKEY_BACKEND_DOWN);
+    if (!optionsRes.ok) {
+      const body = await optionsRes.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error || PASSKEY_BACKEND_DOWN);
+    }
     const options = await optionsRes.json();
     const optionsJSON = options.optionsJSON ?? options;
 
@@ -128,5 +131,7 @@ export class PasskeyService {
       body: JSON.stringify({ ...attestation, email: normalizedEmail }),
     });
     if (!verifyRes.ok) throw new Error('The server could not verify the new passkey. Please try again.');
+    const data = await verifyRes.json().catch(() => ({})) as { token?: string };
+    return data.token;
   }
 }

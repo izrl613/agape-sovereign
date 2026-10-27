@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@simplewebauthn/browser": "latest",
-    "firebase": "^13.1.0",
+    "firebase": "^10.14.1",
     "jspdf": "^4.2.1",
     "lucide-react": "latest",
     "react": "latest",
