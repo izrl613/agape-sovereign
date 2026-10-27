@@ -1,0 +1,23 @@
+{
+  "name": "davidian-cortex",
+  "productName": "DAVIDIAN CORTEX",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "build:mac": "npm run build && electron-builder --mac dmg zip"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "latest",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest"
+  }
+}
