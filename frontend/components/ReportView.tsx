@@ -20,7 +20,7 @@ import { GOOGLE_CANCELLED } from '../firebase';
  * passkey/guest users download it, or attach Google for Drive saving.
  */
 export const ReportView: React.FC = () => {
-  const { user, sovereignId, receipts, sessionEntries, googleAccessToken, attachGoogle, loginWithGoogle } = useSovereign();
+  const { user, sovereignId, receipts, sessionEntries, googleAccessToken, attachGoogle } = useSovereign();
   const [busy, setBusy] = useState<'DOWNLOAD' | 'DRIVE' | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +64,8 @@ export const ReportView: React.FC = () => {
     try {
       let token = googleAccessToken;
       if (!token) {
-        // Fresh Google consent (also refreshes an expired access token and,
-        // for passkey/guest sessions, upgrades to dual protection first).
-        token = user?.method === 'GOOGLE' ? await loginWithGoogle() : await attachGoogle();
+        // Incremental drive.file consent — never requested at login.
+        token = await attachGoogle();
       }
       if (!token) throw new Error('Google did not return a Drive access token (the drive.file scope may have been declined). Nothing was uploaded — download the PDF or retry and accept the Drive permission.');
       const { blob, filename, documentHash: hash } = await build();

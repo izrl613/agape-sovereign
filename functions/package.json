@@ -14,7 +14,7 @@
     "genkit:start": "npx genkit start -- npx tsx --watch src/index.ts"
   },
   "engines": {
-    "node": "24"
+    "node": "22"
   },
   "main": "lib/index.js",
   "dependencies": {

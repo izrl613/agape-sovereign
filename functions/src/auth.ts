@@ -76,6 +76,28 @@ const BUILTIN_ORIGINS = [
 const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS]));
 
 /**
+ * Hosting previews, Firebase default domains, and Arena live previews.
+ * @param {string | null | undefined} origin Request Origin header.
+ * @return {boolean} Whether the origin may call authApi.
+ */
+function originAllowed(origin?: string | null): boolean {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return (
+      host.endsWith(".web.app") ||
+      host.endsWith(".firebaseapp.com") ||
+      host.endsWith(".e2b.app") ||
+      host === "localhost" ||
+      host === "127.0.0.1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Cookie signing secret for passkey ceremonies.
  *
  * Deploy-safe by design: a Secret-Manager binding (the previous
@@ -126,43 +148,9 @@ if (isProductionEnv && !configuredCookieSecret) {
 
 const authApp = express();
 
-const corsOrigins = ALLOWED_ORIGINS.filter((o) => o.startsWith("http"));
-const isProduction = process.env.NODE_ENV === "production" ||
-  process.env.K_SERVICE !== undefined ||
-  process.env.FUNCTION_TARGET !== undefined;
-
 authApp.use(cors({
   origin: (origin, callback) => {
-    // Allow non-browser / same-origin proxy calls with no Origin header
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // In production, restrict to sovereign.nyc and Firebase Hosting domains only
-    if (isProduction) {
-      const allowedProdOrigins = [
-        "https://sovereign.nyc",
-        "https://www.sovereign.nyc",
-        "https://agape-sovereign.web.app",
-        "https://agape-sovereign.firebaseapp.com",
-      ];
-      if (allowedProdOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(null, false);
-      return;
-    }
-
-    // Development: allow localhost and other dev origins
-    if (corsOrigins.includes(origin) || origin.endsWith(".web.app") ||
-      origin.endsWith(".firebaseapp.com") || origin.includes("localhost") ||
-      origin.includes("127.0.0.1")) {
-      callback(null, true);
-      return;
-    }
-    callback(null, false);
+    callback(null, originAllowed(origin));
   },
   credentials: true,
 }));
@@ -218,7 +206,7 @@ authApp.use(helmet({
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  max: 20, // csrf + options + verify + retries
   message: {error: "Too many authentication attempts, please try again later"},
   standardHeaders: true,
   legacyHeaders: false,
@@ -432,9 +420,10 @@ export function encodeCredentialId(id: string | Uint8Array): string {
   return Buffer.from(id).toString("base64url");
 }
 
-// Router used at both / (direct URL) and /api/auth (Hosting rewrite)
+// Router used at both / (direct URL) and /api/auth (Hosting rewrite).
+// CSRF is applied once at the app layer — do not also attach it here
+// or Hosting POSTs get double-validated and fail.
 const router = express.Router(); // eslint-disable-line new-cap
-router.use(doubleCsrfProtection);
 
 // Health check endpoint
 router.get("/", (_req: Request, res: Response) => {
@@ -447,6 +436,21 @@ router.get("/", (_req: Request, res: Response) => {
       allowedOriginCount: ALLOWED_ORIGINS.length,
     },
   });
+});
+
+/** Guest Firebase session when Anonymous provider is disabled. */
+router.post("/anon-session", authLimiter, async (_req: Request, res: Response) => {
+  try {
+    const created = await auth.createUser({});
+    const token = await createCustomTokenWithAdminClaim(created.uid, {
+      authMethod: "anonymous",
+    });
+    res.json({token, uid: created.uid, authMethod: "ANON"});
+  } catch (error) {
+    logger.error("Anon session error:", error);
+    errors.report(error as Error);
+    res.status(500).json({error: "Could not create guest session"});
+  }
 });
 
 /**
@@ -474,6 +478,49 @@ async function requireRegisteredUser(
   return {uid: decoded.uid, email: tokenEmail};
 }
 
+/**
+ * First-class passkey register: signed-in users bind to their account;
+ * otherwise create (or reuse) an Auth user for this email if no passkey exists.
+ * @param {Request} req Express request (optional Bearer).
+ * @param {string} email Normalized email to bind.
+ * @return {Promise<{uid: string, email: string}>} Target Auth user.
+ */
+async function resolveRegistrationUser(
+  req: Request, email: string
+): Promise<{uid: string; email: string}> {
+  const authorization = req.get("authorization");
+  if (authorization?.startsWith("Bearer ")) {
+    return requireRegisteredUser(req, email);
+  }
+
+  let existing: {uid: string} | null = null;
+  try {
+    existing = await auth.getUserByEmail(email);
+  } catch {
+    existing = null;
+  }
+
+  if (existing) {
+    const creds = await db.collection("users").doc(existing.uid)
+      .collection("passkeyCredentials").limit(1).get();
+    if (!creds.empty) {
+      const err = new Error(
+        "A passkey already exists for this email. Use Passkey sign-in."
+      ) as Error & {status?: number};
+      err.status = 409;
+      throw err;
+    }
+    return {uid: existing.uid, email};
+  }
+
+  const created = await auth.createUser({email, emailVerified: false});
+  await db.collection("users").doc(created.uid).set({
+    email,
+    createdAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+  return {uid: created.uid, email};
+}
+
 // POST /register-options
 router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
@@ -484,7 +531,7 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
     }
 
     const {uid: userId, email: userEmail} =
-      await requireRegisteredUser(req, email);
+      await resolveRegistrationUser(req, email);
     const userRef = db.collection("users").doc(userId);
     const userDoc = await userRef.get();
     if (!userDoc.exists) {
@@ -543,6 +590,11 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
     logger.error("Register Options Error:", error);
     errors.report(error as Error);
     const message = error instanceof Error ? error.message : "";
+    const status = (error as Error & {status?: number})?.status;
+    if (status === 409) {
+      res.status(409).json({error: message});
+      return;
+    }
     if (
       message === "Authentication is required to register a passkey." ||
       message === "The passkey email must match the signed-in account."
@@ -921,8 +973,6 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
   }
 });
 
-// Mount router at / (direct URL) and /api/auth (Hosting rewrite)
-authApp.use("/", router);
 /**
  * CSRF defence for the cookie-bearing auth API.
  *
@@ -939,7 +989,7 @@ authApp.use((req: Request, res: Response, next: express.NextFunction) => {
     return;
   }
   const origin = req.get("origin");
-  if (!origin || !ALLOWED_ORIGINS.includes(origin)) {
+  if (!originAllowed(origin)) {
     res.status(403).json({error: "Cross-origin request blocked"});
     return;
   }
@@ -947,10 +997,14 @@ authApp.use((req: Request, res: Response, next: express.NextFunction) => {
 });
 
 // CSRF token issuer (GET is exempt from doubleCsrfProtection).
+authApp.get("/csrf-token", (req: Request, res: Response) => {
+  res.json({csrfToken: generateCsrfToken(req, res)});
+});
 authApp.get("/api/auth/csrf-token", (req: Request, res: Response) => {
   res.json({csrfToken: generateCsrfToken(req, res)});
 });
 authApp.use(doubleCsrfProtection);
+authApp.use("/", router);
 authApp.use("/api/auth", router);
 
 // JSON error shape for CSRF rejections (Express would default to HTML).
@@ -969,13 +1023,11 @@ export const authApi = onRequest(
     timeoutSeconds: 30,
     memory: "256MiB",
     invoker: "public",
-    serviceAccount:
-      "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    // Deliberately NO secret bindings here: the CI deployer cannot
-    // validate Secret-Manager versions (403), and same-named plain
-    // env vars collide with the service's existing secret env vars.
-    // Cookie key comes from PASSKEY_COOKIE_SIGNING_KEY (param) with
-    // legacy process.env fallbacks — see configuredCookieSecret.
+    // Default compute SA — a pinned firebase-adminsdk service account
+    // requires iam.serviceAccounts.actAs the CI deployer often lacks.
+    // No Secret-Manager bindings: CI cannot validate versions (403),
+    // and same-named plain env vars collide with existing secret env.
+    // Cookie key: PASSKEY_COOKIE_SIGNING_KEY param + legacy fallbacks.
   },
   authApp
 );

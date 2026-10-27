@@ -63,6 +63,12 @@ if (!fs.existsSync(indexHtmlPath)) {
   } else {
     fail('index.html module script', 'Missing <script type="module" src="..."> entry');
   }
+
+  if (/DAVIDIAN\s+CORTEX/i.test(indexContent)) {
+    fail('index.html branding', 'Stale DAVIDIAN CORTEX title — sovereign.nyc must brand as Agape Sovereign AI');
+  } else {
+    pass('index.html branding', 'Agape Sovereign AI');
+  }
 }
 
 // ── Check 2: Core source files ──────────────────────────────────────────────

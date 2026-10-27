@@ -67,10 +67,9 @@ deploy env file on the next merge. Do NOT add the legacy names to
 ## 4. Deploy
 
 ```bash
-npm ci                       # root (workspaces: frontend, backend)
-npm --prefix functions ci
-npm run build                # builds frontend/
-npx firebase-tools deploy --only hosting,functions,firestore --project agape-sovereign
+npm --prefix frontend ci && npm --prefix frontend run build
+npm --prefix functions ci && npm --prefix functions run build
+npx firebase-tools deploy --only hosting,functions --project agape-sovereign
 ```
 
 Or merge the PR to `main`: `.github/workflows/deploy.yml` and

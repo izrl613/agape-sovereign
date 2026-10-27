@@ -1,0 +1,15 @@
+{
+  "name": "agape-sovereign",
+  "private": true,
+  "description": "Agape Sovereign AI — Hosting lives in frontend/, Cloud Functions in functions/.",
+  "scripts": {
+    "build": "npm --prefix frontend ci && npm --prefix frontend run lint && npm --prefix frontend run build",
+    "lint": "npm --prefix frontend ci && npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend ci && npm --prefix frontend run typecheck",
+    "build:frontend": "npm --prefix frontend ci && npm --prefix frontend run build",
+    "build:functions": "npm --prefix functions ci && npm --prefix functions run build"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
