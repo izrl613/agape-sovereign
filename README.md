@@ -15,6 +15,9 @@ A Zero-Knowledge Identity Sovereign platform allowing users to build, verify, an
 - **SHA256 Proof**: Every page features a real-time cryptographic heartbeat (ZK-PROOF) to verify session isolation.
 - **Local-First**: Architect AI runs via a local MCP server to prevent cloud data leaks.
 
+## 🧠 DAVIDIAN CORTEX
+The standalone personal knowledge app for Israel David lives in [`davidian-cortex/`](davidian-cortex/README.md). Run it with `cd davidian-cortex && npm install && npm run dev`, or build the macOS app on a Mac with `npm run build:mac`.
+
 ## 🛠️ Quick Start
 1. **Deploy MCP Server**: 
    ```bash

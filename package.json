@@ -1,5 +1,8 @@
 {
-  "name": "architect-ai-agape-sovereign-enclave-2026",
+  "name": "davidian-cortex",
+  "productName": "DAVIDIAN CORTEX",
+  "version": "1.0.0",
+  "main": "desktop/main.cjs",
   "workspaces": [
     "frontend",
     "backend"
@@ -16,10 +19,13 @@
     "postdeploy:cdn": "node scripts/purge-cdn-cache.mjs",
     "deploy": "firebase deploy",
     "build:frontend": "npm run build --prefix frontend",
+    "build:mac": "npm run build:frontend && electron-builder --mac dmg zip",
     "build:functions": "npm run build --prefix functions"
   },
   "devDependencies": {
-    "concurrently": "latest"
+    "concurrently": "latest",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
   },
   "dependencies": {
     "firebase": "^13.1.0",
