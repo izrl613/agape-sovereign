@@ -155,7 +155,7 @@ export async function wrapDEKWithPasskey(dek: CryptoKey): Promise<string> {
     passkeyKey,
     await crypto.subtle.exportKey('raw', dek)
   );
-  return b64({ iv, data: new Uint8Array(encrypted) });
+  return btoa(JSON.stringify({ iv: b64(iv), data: b64(new Uint8Array(encrypted)) }));
 }
 
 /** Wrap DEK with recovery code-derived key (PBKDF2). */
@@ -181,7 +181,7 @@ export async function wrapDEKWithRecoveryCode(dek: CryptoKey, recoveryCodeB64: s
     wrappedKey,
     await crypto.subtle.exportKey('raw', dek)
   );
-  return b64({ iv, data: new Uint8Array(encrypted) });
+  return btoa(JSON.stringify({ iv: b64(iv), data: b64(new Uint8Array(encrypted)) }));
 }
 
 /** Unwrap DEK from passkey wrap (called when user presents passkey). */

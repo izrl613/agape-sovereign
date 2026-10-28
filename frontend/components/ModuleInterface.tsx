@@ -10,6 +10,7 @@ import {
   validateEntry,
 } from '../services/moduleAgents';
 import { Sha256Badge } from './Sha256Badge';
+import { ModuleSplash } from './ModuleSplash';
 
 interface Props {
   moduleId: string;
@@ -32,6 +33,7 @@ const STEPS: { id: AgentStep; label: string; icon: React.ReactNode }[] = [
 export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
   const config = MODULE_CONFIGS[moduleId];
   const { user, sovereignId, receipts, addReceipt } = useSovereign();
+  const [showSplash, setShowSplash] = useState(true);
   const [values, setValues] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
   const [stepState, setStepState] = useState<Partial<Record<AgentStep, string>>>({});
@@ -88,9 +90,37 @@ export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
 
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', paddingBottom: 90 }}>
-      <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: NEON.blue, cursor: 'pointer', display: 'flex', gap: 6, alignItems: 'center', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.68rem', marginBottom: 14, padding: 0 }}>
-        <ArrowLeft size={13} /> DASHBOARD
-      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <button type="button" onClick={onBack} style={{ background: 'none', border: 'none', color: NEON.blue, cursor: 'pointer', display: 'flex', gap: 6, alignItems: 'center', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.68rem', padding: 0 }}>
+          <ArrowLeft size={13} /> DASHBOARD
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowSplash(true)}
+          style={{
+            background: 'rgba(0, 212, 255, 0.08)',
+            border: '1px solid rgba(0, 212, 255, 0.3)',
+            borderRadius: 6,
+            color: NEON.blue,
+            cursor: 'pointer',
+            padding: '4px 10px',
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: '0.62rem',
+            letterSpacing: '0.06em',
+          }}
+        >
+          VIEW VECTOR BRIEFING & SHA-256 ID
+        </button>
+      </div>
+
+      {showSplash && (
+        <ModuleSplash
+          module={config}
+          sovereignId={sovereignId}
+          onEnter={() => setShowSplash(false)}
+          onClose={() => setShowSplash(false)}
+        />
+      )}
 
       <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.18em' }}>
         MODULE AGENT · IDENTITY VECTOR

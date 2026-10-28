@@ -1,13 +1,13 @@
 /**
  * Sovereign Local LLM MCP Server
  * Interface for local inference using Ollama or vLLM with automatic model fallback.
- * Primary: gemma4:12b (general intelligence, faster on Intel/AMD)
- * Fallback: qwen3-vl:4b (vision-language, better cross-platform)
+ * Primary: qwen3-vl:4b (vision-language, zero-knowledge sovereign model)
+ * Fallback: gemma4:12b (12B general intelligence fallback)
  */
 export class SovereignMCP {
   private localLlmEndpoint = 'http://localhost:11434/api/generate';
-  private primaryModel = 'gemma4:12b';
-  private fallbackModel = 'qwen3-vl:4b';
+  private primaryModel = 'qwen3-vl:4b';
+  private fallbackModel = 'gemma4:12b';
   private currentModel = this.primaryModel;
 
   async handleRequest(request: { tool: string, args: any }) {

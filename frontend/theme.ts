@@ -21,6 +21,15 @@ export const NEON = {
 export const GRADIENT_BORDER =
   'linear-gradient(90deg, #ff2e9f, #00d4ff, #ff7a18, #00ff87)';
 
+export const GRADIENT = GRADIENT_BORDER;
+
+export const FONTS = {
+  rajdhani: "'Rajdhani', sans-serif",
+  orbitron: "'Orbitron', sans-serif",
+  mono: "'Share Tech Mono', monospace",
+  inter: "'Inter', sans-serif",
+} as const;
+
 export const COLORS = {
   background: NEON.bg,
   surface: '#0a1226',

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { SovereignProvider, useSovereign } from './context/SovereignContext';
+import { HomePage } from './components/HomePage';
 import { LoginPage } from './components/LoginPage';
 import { ModuleInterface } from './components/ModuleInterface';
 import { ZkFooter } from './components/ZkFooter';
@@ -10,11 +11,11 @@ import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
 import { MODULE_CONFIGS } from './module-config';
 
-export type AppView = 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
+export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
 
-// Firebase Hosting rewrites every path to index.html, so routing is a
-// small pathname sync: /login when signed out, /dashboard[/module] in-app.
 function pathFor(view: AppView, moduleId: string | null): string {
+  if (view === 'HOME') return '/';
+  if (view === 'LOGIN') return '/login';
   if (view === 'MODULE' && moduleId) return `/dashboard/${moduleId}`;
   if (view === 'ARCHITECT') return '/dashboard/architect';
   if (view === 'REPORT') return '/dashboard/report';
@@ -22,13 +23,16 @@ function pathFor(view: AppView, moduleId: string | null): string {
 }
 
 function viewFromPath(): { view: AppView; moduleId: string | null } {
-  const parts = window.location.pathname.split('/').filter(Boolean);
-  if (parts[0] === 'dashboard' && parts[1]) {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/login') return { view: 'LOGIN', moduleId: null };
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] === 'dashboard') {
     if (parts[1] === 'architect') return { view: 'ARCHITECT', moduleId: null };
     if (parts[1] === 'report') return { view: 'REPORT', moduleId: null };
-    if (MODULE_CONFIGS[parts[1]]) return { view: 'MODULE', moduleId: parts[1] };
+    if (parts[1] && MODULE_CONFIGS[parts[1]]) return { view: 'MODULE', moduleId: parts[1] };
+    return { view: 'DASHBOARD', moduleId: null };
   }
-  return { view: 'DASHBOARD', moduleId: null };
+  return { view: 'HOME', moduleId: null };
 }
 
 const AppContent: React.FC = () => {
@@ -56,11 +60,13 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (!authReady) return;
-    if (!user && window.location.pathname !== '/login') {
-      window.history.replaceState({}, '', '/login');
+    // If authenticated and currently on /login, move to dashboard
+    if (user && window.location.pathname === '/login') {
+      navigate('DASHBOARD');
     }
-    if (user && (window.location.pathname === '/login' || window.location.pathname === '/')) {
-      window.history.replaceState({}, '', '/dashboard');
+    // If not authenticated and attempting to view /dashboard, redirect to /login
+    if (!user && window.location.pathname.startsWith('/dashboard')) {
+      navigate('LOGIN');
     }
   }, [user, authReady]);
 
@@ -73,13 +79,37 @@ const AppContent: React.FC = () => {
     );
   }
 
+  // Signed out views: Home Landing Page or Login Portal
   if (!user) {
-    return <LoginPage onSuccess={() => navigate('DASHBOARD')} onNavigateHome={() => { window.location.href = '/login'; }} />;
+    if (view === 'LOGIN') {
+      return (
+        <LoginPage
+          onSuccess={() => navigate('DASHBOARD')}
+          onNavigateHome={() => navigate('HOME')}
+        />
+      );
+    }
+    return (
+      <HomePage
+        onBegin={() => navigate('LOGIN')}
+        onLoginGoogle={() => navigate('LOGIN')}
+        onLoginPasskey={() => navigate('LOGIN')}
+        onLoginAnon={() => navigate('LOGIN')}
+      />
+    );
   }
 
+  // Signed in: Command Center / 16-Module Workspace / Architect AI / Report
   return (
     <div className="main-app">
-      <TopHeader user={user} sovereignId={sovereignId} onLogout={() => void clearSession()} />
+      <TopHeader
+        user={user}
+        sovereignId={sovereignId}
+        onLogout={() => {
+          void clearSession();
+          navigate('HOME');
+        }}
+      />
       <div className="app-body">
         <LeftNav
           activeView={view}
@@ -89,11 +119,26 @@ const AppContent: React.FC = () => {
           onSelectModule={(id) => navigate('MODULE', id)}
         />
         <main className="content-area">
+          {view === 'HOME' && (
+            <DashboardView
+              receipts={receipts}
+              sovereignId={sovereignId}
+              onSelectModule={(id) => navigate('MODULE', id)}
+            />
+          )}
           {view === 'DASHBOARD' && (
-            <DashboardView receipts={receipts} sovereignId={sovereignId} onSelectModule={(id) => navigate('MODULE', id)} />
+            <DashboardView
+              receipts={receipts}
+              sovereignId={sovereignId}
+              onSelectModule={(id) => navigate('MODULE', id)}
+            />
           )}
           {view === 'MODULE' && activeModule && (
-            <ModuleInterface key={activeModule} moduleId={activeModule} onBack={() => navigate('DASHBOARD')} />
+            <ModuleInterface
+              key={activeModule}
+              moduleId={activeModule}
+              onBack={() => navigate('DASHBOARD')}
+            />
           )}
           {view === 'ARCHITECT' && <ArchitectAIView />}
           {view === 'REPORT' && <ReportView />}

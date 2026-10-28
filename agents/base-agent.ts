@@ -52,7 +52,7 @@ export class ModelTier {
       case 2:
         return { model: 'qwen3-vl:4b', precision: 'q4_k_m', vramGB: 4 };
       case 3:
-        return { model: 'gemma:4e2b', precision: 'f32', vramGB: 1.5 };
+        return { model: 'gemma4:12b', precision: 'q4_k_m', vramGB: 8 };
       case 4:
         return { model: 'gemini-2.5-flash-lite', precision: 'cloud', vramGB: 0 };
       default:
