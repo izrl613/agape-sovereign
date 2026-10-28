@@ -61,23 +61,35 @@ architectApp.use(helmet({
   noSniff: true,
 }));
 
-// Rate limiting
+// Rate limiting — strict 15 RPM for 100% Free-Tier GCP compliance
+// https://firebase.google.com/docs/functions/limits#default_quotas
+// 1,000 RPD / 15 RPM / 250k TPM free tier hard caps
 const architectLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  message: {error: "Too many requests, please try again later"},
+  windowMs: 60 * 1000, // 60-second window
+  max: 15, // absolute 15 RPM free-tier cap
+  message: {error: "Rate limit exceeded — 15 RPM free-tier cap. Batching active. Please wait 60s."},
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 architectApp.use(architectLimiter);
 
-// App Check verification
+// App Check — MANDATORY for 100% Free-Tier GCP protection.
+// Without App Check, bots can bypass client and exhaust the 15 RPM free-tier
+// limit instantly, taking the platform offline. reCAPTCHA Enterprise must be
+// enabled in the Google Cloud Console and the Site Key placed in .env.
+if (process.env.RECAPTCHA_ENABLED !== "true") {
+  console.error(
+    "[architectApi] CRITICAL: RECATCHA_ENABLED is not set to 'true'. " +
+    "Bot abuse will exhaust the 15 RPM free-tier quota. " +
+    "Set RECATCHA_ENABLED=true in functions/.env and redeploy."
+  );
+}
+// Always verify — no fallback to unprotected mode
 architectApp.use(async (req: Request, res: Response, next: express.NextFunction) => {
-  if (process.env.RECAPTCHA_ENABLED !== "true") return next();
   const appCheckToken = req.header("X-Firebase-AppCheck");
   if (!appCheckToken) {
-    res.status(401).json({error: "Missing App Check token"});
+    res.status(401).json({error: "App Check required — bot protection active"});
     return;
   }
   try {

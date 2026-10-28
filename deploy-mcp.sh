@@ -2,6 +2,7 @@
 
 # Sovereign MCP Server Deployment Script
 # This script prepares and starts the local MCP server on a GCP VM.
+# Supports gemma4:12b (primary) + qwen3-vl:4b (fallback) with automatic swaps.
 
 echo "🚀 Starting Sovereign MCP Server Deployment..."
 
@@ -14,8 +15,11 @@ sudo apt-get install -y nodejs npm curl
 echo "🧠 Installing Ollama for local LLM inference..."
 curl -fsSL https://ollama.com/install.sh | sh
 
-# 3. Pull the required model
-echo "📥 Pulling qwen3-vl:4b model..."
+# 3. Pull both required models (primary + fallback)
+echo "📥 Pulling gemma4:12b primary model..."
+ollama pull gemma4:12b
+
+echo "📥 Pulling qwen3-vl:4b fallback model..."
 ollama pull qwen3-vl:4b
 
 # 4. Setup project directory
@@ -51,4 +55,6 @@ sudo systemctl start sovereign-mcp
 
 echo "✅ Deployment Complete! Sovereign MCP Server is running as a background service."
 echo "🔗 Local Endpoint: http://localhost:11434"
-echo "🧠 Model: qwen3-vl:4b"
+echo "🧠 Primary Model: gemma4:12b"
+echo "🧠 Fallback Model: qwen3-vl:4b"
+echo "⚡ Auto-swap enabled for realtime latency optimization"
