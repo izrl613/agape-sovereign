@@ -105,10 +105,10 @@ const ALLOWED_ORIGINS = Array.from(new Set([...BUILTIN_ORIGINS, ...EXTRA_ORIGINS
 const cookieSigningKeyParam = defineString("PASSKEY_COOKIE_SIGNING_KEY", {default: ""});
 
 const configuredCookieSecret =
-  cookieSigningKeyParam.value() ||
   process.env.PASSKEY_COOKIE_SIGNING_KEY ||
   process.env.PASSKEY_COOKIE_SECRET ||
   process.env.COOKIE_SECRET ||
+  (typeof process.env.K_SERVICE !== "undefined" ? cookieSigningKeyParam.value() : "") ||
   "";
 
 const COOKIE_SECRET: string = configuredCookieSecret ||

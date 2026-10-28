@@ -1,0 +1,20 @@
+{
+  "name": "agape-sovereign",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agape Sovereign AI — Digital Identity Defense Enclave",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:functions": "npm --prefix functions run build",
+    "lint": "npm --prefix frontend run lint",
+    "check": "npm --prefix frontend run check",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "test": "npm --prefix functions test",
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore"
+  }
+}
