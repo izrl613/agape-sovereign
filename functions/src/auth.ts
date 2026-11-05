@@ -297,7 +297,7 @@ export async function createCustomTokenWithAdminClaim(
   const userData = userDoc.data() || {};
   const isAdmin = userData.admin === true;
 
-  const tokenClaims: Record<string, unknown> = { authMethod: "passkey" };
+  const tokenClaims: Record<string, unknown> = {authMethod: "passkey"};
   if (isAdmin) {
     tokenClaims.admin = true;
     logger.info(

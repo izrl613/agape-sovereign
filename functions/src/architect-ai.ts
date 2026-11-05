@@ -14,8 +14,8 @@ import {defineString} from "firebase-functions/params";
  * endpoint returns 501 ARCHITECT_AI_NOT_CONFIGURED and the web app
  * answers with its labelled on-device knowledge engine.
  * Canned/fake AI replies are banned.
- * 
- * Model Selection: 
+ *
+ * Model Selection:
  * - Free tier: gemini-2.5-flash-lite (mandatory - older models return HTTP 404)
  * - Trial Credit ($1000): can configure GEMINI_MODEL to use advanced models
  * - Set GEMINI_MODEL env var to override: gemini-1.5-flash, gemini-1.5-pro, etc.
