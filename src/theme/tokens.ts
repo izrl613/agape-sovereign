@@ -3,10 +3,10 @@ export const NEON = {
   blue: "#00D4FF",
   orange: "#FF7A18",
   green: "#00FF87",
-  bg: "#060D1F",
-  bgCard: "rgba(8, 18, 40, 0.85)",
+  bg: "#0B1020",
+  bgCard: "#111830",
   bgGlass: "rgba(0, 212, 255, 0.04)",
-  text: "#E8F4FF",
+  text: "#F8FAFC",
   textMuted: "#7B9BB5",
 } as const;
 

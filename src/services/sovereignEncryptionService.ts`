@@ -1,0 +1,173 @@
+import {
+  generateDEK,
+  deriveWrappingKey,
+  wrapKey,
+  unwrapKey,
+  encryptWithDEK,
+  decryptWithDEK,
+  generateSalt,
+  hashSHA256,
+  EncryptedSovereignProfile
+} from '../lib/encryption';
+import { db } from '../firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+
+export class SovereignEncryptionService {
+  private static instance: SovereignEncryptionService;
+
+  private constructor() {}
+
+  static getInstance(): SovereignEncryptionService {
+    if (!SovereignEncryptionService.instance) {
+      SovereignEncryptionService.instance = new SovereignEncryptionService();
+    }
+    return SovereignEncryptionService.instance;
+  }
+
+  /**
+   * Execute the Initial Binding Ceremony
+   * 1. Generate a random DEK
+   * 2. Derive wrapping keys from Passkey secret and Recovery Code
+   * 3. Wrap the DEK with both keys
+   * 4. Store the wrapped DEKs in Firestore
+   */
+  async executeBindingCeremony(
+    userId: string,
+    passkeySecret: string,
+    recoveryCode: string
+  ): Promise<{
+    dek: Uint8Array;
+    recoveryCode: string;
+    wrappedDEKs: EncryptedSovereignProfile['wrappedDEK_passkey'] & EncryptedSovereignProfile['wrappedDEK_recovery'];
+  }> {
+    // 1. Generate DEK
+    const dek = generateDEK();
+
+    // 2. Passkey Wrapping
+    const passkeySalt = generateSalt();
+    const pwk = await deriveWrappingKey(passkeySecret, passkeySalt);
+    const wrappedPasskey = await wrapKey(dek, pwk);
+
+    // 3. Recovery Wrapping
+    const recoverySalt = generateSalt();
+    const rwk = await deriveWrappingKey(recoveryCode, recoverySalt);
+    const wrappedRecovery = await wrapKey(dek, rwk);
+
+    // 4. Store wrapped keys (simplifying for this service, usually handled by profile save)
+    const wrappedDEKs = {
+      wrappedDEK_passkey: {
+        ...wrappedPasskey,
+        salt: arrayBufferToBase64(passkeySalt),
+      },
+      wrappedDEK_recovery: {
+        ...wrappedRecovery,
+        salt: arrayBufferToBase64(recoverySalt),
+      }
+    };
+
+    return { dek, recoveryCode, wrappedDEKs: wrappedDEKs as any };
+  }
+
+  /**
+   * Encrypt and save a sovereign profile
+   */
+  async saveSovereignProfile(
+    userId: string,
+    profileData: any,
+    passkeySecret: string,
+    recoveryCode: string
+  ) {
+    // Check if we already have a DEK, otherwise generate one
+    let dek: Uint8Array;
+    let wrappedPasskey: any;
+    let wrappedRecovery: any;
+
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      const existing = docSnap.data() as EncryptedSovereignProfile;
+      // Unwrap DEK using passkey
+      const pwkSalt = base64ToArrayBuffer(existing.wrappedDEK_passkey.salt);
+      const pwk = await deriveWrappingKey(passkeySecret, pwkSalt);
+      dek = await unwrapKey(
+        existing.wrappedDEK_passkey.ciphertext,
+        existing.wrappedDEK_passkey.iv,
+        pwk
+      );
+      wrappedPasskey = existing.wrappedDEK_passkey;
+      wrappedRecovery = existing.wrappedDEK_recovery;
+    } else {
+      // New user binding ceremony
+      const binding = await this.executeBindingCeremony(userId, passkeySecret, recoveryCode);
+      dek = binding.dek;
+      wrappedPasskey = binding.wrappedDEKs.wrappedDEK_passkey;
+      wrappedRecovery = binding.wrappedDEKs.wrappedDEK_recovery;
+    }
+
+    const { ciphertext, iv } = await encryptWithDEK(profileData, dek);
+    const sha256Seal = await hashSHA256(profileData);
+
+    const encryptedProfile: EncryptedSovereignProfile = {
+      userId,
+      encryptedData: ciphertext,
+      iv,
+      sha256Seal,
+      encryptedAt: Date.now(),
+      wrappedDEK_passkey: wrappedPasskey,
+      wrappedDEK_recovery: wrappedRecovery,
+    };
+
+    await setDoc(docRef, encryptedProfile);
+    return encryptedProfile;
+  }
+
+  /**
+   * Decrypt a profile using either Passkey or Recovery Code
+   */
+  async decryptProfile(
+    encryptedProfile: EncryptedSovereignProfile,
+    secret: string,
+    mode: 'passkey' | 'recovery'
+  ): Promise<any> {
+    const wrappingData = mode === 'passkey'
+      ? encryptedProfile.wrappedDEK_passkey
+      : encryptedProfile.wrappedDEK_recovery;
+
+    const salt = base64ToArrayBuffer(wrappingData.salt);
+    const wrappingKey = await deriveWrappingKey(secret, salt);
+
+    const dek = await unwrapKey(
+      wrappingData.ciphertext,
+      wrappingData.iv,
+      wrappingKey
+    );
+
+    return decryptWithDEK(
+      encryptedProfile.encryptedData,
+      encryptedProfile.iv,
+      dek
+    );
+  }
+
+  // Helpers for Base64 (matching encryption.ts)
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+}
+
+export const sovereignEncryptionService = SovereignEncryptionService.getInstance();

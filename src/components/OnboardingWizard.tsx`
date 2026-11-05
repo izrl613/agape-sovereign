@@ -1,0 +1,223 @@
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { NEON, FONTS, BORDER_RADIUS } from '../theme/tokens';
+import { hashSHA256 } from '../lib/encryption';
+import { sovereignEncryptionService } from '../services/sovereignEncryptionService';
+
+interface ModuleConfig {
+  id: string;
+  label: string;
+  vector: string;
+  description: string;
+  placeholder: string;
+}
+
+const MODULES: ModuleConfig[] = [
+  { id: 'email', label: 'Email Breach Scanner', vector: 'V-01', description: 'Enter primary email to scan for darknet breaches.', placeholder: 'email@sovereign.nyc' },
+  { id: 'social', label: 'Social Media Footprint', vector: 'V-02', description: 'Enter your primary social handle for exposure mapping.', placeholder: '@username' },
+  { id: 'device', label: 'Device File Scan', vector: 'V-03', description: 'Confirm local directory access for PII scanning.', placeholder: 'Path to scan...' },
+  { id: 'mobile', label: 'Mobile Security Layer', vector: 'V-04', description: 'Device OS version and biometric status.', placeholder: 'e.g. iOS 18.1' },
+  { id: 'laptop', label: 'Laptop System Security', vector: 'V-05', description: 'Hardware security and disk encryption status.', placeholder: 'e.g. FileVault Enabled' },
+  { id: 'deepweb', label: 'Deep Web Exposure', vector: 'V-06', description: 'Search for leaked identity attributes in .onion indexes.', placeholder: 'Keywords/Search terms...' },
+  { id: 'broker', label: 'Data Broker Removal', vector: 'V-07', description: 'Identify commercial data brokers indexing your PII.', placeholder: 'Full Name / Address' },
+  { id: 'password', label: 'Password Vault Analysis', vector: 'V-08', description: 'Entropy check for master passwords and reuse patterns.', placeholder: 'Password strength metrics...' },
+  { id: 'network', label: 'Network & DNS Security', vector: 'V-09', description: 'Audit DNS-over-HTTPS and WebRTC leak status.', placeholder: 'DNS Provider...' },
+  { id: 'cloud', label: 'Cloud Storage Exposure', vector: 'V-10', description: 'Audit public share links in Drive/iCloud.', placeholder: 'Cloud Provider...' },
+  { id: 'comm', label: 'Communication Privacy', vector: 'V-11', description: 'Encrypted messaging and metadata leak audit.', placeholder: 'Signal/WhatsApp usage...' },
+  { id: 'financial', label: 'Financial Identity Surface', vector: 'V-12', description: 'Credit bureau freeze status and virtual card audit.', placeholder: 'Freeze Status...' },
+  { id: 'docs', label: 'Identity Document Exposure', vector: 'V-13', description: 'Scan for unencrypted passports/IDs in local files.', placeholder: 'Document types...' },
+  { id: 'oauth', label: 'Third-Party OAuth Audit', vector: 'V-14', description: 'Identify dormant or overly permissive API tokens.', placeholder: 'OAuth Apps count...' },
+  { id: 'legal', label: 'Public Records & Legal', vector: 'V-15', description: 'Audit real estate and court filing visibility.', placeholder: 'County/State...' },
+  { id: 'ai', label: 'AI & Biometric Exposure', vector: 'V-16', description: 'Check for voice/face training data in public datasets.', placeholder: 'AI Opt-out status...' },
+];
+
+export const OnboardingWizard: React.FC<{
+  userId: string;
+  onComplete: () => void;
+  passkeySecret: string;
+  recoveryCode: string;
+}> = ({ userId, onComplete, passkeySecret, recoveryCode }) => {
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [hashes, setHashes] = useState<Record<string, string>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const currentModule = MODULES[step];
+
+  const handleInputChange = async (value: string) => {
+    setFormData(prev => ({ ...prev, [currentModule.id]: value }));
+
+    // Real-time SHA-256 Hashing
+    const hash = await hashSHA256({
+      moduleId: currentModule.id,
+      userId,
+      value
+    });
+    setHashes(prev => ({ ...prev, [currentModule.id]: hash }));
+  };
+
+  const handleNext = async () => {
+    if (step < MODULES.length - 1) {
+      setStep(step + 1);
+    } else {
+      // Final Submission
+      setIsProcessing(true);
+      try {
+        await sovereignEncryptionService.saveSovereignProfile(
+          userId,
+          formData,
+          passkeySecret,
+          recoveryCode
+        );
+        onComplete();
+      } catch (error) {
+        console.error('Failed to save sovereign profile', error);
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      zIndex: 1000,
+      background: 'rgba(11, 16, 32, 0.95)',
+      backdropFilter: 'blur(20px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff',
+      fontFamily: FONTS.rajdhani,
+    }}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        style={{
+          width: '600px',
+          padding: '48px',
+          borderRadius: BORDER_RADIUS.xl,
+          background: 'rgba(17, 24, 48, 0.8)',
+          border: `2px solid ${NEON.blue}`,
+          boxShadow: `0 0 50px ${NEON.blue}22`,
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Progress Bar */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, height: '4px',
+          background: `linear-gradient(90deg, ${NEON.magenta}, ${NEON.blue}, ${NEON.orange})`,
+          width: `${((step + 1) / MODULES.length) * 100}%`,
+          transition: 'width 0.3s ease',
+        }} />
+
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <span style={{
+            fontFamily: FONTS.orbitron,
+            fontSize: '0.7rem',
+            color: NEON.blue,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            display: 'block',
+            marginBottom: '8px',
+          }}>
+            Sovereign Intake Vector {currentModule.vector}
+          </span>
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: 800,
+            marginBottom: '12px',
+            background: `linear-gradient(to right, #fff, ${NEON.blue})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            {currentModule.label}
+          </h2>
+          <p style={{ color: NEON.textMuted, fontSize: '1rem', lineHeight: 1.5 }}>
+            {currentModule.description}
+          </p>
+        </div>
+
+        <div style={{ position: 'relative', marginBottom: '32px' }}>
+          <input
+            type="text"
+            value={formData[currentModule.id] || ''}
+            onChange={(e) => handleInputChange(e.target.value)}
+            placeholder={currentModule.placeholder}
+            style={{
+              width: '100%',
+              padding: '16px 20px',
+              background: 'rgba(0,0,0,0.3)',
+              border: `1px solid ${NEON.blue}44`,
+              borderRadius: BORDER_RADIUS.md,
+              color: '#fff',
+              fontSize: '1.1rem',
+              fontFamily: FONTS.shareTechMono,
+              outline: 'none',
+              transition: 'all 0.2s ease',
+              boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = NEON.blue}
+            onBlur={(e) => e.currentTarget.style.borderColor = `${NEON.blue}44`}
+          />
+
+          {/* Live Hash Badge */}
+          <AnimatePresence>
+            {hashes[currentModule.id] && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                  position: 'absolute', bottom: '-28px', right: 0,
+                  fontSize: '0.6rem',
+                  fontFamily: FONTS.shareTechMono,
+                  color: NEON.blue,
+                  opacity: 0.7,
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: NEON.blue, boxShadow: `0 0 8px ${NEON.blue}` }} />
+                SHA256: {hashes[currentModule.id].slice(0, 16)}...
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '40px' }}>
+          <button
+            disabled={step === 0}
+            onClick={() => setStep(step - 1)}
+            style={{
+              background: 'none', border: 'none', color: NEON.textMuted,
+              cursor: step === 0 ? 'not-allowed' : 'pointer',
+              fontFamily: FONTS.orbitron, fontSize: '0.7rem',
+              opacity: step === 0 ? 0.5 : 1,
+            }}
+          >
+            BACK
+          </button>
+
+          <button
+            onClick={handleNext}
+            disabled={isProcessing || !formData[currentModule.id]}
+            style={{
+              padding: '12px 32px',
+              background: `linear-gradient(135deg, ${NEON.blue}, ${NEON.magenta})`,
+              border: 'none',
+              borderRadius: BORDER_RADIUS.md,
+              color: '#fff',
+              fontWeight: 800,
+              fontFamily: FONTS.orbitron,
+              fontSize: '0.8rem',
+              cursor: (isProcessing || !formData[currentModule.id]) ? 'not-allowed' : 'pointer',
+              opacity: (isProcessing || !formData[currentModule.id]) ? 0.5 : 1,
+              boxShadow: `0 0 20px ${NEON.blue}44`,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {isProcessing ? 'ENCRYPTING...' : step === MODULES.length - 1 ? 'SEAL ENCLAVE' : 'NEXT VECTOR'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};

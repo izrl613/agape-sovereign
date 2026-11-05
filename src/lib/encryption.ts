@@ -3,25 +3,38 @@
  * ARCHITECT AI — Client-Side Encryption
  * Agape Sovereign Enclave 2026
  * ============================================================
- * 
- * AES-256-GCM encryption for all user DIFF data
- * Zero-knowledge architecture: encrypted client-side before Firestore
+ *
+ * AES-256-GCM envelope encryption for all user DIFF data.
+ * Zero-knowledge architecture: encrypted client-side before Firestore.
+ *
+ * KEY HIERARCHY:
+ * 1. Data Encryption Key (DEK): Random 256-bit key used for data encryption.
+ * 2. Passkey Wrapping Key (PWK): Derived from WebAuthn passkey secret.
+ * 3. Recovery Wrapping Key (RWK): Derived from a plaintext recovery code.
+ * ============================================================
  */
 
 /**
- * Generate a cryptographic key from a passphrase
+ * Generate a random 256-bit Data Encryption Key (DEK)
+ */
+export const generateDEK = (): Uint8Array => {
+  return crypto.getRandomValues(new Uint8Array(32));
+};
+
+/**
+ * Derive a wrapping key from a secret (passphrase or recovery code)
  * Using PBKDF2 with SHA-256
  */
-export const deriveKeyFromPassphrase = async (
-  passphrase: string,
+export const deriveWrappingKey = async (
+  secret: string,
   salt: Uint8Array
 ): Promise<CryptoKey> => {
   const encoder = new TextEncoder();
-  const passphraseData = encoder.encode(passphrase);
+  const secretData = encoder.encode(secret);
 
   const importedKey = await crypto.subtle.importKey(
     'raw',
-    passphraseData,
+    secretData,
     { name: 'PBKDF2' },
     false,
     ['deriveBits', 'deriveKey']
@@ -42,6 +55,111 @@ export const deriveKeyFromPassphrase = async (
 };
 
 /**
+ * Wrap (encrypt) a key using another key
+ */
+export const wrapKey = async (
+  keyToWrap: Uint8Array,
+  wrappingKey: CryptoKey
+): Promise<{ ciphertext: string; iv: string }> => {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encryptedKey = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    wrappingKey,
+    keyToWrap
+  );
+
+  return {
+    ciphertext: arrayBufferToBase64(encryptedKey),
+    iv: arrayBufferToBase64(iv),
+  };
+};
+
+/**
+ * Unwrap (decrypt) a key using another key
+ */
+export const unwrapKey = async (
+  ciphertext: string,
+  iv: string,
+  wrappingKey: CryptoKey
+): Promise<Uint8Array> => {
+  const encryptedData = base64ToArrayBuffer(ciphertext);
+  const initVector = base64ToArrayBuffer(iv);
+
+  const decryptedKey = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: initVector },
+    wrappingKey,
+    encryptedData
+  );
+
+  return new Uint8Array(decryptedKey);
+};
+
+/**
+ * Encrypt data using AES-256-GCM and a DEK
+ */
+export const encryptWithDEK = async (
+  data: unknown,
+  dek: Uint8Array
+): Promise<{
+  ciphertext: string;
+  iv: string;
+}> => {
+  const encoder = new TextEncoder();
+  const dataString = JSON.stringify(data);
+  const plaintext = encoder.encode(dataString);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    dek,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
+
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    plaintext
+  );
+
+  return {
+    ciphertext: arrayBufferToBase64(encryptedData),
+    iv: arrayBufferToBase64(iv),
+  };
+};
+
+/**
+ * Decrypt data using AES-256-GCM and a DEK
+ */
+export const decryptWithDEK = async (
+  ciphertext: string,
+  iv: string,
+  dek: Uint8Array
+): Promise<unknown> => {
+  const encryptedData = base64ToArrayBuffer(ciphertext);
+  const initVector = base64ToArrayBuffer(iv);
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    dek,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
+
+  const decryptedData = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: initVector },
+    cryptoKey,
+    encryptedData
+  );
+
+  const decoder = new TextDecoder();
+  const decryptedString = decoder.decode(decryptedData);
+  return JSON.parse(decryptedString);
+};
+
+/**
  * Generate a random salt for key derivation
  */
 export const generateSalt = (): Uint8Array => {
@@ -49,108 +167,7 @@ export const generateSalt = (): Uint8Array => {
 };
 
 /**
- * Encrypt data using AES-256-GCM
- * Key is derived from passphrase+salt internally - no master key injection allowed
- */
-export const encryptData = async (
-  data: unknown,
-  passphrase: string,
-  salt: Uint8Array,
-  iv?: Uint8Array
-): Promise<{
-  ciphertext: string;
-  iv: string;
-  tag: string;
-}> => {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify(data);
-  const plaintext = encoder.encode(dataString);
-
-  // Derive key from passphrase + salt (no external key injection)
-  const importedKey = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-
-  const derivedKey = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    importedKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-
-  // Generate IV if not provided
-  const initVector = iv || crypto.getRandomValues(new Uint8Array(12));
-
-  // Encrypt
-  const encryptedData = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: initVector,
-    },
-    derivedKey,
-    plaintext
-  );
-
-  // Convert to base64 for storage
-  const ciphertext = arrayBufferToBase64(encryptedData);
-  const ivBase64 = arrayBufferToBase64(initVector);
-
-  // Note: AES-GCM in SubtleCrypto includes the tag in the ciphertext
-  // We extract the last 16 bytes as the tag for reference
-  const tag = ciphertext.slice(-24); // Last 24 chars in base64 = 16 bytes
-
-  return {
-    ciphertext,
-    iv: ivBase64,
-    tag,
-  };
-};
-
-/**
- * Decrypt data using AES-256-GCM
- */
-export const decryptData = async (
-  ciphertext: string,
-  key: CryptoKey,
-  iv: string
-): Promise<unknown> => {
-  try {
-    const encryptedData = base64ToArrayBuffer(ciphertext);
-    const initVector = base64ToArrayBuffer(iv);
-
-    // Decrypt
-    const decryptedData = await crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: initVector,
-      },
-      key,
-      encryptedData
-    );
-
-    // Convert back to JSON
-    const decoder = new TextDecoder();
-    const decryptedString = decoder.decode(decryptedData);
-    return JSON.parse(decryptedString);
-  } catch (error) {
-    console.error('Decryption failed:', error);
-    throw new Error('Failed to decrypt data - integrity check failed or wrong key');
-  }
-};
-
-/**
  * Hash data using SHA-256
- * For generating document seals and checksums
  */
 export const hashSHA256 = async (data: unknown): Promise<string> => {
   const encoder = new TextEncoder();
@@ -159,52 +176,6 @@ export const hashSHA256 = async (data: unknown): Promise<string> => {
 
   const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
   return arrayBufferToHex(hashBuffer);
-};
-
-/**
- * Generate HMAC-SHA256 for message authentication
- */
-export const generateHMAC = async (
-  data: unknown,
-  key: CryptoKey
-): Promise<string> => {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify(data);
-  const dataBuffer = encoder.encode(dataString);
-
-  const hmacBuffer = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    dataBuffer
-  );
-
-  return arrayBufferToBase64(hmacBuffer);
-};
-
-/**
- * Verify HMAC-SHA256 signature
- */
-export const verifyHMAC = async (
-  data: unknown,
-  signature: string,
-  key: CryptoKey
-): Promise<boolean> => {
-  try {
-    const signatureBuffer = base64ToArrayBuffer(signature);
-    const encoder = new TextEncoder();
-    const dataString = JSON.stringify(data);
-    const dataBuffer = encoder.encode(dataString);
-
-    return await crypto.subtle.verify(
-      'HMAC',
-      key,
-      signatureBuffer,
-      dataBuffer
-    );
-  } catch (error) {
-    console.error('HMAC verification failed:', error);
-    return false;
-  }
 };
 
 /**
@@ -218,7 +189,7 @@ export const generateUUID = (): string => {
   });
 };
 
-// ─── Utility Functions ───────────────────────────────────────
+// ── Utility Functions ───────────────────────────────────────
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -244,57 +215,23 @@ function arrayBufferToHex(buffer: ArrayBuffer): string {
 }
 
 /**
- * Encrypt entire DIFF profile for storage
+ * Encrypted profile structure for storage
  */
-export interface EncryptedDIFFProfile {
+export interface EncryptedSovereignProfile {
   userId: string;
   encryptedData: string;
   iv: string;
-  salt: string;
   sha256Seal: string;
   encryptedAt: number;
-}
-
-export const encryptDIFFProfile = async (
-  userId: string,
-  diffProfile: unknown,
-  passphrase: string
-): Promise<EncryptedDIFFProfile> => {
-  const salt = generateSalt();
-  const key = await deriveKeyFromPassphrase(passphrase, salt);
-
-  const { ciphertext, iv } = await encryptData(diffProfile, passphrase, salt);
-  const sha256Seal = await hashSHA256(diffProfile);
-
-  return {
-    userId,
-    encryptedData: ciphertext,
-    iv,
-    salt: arrayBufferToBase64(salt),
-    sha256Seal,
-    encryptedAt: Date.now(),
+  // Wrapped DEKs
+  wrappedDEK_passkey: {
+    ciphertext: string;
+    iv: string;
+    salt: string;
   };
-};
-
-/**
- * Decrypt DIFF profile from storage
- */
-export const decryptDIFFProfile = async (
-  encrypted: EncryptedDIFFProfile,
-  passphrase: string
-): Promise<unknown> => {
-  const salt = base64ToArrayBuffer(encrypted.salt);
-  const key = await deriveKeyFromPassphrase(passphrase, salt);
-  return decryptData(encrypted.encryptedData, key, encrypted.iv);
-};
-
-/**
- * Check if Web Crypto API is available
- */
-export const isCryptoAvailable = (): boolean => {
-  return (
-    typeof window !== 'undefined' &&
-    typeof crypto !== 'undefined' &&
-    typeof crypto.subtle !== 'undefined'
-  );
-};
+  wrappedDEK_recovery: {
+    ciphertext: string;
+    iv: string;
+    salt: string;
+  };
+}
