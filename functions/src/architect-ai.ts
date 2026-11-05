@@ -14,9 +14,15 @@ import {defineString} from "firebase-functions/params";
  * endpoint returns 501 ARCHITECT_AI_NOT_CONFIGURED and the web app
  * answers with its labelled on-device knowledge engine.
  * Canned/fake AI replies are banned.
+ * 
+ * Model Selection: 
+ * - Free tier: gemini-2.5-flash-lite (mandatory - older models return HTTP 404)
+ * - Trial Credit ($1000): can configure GEMINI_MODEL to use advanced models
+ * - Set GEMINI_MODEL env var to override: gemini-1.5-flash, gemini-1.5-pro, etc.
  */
 const geminiApiKey = defineString("GEMINI_API_KEY", {default: ""});
-const GEMINI_MODEL = "gemini-2.0-flash";
+// Model configurable via GEMINI_MODEL env var — default to mandated free-tier model
+const GEMINI_MODEL = defineString("GEMINI_MODEL", {default: "gemini-2.5-flash-lite"});
 import {initializeApp, getApps} from "firebase-admin/app";
 import {getAppCheck} from "firebase-admin/app-check";
 import {getAuth} from "firebase-admin/auth";

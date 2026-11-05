@@ -357,10 +357,10 @@ async function verify(
     case 'privacy_reclaim': {
       const letter = [
         `DATA ERASURE / OPT-OUT REQUEST`,
-        `To: ${v.institution} (Privacy Officer)`,
+        `To: ${v.broker} (Privacy Officer)`,
         `Date: ${new Date().toDateString()}`,
         `Jurisdiction: ${v.jurisdiction}`,
-        `Account type referenced: ${v.accountType}`,
+        `Account type referenced: ${v.statute}`,
         ``,
         `Under ${v.jurisdiction.includes('GDPR') ? 'GDPR Article 17 (Right to Erasure)' : 'the California Consumer Privacy Act as amended by the CPRA (§1798.105, Right to Delete)'},`,
         `I request that you delete all personal information you hold about me,`,
@@ -381,7 +381,7 @@ async function verify(
           findings: [{ label: 'Letter SHA-256', value: letterHash.slice(0, 32) + '…' }],
           checkedAt: now(),
         },
-        artefact: { filename: `erasure-request-${v.institution.replace(/\W+/g, '-').toLowerCase()}.txt`, text: letter },
+        artefact: { filename: `erasure-request-${v.broker.replace(/\\W+/g, '-').toLowerCase()}.txt`, text: letter },
       };
     }
     case 'legal': {
@@ -442,6 +442,7 @@ export async function runModuleAgent(
   values: Record<string, string>,
   uid: string,
   sovereignId: string,
+  dek: CryptoKey,
   onStep?: (step: AgentStep, state: 'RUNNING' | 'DONE' | 'FAILED') => void,
 ): Promise<AgentRunResult> {
   const config = MODULE_CONFIGS[moduleId];
@@ -462,7 +463,7 @@ export async function runModuleAgent(
 
   onStep?.('HASH', 'RUNNING');
   onStep?.('ENCRYPT', 'RUNNING');
-  const sealed = await sealEntry(uid, moduleId, sealValues);
+  const sealed = await sealEntry(uid, moduleId, sealValues, dek);
   onStep?.('HASH', 'DONE');
   onStep?.('ENCRYPT', 'DONE');
 

@@ -299,13 +299,18 @@ async function ollamaExtract(
   const body = await response.json();
   const raw: string = body?.message?.content || '';
   const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]+?)\s*```/) || [null, raw];
-  const parsed = JSON.parse(jsonMatch[1] ?? raw);
-  return {
-    names: parsed.names || [],
-    dates: parsed.dates || [],
-    financialFigures: parsed.financialFigures || [],
-    technicalSchematics: parsed.technicalSchematics || [],
-  };
+  try {
+    const parsed = JSON.parse(jsonMatch[1] ?? raw);
+    return {
+      names: parsed.names || [],
+      dates: parsed.dates || [],
+      financialFigures: parsed.financialFigures || [],
+      technicalSchematics: parsed.technicalSchematics || [],
+    };
+  } catch (e) {
+    console.warn('[SovereignPipeline] Failed to parse LLM JSON response:', e);
+    return null;
+  }
 }
 
 async function localSynthesize(

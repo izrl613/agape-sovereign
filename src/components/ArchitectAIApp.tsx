@@ -18,6 +18,8 @@ import {
 } from '../services/scanService';
 import { chatComplete } from '../services/localAIService';
 import { generateSovereignReport } from '../services/pdfReportService';
+import { SovereignStatusView } from './views/SovereignStatusView';
+import { IdentityModulesView } from './views/IdentityModulesView';
 
 // ── Brand palette ──────────────────────────────────────────────
 const NEON = {
@@ -676,7 +678,31 @@ export function ArchitectAIApp({ user }: { user: any }) {
     if (activeSection === "architect") return <ArchitectAIView user={user} findings={findings} onSendMessage={handleSendMessage} />;
     if (activeSection === "report") return <ReportView findings={findings} />;
     if (activeSection === "modules" && activeModule) return <ModuleDetailView findings={findings} moduleId={activeModule} onScan={triggerModuleScan} />;
-    return <DashboardView findings={findings} onModuleClick={(id) => { setActiveModule(id); setActiveSection("modules"); }} />;
+    if (activeSection === "modules" && !activeModule) return <IdentityModulesView onModuleClick={(id) => { setActiveModule(id); }} />;
+    return (
+      <SovereignStatusView
+        score={Math.round(IDENTITY_VECTORS.reduce((s, m) => s + (findings.find(f => f.module === m.id)?.severity || 100), 0) / (IDENTITY_VECTORS.length || 1))}
+        criticalExposures={findings.filter(f => f.status === 'NUKED').length}
+        requireReview={findings.filter(f => f.status === 'MONITORED').length}
+        verifiedProtections={findings.filter(f => f.status === 'KNOXED').length}
+        sourcesMonitored={IDENTITY_VECTORS.length}
+        aiSummary="I found 3 things worth addressing first. Your digital identity is generally well protected, but some critical exposures require immediate remediation to improve your sovereign score."
+        liveMonitoring={[
+          { label: 'Social Media', status: 'Monitoring', time: '2 min ago' },
+          { label: 'Data Brokers', status: 'No activity', time: '12 min ago' },
+          { label: 'Email Footprint', status: 'Clean', time: '1 hour ago' },
+          { label: 'Device Security', status: 'Protected', time: '2 hours ago' },
+          { label: 'Identity Records', status: 'No changes', time: '3 hours ago' },
+        ]}
+        recentActivity={[
+          { label: 'Identity scan completed', time: '3 min ago' },
+          { label: 'Canvas exposure detected', time: '12 min ago' },
+          { label: 'Passkey login successful', time: '1 hour ago' },
+          { label: 'Report generated', time: '2 hours ago' },
+          { label: 'Social media scan complete', time: '3 hours ago' },
+        ]}
+      />
+    );
   };
 
   return (

@@ -1,300 +1,156 @@
 /**
- * ============================================================
- * ARCHITECT AI — Client-Side Encryption
- * Agape Sovereign Enclave 2026
- * ============================================================
- * 
- * AES-256-GCM encryption for all user DIFF data
- * Zero-knowledge architecture: encrypted client-side before Firestore
+ * Hardened Sovereign Encryption Library
+ * Implements AES-256-GCM Envelope Encryption with Memory Sanitization.
  */
 
-/**
- * Generate a cryptographic key from a passphrase
- * Using PBKDF2 with SHA-256
- */
-export const deriveKeyFromPassphrase = async (
-  passphrase: string,
-  salt: Uint8Array
-): Promise<CryptoKey> => {
-  const encoder = new TextEncoder();
-  const passphraseData = encoder.encode(passphrase);
+export interface WrappedDEK {
+  ciphertext: ArrayBuffer;
+  iv: Uint8Array;
+  salt: Uint8Array;
+  tag: Uint8Array; 
+}
 
-  const importedKey = await crypto.subtle.importKey(
-    'raw',
-    passphraseData,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits', 'deriveKey']
-  );
+export class SovereignEncryption {
+  private static readonly ALGO_NAME = 'AES-GCM';
+  private static readonly KEY_LEN = 256;
+  private static readonly SALT_LEN = 16;
+  private static readonly IV_LEN = 12;
 
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    importedKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-};
+  /**
+   * Memory Sanitization: Overwrites a buffer with zeros.
+   * Mitigates risk of sensitive keys remaining in RAM.
+   */
+  static sanitizeBuffer(buffer: ArrayBuffer | Uint8Array): void {
+    const view = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    view.fill(0);
+  }
 
-/**
- * Generate a random salt for key derivation
- */
-export const generateSalt = (): Uint8Array => {
-  return crypto.getRandomValues(new Uint8Array(16));
-};
-
-/**
- * Encrypt data using AES-256-GCM
- * Key is derived from passphrase+salt internally - no master key injection allowed
- */
-export const encryptData = async (
-  data: unknown,
-  passphrase: string,
-  salt: Uint8Array,
-  iv?: Uint8Array
-): Promise<{
-  ciphertext: string;
-  iv: string;
-  tag: string;
-}> => {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify(data);
-  const plaintext = encoder.encode(dataString);
-
-  // Derive key from passphrase + salt (no external key injection)
-  const importedKey = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(passphrase),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-
-  const derivedKey = await crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256',
-    },
-    importedKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-
-  // Generate IV if not provided
-  const initVector = iv || crypto.getRandomValues(new Uint8Array(12));
-
-  // Encrypt
-  const encryptedData = await crypto.subtle.encrypt(
-    {
-      name: 'AES-GCM',
-      iv: initVector,
-    },
-    derivedKey,
-    plaintext
-  );
-
-  // Convert to base64 for storage
-  const ciphertext = arrayBufferToBase64(encryptedData);
-  const ivBase64 = arrayBufferToBase64(initVector);
-
-  // Note: AES-GCM in SubtleCrypto includes the tag in the ciphertext
-  // We extract the last 16 bytes as the tag for reference
-  const tag = ciphertext.slice(-24); // Last 24 chars in base64 = 16 bytes
-
-  return {
-    ciphertext,
-    iv: ivBase64,
-    tag,
-  };
-};
-
-/**
- * Decrypt data using AES-256-GCM
- */
-export const decryptData = async (
-  ciphertext: string,
-  key: CryptoKey,
-  iv: string
-): Promise<unknown> => {
-  try {
-    const encryptedData = base64ToArrayBuffer(ciphertext);
-    const initVector = base64ToArrayBuffer(iv);
-
-    // Decrypt
-    const decryptedData = await crypto.subtle.decrypt(
+  static async generateSovereignDEK(): Promise<CryptoKey> {
+    return await window.crypto.subtle.generateKey(
       {
-        name: 'AES-GCM',
-        iv: initVector,
+        name: this.ALGO_NAME,
+        length: this.KEY_LEN,
       },
-      key,
-      encryptedData
+      true,
+      ['encrypt', 'decrypt']
     );
-
-    // Convert back to JSON
-    const decoder = new TextDecoder();
-    const decryptedString = decoder.decode(decryptedData);
-    return JSON.parse(decryptedString);
-  } catch (error) {
-    console.error('Decryption failed:', error);
-    throw new Error('Failed to decrypt data - integrity check failed or wrong key');
   }
-};
 
-/**
- * Hash data using SHA-256
- * For generating document seals and checksums
- */
-export const hashSHA256 = async (data: unknown): Promise<string> => {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify(data);
-  const dataBuffer = encoder.encode(dataString);
-
-  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
-  return arrayBufferToHex(hashBuffer);
-};
-
-/**
- * Generate HMAC-SHA256 for message authentication
- */
-export const generateHMAC = async (
-  data: unknown,
-  key: CryptoKey
-): Promise<string> => {
-  const encoder = new TextEncoder();
-  const dataString = JSON.stringify(data);
-  const dataBuffer = encoder.encode(dataString);
-
-  const hmacBuffer = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    dataBuffer
-  );
-
-  return arrayBufferToBase64(hmacBuffer);
-};
-
-/**
- * Verify HMAC-SHA256 signature
- */
-export const verifyHMAC = async (
-  data: unknown,
-  signature: string,
-  key: CryptoKey
-): Promise<boolean> => {
-  try {
-    const signatureBuffer = base64ToArrayBuffer(signature);
+  static async deriveWrappingKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
     const encoder = new TextEncoder();
-    const dataString = JSON.stringify(data);
-    const dataBuffer = encoder.encode(dataString);
-
-    return await crypto.subtle.verify(
-      'HMAC',
-      key,
-      signatureBuffer,
-      dataBuffer
+    const secretBuffer = encoder.encode(secret);
+    
+    const baseKey = await window.crypto.subtle.importKey(
+      'raw',
+      secretBuffer,
+      'PBKDF2',
+      false,
+      ['deriveKey']
     );
-  } catch (error) {
-    console.error('HMAC verification failed:', error);
-    return false;
+
+    const wrappingKey = await window.crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: salt,
+        iterations: 100000,
+        hash: 'SHA-256',
+      },
+      baseKey,
+      { name: this.ALGO_NAME, length: this.KEY_LEN },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Sanitize the temporary secret buffer
+    this.sanitizeBuffer(secretBuffer);
+    
+    return wrappingKey;
   }
-};
 
-/**
- * Generate a random UUID v4
- */
-export const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
+  static async wrapSovereignDEK(dek: CryptoKey, wrappingKey: CryptoKey): Promise<WrappedDEK> {
+    const exportedDek = await window.crypto.subtle.exportKey('raw', dek);
+    const iv = window.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
 
-// ─── Utility Functions ───────────────────────────────────────
+    const ciphertext = await window.crypto.subtle.encrypt(
+      {
+        name: this.ALGO_NAME,
+        iv: iv,
+      },
+      wrappingKey,
+      exportedDek
+    );
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    // Sanitize the exported DEK immediately after wrapping
+    this.sanitizeBuffer(exportedDek);
+
+    return {
+      ciphertext,
+      iv,
+      salt: new Uint8Array(),
+      tag: new Uint8Array(),
+    };
   }
-  return btoa(binary);
-}
 
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  static async unwrapSovereignDEK(wrapped: WrappedDEK, wrappingKey: CryptoKey): Promise<CryptoKey> {
+    const rawDek = await window.crypto.subtle.decrypt(
+      {
+        name: this.ALGO_NAME,
+        iv: wrapped.iv,
+      },
+      wrappingKey,
+      wrapped.ciphertext
+    );
+
+    const dek = await window.crypto.subtle.importKey(
+      'raw',
+      rawDek,
+      this.ALGO_NAME,
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Sanitize the raw DEK buffer
+    this.sanitizeBuffer(rawDek);
+
+    return dek;
   }
-  return bytes.buffer;
+
+  static async encryptPII(data: string, dek: CryptoKey): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
+    const encoder = new TextEncoder();
+    const encodedData = encoder.encode(data);
+    const iv = window.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
+
+    const ciphertext = await window.crypto.subtle.encrypt(
+      {
+        name: this.ALGO_NAME,
+        iv: iv,
+      },
+      dek,
+      encodedData
+    );
+
+    // Sanitize the encoded data buffer
+    this.sanitizeBuffer(encodedData);
+
+    return { ciphertext, iv };
+  }
+
+  static async decryptPII(ciphertext: ArrayBuffer, iv: Uint8Array, dek: CryptoKey): Promise<string> {
+    const decrypted = await window.crypto.subtle.decrypt(
+      {
+        name: this.ALGO_NAME,
+        iv: iv,
+      },
+      dek,
+      ciphertext
+    );
+
+    const decoder = new TextDecoder();
+    const result = decoder.decode(decrypted);
+    
+    // Sanitize the decrypted buffer
+    this.sanitizeBuffer(decrypted);
+
+    return result;
+  }
 }
-
-function arrayBufferToHex(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  return bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, '0'), '');
-}
-
-/**
- * Encrypt entire DIFF profile for storage
- */
-export interface EncryptedDIFFProfile {
-  userId: string;
-  encryptedData: string;
-  iv: string;
-  salt: string;
-  sha256Seal: string;
-  encryptedAt: number;
-}
-
-export const encryptDIFFProfile = async (
-  userId: string,
-  diffProfile: unknown,
-  passphrase: string
-): Promise<EncryptedDIFFProfile> => {
-  const salt = generateSalt();
-  const key = await deriveKeyFromPassphrase(passphrase, salt);
-
-  const { ciphertext, iv } = await encryptData(diffProfile, passphrase, salt);
-  const sha256Seal = await hashSHA256(diffProfile);
-
-  return {
-    userId,
-    encryptedData: ciphertext,
-    iv,
-    salt: arrayBufferToBase64(salt),
-    sha256Seal,
-    encryptedAt: Date.now(),
-  };
-};
-
-/**
- * Decrypt DIFF profile from storage
- */
-export const decryptDIFFProfile = async (
-  encrypted: EncryptedDIFFProfile,
-  passphrase: string
-): Promise<unknown> => {
-  const salt = base64ToArrayBuffer(encrypted.salt);
-  const key = await deriveKeyFromPassphrase(passphrase, salt);
-  return decryptData(encrypted.encryptedData, key, encrypted.iv);
-};
-
-/**
- * Check if Web Crypto API is available
- */
-export const isCryptoAvailable = (): boolean => {
-  return (
-    typeof window !== 'undefined' &&
-    typeof crypto !== 'undefined' &&
-    typeof crypto.subtle !== 'undefined'
-  );
-};

@@ -29,6 +29,9 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { SovereignEncryptedProfile } from "../lib/encryption";
+
+// ─── Shared Types ─────────────────────────────────────────────
 
 // ─── Shared Types ─────────────────────────────────────────────
 
@@ -335,4 +338,23 @@ export const getMonitoredEmails = async (
         : null,
     };
   });
+};
+
+// ─── Sovereign Enclave Profile ──────────────────────────────────
+
+/**
+ * Upsert the user's zero-knowledge encrypted profile.
+ */
+export const upsertSovereignProfile = async (profile: SovereignEncryptedProfile): Promise<void> => {
+  const ref = doc(db, "sovereign_profiles", profile.userId);
+  await setDoc(ref, profile, { merge: true });
+};
+
+/**
+ * Fetch the user's zero-knowledge encrypted profile.
+ */
+export const getSovereignProfile = async (userId: string): Promise<SovereignEncryptedProfile | null> => {
+  const snap = await getDoc(doc(db, "sovereign_profiles", userId));
+  if (!snap.exists()) return null;
+  return snap.data() as SovereignEncryptedProfile;
 };

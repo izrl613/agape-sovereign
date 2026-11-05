@@ -10,7 +10,7 @@ export const NEON = {
   orange: '#ff7a18',
   green: '#00ff87',
   yellow: '#ffd700',
-  bg: '#060c1a',
+  bg: '#0B1020',
   bgCard: 'rgba(10, 18, 38, 0.85)',
   surface: 'rgba(255,255,255,0.03)',
   text: '#e8f4ff',

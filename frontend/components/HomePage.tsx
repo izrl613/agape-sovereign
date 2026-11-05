@@ -68,7 +68,18 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* Navigation Header */}
       <header className="home-header">
         <div className="brand-group" onClick={onBegin} style={{ cursor: 'pointer' }}>
-          <svg viewBox="0 0 40 40" width="36" height="36" style={{ filter: `drop-shadow(0 0 10px ${NEON.blue})` }}>
+          <svg viewBox="0 0 40 40" width="36" height="36" className="pulsing-border" style={{ filter: `drop-shadow(0 0 10px ${NEON.blue})` }}>
+  <style>{`
+    @keyframes pulseBorder {
+      0% { filter: drop-shadow(0 0 5px ${NEON.magenta}); }
+      33% { filter: drop-shadow(0 0 5px ${NEON.blue}); }
+      66% { filter: drop-shadow(0 0 5px ${NEON.orange}); }
+      100% { filter: drop-shadow(0 0 5px ${NEON.magenta}); }
+    }
+    .pulsing-border {
+      animation: pulseBorder 3s infinite;
+    }
+  `}</style>
             <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke={NEON.blue} strokeWidth="1.5" />
             <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke={NEON.magenta} strokeWidth="1" opacity="0.75" />
             <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill={NEON.orange} fillOpacity="0.85" stroke={NEON.orange} strokeWidth="0.5" />

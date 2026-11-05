@@ -29,14 +29,18 @@ export interface PassportSealInput {
   score: number;
 }
 
-const APP_SECRET = (() => {
+let APP_SECRET_CACHE: string | null = null;
+
+async function getAppSecret(): Promise<string> {
+  if (APP_SECRET_CACHE) return APP_SECRET_CACHE;
   try {
     const cfg = (await import("../../firebase-applet-config.json")).default;
-    return (cfg as { appSecret?: string }).appSecret || "agape-sovereign-default-secret";
+    APP_SECRET_CACHE = (cfg as { appSecret?: string }).appSecret || "agape-sovereign-default-secret";
   } catch {
-    return "agape-sovereign-default-secret";
+    APP_SECRET_CACHE = "agape-sovereign-default-secret";
   }
-})();
+  return APP_SECRET_CACHE;
+}
 
 const APP_NAME = "agape-sovereign";
 
@@ -51,7 +55,7 @@ async function computeDataHash(data: Record<string, unknown>): Promise<string> {
   return sha256(canonical);
 }
 
-function buildSealPayload(parts: { moduleId?: string; userId?: string; timestamp: number; dataHash: string }): string {
+function buildSealPayload(parts: { moduleId?: string; userId?: string; timestamp: number; dataHash: string }, secret: string): string {
   const segment = (key: string, value: string | number | undefined): string => {
     if (value === undefined || value === null) return `${key}:`;
     return `${key}:${value}`;
@@ -62,17 +66,15 @@ function buildSealPayload(parts: { moduleId?: string; userId?: string; timestamp
     segment("ts", parts.timestamp),
     segment("hash", parts.dataHash),
     segment("app", APP_NAME),
-    segment("secret", APP_SECRET),
+    segment("secret", secret),
   ].join("|");
 }
 
 export class SovereignHashService {
   private static instance: SovereignHashService;
-  private appSecret: string;
   private appName: string;
 
   private constructor() {
-    this.appSecret = APP_SECRET;
     this.appName = APP_NAME;
   }
 
@@ -87,14 +89,15 @@ export class SovereignHashService {
     return this.appName;
   }
 
-  getAppSecret(): string {
-    return this.appSecret;
+  async getAppSecret(): Promise<string> {
+    return getAppSecret();
   }
 
   async generateModuleSeal(moduleId: string, userId: string, data: Record<string, unknown>): Promise<SealRecord> {
     const timestamp = Date.now();
     const dataHash = await computeDataHash(data);
-    const payload = buildSealPayload({ moduleId, userId, timestamp, dataHash });
+    const secret = await this.getAppSecret();
+    const payload = buildSealPayload({ moduleId, userId, timestamp, dataHash }, secret);
     const seal = await sha256(payload);
 
     const record: SealRecord = {
@@ -117,14 +120,22 @@ export class SovereignHashService {
     seal: string,
     toleranceMs = 300_000,
   ): Promise<boolean> {
-    const expected = await this.generateModuleSeal(moduleId, userId, data);
-    if (expected.seal !== seal) return false;
-
     const userSeals = sealRegistry.get(userId) || [];
     const found = userSeals.find(
       (r) => r.seal === seal && r.moduleId === moduleId && !r.revoked,
     );
     if (!found) return false;
+
+    const secret = await this.getAppSecret();
+    const payload = buildSealPayload({
+      moduleId,
+      userId,
+      timestamp: found.timestamp,
+      dataHash: await computeDataHash(data)
+    }, secret);
+    const expectedSeal = await sha256(payload);
+
+    if (expectedSeal !== seal) return false;
 
     return Math.abs(found.timestamp - Date.now()) <= toleranceMs;
   }
@@ -132,12 +143,13 @@ export class SovereignHashService {
   async generateDocumentSeal(docType: string, uid: string, content: Record<string, unknown>): Promise<SealRecord> {
     const timestamp = Date.now();
     const dataHash = await computeDataHash(content);
+    const secret = await this.getAppSecret();
     const payload = buildSealPayload({
       moduleId: docType,
       userId: uid,
       timestamp,
       dataHash,
-    });
+    }, secret);
     const seal = await sha256(payload);
 
     const record: SealRecord = {
@@ -164,12 +176,13 @@ export class SovereignHashService {
       modules: moduleSummary,
     };
     const dataHash = await computeDataHash(payloadData);
+    const secret = await this.getAppSecret();
     const payload = buildSealPayload({
       moduleId: "passport",
       userId: input.userId,
       timestamp,
       dataHash,
-    });
+    }, secret);
     const seal = await sha256(payload);
 
     const record: SealRecord = {
@@ -218,12 +231,13 @@ export class SovereignHashService {
     const data = { rotatedFrom: oldSeal, timestamp: Date.now() };
     const dataHash = await computeDataHash(data);
     const timestamp = Date.now();
+    const secret = await this.getAppSecret();
     const payload = buildSealPayload({
       moduleId: target.moduleId || "rotated",
       userId,
       timestamp,
       dataHash,
-    });
+    }, secret);
     const newSeal = await sha256(payload);
 
     const newRecord: SealRecord = {

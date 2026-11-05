@@ -1,4 +1,4 @@
-import { NEON } from "../../theme";
+import { NEON } from "../theme/tokens";
 
 interface SovereignScoreProps {
   score: number;
@@ -27,8 +27,8 @@ export const SovereignScore = ({ score }: SovereignScoreProps) => {
           style={{ transition: "stroke-dasharray 1.5s ease" }}
         />
         <text x={cx} y={cy - 6} textAnchor="middle" fill={color} fontFamily="Orbitron" fontSize="22" fontWeight="900">{score}</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fill="#7B9BB5" fontFamily="Rajdhani" fontSize="9" letterSpacing="2">SOVEREIGN</text>
-        <text x={cx} y={cy + 25} textAnchor="middle" fill="#7B9BB5" fontFamily="Rajdhani" fontSize="9" letterSpacing="2">SCORE</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fill={NEON.textMuted} fontFamily="Rajdhani" fontSize="9" letterSpacing="2">SOVEREIGN</text>
+        <text x={cx} y={cy + 25} textAnchor="middle" fill={NEON.textMuted} fontFamily="Rajdhani" fontSize="9" letterSpacing="2">SCORE</text>
       </svg>
     </div>
   );

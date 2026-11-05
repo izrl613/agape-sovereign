@@ -69,20 +69,28 @@ export interface SealedEntry {
 }
 
 /** Hash + encrypt one module entry. Values are canonicalised first. */
+export async function generateDEK(): Promise<CryptoKey> {
+  return crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt'],
+  );
+}
+
 export async function sealEntry(
   uid: string,
   moduleId: string,
   values: Record<string, string>,
+  dek: CryptoKey,
 ): Promise<SealedEntry> {
   const canonical = JSON.stringify(
     Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b))),
   );
   const sha256Id = await sha256Hex(`${moduleId}::${canonical}`);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await vaultKey(uid);
   const cipher = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
-    key,
+    dek,
     new TextEncoder().encode(canonical),
   );
   return {
@@ -219,22 +227,19 @@ export async function unwrapDEKFromPasskey(passkeyWrapB64: string): Promise<Cryp
 }
 
 /** Unwrap DEK from recovery code wrap (called when user presents recovery code). */
-export async function unwrapDEKFromRecoveryCode(recoveryCodeWrapB64: string): Promise<CryptoKey> {
+export async function unwrapDEKFromRecoveryCode(recoveryCodeB64: string, recoveryCodeWrapB64: string): Promise<CryptoKey> {
   const wrap = JSON.parse(atob(recoveryCodeWrapB64)) as { iv: string; data: string };
   const encrypted = new Uint8Array(atob(wrap.data).split('').map(c => c.charCodeAt(0)));
   const iv = new Uint8Array(atob(wrap.iv).split('').map(c => c.charCodeAt(0)));
 
-  const codeBytes = atob(recoveryCodeWrapB64.split('.')[0] || '').split('').map(c => c.charCodeAt(0));
-  // Simpler: derive directly from recovery code string
+  const codeBytes = atob(recoveryCodeB64).split('').map(c => c.charCodeAt(0));
   const codeKey = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(atob(recoveryCodeWrapB64).slice(0, 120)),
+    new Uint8Array(codeBytes),
     'PBKDF2',
     false,
     ['deriveKey']
   );
-  // Actually, let's use a proper approach: the recovery code wrap contains its own derivation
-  // For now, derive from the stored code using PBKDF2
   const recoveredKey = await crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: new TextEncoder().encode('agape-dek-recovery-salt'), iterations: 100_000, hash: 'SHA-256' },
     codeKey,

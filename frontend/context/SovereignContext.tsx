@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import {
   auth,
   db,
@@ -10,7 +10,7 @@ import {
   signInGuest,
 } from '../firebase';
 import { PasskeyService } from '../auth/passkey-service';
-import { sovereignIdFor } from '../services/sha256Vault';
+import { sovereignIdFor, unwrapDEKFromPasskey, generateDEK, wrapDEKWithPasskey, wrapDEKWithRecoveryCode, generateRecoveryCode } from '../services/sha256Vault';
 import { ModuleReceipt } from '../services/moduleAgents';
 
 export type LoginMethod = 'PASSKEY' | 'GOOGLE' | 'ANON';
@@ -33,6 +33,7 @@ interface SovereignContextType {
   /** Session-only plaintext entries for the PDF (never persisted). */
   sessionEntries: Record<string, Record<string, string>>;
   googleAccessToken: string | null;
+  dek: CryptoKey | null;
   loginWithPasskey: (email?: string) => Promise<void>;
   registerPasskey: (email: string) => Promise<void>;
   loginWithGoogle: () => Promise<string | null>;
@@ -48,6 +49,20 @@ const SovereignContext = createContext<SovereignContextType | undefined>(undefin
 
 const receiptsKey = (uid: string) => `agape-receipts::${uid}`;
 const PASSKEY_SESSION_KEY = 'agape-passkey-session';
+
+async function openSovereignDB() {
+  return new Promise<{ db: IDBDatabase }>((resolve, reject) => {
+    const request = indexedDB.open('agape-sovereign-db', 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('outbox')) {
+        db.createObjectStore('outbox', { keyPath: 'sha256Id' });
+      }
+    };
+    request.onsuccess = () => resolve({ db: request.result });
+    request.onerror = () => reject(request.error);
+  });
+}
 
 function loadLocalReceipts(uid: string): ModuleReceipt[] {
   try {
@@ -65,11 +80,47 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [sessionEntries, setSessionEntries] = useState<Record<string, Record<string, string>>>({});
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
   const methodRef = useRef<LoginMethod>('GOOGLE');
+  const dekRef = useRef<CryptoKey | null>(null);
+
+  const getOrInitializeEnclave = useCallback(async (uid: string, email: string) => {
+    const docRef = doc(db, 'users', uid, 'enclave', 'keys');
+    const snap = await getDoc(docRef);
+
+    if (snap.exists()) {
+      const { passkeyWrap } = snap.data();
+      try {
+        dekRef.current = await unwrapDEKFromPasskey(passkeyWrap);
+        return;
+      } catch (e) {
+        console.error('Failed to unwrap DEK', e);
+        throw new Error('Failed to recover sovereign enclave keys.');
+      }
+    }
+
+    // Initialize new enclave
+    const dek = await generateDEK();
+    const passkeyWrap = await wrapDEKWithPasskey(dek);
+    const recoveryCode = generateRecoveryCode();
+    const recoveryCodeWrap = await wrapDEKWithRecoveryCode(dek, recoveryCode);
+
+    await setDoc(docRef, { passkeyWrap, recoveryCodeWrap });
+    dekRef.current = dek;
+
+    // In a real app, we'd prompt the user to save the recoveryCode here.
+    console.log(`Sovereign Recovery Code generated: ${recoveryCode}`);
+  }, []);
 
   const adoptUser = useCallback(async (u: SovereignUser) => {
     methodRef.current = u.method;
     setUserState(u);
     setSovereignId(await sovereignIdFor(u.id, u.email, u.method));
+
+    try {
+      await getOrInitializeEnclave(u.id, u.email);
+    } catch (e) {
+      console.error('Enclave initialization failed', e);
+    }
+
     const local = loadLocalReceipts(u.id);
     setReceipts(local);
     if (u.method !== 'PASSKEY') {
@@ -169,29 +220,34 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   const addReceipt = useCallback(
     async (receipt: ModuleReceipt, entryValues: Record<string, string>): Promise<ModuleReceipt> => {
       if (!user) throw new Error('Not signed in.');
-      let stored = receipt;
-      if (user.method !== 'PASSKEY' && auth.currentUser) {
-        try {
-          await setDoc(doc(db, 'users', user.id, 'receipts', receipt.sha256Id), {
-            ...receipt,
-            storage: 'FIRESTORE+LOCAL',
-          });
-          stored = { ...receipt, storage: 'FIRESTORE+LOCAL' };
-        } catch {
-          stored = { ...receipt, storage: 'LOCAL_ONLY' };
-        }
+
+      // 1. Save to local IndexedDB outbox first (Zero-Trust)
+      try {
+        const { db: idb } = await openSovereignDB();
+        const tx = idb.transaction('outbox', 'readwrite');
+        tx.objectStore('outbox').put(receipt);
+      } catch (e) {
+        console.error('IndexedDB write failed', e);
       }
+
+      // 2. Update local session state immediately for responsiveness
+      const stored = { ...receipt, storage: 'LOCAL_ONLY' };
       setReceipts((prev) => {
         const next = [...prev.filter((r) => r.sha256Id !== stored.sha256Id), stored];
         localStorage.setItem(receiptsKey(user.id), JSON.stringify(next));
         return next;
       });
+
       const safeValues = { ...entryValues };
       delete safeValues.passwordCheck;
       setSessionEntries((prev) => ({ ...prev, [stored.sha256Id]: safeValues }));
+
+      // 3. Trigger background sync
+      void syncReceipts();
+
       return stored;
     },
-    [user],
+    [user, syncReceipts],
   );
 
   const clearSession = useCallback(async () => {
@@ -205,6 +261,44 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     try { await fbSignOut(auth); } catch { /* passkey sessions have no Firebase user */ }
   }, []);
 
+  const syncReceipts = useCallback(async () => {
+    if (!user) return;
+    try {
+      const { db: idb } = await openSovereignDB();
+      const tx = idb.transaction('outbox', 'readwrite');
+      const store = tx.objectStore('outbox');
+      const all = await new Promise<ModuleReceipt[]>((res) => {
+        const req = store.getAll();
+        req.onsuccess = () => res(req.result);
+      });
+
+      if (all.length === 0) return;
+
+      // Batch in chunks of 5 to stay safe under 15 RPM
+      for (let i = 0; i < all.length; i += 5) {
+        const batch = all.slice(i, i + 5);
+        await Promise.all(batch.map(async (r) => {
+          try {
+            await setDoc(doc(db, 'users', user.id, 'receipts', r.sha256Id), {
+              ...r,
+              storage: 'FIRESTORE+LOCAL',
+            });
+          } catch (e) {
+            console.error('Batch write failed for', r.sha256Id, e);
+          }
+        }));
+        // Small delay to prevent burst quota hits
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+
+      // Clear outbox
+      const clearTx = idb.transaction('outbox', 'readwrite');
+      clearTx.objectStore('outbox').clear();
+    } catch (e) {
+      console.error('Sync failed', e);
+    }
+  }, [user]);
+
   return (
     <SovereignContext.Provider
       value={{
@@ -215,6 +309,7 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
         collectedVectors: Array.from(new Set(receipts.map((r) => r.moduleId))),
         sessionEntries,
         googleAccessToken,
+        dek: dekRef.current,
         loginWithPasskey,
         registerPasskey,
         loginWithGoogle,
