@@ -1,0 +1,131 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function hasOnlyKeys(data, allowed) {
+      return data.keys().hasOnly(allowed);
+    }
+
+    // User root and profile: allow owner read; tightly constrain client writes.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      // Root account status and schema version are server-managed.
+      allow create, update, delete: if false;
+
+      match /profile/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && docId == 'private'
+          && hasOnlyKeys(request.resource.data, [
+            'displayName', 'locale', 'timezone', 'consentVersion',
+            'consentUpdatedAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() <= 80;
+        allow delete: if false;
+      }
+
+      match /preferences/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && docId == 'default'
+          && hasOnlyKeys(request.resource.data, [
+            'theme', 'locale', 'timezone', 'notifications',
+            'scanCadence', 'aiPersonalization', 'updatedAt'
+          ]);
+        allow delete: if false;
+      }
+
+      // Source connection state and all token references are server-managed.
+      match /sources/{sourceId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /devices/{deviceId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      // Scans, evidence, scores, verification, and findings are server-owned.
+      match /scans/{scanId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /findings/{findingId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /remediation/{remediationId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /conversations/{conversationId} {
+        allow read: if isOwner(uid);
+        // Create and update through callable functions to validate quotas/context.
+        allow write: if false;
+
+        match /messages/{messageId} {
+          allow read: if isOwner(uid);
+          allow write: if false;
+        }
+      }
+
+      match /reports/{reportId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /auditEvents/{eventId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+
+      match /notificationSettings/{docId} {
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && docId == 'default'
+          && hasOnlyKeys(request.resource.data, [
+            'emailEnabled', 'pushEnabled', 'updatedAt'
+          ]);
+        allow delete: if false;
+      }
+    }
+
+    // Aggregated operational health only; admin claim is issued server-side.
+    match /system/health {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /system/featureFlags/{flagId} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /adminMetrics/{metricId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Explicit catch-all: no access unless a rule above grants it.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
