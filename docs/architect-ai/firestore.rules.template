@@ -32,8 +32,9 @@ service cloud.firestore {
             'displayName', 'locale', 'timezone', 'consentVersion',
             'consentUpdatedAt', 'createdAt', 'updatedAt'
           ])
-          && request.resource.data.displayName is string
-          && request.resource.data.displayName.size() <= 80;
+          && (!('displayName' in request.resource.data)
+            || (request.resource.data.displayName is string
+              && request.resource.data.displayName.size() <= 80));
         allow delete: if false;
       }
 
