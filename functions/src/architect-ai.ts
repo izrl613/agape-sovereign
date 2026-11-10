@@ -47,7 +47,7 @@ architectApp.use(cors({
     const allowed = [
       "https://sovereign.nyc",
       "https://agape-sovereign.web.app",
-      "https://agape-sovereign.firebaseapp.com",
+      "https://sovereign.nyc",
       "http://localhost:5173",
       "http://localhost:5000",
     ];

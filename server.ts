@@ -139,7 +139,7 @@ async function startServer() {
     "https://sovereign.nyc",
     "https://www.sovereign.nyc",
     "https://agape-sovereign.web.app",
-    "https://agape-sovereign.firebaseapp.com",
+    "https://sovereign.nyc",
     `http://localhost:${Number(process.env.PORT) || 5000}`,
     "http://localhost:5173",
     "http://localhost:5000",
@@ -274,7 +274,7 @@ async function startServer() {
         response: attestationResponse,
         expectedChallenge: challenge,
         expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
-        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
+        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "sovereign.nyc"],
         requireUserVerification: false,
       });
 
@@ -436,7 +436,7 @@ async function startServer() {
         response: assertionResponse,
         expectedChallenge: challenge,
         expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
-        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
+        expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "sovereign.nyc"],
         credential: {
           id: storedCred.credentialID || credentialID,
           publicKey: publicKeyBuffer,

@@ -54,16 +54,30 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; connect-src 'self' https: wss://*.firebaseio.com; frame-src https://accounts.google.com https://sovereign.nyc https://agape-sovereign.firebaseapp.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'"
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://www.gstatic.com; connect-src 'self' https: wss://*.firebaseio.com; frame-src https://accounts.google.com https://sovereign.nyc https://sovereign.nyc; img-src 'self' data: https; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'"
           }
         ]
       }
     ],
     "rewrites": [
       {
-        "source": "/api/auth/**",
+        "source": "/api/auth/passkey/**",
         "function": {
           "functionId": "authApi",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/auth/google/**",
+        "function": {
+          "functionId": "googleAuthApi",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/auth/git/**",
+        "function": {
+          "functionId": "gitAuthApi",
           "region": "us-central1"
         }
       },
@@ -91,7 +105,7 @@
         "*.local"
       ],
       "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint",
+
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "source": "functions"

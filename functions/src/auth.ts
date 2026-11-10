@@ -65,7 +65,7 @@ const BUILTIN_ORIGINS = [
   DEFAULT_ORIGIN,
   "https://www.sovereign.nyc",
   "https://agape-sovereign.web.app",
-  "https://agape-sovereign.firebaseapp.com",
+  "https://sovereign.nyc",
   "http://localhost:5173",
   "http://localhost:5000",
   "http://localhost:5002",
@@ -145,7 +145,7 @@ authApp.use(cors({
         "https://sovereign.nyc",
         "https://www.sovereign.nyc",
         "https://agape-sovereign.web.app",
-        "https://agape-sovereign.firebaseapp.com",
+        "https://sovereign.nyc",
       ];
       if (allowedProdOrigins.includes(origin)) {
         callback(null, true);
@@ -881,7 +881,7 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
       response: body,
       expectedChallenge,
       expectedOrigin: [expectedOrigin, ...cfg.allowedOrigins],
-      expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "agape-sovereign.firebaseapp.com"],
+      expectedRPID: [rpId, DEFAULT_RP_ID, "agape-sovereign.web.app", "sovereign.nyc"],
       credential: {
         id: (credData.credentialID || credentialId) as string,
         publicKey: Buffer.from(credData.publicKey, "base64url"),

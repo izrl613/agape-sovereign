@@ -7,7 +7,7 @@ export interface WrappedDEK {
   ciphertext: ArrayBuffer;
   iv: Uint8Array;
   salt: Uint8Array;
-  tag: Uint8Array; 
+  tag: Uint8Array;
 }
 
 export class SovereignEncryption {
@@ -25,6 +25,34 @@ export class SovereignEncryption {
     view.fill(0);
   }
 
+  /**
+   * Generate a deterministic SHA‑256 integrity hash.
+   * The hash is computed over the concatenation of `moduleId`, `data`, `salt`
+   * and optional `pepper`, separated by the pipe character (`|`).
+   * Returns a lowercase hex string.
+   */
+  static async generateIntegrityHash(
+    moduleId: string,
+    data: string,
+    salt: string,
+    pepper?: string
+  ): Promise<string> {
+    const encoder = new TextEncoder();
+    const payload = pepper !== undefined && pepper !== ''
+      ? `${moduleId}|${data}|${salt}|${pepper}`
+      : `${moduleId}|${data}|${salt}`;
+    const bytes = encoder.encode(payload);
+    // Support both browser (window.crypto) and Node.js (crypto.webcrypto)
+    const cryptoObj = typeof window !== 'undefined' && (window as any).crypto
+      ? (window as any).crypto
+      : (await import('crypto')).webcrypto;
+    const hashBuffer = await cryptoObj.subtle.digest('SHA-256', bytes);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  }
+
   static async generateSovereignDEK(): Promise<CryptoKey> {
     return await window.crypto.subtle.generateKey(
       {
@@ -39,7 +67,7 @@ export class SovereignEncryption {
   static async deriveWrappingKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
     const encoder = new TextEncoder();
     const secretBuffer = encoder.encode(secret);
-    
+
     const baseKey = await window.crypto.subtle.importKey(
       'raw',
       secretBuffer,
@@ -63,7 +91,7 @@ export class SovereignEncryption {
 
     // Sanitize the temporary secret buffer
     this.sanitizeBuffer(secretBuffer);
-    
+
     return wrappingKey;
   }
 
@@ -147,7 +175,7 @@ export class SovereignEncryption {
 
     const decoder = new TextDecoder();
     const result = decoder.decode(decrypted);
-    
+
     // Sanitize the decrypted buffer
     this.sanitizeBuffer(decrypted);
 

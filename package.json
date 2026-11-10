@@ -4,6 +4,8 @@
   "private": true,
   "description": "Agape Sovereign AI — Digital Identity Defense Enclave",
   "scripts": {
+    "commit": "git add -A && git commit",
+    "devcommit": "npm run lint && npm run commit",
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "build:frontend": "npm --prefix frontend run build",
