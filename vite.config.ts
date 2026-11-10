@@ -1,4 +1,12 @@
-import tailwindcss from '@tailwindcss/vite';
+// Optional Tailwind CSS Vite plugin – load if installed
+let tailwindcss: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  tailwindcss = require('@tailwindcss/vite');
+} catch {
+  // Plugin not installed; continue without Tailwind Vite integration
+}
+
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
