@@ -1,4 +1,4 @@
-# ðï¸ Architect AI â Integration & Development Guide
+# 🏗️ Architect AI — Integration & Development Guide
 
 ## Complete Technical Reference for Developers
 
@@ -6,157 +6,157 @@ This guide explains how all components work together and how to extend Architect
 
 ---
 
-## ð Architecture Overview
+## 📐 Architecture Overview
 
 ```
-âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-â                     ARCHITECT AI STACK                      â
-âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ¤
-â                                                             â
-â  ââââââââââââââââââââ         ââââââââââââââââââââ        â
-â  â   Firebase Auth  âââââââââââ¤  Next.js + React â        â
-â  â  (OAuth + WebAuthn)       â  (Client-Side UI)â        â
-â  ââââââââââ¬ââââââââââ         ââââââââââ¬ââââââââââ        â
-â           â                            â                   â
-â  ââââââââââ¼âââââââââââââââââââââââââââââââââââââââââââ    â
-â  â        Firebase Hosting (CDN + HTTPS)            â    â
-â  âââââââââââââââââââââââââââââââââââââââââââââââââââ    â
-â                                                          â
-â  ââââââââââââââââââââ    ââââââââââââââââââââ          â
-â  â  Cloud Firestore ââââââ¤  Cloud Functions â          â
-â  â (DIFF Data, User â    â (DIFF Scanning,  â          â
-â  â  Profiles)       â    â PDF Generation)  â          â
-â  ââââââââââ¬ââââââââââ    ââââââââââââââââââââ          â
-â           â                                             â
-â  ââââââââââ¼ââââââââââââââââââââââââââââââââââââââââââ   â
-â  â    Firebase Storage (PDF Reports, Backups)      â   â
-â  âââââââââââââââââââââââââââââââââââââââââââââââââââââ   â
-â                                                          â
-â  ââââââââââââââââââââââââââââââââââââââââââââââââââââ   â
-â  â  Gemini API (AI Chat Engine)                    â   â
-â  â  - Real-time Q&A                               â   â
-â  â  - Context-bound sessions                      â   â
-â  â  - Rate-limited guardrails                     â   â
-â  ââââââââââââââââââââââââââââââââââââââââââââââââââââ   â
-â                                                         â
-âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+┌─────────────────────────────────────────────────────────────┐
+│                     ARCHITECT AI STACK                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────┐         ┌──────────────────┐        │
+│  │   Firebase Auth  │◄────────┤  Next.js + React │        │
+│  │  (OAuth + WebAuthn)       │  (Client-Side UI)│        │
+│  └────────┬─────────┘         └────────┬─────────┘        │
+│           │                            │                   │
+│  ┌────────▼──────────────────────────────────────────┐    │
+│  │        Firebase Hosting (CDN + HTTPS)            │    │
+│  └─────────────────────────────────────────────────┘    │
+│                                                          │
+│  ┌──────────────────┐    ┌──────────────────┐          │
+│  │  Cloud Firestore │◄───┤  Cloud Functions │          │
+│  │ (DIFF Data, User │    │ (DIFF Scanning,  │          │
+│  │  Profiles)       │    │ PDF Generation)  │          │
+│  └────────┬─────────┘    └──────────────────┘          │
+│           │                                             │
+│  ┌────────▼─────────────────────────────────────────┐   │
+│  │    Firebase Storage (PDF Reports, Backups)      │   │
+│  └───────────────────────────────────────────────────┘   │
+│                                                          │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  Gemini API (AI Chat Engine)                    │   │
+│  │  - Real-time Q&A                               │   │
+│  │  - Context-bound sessions                      │   │
+│  │  - Rate-limited guardrails                     │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ð Data Flow Architecture
+## 🔄 Data Flow Architecture
 
 ### Authentication Flow
 ```
 User
-  â
+  ↓
 [Google/Apple OAuth]
-  â
+  ↓
 Firebase Auth (ID Token + Refresh Token)
-  â
+  ↓
 WebAuthn Passkey Registration (device-bound)
-  â
+  ↓
 Create User Document in Firestore
-  â
+  ↓
 Session Token (short-lived)
-  â
+  ↓
 Access Application
 ```
 
 ### DIFF Scan Flow
 ```
 User initiates scan
-  â
+  ↓
 POST /api/diff/scan
-  â
+  ↓
 Cloud Function: initiateDIFFScan()
-  â
+  ↓
 Create Firestore doc: diff_scans/{scanId}
-  â
+  ↓
 Process 16 Identity Vectors in parallel:
-  ââ Email Breach Scanner
-  ââ Social Media Footprint
-  ââ Device File Scan
-  ââ ...
-  ââ Behavioral Profile Analysis
-  â
+  ├─ Email Breach Scanner
+  ├─ Social Media Footprint
+  ├─ Device File Scan
+  ├─ ...
+  └─ Behavioral Profile Analysis
+  ↓
 Generate Findings for each vector
-  â
+  ↓
 Calculate Sovereign Score (0-100)
-  â
+  ↓
 Generate SHA256 digest
-  â
+  ↓
 Store in Firestore:
-  ââ /diff_scans/{scanId}
-     ââ vectorResults/{vectorId}
-     ââ findings/{findingId}
-  â
+  └─ /diff_scans/{scanId}
+     ├─ vectorResults/{vectorId}
+     └─ findings/{findingId}
+  ↓
 Notify Frontend (real-time update)
 ```
 
 ### PDF Report Generation Flow
 ```
 User clicks "Generate DIFF Report"
-  â
+  ↓
 POST /api/report/generate { scanId }
-  â
+  ↓
 Cloud Function: generateDIFFReport()
-  â
+  ↓
 Fetch Firestore scan data
-  â
+  ↓
 Generate PDF buffer:
-  ââ Header + Sovereign Score
-  ââ Vector breakdown table
-  ââ Finding details
-  ââ Recommendations
-  ââ SHA256 digest footer
-  â
+  ├─ Header + Sovereign Score
+  ├─ Vector breakdown table
+  ├─ Finding details
+  ├─ Recommendations
+  └─ SHA256 digest footer
+  ↓
 Upload to Firebase Storage:
-  ââ /diff_reports/pdfs/{userId}/{reportId}.pdf
-  â
+  └─ /diff_reports/pdfs/{userId}/{reportId}.pdf
+  ↓
 Generate Signed URL (7-day expiry)
-  â
+  ↓
 Store metadata in Firestore:
-  ââ /diff_reports/{reportId}
-     ââ downloadUrl
-     ââ sha256Digest
-     ââ expiresAt (2 years)
-  â
+  └─ /diff_reports/{reportId}
+     ├─ downloadUrl
+     ├─ sha256Digest
+     └─ expiresAt (2 years)
+  ↓
 Return download link to user
 ```
 
 ### AI Chat Flow
 ```
 User: "What are my top 3 exposures?"
-  â
+  ↓
 POST /api/ai/chat
   {
     messages: [{ role: "user", content: "..." }],
     context: { scanData, sovereignScore }
   }
-  â
+  ↓
 Call Gemini API with system prompt
-  ââ System Context:
+  └─ System Context:
      - You are Architect AI
      - DIFF context: 16 vectors
      - ECRA 2026 guidelines
      - Current scan data
-  â
+  ↓
 Process user message + context
-  â
+  ↓
 Stream response token-by-token
-  â
+  ↓
 Return formatted response:
-  ââ Markdown with emojis
+  └─ Markdown with emojis
      Inline code formatting
      Hyperlinks where relevant
-  â
+  ↓
 Display in chat UI
 ```
 
 ---
 
-## ð API Reference
+## 🔌 API Reference
 
 ### Authentication Endpoints
 
@@ -408,7 +408,7 @@ Response:
 
 ---
 
-## ð Authentication Implementation
+## 🔐 Authentication Implementation
 
 ### Client-Side (React)
 
@@ -465,153 +465,153 @@ export const initiateDIFFScan = functions.https.onCall(async (data, context) => 
 
 ---
 
-## ð Firestore Data Model
+## 📊 Firestore Data Model
 
 ### User Document
 ```
 /users/{userId}
-âââ uid: string
-âââ email: string
-âââ displayName: string
-âââ provider: "google" | "apple"
-âââ createdAt: Timestamp
-âââ sovereignScore: number (0-100)
-âââ lastDIFFScan: Timestamp
-âââ monitoredEmails: string[]
-âââ Subcollections:
-    âââ /passkeyCredentials/{credentialId}
-    â   âââ publicKey: string
-    â   âââ transports: string[]
-    â   âââ createdAt: Timestamp
-    âââ /monitoredEmails/{emailDoc}
-        âââ email: string
-        âââ status: "active" | "paused"
-        âââ addedAt: Timestamp
+├── uid: string
+├── email: string
+├── displayName: string
+├── provider: "google" | "apple"
+├── createdAt: Timestamp
+├── sovereignScore: number (0-100)
+├── lastDIFFScan: Timestamp
+├── monitoredEmails: string[]
+└── Subcollections:
+    ├── /passkeyCredentials/{credentialId}
+    │   ├── publicKey: string
+    │   ├── transports: string[]
+    │   └── createdAt: Timestamp
+    └── /monitoredEmails/{emailDoc}
+        ├── email: string
+        ├── status: "active" | "paused"
+        └── addedAt: Timestamp
 ```
 
 ### DIFF Scan Document
 ```
 /diff_scans/{scanId}
-âââ userId: string
-âââ email: string
-âââ scanId: string
-âââ timestamp: Timestamp
-âââ status: "IN_PROGRESS" | "COMPLETED" | "FAILED"
-âââ vectorResults: {
-â   email: { /* VectorResult */ },
-â   social: { /* VectorResult */ },
-â   // ... 14 more
-â }
-âââ sovereignScore: number
-âââ totalNuked: number
-âââ totalKnoxed: number
-âââ totalMonitored: number
-âââ sha256Hash: string
-âââ completedAt: Timestamp
-âââ Subcollections:
-    âââ /vectorResults/{vectorId}
-    â   âââ vectorId: string
-    â   âââ vectorName: string
-    â   âââ severity: number
-    â   âââ nukedCount: number
-    â   âââ knoxedCount: number
-    â   âââ findings: Finding[]
-    â   âââ timestamp: Timestamp
-    âââ /findings/{findingId}
-        âââ id: string
-        âââ type: "NUKED" | "KNOXED" | "MONITORED"
-        âââ label: string
-        âââ detail: string
-        âââ source: string
-        âââ actionRequired: boolean
-        âââ actionTaken: string
+├── userId: string
+├── email: string
+├── scanId: string
+├── timestamp: Timestamp
+├── status: "IN_PROGRESS" | "COMPLETED" | "FAILED"
+├── vectorResults: {
+│   email: { /* VectorResult */ },
+│   social: { /* VectorResult */ },
+│   // ... 14 more
+│ }
+├── sovereignScore: number
+├── totalNuked: number
+├── totalKnoxed: number
+├── totalMonitored: number
+├── sha256Hash: string
+├── completedAt: Timestamp
+└── Subcollections:
+    ├── /vectorResults/{vectorId}
+    │   ├── vectorId: string
+    │   ├── vectorName: string
+    │   ├── severity: number
+    │   ├── nukedCount: number
+    │   ├── knoxedCount: number
+    │   ├── findings: Finding[]
+    │   └── timestamp: Timestamp
+    └── /findings/{findingId}
+        ├── id: string
+        ├── type: "NUKED" | "KNOXED" | "MONITORED"
+        ├── label: string
+        ├── detail: string
+        ├── source: string
+        ├── actionRequired: boolean
+        └── actionTaken: string
 ```
 
 ### Report Document
 ```
 /diff_reports/{reportId}
-âââ userId: string
-âââ reportId: string
-âââ scanId: string
-âââ createdAt: Timestamp
-âââ sovereignScore: number
-âââ totalNuked: number
-âââ totalKnoxed: number
-âââ pdfStoragePath: string
-âââ sha256Digest: string
-âââ downloadUrl: string (signed, 7-day expiry)
-âââ expiresAt: Timestamp (2 years from creation)
+├── userId: string
+├── reportId: string
+├── scanId: string
+├── createdAt: Timestamp
+├── sovereignScore: number
+├── totalNuked: number
+├── totalKnoxed: number
+├── pdfStoragePath: string
+├── sha256Digest: string
+├── downloadUrl: string (signed, 7-day expiry)
+└── expiresAt: Timestamp (2 years from creation)
 ```
 
 ### Audit Log Document
 ```
 /audit_logs/{logId}
-âââ action: string (e.g., "DIFF_SCAN_INITIATED")
-âââ userId: string
-âââ timestamp: Timestamp (server)
-âââ details: {
-â   scanId?: string,
-â   email?: string,
-â   sovereignScore?: number,
-â   error?: string,
-â   ipAddress?: string
-â }
+├── action: string (e.g., "DIFF_SCAN_INITIATED")
+├── userId: string
+├── timestamp: Timestamp (server)
+├── details: {
+│   scanId?: string,
+│   email?: string,
+│   sovereignScore?: number,
+│   error?: string,
+│   ipAddress?: string
+│ }
 ```
 
 ---
 
-## ð¨ Frontend Component Structure
+## 🎨 Frontend Component Structure
 
 ### Main App Shell
 ```
 ArchitectAIApp
-âââ GlobalStyle (CSS-in-JS)
-âââ AuthScreen (if not logged in)
-â   âââ Landing
-â   âââ OAuth providers (Google/Apple)
-â   âââ Passkey registration
-â   âââ Loading states
-âââ MainApp (if logged in)
-    âââ TopHeader
-    â   âââ Live indicator
-    â   âââ Time display
-    â   âââ Admin button (conditional)
-    â   âââ Profile button
-    âââ LeftNav
-    â   âââ Logo
-    â   âââ Stats (NUKED/KNOXED counts)
-    â   âââ Main sections (Dashboard, AI, Reports)
-    â   âââ DIFF Module list (16 items)
-    âââ MainContent
-    â   âââ DashboardView
-    â   â   âââ KPI cards
-    â   â   âââ 16-Module grid
-    â   âââ ModuleDetailView
-    â   â   âââ Module header
-    â   â   âââ Score display
-    â   â   âââ Findings list
-    â   â   âââ Action buttons
-    â   âââ ArchitectAIView (Chat)
-    â   â   âââ Message history
-    â   â   âââ Suggested queries
-    â   â   âââ Input field
-    â   âââ ReportView
-    â       âââ Report preview
-    â       âââ Vector breakdown
-    â       âââ Generate button
-    âââ AdminPortal (conditional)
-    â   âââ Infrastructure stats
-    â   âââ Firebase services status
-    â   âââ Audit trail
-    âââ ProfilePanel (conditional)
-        âââ User info
-        âââ Monitored emails
-        âââ Account settings
+├── GlobalStyle (CSS-in-JS)
+├── AuthScreen (if not logged in)
+│   ├── Landing
+│   ├── OAuth providers (Google/Apple)
+│   ├── Passkey registration
+│   └── Loading states
+└── MainApp (if logged in)
+    ├── TopHeader
+    │   ├── Live indicator
+    │   ├── Time display
+    │   ├── Admin button (conditional)
+    │   └── Profile button
+    ├── LeftNav
+    │   ├── Logo
+    │   ├── Stats (NUKED/KNOXED counts)
+    │   ├── Main sections (Dashboard, AI, Reports)
+    │   └── DIFF Module list (16 items)
+    ├── MainContent
+    │   ├── DashboardView
+    │   │   ├── KPI cards
+    │   │   └── 16-Module grid
+    │   ├── ModuleDetailView
+    │   │   ├── Module header
+    │   │   ├── Score display
+    │   │   ├── Findings list
+    │   │   └── Action buttons
+    │   ├── ArchitectAIView (Chat)
+    │   │   ├── Message history
+    │   │   ├── Suggested queries
+    │   │   └── Input field
+    │   └── ReportView
+    │       ├── Report preview
+    │       ├── Vector breakdown
+    │       └── Generate button
+    ├── AdminPortal (conditional)
+    │   ├── Infrastructure stats
+    │   ├── Firebase services status
+    │   └── Audit trail
+    └── ProfilePanel (conditional)
+        ├── User info
+        ├── Monitored emails
+        └── Account settings
 ```
 
 ---
 
-## ð Custom Extensions
+## 🚀 Custom Extensions
 
 ### Adding a New DIFF Vector
 
@@ -643,7 +643,7 @@ function generateNewVectorResult(vector) {
 ```typescript
 const DIFF_MODULES = [
   // ... existing modules
-  { id: "newvector", icon: "â", label: "New Vector Name", vector: "V-17", ... }
+  { id: "newvector", icon: "⊕", label: "New Vector Name", vector: "V-17", ... }
 ];
 ```
 
@@ -692,7 +692,7 @@ async function registerPasskey(user) {
 
 ---
 
-## ð§ª Testing & Debugging
+## 🧪 Testing & Debugging
 
 ### Unit Tests (Jest)
 ```typescript
@@ -731,7 +731,7 @@ firebase functions:log --follow
 
 ---
 
-## ð Security Best Practices
+## 🔒 Security Best Practices
 
 1. **Never commit secrets** to Git
 2. **Use environment variables** for all credentials
@@ -746,7 +746,7 @@ firebase functions:log --follow
 
 ---
 
-## ð Support & Resources
+## 📞 Support & Resources
 
 - **Firebase Docs**: https://firebase.google.com/docs
 - **Next.js Docs**: https://nextjs.org/docs
@@ -755,6 +755,6 @@ firebase functions:log --follow
 
 ---
 
-**Architect AI â Complete Technical Guide**
+**Architect AI — Complete Technical Guide**
 
 **Last Updated**: May 5, 2026

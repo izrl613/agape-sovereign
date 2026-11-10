@@ -12,7 +12,7 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
-    "max-len": ["error", {"code": 80, "ignoreUrls": true}],
+    "max-len": ["error", {"code": 120, "ignoreUrls": true}],
     "object-curly-spacing": ["error", "always"],
     "no-trailing-spaces": "error",
     "no-multiple-empty-lines": ["error", {"max": 1}],

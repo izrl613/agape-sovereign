@@ -1,4 +1,4 @@
-# ð Architect AI â Complete Deployment Guide
+# 🚀 Architect AI — Complete Deployment Guide
 
 ## Agape Sovereign Enclave 2026 | DIFF Intelligence Platform
 
@@ -6,7 +6,7 @@ This guide will walk you through deploying Architect AI on Firebase free tier wi
 
 ---
 
-## â Pre-Deployment Checklist
+## ✅ Pre-Deployment Checklist
 
 - [ ] Firebase project created: **agape-sovereign**
 - [ ] Node.js 20+ installed
@@ -17,10 +17,10 @@ This guide will walk you through deploying Architect AI on Firebase free tier wi
 
 ---
 
-## ð Your Firebase Credentials
+## 🔑 Your Firebase Credentials
 
 ```
-ð Firebase Console: https://console.firebase.google.com/project/agape-sovereign
+📊 Firebase Console: https://console.firebase.google.com/project/agape-sovereign
 
 Project ID: agape-sovereign
 Auth Domain: agape-sovereign.firebaseapp.com
@@ -32,7 +32,7 @@ Measurement ID: G-6YG9BGTWDD
 
 ---
 
-## ð¦ Step 1: Clone & Install Dependencies
+## 📦 Step 1: Clone & Install Dependencies
 
 ```bash
 # Clone the repository
@@ -51,16 +51,16 @@ cd ..
 
 **Expected Output:**
 ```
-â next@15.x.x
-â react@19.x.x
-â firebase@10.x.x
-â firebase-admin@12.x.x
-â firebase-functions@5.x.x
+✓ next@15.x.x
+✓ react@19.x.x
+✓ firebase@10.x.x
+✓ firebase-admin@12.x.x
+✓ firebase-functions@5.x.x
 ```
 
 ---
 
-## ð§ Step 2: Configure Environment Variables
+## 🔧 Step 2: Configure Environment Variables
 
 ### Create `.env.local`
 
@@ -116,7 +116,7 @@ NEXT_PUBLIC_USE_FIREBASE_EMULATOR=false
 
 ---
 
-## ð Step 3: Initialize Firebase CLI
+## 🔐 Step 3: Initialize Firebase CLI
 
 ```bash
 # Login to Firebase
@@ -143,7 +143,7 @@ firebase use agape-sovereign
 
 ---
 
-## ð¡ï¸ Step 4: Deploy Firestore Security Rules
+## 🛡️ Step 4: Deploy Firestore Security Rules
 
 Firestore rules ensure **zero-knowledge** architecture where users can only access their own data.
 
@@ -152,8 +152,8 @@ Firestore rules ensure **zero-knowledge** architecture where users can only acce
 firebase deploy --only firestore:rules
 
 # Expected output:
-# â firestore.rules uploaded
-# â Firestore Rules have been successfully deployed
+# ✔ firestore.rules uploaded
+# ✔ Firestore Rules have been successfully deployed
 ```
 
 ### Verify Rules
@@ -169,7 +169,7 @@ firebase firestore:indexes
 
 ---
 
-## âï¸ Step 5: Deploy Cloud Functions
+## ☁️ Step 5: Deploy Cloud Functions
 
 Cloud Functions handle DIFF scanning, PDF generation, and cleanup tasks.
 
@@ -184,10 +184,10 @@ npm run deploy
 firebase deploy --only functions
 
 # Expected output:
-# â Function initiateDIFFScan deployed
-# â Function generateDIFFReport deployed
-# â Function cleanupOldReports deployed
-# â Function healthCheck deployed
+# ✔ Function initiateDIFFScan deployed
+# ✔ Function generateDIFFReport deployed
+# ✔ Function cleanupOldReports deployed
+# ✔ Function healthCheck deployed
 ```
 
 ### Verify Function Deployment
@@ -224,7 +224,7 @@ curl https://us-central1-agape-sovereign.cloudfunctions.net/healthCheck
 
 ---
 
-## ðï¸ Step 6: Build Next.js Application
+## 🏗️ Step 6: Build Next.js Application
 
 ```bash
 # Go back to root
@@ -234,23 +234,23 @@ cd ..
 npm run build
 
 # Expected output:
-# â Compiled successfully
-# â Linting and checking validity of types
-# â Creating an optimized production build
+# ✓ Compiled successfully
+# ✓ Linting and checking validity of types
+# ✓ Creating an optimized production build
 # Route (pages) Size
-# â /   42 KB
+# ○ /   42 KB
 ```
 
 ---
 
-## ð Step 7: Deploy to Firebase Hosting
+## 🚀 Step 7: Deploy to Firebase Hosting
 
 ```bash
 # Deploy to Firebase Hosting
 firebase deploy --only hosting
 
 # Expected output:
-# â hosting[agape-sovereign]: Release complete
+# ✔ hosting[agape-sovereign]: Release complete
 # 
 # Project Console: https://console.firebase.google.com/project/agape-sovereign
 # Hosting URL: https://agape-sovereign.web.app
@@ -270,14 +270,14 @@ firebase open hosting:site
 
 ---
 
-## ð¯ Step 8: Complete Deployment
+## 🎯 Step 8: Complete Deployment
 
 ```bash
 # Deploy everything at once (if not done individually)
 firebase deploy
 
 # Expected output:
-# â Deploy complete!
+# ✔ Deploy complete!
 # 
 # Project Console: https://console.firebase.google.com/project/agape-sovereign
 # Hosting URL: https://agape-sovereign.web.app
@@ -285,7 +285,7 @@ firebase deploy
 
 ---
 
-## ð Step 9: Verify Everything is Working
+## 📊 Step 9: Verify Everything is Working
 
 ### 1. Check Firebase Console
 
@@ -295,11 +295,11 @@ https://console.firebase.google.com/project/agape-sovereign
 
 Go through each section:
 
-- **Authentication** â Check OAuth providers (Google, Apple)
-- **Firestore** â Verify collections initialized
-- **Storage** â Check bucket accessible
-- **Cloud Functions** â All 4 functions deployed
-- **Hosting** â Latest release active
+- **Authentication** → Check OAuth providers (Google, Apple)
+- **Firestore** → Verify collections initialized
+- **Storage** → Check bucket accessible
+- **Cloud Functions** → All 4 functions deployed
+- **Hosting** → Latest release active
 
 ### 2. Test Authentication
 
@@ -325,14 +325,14 @@ Go through each section:
 
 ### 5. Test Admin Portal
 
-1. If logged in as `idin@agape.nyc`, click **â¬¡ ADMIN** button
+1. If logged in as `idin@agape.nyc`, click **⬡ ADMIN** button
 2. See infrastructure stats
 3. View Firebase services status
 4. Check audit trail
 
 ---
 
-## ð§ª Local Development (Optional)
+## 🧪 Local Development (Optional)
 
 ### Run Firebase Emulator
 
@@ -341,7 +341,7 @@ Go through each section:
 firebase emulators:start
 
 # Expected output:
-# â All emulators started, it is now safe to connect your app.
+# ✔ All emulators started, it is now safe to connect your app.
 # View Emulator UI at http://localhost:4000
 ```
 
@@ -359,7 +359,7 @@ npm run dev
 
 ---
 
-## ð Monitoring & Troubleshooting
+## 🔍 Monitoring & Troubleshooting
 
 ### Check Cloud Function Logs
 
@@ -396,14 +396,14 @@ firebase hosting:releases:list
 
 ### Common Issues & Fixes
 
-#### â "Cannot find module 'firebase-admin'"
+#### ❌ "Cannot find module 'firebase-admin'"
 ```bash
 cd functions
 npm install
 npm run deploy
 ```
 
-#### â "Quota exceeded"
+#### ❌ "Quota exceeded"
 - Check current usage: Firebase Console > Settings > Usage
 - Free tier limits:
   - 50K Firestore reads/day
@@ -411,18 +411,18 @@ npm run deploy
   - 5GB Storage
   - 2M Cloud Function invocations/month
 
-#### â "Permission denied" on Firestore
+#### ❌ "Permission denied" on Firestore
 - Run: `firebase deploy --only firestore:rules`
 - Verify rules deployed correctly
 
-#### â "Passkey not binding"
+#### ❌ "Passkey not binding"
 - Check browser console for WebAuthn errors
 - Ensure HTTPS in production
 - Test in Chrome/Safari/Edge (best support)
 
 ---
 
-## ð Post-Deployment Security Checklist
+## 🔐 Post-Deployment Security Checklist
 
 - [ ] Enable Firebase App Check (production only)
 - [ ] Set up custom domain with SSL
@@ -435,7 +435,7 @@ npm run deploy
 
 ---
 
-## ð Scaling Considerations
+## 📈 Scaling Considerations
 
 ### Free Tier Limits
 - **Firestore**: 50K reads, 20K writes daily
@@ -458,7 +458,7 @@ npm run deploy
 
 ---
 
-## ð Next Steps
+## 🎓 Next Steps
 
 1. **Customize Branding**
    - Update favicon (`public/favicon.ico`)
@@ -483,7 +483,7 @@ npm run deploy
 
 ---
 
-## ð Support & Resources
+## 📞 Support & Resources
 
 ### Documentation
 - Firebase Docs: https://firebase.google.com/docs
@@ -497,12 +497,12 @@ npm run deploy
 - Cloud Functions Logs: https://console.cloud.google.com/functions
 
 ### Contact
-ð§ **Email**: idin@agape.nyc  
-ð **Website**: https://agape-sovereign.nyc
+📧 **Email**: idin@agape.nyc  
+🔗 **Website**: https://agape-sovereign.nyc
 
 ---
 
-## â Deployment Complete!
+## ✅ Deployment Complete!
 
 Your **Architect AI** instance is now live and ready to process real-time DIFF scans.
 
@@ -514,6 +514,6 @@ Your **Architect AI** instance is now live and ready to process real-time DIFF s
 
 **Version**: 1.0.0  
 **Last Updated**: May 5, 2026  
-**Status**: Production Ready â
+**Status**: Production Ready ✅
 
-**Architect AI â Reclaim Your Digital Sovereignty.**
+**Architect AI — Reclaim Your Digital Sovereignty.**

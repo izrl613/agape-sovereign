@@ -86,9 +86,9 @@ architectApp.use(architectLimiter);
 // enabled in the Google Cloud Console and the Site Key placed in .env.
 if (process.env.RECAPTCHA_ENABLED !== "true") {
   console.error(
-    "[architectApi] CRITICAL: RECATCHA_ENABLED is not set to 'true'. " +
+    "[architectApi] CRITICAL: RECAPTCHA_ENABLED is not set to 'true'. " +
     "Bot abuse will exhaust the 15 RPM free-tier quota. " +
-    "Set RECATCHA_ENABLED=true in functions/.env and redeploy."
+    "Set RECAPTCHA_ENABLED=true in functions/.env and redeploy."
   );
 }
 // Always verify — no fallback to unprotected mode

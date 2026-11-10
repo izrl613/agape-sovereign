@@ -1,4 +1,4 @@
-# â¡ Architect AI â Quick Start (5 Minutes)
+# ⚡ Architect AI — Quick Start (5 Minutes)
 
 ## Get Up & Running Fast
 
@@ -9,7 +9,7 @@
 
 ---
 
-## ð Quick Deployment (Copy & Paste)
+## 🚀 Quick Deployment (Copy & Paste)
 
 ### 1. Clone & Install
 ```bash
@@ -54,7 +54,7 @@ npm run build
 firebase deploy --only hosting
 ```
 
-### 5. Done! ð
+### 5. Done! 🎉
 ```
 Live URL: https://agape-sovereign.web.app
 Admin Panel: https://agape-sovereign.web.app (if logged in as admin)
@@ -62,7 +62,7 @@ Admin Panel: https://agape-sovereign.web.app (if logged in as admin)
 
 ---
 
-## ð§ª Local Development (5 min)
+## 🧪 Local Development (5 min)
 
 ```bash
 # Terminal 1: Start Firebase Emulator
@@ -76,7 +76,7 @@ NEXT_PUBLIC_USE_FIREBASE_EMULATOR=true npm run dev
 
 ---
 
-## ð Verify Deployment
+## 📊 Verify Deployment
 
 ```bash
 # Check all services deployed
@@ -94,7 +94,7 @@ firebase open hosting:site
 
 ---
 
-## ð First Steps
+## 🔑 First Steps
 
 1. Visit **https://agape-sovereign.web.app**
 2. Click **"Continue with Google"**
@@ -105,7 +105,7 @@ firebase open hosting:site
 
 ---
 
-## ð Key Files
+## 📝 Key Files
 
 | File | Purpose |
 |------|---------|
@@ -118,7 +118,7 @@ firebase open hosting:site
 
 ---
 
-## ð Troubleshooting
+## 🆘 Troubleshooting
 
 ### "Module not found: firebase"
 ```bash
@@ -140,15 +140,15 @@ npm install firebase firebase-admin
 
 ---
 
-## ð Need Help?
+## 📞 Need Help?
 
-- ð§ Email: idin@agape.nyc
-- ð Docs: See `ARCHITECT_AI_README.md`
-- ðï¸ Integration: See `INTEGRATION_GUIDE.md`
-- ð Deployment: See `DEPLOYMENT_GUIDE.md`
+- 📧 Email: idin@agape.nyc
+- 🔗 Docs: See `ARCHITECT_AI_README.md`
+- 🏗️ Integration: See `INTEGRATION_GUIDE.md`
+- 🚀 Deployment: See `DEPLOYMENT_GUIDE.md`
 
 ---
 
-**Architect AI â Reclaim Your Digital Sovereignty**
+**Architect AI — Reclaim Your Digital Sovereignty**
 
-**Status**: â Production Ready
+**Status**: ✅ Production Ready

@@ -1,7 +1,7 @@
 # Agape Sovereign — Full Journey Changelog
 
 > _From Project Genesis to v2.0 — every commit, issue, and milestone documented._
-> _Repo created: 2026-04-20 · Last updated: 2026-07-21_
+> _Repo created: 2026-04-20 · Last updated: 2026-11-09_
 
 ---
 
@@ -13,6 +13,11 @@
 
 | Date | Type | Description |
 |------|------|-------------|
+| 2026-11-09 | `fix` | Add tsconfigRootDir and ESLint configuration across functions |
+| 2026-11-05 | `feat` | Add project documentation, CLAUDE.md guidance, and functions ESLint setup |
+| 2026-11-05 | `feat` | Implement core sovereign engine, differential modules, and security services |
+| 2026-11-03 | `audit` | Architectural & automated security audit passed (Zero-Knowledge, Zero-Grey, Zero-Cost) |
+| 2026-10-27 | `refactor` | Restore PWA agape-sovereign dashboard, upgrade auth flow and local MCP model configuration |
 | 2026-07-21 | `fix` | Resolve 10 Firebase deploy failure root causes (lint configs, apphosting, workspaces, deps, workflows) |
 | 2026-07-21 | `feat` | Add `scripts/validate-firebase-deploy.mjs` — autonomous agentic validation of all 10 deploy conditions |
 | 2026-07-21 | `feat` | Integrate Firebase deploy validation into `agentic-sovereign-updater` (6h), `gcp-monitoring-agent` (daily), `compliance-agent` (weekly) |
@@ -272,4 +277,4 @@
 ---
 
 _This CHANGELOG is auto-maintained. Updates are committed as part of the daily autonomous compliance workflow._
-_Last updated: 2026-07-21_
+_Last updated: 2026-11-09_

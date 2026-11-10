@@ -165,7 +165,7 @@ MILESTONES = [
         "title": "Phase 4 — v2.0 Identity Vectors & Shield Platform",
         "description": "16 Identity Vector modules (V-01-V-16) + Shield V-17. v2.0.0 Jul 12, 2026.",
         "due_on": "2026-07-31T00:00:00Z",
-        "state": "open",
+        "state": "closed",
         "issues": [
             {
                 "title": "[TIMELINE] Phase 4 — v2.0 Identity Vectors (Jul 12, 2026)",
@@ -186,6 +186,33 @@ MILESTONES = [
             }
         ],
     },
+    {
+        "title": "Phase 5 — Sovereign Enclave 2026 & Hardened Architecture",
+        "description": "Zero-Knowledge AES-256-GCM Envelope Encryption, 16 DIFF vectors, Nano-MCP Worker, 15 RPM guard. Nov 2026.",
+        "due_on": "2026-11-30T00:00:00Z",
+        "state": "open",
+        "issues": [
+            {
+                "title": "[TIMELINE] Phase 5 — Sovereign Enclave 2026 & Hardened Architecture (Nov 2026)",
+                "body": (
+                    "## Phase 5 — Sovereign Enclave 2026 & Hardened Architecture\n\n"
+                    "**Period:** August–November 2026 (active)\n\n"
+                    "### Events\n"
+                    "- Oct 13, 2026: Security hardening (purged .DS_Store, 27 branches pruned, Firestore rules owner-locked)\n"
+                    "- Oct 27, 2026: Restored pure PWA agape-sovereign dashboard with unified routing\n"
+                    "- Nov 03, 2026: Googleplex-Level Security Audit Passed (Zero-Knowledge, Memory Sanitized)\n"
+                    "- Nov 05, 2026: 16 DIFF Vectors implemented across 4 categories (Comm, Soc, HW, Fin)\n"
+                    "- Nov 05, 2026: Strict No-Grey UI (#0B1020 canvas + Neon Triad) active\n"
+                    "- Nov 05, 2026: Nano-MCP client web worker for background hashing & AI backhaul\n"
+                    "- Nov 05, 2026: Zero-cost quota guard (15 RPM cap) enforced\n\n"
+                    "_Created by Timeline Sync Agent on 2026-11-09_"
+                ),
+                "labels": ["roadmap", "stage-3"],
+                "state": "open",
+            }
+        ],
+    },
+
 ]
 
 # ---------------------------------------------------------------------------

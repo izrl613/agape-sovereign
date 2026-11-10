@@ -38,6 +38,7 @@ Built entirely on **Firebase free-tier infrastructure** + **Google AI services**
 | [[Security]] | Zero-knowledge security model and policies |
 | [[Local-LLM-PWA]] | Offline AI chat component — Ollama + Genkit |
 | [[Agent-System]] | Multi-agent system, MCP server, orchestration |
+| [[Sovereign-Agents]] | Orchestration framework: 5 specialized agent personas & mandates |
 | [[Changelog]] | Version history and release notes |
 
 ---
@@ -50,4 +51,4 @@ agape.sovereign gives individuals full visibility and control over their digital
 
 ---
 
-*Last updated: 2026-07-27 | Branch: main | Mapped from Devin wiki*
+*Last updated: 2026-11-09 | Branch: main | Sovereign Enclave 2026*

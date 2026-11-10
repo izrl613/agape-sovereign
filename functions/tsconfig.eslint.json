@@ -1,9 +1,18 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true
+  },
   "include": [
     "src/**/*.ts",
+    "src/**/*.tsx",
     "security.config.ts",
     "vitest.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "generated"
   ]
 }
-

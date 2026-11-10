@@ -8,6 +8,7 @@
 - [[Architecture]]
 - [[Architect-AI]]
 - [[Agent-System]]
+- [[Sovereign-Agents]]
 - [[Local-LLM-PWA]]
 
 ---

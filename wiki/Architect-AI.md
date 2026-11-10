@@ -20,24 +20,33 @@ Architect AI is the core intelligence engine of agape.sovereign. It performs dee
 
 ## 16 Identity Vectors
 
-| # | Vector | ID | Description |
-|---|--------|----|-------------|
-| 1 | Email Breach Scanner | V-01 | Breach detection, metadata exposure |
-| 2 | Social Media Footprint | V-02 | Username reuse, profile scraping detection |
-| 3 | Device File Scan | V-03 | Local & cloud file analysis |
-| 4 | Mobile Security Layer | V-04 | Passkey enforcement, 2FA status |
-| 5 | Deep Web Exposure | V-05 | Pattern-based lookup monitoring |
-| 6 | Data Broker Removal | V-06 | Automated removal template generation |
-| 7 | Password Vault Analysis | V-07 | Weak credential detection |
-| 8 | Location Data Footprint | V-08 | GPS history & metadata exposure |
-| 9 | Browser & Cookie Tracker | V-09 | Third-party tracking detection |
-| 10 | Financial Identity Exposure | V-10 | Banking/payment data leaks |
-| 11 | Medical Data Footprint | V-11 | Health record exposure |
-| 12 | Voice & Biometric Data | V-12 | Biometric sample detection |
-| 13 | IoT & Smart Device Scan | V-13 | Connected device security audit |
-| 14 | Cloud Storage Exposure | V-14 | Google Drive, OneDrive, iCloud analysis |
-| 15 | Dark Web Monitoring | V-15 | Dark web credential indexing |
-| 16 | Behavioral Profile Analysis | V-16 | Inferred demographic mapping |
+## DIFF Identity Vector Categories (16 Vectors)
+
+The Sovereign Enclave 2026 organizes identity vectors into 4 strategic operational categories:
+
+### Category A: Communications & Credentials
+- **Email Breach Scanner (`comm_1`)**: Scans for dark web stealer logs and breach exposures.
+- **Phone / SIM-Swap Vector (`comm_2`)**: Audits carrier PIN statuses and port-out vulnerability.
+- **Password Entropy Vault (`comm_3`)**: Evaluates password reuse patterns and entropy strength.
+- **Universal Passkey Registry (`comm_4`)**: Tracks FIDO2 hardware key deployment and credentials.
+
+### Category B: Social & Deep Web Surface
+- **Social Media Scanner (`soc_1`)**: Maps public visibility and reputation vulnerabilities.
+- **Data Broker Engine (`soc_2`)**: Dispatches automated opt-out / deletion requests.
+- **Darknet Index Monitor (`soc_3`)**: Continuous surveillance across .onion hidden services.
+- **Public Record De-Indexing (`soc_4`)**: Tracks real estate, voter registries, and court filings.
+
+### Category C: Hardware & Network Posture
+- **Local File Scanner (`hw_1`)**: Offline scan for unencrypted PII in local storage.
+- **Mobile Posture Audit (`hw_2`)**: Audits OS patch levels, rooting, and mobile security posture.
+- **Cloud Storage Scanner (`hw_3`)**: Identifies exposed public share links and permissions.
+- **Network Footprint (`hw_4`)**: Analyzes IP entropy, DNS leaks, and WebRTC leak vectors.
+
+### Category D: Financial & Legal Sovereignty
+- **Financial Identity Vector (`fin_1`)**: Monitors credit bureau freeze statuses (Equifax, Experian, TransUnion).
+- **AI-Clone Defense (`fin_2`)**: Monitors for voice, facial, and behavioral training data exposure.
+- **OAuth Token Revocation (`fin_3`)**: Scans dormant third-party app permissions and grants.
+- **Legal Sovereignty Ledger (`fin_4`)**: Immutable ledger of legal deletion notices and rectification requests.
 
 ---
 
