@@ -23,7 +23,7 @@ vi.mock("firebase-admin/app-check", () => ({
 }));
 
 vi.mock("@google-cloud/error-reporting", () => ({
-  ErrorReporting: vi.fn().mockImplementation(function () {
+  ErrorReporting: vi.fn().mockImplementation(function (this: any) {
     this.report = vi.fn();
   }),
 }));

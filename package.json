@@ -20,6 +20,9 @@
     "deploy:firestore": "firebase deploy --only firestore"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "@types/cookie-parser": "^1.4.10",
+    "@types/jspdf": "^1.3.3",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
   }
 }

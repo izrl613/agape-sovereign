@@ -105,7 +105,6 @@
         "*.local"
       ],
       "predeploy": [
-
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
       "source": "functions"
@@ -126,6 +125,7 @@
       "firebase-debug.log",
       "firebase-debug.*.log",
       "functions"
-    ]
+    ],
+    "alwaysDeployFromSource": true
   }
 }
