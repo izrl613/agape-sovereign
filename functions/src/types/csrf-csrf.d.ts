@@ -9,3 +9,4 @@ declare module 'csrf-csrf' {
   }
   export function doubleCsrf(options: DoubleCsrfOptions): any;
 }
+

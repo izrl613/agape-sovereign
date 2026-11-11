@@ -12,6 +12,7 @@ import {
 import { PasskeyService } from '../auth/passkey-service';
 import { sovereignIdFor, unwrapDEKFromPasskey, generateDEK, wrapDEKWithPasskey, wrapDEKWithRecoveryCode, generateRecoveryCode } from '../services/sha256Vault';
 import { ModuleReceipt } from '../services/moduleAgents';
+import { verifyReceiptAttestation } from '../services/receiptIntegrity';
 
 export type LoginMethod = 'PASSKEY' | 'GOOGLE' | 'ANON';
 
@@ -34,6 +35,12 @@ interface SovereignContextType {
   sessionEntries: Record<string, Record<string, string>>;
   googleAccessToken: string | null;
   dek: CryptoKey | null;
+  /**
+   * One-time recovery code for a freshly created enclave. It is held in memory
+   * only and must be shown to the user once, then cleared (never logged).
+   */
+  recoveryCode: string | null;
+  acknowledgeRecoveryCode: () => void;
   loginWithPasskey: (email?: string) => Promise<void>;
   registerPasskey: (email: string) => Promise<void>;
   loginWithGoogle: () => Promise<string | null>;
@@ -81,6 +88,9 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
   const methodRef = useRef<LoginMethod>('GOOGLE');
   const dekRef = useRef<CryptoKey | null>(null);
+  // Mirrored in state so consumers re-render once the enclave unlocks.
+  const [dek, setDek] = useState<CryptoKey | null>(null);
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
 
   const getOrInitializeEnclave = useCallback(async (uid: string, email: string) => {
     const docRef = doc(db, 'users', uid, 'enclave', 'keys');
@@ -89,7 +99,9 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (snap.exists()) {
       const { passkeyWrap } = snap.data();
       try {
-        dekRef.current = await unwrapDEKFromPasskey(passkeyWrap);
+        const restored = await unwrapDEKFromPasskey(passkeyWrap);
+        dekRef.current = restored;
+        setDek(restored);
         return;
       } catch (e) {
         console.error('Failed to unwrap DEK', e);
@@ -105,10 +117,13 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     await setDoc(docRef, { passkeyWrap, recoveryCodeWrap });
     dekRef.current = dek;
-
-    // In a real app, we'd prompt the user to save the recoveryCode here.
-    console.log(`Sovereign Recovery Code generated: ${recoveryCode}`);
+    setDek(dek);
+    // Surface once through context for the UI to display and let the user save.
+    // Never log it: console output is persisted by devtools and error reporters.
+    setRecoveryCode(recoveryCode);
   }, []);
+
+  const acknowledgeRecoveryCode = useCallback(() => setRecoveryCode(null), []);
 
   const adoptUser = useCallback(async (u: SovereignUser) => {
     methodRef.current = u.method;
@@ -217,50 +232,8 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     return accessToken;
   }, [adoptUser, loginWithGoogle, user]);
 
-  const addReceipt = useCallback(
-    async (receipt: ModuleReceipt, entryValues: Record<string, string>): Promise<ModuleReceipt> => {
-      if (!user) throw new Error('Not signed in.');
-
-      // 1. Save to local IndexedDB outbox first (Zero-Trust)
-      try {
-        const { db: idb } = await openSovereignDB();
-        const tx = idb.transaction('outbox', 'readwrite');
-        tx.objectStore('outbox').put(receipt);
-      } catch (e) {
-        console.error('IndexedDB write failed', e);
-      }
-
-      // 2. Update local session state immediately for responsiveness
-      const stored = { ...receipt, storage: 'LOCAL_ONLY' };
-      setReceipts((prev) => {
-        const next = [...prev.filter((r) => r.sha256Id !== stored.sha256Id), stored];
-        localStorage.setItem(receiptsKey(user.id), JSON.stringify(next));
-        return next;
-      });
-
-      const safeValues = { ...entryValues };
-      delete safeValues.passwordCheck;
-      setSessionEntries((prev) => ({ ...prev, [stored.sha256Id]: safeValues }));
-
-      // 3. Trigger background sync
-      void syncReceipts();
-
-      return stored;
-    },
-    [user, syncReceipts],
-  );
-
-  const clearSession = useCallback(async () => {
-    sessionStorage.removeItem(PASSKEY_SESSION_KEY);
-    setGoogleAccessToken(null);
-    setSessionEntries({});
-    setReceipts([]);
-    setUserState(null);
-    setSovereignId(null);
-    methodRef.current = 'GOOGLE';
-    try { await fbSignOut(auth); } catch { /* passkey sessions have no Firebase user */ }
-  }, []);
-
+  // Declared before `addReceipt` so its dependency array cannot hit a
+  // temporal-dead-zone ReferenceError at runtime.
   const syncReceipts = useCallback(async () => {
     if (!user) return;
     try {
@@ -299,6 +272,62 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const addReceipt = useCallback(
+    async (receipt: ModuleReceipt, entryValues: Record<string, string>): Promise<ModuleReceipt> => {
+      if (!user) throw new Error('Not signed in.');
+
+      // Fail closed: never persist a receipt whose attestation does not verify.
+      // Legacy receipts (pre-attestation) are still accepted so upgrades do not
+      // strand existing users.
+      if (receipt.attestation && !(await verifyReceiptAttestation(receipt.attestation))) {
+        throw new Error(
+          'Receipt integrity check failed — the receipt was modified and was not saved.',
+        );
+      }
+
+      // 1. Save to local IndexedDB outbox first (Zero-Trust)
+      try {
+        const { db: idb } = await openSovereignDB();
+        const tx = idb.transaction('outbox', 'readwrite');
+        tx.objectStore('outbox').put(receipt);
+      } catch (e) {
+        console.error('IndexedDB write failed', e);
+      }
+
+      // 2. Update local session state immediately for responsiveness
+      const stored: ModuleReceipt = { ...receipt, storage: 'LOCAL_ONLY' };
+      setReceipts((prev) => {
+        const next = [...prev.filter((r) => r.sha256Id !== stored.sha256Id), stored];
+        localStorage.setItem(receiptsKey(user.id), JSON.stringify(next));
+        return next;
+      });
+
+      const safeValues = { ...entryValues };
+      delete safeValues.passwordCheck;
+      setSessionEntries((prev) => ({ ...prev, [stored.sha256Id]: safeValues }));
+
+      // 3. Trigger background sync
+      void syncReceipts();
+
+      return stored;
+    },
+    [user, syncReceipts],
+  );
+
+  const clearSession = useCallback(async () => {
+    sessionStorage.removeItem(PASSKEY_SESSION_KEY);
+    setGoogleAccessToken(null);
+    setSessionEntries({});
+    setReceipts([]);
+    setUserState(null);
+    setSovereignId(null);
+    dekRef.current = null;
+    setDek(null);
+    setRecoveryCode(null);
+    methodRef.current = 'GOOGLE';
+    try { await fbSignOut(auth); } catch { /* passkey sessions have no Firebase user */ }
+  }, []);
+
   return (
     <SovereignContext.Provider
       value={{
@@ -309,7 +338,9 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
         collectedVectors: Array.from(new Set(receipts.map((r) => r.moduleId))),
         sessionEntries,
         googleAccessToken,
-        dek: dekRef.current,
+        dek,
+        recoveryCode,
+        acknowledgeRecoveryCode,
         loginWithPasskey,
         registerPasskey,
         loginWithGoogle,

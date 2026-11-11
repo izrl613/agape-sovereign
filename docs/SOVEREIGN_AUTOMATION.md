@@ -72,6 +72,9 @@ node scripts/run-secure-scan.ts
 
 # Plugin registry + contract enforcement
 node scripts/verify-plugins.ts
+
+# Live-gate receipt attestation + vault compatibility (frontend)
+npm run test:security
 ```
 
 Artifacts (ciphertext only, no secrets):

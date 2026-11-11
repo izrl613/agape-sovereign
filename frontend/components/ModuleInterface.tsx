@@ -32,7 +32,7 @@ const STEPS: { id: AgentStep; label: string; icon: React.ReactNode }[] = [
  */
 export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
   const config = MODULE_CONFIGS[moduleId];
-  const { user, sovereignId, receipts, addReceipt } = useSovereign();
+  const { user, sovereignId, dek, receipts, addReceipt } = useSovereign();
   const [showSplash, setShowSplash] = useState(true);
   const [values, setValues] = useState<Record<string, string>>({});
   const [running, setRunning] = useState(false);
@@ -51,6 +51,10 @@ export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
 
   const run = async () => {
     if (!user || !sovereignId) return;
+    if (!dek) {
+      setError('The encryption enclave is still unlocking. Wait a moment and try again.');
+      return;
+    }
     setError(null);
     setReceipt(null);
     setArtefact(null);
@@ -60,7 +64,7 @@ export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
     setStepState({});
     try {
       const { receipt: raw, artefact: art } = await runModuleAgent(
-        moduleId, values, user.id, sovereignId,
+        moduleId, values, user.id, sovereignId, dek,
         (step, state) => setStepState((p) => ({ ...p, [step]: state })),
       );
       const stored = await addReceipt(raw, values);

@@ -18,7 +18,11 @@
  * the device, and the password is excluded from the sealed entry.
  */
 import { MODULE_CONFIGS } from '../module-config';
-import { sealEntry, sha256Hex } from './sha256Vault';
+import { sealEntry, sha256Hex, verifyEntryHash } from './sha256Vault';
+import {
+  createReceiptAttestation,
+  type ModuleReceiptAttestation,
+} from './receiptIntegrity';
 
 export type VerificationStatus =
   | 'MATCH_FOUND' // third party confirmed exposure/presence
@@ -54,6 +58,11 @@ export interface ModuleReceipt {
   sealedAt: string;
   /** Where the receipt is stored, reported honestly after save. */
   storage: 'FIRESTORE+LOCAL' | 'LOCAL_ONLY';
+  /**
+   * Tamper-evident SHA-256 binding of this receipt's metadata. Legacy
+   * receipts created before this field existed do not carry one.
+   */
+  attestation?: ModuleReceiptAttestation;
 }
 
 export type AgentStep = 'VALIDATE' | 'HASH' | 'ENCRYPT' | 'VERIFY' | 'SEAL';
@@ -464,6 +473,14 @@ export async function runModuleAgent(
   onStep?.('HASH', 'RUNNING');
   onStep?.('ENCRYPT', 'RUNNING');
   const sealed = await sealEntry(uid, moduleId, sealValues, dek);
+
+  // Fail closed: prove the SHA-256 ID really binds the plaintext we sealed.
+  // If canonicalisation ever drifts, the gate rejects instead of issuing a
+  // receipt that cannot be verified later.
+  if (!(await verifyEntryHash(moduleId, sealValues, sealed.sha256Id))) {
+    onStep?.('HASH', 'FAILED');
+    throw new Error('Integrity check failed: the sealed entry does not match its SHA-256 ID.');
+  }
   onStep?.('HASH', 'DONE');
   onStep?.('ENCRYPT', 'DONE');
 
@@ -472,6 +489,19 @@ export async function runModuleAgent(
   onStep?.('VERIFY', verification.status === 'API_UNREACHABLE' ? 'FAILED' : 'DONE');
 
   onStep?.('SEAL', 'RUNNING');
+  const fieldKeys = Object.keys(sealValues);
+  const attestation = await createReceiptAttestation({
+    subject: sovereignId,
+    moduleId,
+    vector: moduleId,
+    issuedAt: sealed.sealedAt,
+    body: {
+      sha256Id: sealed.sha256Id,
+      sealedAt: sealed.sealedAt,
+      verificationStatus: verification.status,
+      fieldKeys,
+    },
+  });
   const receipt: ModuleReceipt = {
     moduleId,
     moduleName: config.name,
@@ -479,10 +509,11 @@ export async function runModuleAgent(
     sovereignId,
     ciphertext: sealed.ciphertext,
     iv: sealed.iv,
-    fieldKeys: Object.keys(sealValues),
+    fieldKeys,
     verification,
     sealedAt: sealed.sealedAt,
     storage: 'LOCAL_ONLY', // upgraded honestly by the caller if Firestore write succeeds
+    attestation,
   };
   onStep?.('SEAL', 'DONE');
   return { receipt, artefact };

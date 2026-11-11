@@ -42,6 +42,15 @@ function saltFor(uid: string): Uint8Array<ArrayBuffer> {
   return salt;
 }
 
+/**
+ * PBKDF2 floor. New wraps must use at least this many iterations; older wraps
+ * (v1) are still readable at their historical 100k so upgrades never strand a
+ * user's sealed data.
+ */
+const MIN_PBKDF2_ITERATIONS = 210_000;
+const LEGACY_RECOVERY_ITERATIONS = 100_000;
+const LEGACY_RECOVERY_SALT = new TextEncoder().encode('agape-dek-recovery-salt');
+
 async function vaultKey(uid: string): Promise<CryptoKey> {
   const material = await crypto.subtle.importKey(
     'raw',
@@ -51,7 +60,7 @@ async function vaultKey(uid: string): Promise<CryptoKey> {
     ['deriveKey'],
   );
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: saltFor(uid), iterations: 150_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: saltFor(uid), iterations: MIN_PBKDF2_ITERATIONS, hash: 'SHA-256' },
     material,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -126,6 +135,15 @@ export function shortHash(hash: string): string {
  *   2. Recovery code wrap: DEK wrapped via one-time 120-bit plaintext Recovery Code
  * Server never sees the naked DEK, passkey, or recovery code.
  * All functions run entirely in the browser — no server involvement.
+ *
+ * ⚠️ SECURITY FINDING (see docs/SOVEREIGN_AUTOMATION.md):
+ * The passkey wrap below is derived from public constants
+ * (`agape-dek-master-key` + `agape-dek-passkey-salt`), so it is NOT bound to the
+ * authenticator and every user shares the same wrapping key. Anyone holding a
+ * `passkeyWrap` (Firestore admin, backup, breach) can recover that user's DEK.
+ * The recovery-code wrap is the genuinely zero-knowledge path. Do not describe
+ * the passkey wrap as zero-knowledge until it is re-keyed from a secret the
+ * server never sees (WebAuthn PRF, or a device-held vault secret).
  */
 
 export interface EnvelopeKeys {
@@ -142,6 +160,7 @@ export function generateRecoveryCode(): string {
 }
 
 /** Wrap DEK with passkey-derived key (PBKDF2 + HKDF). */
+// ⚠️ Not authenticator-bound: see the SECURITY FINDING note above.
 export async function wrapDEKWithPasskey(dek: CryptoKey): Promise<string> {
   const material = await crypto.subtle.importKey(
     'raw',
@@ -166,7 +185,7 @@ export async function wrapDEKWithPasskey(dek: CryptoKey): Promise<string> {
   return btoa(JSON.stringify({ iv: b64(iv), data: b64(new Uint8Array(encrypted)) }));
 }
 
-/** Wrap DEK with recovery code-derived key (PBKDF2). */
+/** Wrap DEK with recovery code-derived key (PBKDF2, v2: per-wrap random salt). */
 export async function wrapDEKWithRecoveryCode(dek: CryptoKey, recoveryCodeB64: string): Promise<string> {
   const codeBytes = atob(recoveryCodeB64).split('').map(c => c.charCodeAt(0));
   const codeKey = await crypto.subtle.importKey(
@@ -176,8 +195,9 @@ export async function wrapDEKWithRecoveryCode(dek: CryptoKey, recoveryCodeB64: s
     false,
     ['deriveKey']
   );
+  const salt = crypto.getRandomValues(new Uint8Array(16));
   const wrappedKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: new TextEncoder().encode('agape-dek-recovery-salt'), iterations: 100_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations: MIN_PBKDF2_ITERATIONS, hash: 'SHA-256' },
     codeKey,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -189,7 +209,7 @@ export async function wrapDEKWithRecoveryCode(dek: CryptoKey, recoveryCodeB64: s
     wrappedKey,
     await crypto.subtle.exportKey('raw', dek)
   );
-  return btoa(JSON.stringify({ iv: b64(iv), data: b64(new Uint8Array(encrypted)) }));
+  return btoa(JSON.stringify({ v: 2, iv: b64(iv), data: b64(new Uint8Array(encrypted)), salt: b64(salt) }));
 }
 
 /** Unwrap DEK from passkey wrap (called when user presents passkey). */
@@ -228,9 +248,21 @@ export async function unwrapDEKFromPasskey(passkeyWrapB64: string): Promise<Cryp
 
 /** Unwrap DEK from recovery code wrap (called when user presents recovery code). */
 export async function unwrapDEKFromRecoveryCode(recoveryCodeB64: string, recoveryCodeWrapB64: string): Promise<CryptoKey> {
-  const wrap = JSON.parse(atob(recoveryCodeWrapB64)) as { iv: string; data: string };
+  const wrap = JSON.parse(atob(recoveryCodeWrapB64)) as {
+    v?: number;
+    iv: string;
+    data: string;
+    salt?: string;
+  };
   const encrypted = new Uint8Array(atob(wrap.data).split('').map(c => c.charCodeAt(0)));
   const iv = new Uint8Array(atob(wrap.iv).split('').map(c => c.charCodeAt(0)));
+
+  // v2 wraps carry their own random salt; legacy (v1) wraps used a constant.
+  const isV2 = wrap.v === 2 && typeof wrap.salt === 'string';
+  const salt = isV2
+    ? new Uint8Array(atob(wrap.salt!).split('').map(c => c.charCodeAt(0)))
+    : LEGACY_RECOVERY_SALT;
+  const iterations = isV2 ? MIN_PBKDF2_ITERATIONS : LEGACY_RECOVERY_ITERATIONS;
 
   const codeBytes = atob(recoveryCodeB64).split('').map(c => c.charCodeAt(0));
   const codeKey = await crypto.subtle.importKey(
@@ -241,7 +273,7 @@ export async function unwrapDEKFromRecoveryCode(recoveryCodeB64: string, recover
     ['deriveKey']
   );
   const recoveredKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: new TextEncoder().encode('agape-dek-recovery-salt'), iterations: 100_000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     codeKey,
     { name: 'AES-GCM', length: 256 },
     false,
