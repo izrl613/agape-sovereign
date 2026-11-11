@@ -241,6 +241,70 @@ jobs:
           } > wiki-repo/Authentication.md
           echo "Generated Authentication.md"
 
+      # ── Generate Sovereign-Agents.md ──────────────────────────────────────
+      - name: Generate Sovereign-Agents.md
+        if: steps.clone_wiki.outputs.wiki_available == 'true'
+        run: |
+          {
+            echo "<!-- AUTO-GENERATED — do not edit directly. Edit agent-registry.ts instead. -->"
+            echo ""
+            echo "# Sovereign Agents & Personas"
+            echo ""
+            echo "*Specialized Agent Personas and Mandates — Agape Sovereign Enclave 2026*"
+            echo ""
+            echo "## Orchestration Framework: Specialized Agent Personas"
+            echo ""
+            echo "To maintain the mathematical integrity and visual precision of the Agape Sovereign Enclave 2026, the project utilizes a multi-agent orchestration strategy. Each agent is bound by the Zero-Knowledge and Zero-Grey mandates."
+            echo ""
+            echo "## 🛡️ The Sovereign Architect (Lead)"
+            echo "**Primary Focus:** Cryptographic Integrity & System Architecture."
+            echo "- **Responsibilities:**"
+            echo "    - Oversees the overall system design."
+            echo "    - Ensures the AES-256-GCM envelope encryption implementation is flawless."
+            echo "    - Validates that the Data Encryption Key (DEK) is never exposed to the server."
+            echo "    - Manages the interaction between the WebAuthn Passkey and the Recovery Code."
+            echo "- **Mandate:** If a proposed change compromises the Zero-Knowledge property, the Sovereign Architect must veto it."
+            echo ""
+            echo "## 🌐 The DIFF Vector Specialist"
+            echo "**Primary Focus:** Identity Vector Implementation & Remediation."
+            echo "- **Responsibilities:**"
+            echo "    - Implements the 16 distinct identity vectors across the four categories (Communications, Social/Deep Web, Hardware/Network, Financial/Legal)."
+            echo "    - Ensures every vector follows the strict \`Scan -> Verify -> Classify -> Encrypt\` pipeline."
+            echo "    - Implements the recursive \`Verification Feedback Loops\` to maintain KNOXED status."
+            echo "- **Mandate:** Every vector must have a mathematical verification receipt (SHA-256)."
+            echo ""
+            echo "## 🎨 The UI/UX Guardian"
+            echo "**Primary Focus:** Visual Fidelity & User Experience."
+            echo "- **Responsibilities:**"
+            echo "    - Enforces the \`\`Strict No-Grey Mandate.\`\`"
+            echo "    - Ensures all components use the \`Deep Sovereign Dark Blue\` (#0B1020) canvas and \`Ice White\` (#F8FAFC) labels."
+            echo "    - Implements the pulsing neon triad gradient borders (Magenta #FF2E9F, Blue #00D4FF, Orange #FF7A18)."
+            echo "    - Optimizes glassmorphic transitions using Framer Motion."
+            echo "- **Mandate:** Any element utilizing a grey scale or non-approved neon hex code is considered a bug."
+            echo ""
+            echo "## ⚙️ The Cloud Ops Warden"
+            echo "**Primary Focus:** Infrastructure Stability & Quota Management."
+            echo "- **Responsibilities:**"
+            echo "    - Monitors Firebase Free-Tier usage to prevent quota exhaustion."
+            echo "    - Enforces the 15 Requests Per Minute (RPM) hard cap."
+            echo "    - Configures and monitors Firebase App Check to block bot abuse."
+            echo "    - Optimizes Cloud Firestore security rules to ensure total operational isolation."
+            echo "- **Mandate:** The project must operate at $0.00 cost. Any feature that threatens the free-tier limit must be optimized or rejected."
+            echo ""
+            echo "## 🔍 The ZK-Proof Auditor"
+            echo "**Primary Focus:** Security Validation & Red-Teaming."
+            echo "- **Responsibilities:**"
+            echo "    - Performs continuous audits of the codebase to detect PII leaks."
+            echo "    - Attempts to bypass the WebAuthn passkey or recovery code mechanisms."
+            echo "    - Verifies that \`verification-test.ts\` accurately catches cryptographic fractures."
+            echo "    - Validates that the server only sees encrypted blobs."
+            echo "- **Mandate:** \`\`Trust nothing, verify everything.\`\` The Auditor's goal is to prove the system is secure by trying to break it."
+            echo ""
+            echo "---"
+            echo "*See [[Agent-System]] for technical orchestration pipelines and MCP integration.*"
+          } > wiki-repo/Sovereign-Agents.md
+          echo "Generated Sovereign-Agents.md"
+
       # ── Auto-generate _Sidebar.md ────────────────────────────────────────
       - name: Generate _Sidebar.md
         if: steps.clone_wiki.outputs.wiki_available == 'true'
@@ -256,6 +320,10 @@ jobs:
                 echo "- [[${page}]]"
               fi
             done
+            echo ""
+            echo "## Agents"
+            echo ""
+            echo "- [[Sovereign-Agents]]"
             echo ""
             echo "## Guides"
             echo ""
