@@ -1,0 +1,18 @@
+{
+  "id": "identity-vectors",
+  "name": "Identity Vector Registry",
+  "version": "1.0.0",
+  "description": "Canonical 16-vector registry, probe discovery, and finding scoring.",
+  "entry": "./index.ts",
+  "capabilities": [
+    "vectors.list",
+    "vectors.get",
+    "vectors.probes",
+    "vectors.score"
+  ],
+  "security": {
+    "zeroKnowledge": true,
+    "handlesPii": false,
+    "requiresSecrets": false
+  }
+}

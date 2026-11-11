@@ -1,0 +1,5 @@
+# Sovereign Automation MCP Server
+# Runtime is stdlib-only. PyJWT is OPTIONAL and only needed for Firebase ID
+# token verification. When it is absent, the server still starts and accepts
+# a constant-time MCP_API_KEY; otherwise it fails closed.
+PyJWT[crypto]>=2.8.0

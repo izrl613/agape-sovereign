@@ -45,3 +45,15 @@ To maintain the mathematical integrity and visual precision of the Agape Soverei
     - Verifies that `verification-test.ts` accurately catches cryptographic fractures.
     - Validates that the server only sees encrypted blobs.
 - **Mandate:** "Trust nothing, verify everything." The Auditor's goal is to prove the system is secure by trying to break it.
+
+## 🔐 Secure Automation Layer (implemented)
+
+The mandates above are enforced in code, not just prose:
+
+- **Agents:** `agents/secure/` — 16-vector orchestrator, real probes, SHA-256 receipts, AES-256-GCM envelope, fail-closed remediation.
+- **Skills:** `skills/agape-sovereign-automation/` and `skills/sovereign-security-review/`.
+- **Plugins:** `plugins/{zero-knowledge,identity-vectors,automation}/`.
+- **MCP server:** `mcp_server/automation/` — blind, rate-limited, fail-closed.
+- **Verify:** `node scripts/run-secure-scan.ts` and `node scripts/verify-plugins.ts`.
+
+See `docs/SOVEREIGN_AUTOMATION.md` for the full security model.

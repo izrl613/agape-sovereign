@@ -10,6 +10,14 @@ export interface WrappedDEK {
   tag: Uint8Array;
 }
 
+/**
+ * WebCrypto's `BufferSource` requires an ArrayBuffer-backed view in the current
+ * TS lib. Narrow at the crypto boundary; runtime behaviour is unchanged.
+ */
+function asBufferSource(bytes: Uint8Array): BufferSource {
+  return bytes as unknown as BufferSource;
+}
+
 export class SovereignEncryption {
   private static readonly ALGO_NAME = 'AES-GCM';
   private static readonly KEY_LEN = 256;
@@ -42,19 +50,22 @@ export class SovereignEncryption {
       ? `${moduleId}|${data}|${salt}|${pepper}`
       : `${moduleId}|${data}|${salt}`;
     const bytes = encoder.encode(payload);
-    // Support both browser (window.crypto) and Node.js (crypto.webcrypto)
-    const cryptoObj = typeof window !== 'undefined' && (window as any).crypto
-      ? (window as any).crypto
-      : (await import('crypto')).webcrypto;
+    // `globalThis.crypto` is the same WebCrypto object in browsers and Node 18+.
+    // Using it (instead of `import('crypto')`) keeps the browser bundle clean and
+    // avoids pulling a Node builtin into the client build.
+    const cryptoObj = (globalThis as { crypto?: Crypto }).crypto;
+    if (!cryptoObj?.subtle) {
+      throw new Error(
+        'WebCrypto unavailable: a secure context (browser) or Node 18+ runtime is required.',
+      );
+    }
     const hashBuffer = await cryptoObj.subtle.digest('SHA-256', bytes);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  }
-
   static async generateSovereignDEK(): Promise<CryptoKey> {
-    return await window.crypto.subtle.generateKey(
+    return await globalThis.crypto.subtle.generateKey(
       {
         name: this.ALGO_NAME,
         length: this.KEY_LEN,
@@ -68,7 +79,7 @@ export class SovereignEncryption {
     const encoder = new TextEncoder();
     const secretBuffer = encoder.encode(secret);
 
-    const baseKey = await window.crypto.subtle.importKey(
+    const baseKey = await globalThis.crypto.subtle.importKey(
       'raw',
       secretBuffer,
       'PBKDF2',
@@ -76,10 +87,10 @@ export class SovereignEncryption {
       ['deriveKey']
     );
 
-    const wrappingKey = await window.crypto.subtle.deriveKey(
+    const wrappingKey = await globalThis.crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt: salt,
+        salt: asBufferSource(salt),
         iterations: 100000,
         hash: 'SHA-256',
       },
@@ -96,13 +107,13 @@ export class SovereignEncryption {
   }
 
   static async wrapSovereignDEK(dek: CryptoKey, wrappingKey: CryptoKey): Promise<WrappedDEK> {
-    const exportedDek = await window.crypto.subtle.exportKey('raw', dek);
-    const iv = window.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
+    const exportedDek = await globalThis.crypto.subtle.exportKey('raw', dek);
+    const iv = globalThis.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
 
-    const ciphertext = await window.crypto.subtle.encrypt(
+    const ciphertext = await globalThis.crypto.subtle.encrypt(
       {
         name: this.ALGO_NAME,
-        iv: iv,
+        iv: asBufferSource(iv),
       },
       wrappingKey,
       exportedDek
@@ -120,16 +131,16 @@ export class SovereignEncryption {
   }
 
   static async unwrapSovereignDEK(wrapped: WrappedDEK, wrappingKey: CryptoKey): Promise<CryptoKey> {
-    const rawDek = await window.crypto.subtle.decrypt(
+    const rawDek = await globalThis.crypto.subtle.decrypt(
       {
         name: this.ALGO_NAME,
-        iv: wrapped.iv,
+        iv: asBufferSource(wrapped.iv),
       },
       wrappingKey,
       wrapped.ciphertext
     );
 
-    const dek = await window.crypto.subtle.importKey(
+    const dek = await globalThis.crypto.subtle.importKey(
       'raw',
       rawDek,
       this.ALGO_NAME,
@@ -146,12 +157,12 @@ export class SovereignEncryption {
   static async encryptPII(data: string, dek: CryptoKey): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
     const encoder = new TextEncoder();
     const encodedData = encoder.encode(data);
-    const iv = window.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
+    const iv = globalThis.crypto.getRandomValues(new Uint8Array(this.IV_LEN));
 
-    const ciphertext = await window.crypto.subtle.encrypt(
+    const ciphertext = await globalThis.crypto.subtle.encrypt(
       {
         name: this.ALGO_NAME,
-        iv: iv,
+        iv: asBufferSource(iv),
       },
       dek,
       encodedData
@@ -164,10 +175,10 @@ export class SovereignEncryption {
   }
 
   static async decryptPII(ciphertext: ArrayBuffer, iv: Uint8Array, dek: CryptoKey): Promise<string> {
-    const decrypted = await window.crypto.subtle.decrypt(
+    const decrypted = await globalThis.crypto.subtle.decrypt(
       {
         name: this.ALGO_NAME,
-        iv: iv,
+        iv: asBufferSource(iv),
       },
       dek,
       ciphertext
@@ -182,3 +193,10 @@ export class SovereignEncryption {
     return result;
   }
 }
+
+// ── Immutability hardening ────────────────────────────────────────────────────
+// Freeze the cryptographic surface so runtime code (or a compromised dependency)
+// cannot replace primitives such as generateSovereignDEK. This is required by the
+// Googleplex audit in verification-test.ts and by the Zero-Knowledge mandate.
+// In strict mode (ES modules) any reassignment attempt throws a TypeError.
+Object.freeze(SovereignEncryption);

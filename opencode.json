@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "sovereign-automation": {
+        "type": "remote",
+        "url": "http://127.0.0.1:8091/",
+        "oauth": false,
+        "headers": {
+          "X-API-Key": "{env:MCP_API_KEY}"
+        }
+      }
+    }
+  }
+}

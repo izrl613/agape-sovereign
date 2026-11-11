@@ -1,0 +1,17 @@
+{
+  "id": "zero-knowledge",
+  "name": "Zero-Knowledge Envelope",
+  "version": "1.0.0",
+  "description": "AES-256-GCM envelope encryption with passkey + recovery dual-wrap. Plaintext never leaves the client.",
+  "entry": "./index.ts",
+  "capabilities": [
+    "zk.encrypt",
+    "zk.decrypt",
+    "zk.params"
+  ],
+  "security": {
+    "zeroKnowledge": true,
+    "handlesPii": true,
+    "requiresSecrets": true
+  }
+}

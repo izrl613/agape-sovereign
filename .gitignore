@@ -20,3 +20,10 @@ reports/*.pdf
 
 # MCP Server logs
 logs/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Secure scan demo artifacts (regenerate with scripts/run-secure-scan.ts)
+workspace_outputs/secure-scan.*

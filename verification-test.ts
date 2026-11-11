@@ -1,5 +1,5 @@
-import { SovereignEncryption } from './src/lib/encryption';
-import { EnvelopeService } from './src/services/envelopeService';
+import { SovereignEncryption } from './src/lib/encryption.ts';
+import { EnvelopeService } from './src/services/envelopeService.ts';
 
 async function runGoogleplexSecurityAudit() {
   console.log('====================================================================');
@@ -60,22 +60,49 @@ async function runGoogleplexSecurityAudit() {
 
     // --- LAYER 5 (Cont.): Memory Scrubbing Simulation ---
     console.log('\n[4/6] Verifying Memory Scrubbing (Logic Check)...');
-    // We check the source code in a real env, but here we verify the DEK is never exposed.
-    const profileString = JSON.stringify(profile);
-    if (!profileString.includes('dek') && !profileString.includes('key')) {
+    // Verify the DEK is never exposed. Field names like `wrappedDekPasskey`
+    // are metadata; the real test is for an actual CryptoKey or a raw key
+    // property, so check for those instead of substring matching.
+    const KEY_FIELD_NAMES = new Set(['dek', 'rawDek', 'key', 'privateKey', 'secret']);
+    const findKeyMaterial = (value: unknown, path = 'profile'): string | null => {
+      if (typeof CryptoKey !== 'undefined' && value instanceof CryptoKey) {
+        return `${path} is a CryptoKey`;
+      }
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) {
+          const found = findKeyMaterial(value[i], `${path}[${i}]`);
+          if (found) return found;
+        }
+        return null;
+      }
+      if (value && typeof value === 'object') {
+        for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+          if (KEY_FIELD_NAMES.has(key)) return `${path}.${key}`;
+          const found = findKeyMaterial(child, `${path}.${key}`);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const leaked = findKeyMaterial(profile);
+    if (leaked === null) {
       console.log('✅ PASS: No raw keys leaked into the profile object.');
     } else {
-      throw new Error('FAIL: Key material leaked into profile object!');
+      throw new Error(`FAIL: Key material leaked into profile object (${leaked})!`);
     }
 
     // --- LAYER 6: Unauthorized Access Block ---
     console.log('\n[5/6] Testing Unauthorized Access Block...');
+    let unauthorizedBlocked = false;
     try {
       await EnvelopeService.decryptProfile(profile, 'wrong-secret');
-      throw new Error('Security Breach: Decrypted with wrong secret!');
-    } catch (e) {
-      console.log('✅ PASS: Unauthorized access blocked as expected.');
+    } catch {
+      unauthorizedBlocked = true;
     }
+    if (!unauthorizedBlocked) {
+      throw new Error('Security Breach: Decrypted with wrong secret!');
+    }
+    console.log('✅ PASS: Unauthorized access blocked as expected.');
 
     // --- FINAL GATE: ZK-Proof Conclusion ---
     console.log('\n[6/6] Final ZK-Proof Conclusion...');
@@ -97,4 +124,3 @@ async function runGoogleplexSecurityAudit() {
 }
 
 runGoogleplexSecurityAudit();
-EOF

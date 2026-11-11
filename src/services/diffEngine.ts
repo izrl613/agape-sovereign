@@ -1,3 +1,10 @@
+/**
+ * @deprecated Legacy DIFF engine retained for backward compatibility.
+ *
+ * `checkExposure()` in this file is a mock (non-cryptographic randomness) and
+ * must not be used for real scans. Use `src/services/secureAutomationService.ts`
+ * (backed by `agents/secure/`) for the secure, receipt-bearing pipeline.
+ */
 import { RemediationDispatcher, RemediationAction } from './remediationService';
 
 export enum SovereignState {

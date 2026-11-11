@@ -1,4 +1,4 @@
-import { SovereignEncryption, WrappedDEK } from '../lib/encryption';
+import { SovereignEncryption, type WrappedDEK } from '../lib/encryption.ts';
 
 export interface UserSovereignProfile {
   userId: string;
@@ -23,12 +23,12 @@ export class EnvelopeService {
     const dek = await SovereignEncryption.generateSovereignDEK();
 
     // 1. Wrap DEK with Passkey
-    const passkeySalt = window.crypto.getRandomValues(new Uint8Array(16));
+    const passkeySalt = globalThis.crypto.getRandomValues(new Uint8Array(16));
     const passkeyWrappingKey = await SovereignEncryption.deriveWrappingKey(passkeySecret, passkeySalt);
     const wrappedDekPasskey = await SovereignEncryption.wrapSovereignDEK(dek, passkeyWrappingKey);
 
     // 2. Wrap DEK with Recovery Code
-    const recoverySalt = window.crypto.getRandomValues(new Uint8Array(16));
+    const recoverySalt = globalThis.crypto.getRandomValues(new Uint8Array(16));
     const recoveryWrappingKey = await SovereignEncryption.deriveWrappingKey(recoverySecret, recoverySalt);
     const wrappedDekRecovery = await SovereignEncryption.wrapSovereignDEK(dek, recoveryWrappingKey);
 
@@ -67,6 +67,20 @@ export class EnvelopeService {
 
     // Decrypt the data
     return await SovereignEncryption.decryptPII(profile.encryptedData, profile.iv, dek);
+  }
+
+  /**
+   * Recovers the Data Encryption Key (DEK) without decrypting payload data.
+   * Used by the hardware-binding / recovery unlock paths.
+   */
+  static async recoverDEK(
+    profile: UserSovereignProfile,
+    secret: string,
+    isRecoveryPath: boolean = false
+  ): Promise<CryptoKey> {
+    const wrapped = isRecoveryPath ? profile.wrappedDekRecovery : profile.wrappedDekPasskey;
+    const wrappingKey = await SovereignEncryption.deriveWrappingKey(secret, wrapped.salt);
+    return SovereignEncryption.unwrapSovereignDEK(wrapped, wrappingKey);
   }
 
   /**

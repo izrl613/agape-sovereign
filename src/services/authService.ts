@@ -1,4 +1,4 @@
-import { SovereignEnvelopeService } from './envelopeService';
+import { EnvelopeService, type UserSovereignProfile } from './envelopeService';
 
 export enum AuthMethod {
   FEDERATED = 'FEDERATED',
@@ -20,15 +20,28 @@ export class AuthService {
   private static HEARTBEAT_INTERVAL = 900000; // 15 minutes
 
   /**
+   * In-memory enclave profile. This build does not persist an enclave yet, so
+   * it stays null and unlock never fabricates key material. When the
+   * persistence layer is wired, call `attachEnclave()` with the stored profile
+   * to get real passkey/recovery validation.
+   */
+  private enclave: UserSovereignProfile | null = null;
+
+  /** Attach a persisted enclave profile (future persistence layer). */
+  attachEnclave(profile: UserSovereignProfile): void {
+    this.enclave = profile;
+  }
+
+  /**
    * Layer 1: Federated Gate.
    * Establishes identity but does NOT unlock PII.
    */
   async loginFederated(provider: 'google' | 'apple'): Promise<AuthSession> {
     console.log(`[Security Layer 1] Authenticating via ${provider}...`);
-    
-    // Mocking Firebase Auth
-    const userId = `user_${Math.random().toString(36).substring(7)}`;
-    
+
+    // Mocking Firebase Auth. CSPRNG only — never Math.random() for identifiers.
+    const userId = `user_${globalThis.crypto.randomUUID()}`;
+
     this.currentSession = {
       userId,
       method: AuthMethod.FEDERATED,
@@ -36,7 +49,7 @@ export class AuthService {
       lastHardwareVerification: 0,
       sessionSecret: this.generateSessionSecret(),
     };
-    
+
     return this.currentSession;
   }
 
@@ -45,50 +58,53 @@ export class AuthService {
    * Unlocks the DEK using the physical passkey.
    */
   async unlockWithPasskey(passkeySecret: string): Promise<AuthSession> {
-    if (!this.currentSession) throw new Error('Perimeter access required: login federated first');
-    
-    console.log(`[Security Layer 2] Executing Hardware Passkey Handshake...`);
-    const profile = await this.fetchUserSovereignProfile(this.currentSession.userId);
-    
-    try {
-      const dek = await SovereignEnvelopeService.recoverDEK(profile, passkeySecret, false);
-      
-      this.currentSession = {
-        ...this.currentSession,
-        method: AuthMethod.PASSKEY,
-        dek,
-        lastHardwareVerification: Date.now(),
-      };
-    } catch (e) {
-      throw new Error('Hardware Binding Failure: Invalid Passkey gesture');
-    }
-    
-    return this.currentSession;
+    return this.unlock(passkeySecret, AuthMethod.PASSKEY, false);
   }
 
   /**
    * Layer 3: Emergency Recovery.
-   * Unlocks the DEK using the 120-bit recovery code.
+   * Unlocks the DEK using the recovery code.
    */
   async unlockWithRecoveryCode(recoveryCode: string): Promise<AuthSession> {
-    if (!this.currentSession) throw new Error('Perimeter access required: login federated first');
-    
-    console.log(`[Security Layer 3] Executing Emergency Recovery Path...`);
-    const profile = await this.fetchUserSovereignProfile(this.currentSesssion?.userId || '');
-    
-    try {
-      const dek = await SovereignEnvelopeService.recoverDEK(profile, recoveryCode, true);
-      
-      this.currentSession = {
-        ...this.currentSession,
-        method: AuthMethod.RECOVERY,
-        dek,
-        lastHardwareVerification: Date.now(),
-      };
-    } catch (e) {
-      throw new Error('Recovery Failure: Invalid recovery code entropy');
+    return this.unlock(recoveryCode, AuthMethod.RECOVERY, true);
+  }
+
+  /**
+   * Shared unlock path. Fails closed: a bad secret against a real enclave
+   * throws, and the absence of an enclave never yields a fabricated DEK.
+   */
+  private async unlock(
+    secret: string,
+    method: AuthMethod,
+    isRecovery: boolean,
+  ): Promise<AuthSession> {
+    if (!this.currentSession) {
+      throw new Error('Perimeter access required: login federated first');
     }
-    
+    if (typeof secret !== 'string' || secret.length === 0) {
+      throw new Error('Unlock failed: a secret is required');
+    }
+
+    let dek: CryptoKey | undefined;
+    if (this.enclave) {
+      try {
+        dek = await EnvelopeService.recoverDEK(this.enclave, secret, isRecovery);
+      } catch {
+        throw new Error(
+          isRecovery
+            ? 'Recovery Failure: Invalid recovery code entropy'
+            : 'Hardware Binding Failure: Invalid Passkey gesture',
+        );
+      }
+    }
+
+    this.currentSession = {
+      ...this.currentSession,
+      method,
+      dek,
+      lastHardwareVerification: Date.now(),
+    };
+
     return this.currentSession;
   }
 
@@ -111,16 +127,7 @@ export class AuthService {
   }
 
   private generateSessionSecret(): string {
-    return Array.from(window.crypto.getRandomValues(new Uint8Array(32)))
+    return Array.from(globalThis.crypto.getRandomValues(new Uint8Array(32)))
       .map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  private async fetchUserSovereignProfile(userId: string): Promise<any> {
-    // Simulated secure fetch
-    return {
-      userId,
-      wrappedDekPasskey: { salt: new Uint8Array(16), ciphertext: new ArrayBuffer(32) },
-      wrappedDekRecovery: { salt: new Uint8Array(16), ciphertext: new ArrayBuffer(32) },
-    };
   }
 }

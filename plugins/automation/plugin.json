@@ -1,0 +1,18 @@
+{
+  "id": "automation",
+  "name": "Sovereign Automation",
+  "version": "1.0.0",
+  "description": "Orchestrated 16-vector scans, receipt verification, and fail-closed remediation planning.",
+  "entry": "./index.ts",
+  "capabilities": [
+    "automation.runScan",
+    "automation.verifyReceipt",
+    "automation.remediationPlan",
+    "automation.policy"
+  ],
+  "security": {
+    "zeroKnowledge": true,
+    "handlesPii": true,
+    "requiresSecrets": true
+  }
+}

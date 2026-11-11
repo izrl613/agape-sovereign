@@ -1,4 +1,11 @@
 /**
+ * @deprecated Legacy remediation demo retained for backward compatibility.
+ *
+ * This dispatcher uses `Math.random()` for ids and unconditionally reports
+ * success via `setTimeout`. Use `agents/secure/remediation.ts`
+ * (`SecureRemediationDispatcher`) for CSPRNG ids and fail-closed,
+ * evidence-based status.
+ *
  * Automated Remediation Engine
  * Executes the 'NUKED' state logic to purge data and revoke access.
  */
