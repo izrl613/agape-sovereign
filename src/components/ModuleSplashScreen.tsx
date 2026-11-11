@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NEON } from './UI';
 import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
+import { gatekeeper, GateDecision, DataProvider } from '../services/gatekeeperService';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ModuleSplashScreen — Per-Module Identity Vector Entry Screen
@@ -9,9 +10,18 @@ import { ThirdPartyVerificationModal } from './ThirdPartyVerificationModal';
 // Renders a full-screen animated splash on every module navigation.
 // Adapts to user's stored data: shows masked value, SHA-256 seal, and
 // security status. Auto-dismisses after AUTO_DISMISS_MS.
+// Integrates gatekeeper validation for multi-provider data entry.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AUTO_DISMISS_MS = 1800;
+
+interface ModuleSplashGateResult {
+  allowed: boolean;
+  reason?: string;
+  validatedFields?: string[];
+  encryptedPayload?: string;
+  sha256Hash?: string;
+}
 
 interface ModuleSplashProps {
   moduleId: string;
@@ -22,8 +32,9 @@ interface ModuleSplashProps {
   storedHash?: string;
   hasData: boolean;
   status?: 'KNOXED' | 'NUKED' | 'MONITORED' | null;
-  onDismiss: () => void;
+  onDismiss: (result: ModuleSplashGateResult) => void;
   showThirdPartyVerification?: boolean;
+  initialProvider?: DataProvider;
 }
 
 // Glitch-animate a SHA-256 hex string before settling
@@ -63,10 +74,12 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   status,
   onDismiss,
   showThirdPartyVerification,
+  initialProvider = 'manual-entry',
 }) => {
   const [visible, setVisible] = useState(true);
   const [displayHash, setDisplayHash] = useState(storedHash ? randomHex(64) : randomHex(64));
   const [hashRevealed, setHashRevealed] = useState(false);
+  const [gateResult, setGateResult] = useState<ModuleSplashGateResult>({ allowed: false });
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const glitchRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -88,18 +101,33 @@ export const ModuleSplashScreen: React.FC<ModuleSplashProps> = ({
     };
   }, [storedHash]);
 
+  // Gatekeeper validation
+  useEffect(() => {
+    const runGatekeeper = async () => {
+      const decision = await gatekeeper.gateData(moduleId, {}, initialProvider);
+      setGateResult({
+        allowed: decision.allowed,
+        reason: decision.reason,
+        validatedFields: decision.validatedFields,
+        encryptedPayload: decision.encryptedPayload,
+        sha256Hash: decision.sha256Hash,
+      });
+    };
+
+    runGatekeeper();
+  }, [moduleId, initialProvider]);
+
   // Auto-dismiss
   useEffect(() => {
     timerRef.current = setTimeout(() => {
       setVisible(false);
-      setTimeout(onDismiss,
-  showThirdPartyVerification, 500); // let exit animation finish
+      setTimeout(() => onDismiss(gateResult), 500); // let exit animation finish
     }, AUTO_DISMISS_MS);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [onDismiss]);
+  }, [onDismiss, gateResult]);
 
   const statusColor = status ? (STATUS_COLOR[status] ?? NEON.textMuted) : NEON.textMuted;
   const statusLabel = status ? (STATUS_LABEL[status] ?? 'AWAITING CONFIGURATION') : 'AWAITING CONFIGURATION';

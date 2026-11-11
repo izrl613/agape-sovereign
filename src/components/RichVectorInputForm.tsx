@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Key, Plus, Trash2, ShieldCheck, Cpu, ArrowRight, RefreshCw } from 'lucide-react';
 import { generateSHA256, encryptClientSide, decryptClientSide } from '../utils/crypto';
 import { toast } from 'sonner';
+import { gatekeeper, GateDecision, DataProvider } from '../services/gatekeeperService';
 
 interface FieldConfig {
   key: string;
@@ -140,8 +141,10 @@ export const RichVectorInputForm: React.FC<RichVectorInputFormProps> = ({
   const [computedSha256, setComputedSha256] = useState('');
   const [encryptedBase64, setEncryptedBase64] = useState('');
   const [isEncrypting, setIsEncrypting] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<DataProvider>('manual-entry');
+  const [gateDecision, setGateDecision] = useState<GateDecision>({ allowed: false, reason: '', validatedFields: [], encryptedPayload: undefined, sha256Hash: undefined });
 
-  // Re-compute SHA-256 and encrypt whenever formData or customFields changes
+  // Re-compute SHA-256, encrypt, and gatekeeper-validate whenever formData or customFields changes
   useEffect(() => {
     let isMounted = true;
     const computeCrypto = async () => {
@@ -157,16 +160,24 @@ export const RichVectorInputForm: React.FC<RichVectorInputFormProps> = ({
       const hash = await generateSHA256(jsonStr);
       const encrypted = await encryptClientSide(jsonStr, userId || 'sovereign-user');
 
+      // Gatekeeper validation
+      const gateDecision: GateDecision = await gatekeeper.gateData(
+        formData['moduleId'] || 'shadow-purge',
+        combinedPayload,
+        selectedProvider || 'manual-entry'
+      );
+
       if (isMounted) {
         setComputedSha256(hash);
         setEncryptedBase64(encrypted);
+        setGateDecision(gateDecision);
         setIsEncrypting(false);
       }
     };
 
     computeCrypto();
     return () => { isMounted = false; };
-  }, [formData, customFields, userId]);
+  }, [formData, customFields, userId, selectedProvider]);
 
   const handleFieldChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -196,6 +207,14 @@ export const RichVectorInputForm: React.FC<RichVectorInputFormProps> = ({
       if (cf.label && cf.value) {
         combinedPayload[cf.key] = cf.value;
       }
+    }
+
+    // Gatekeeper validation before handoff
+    if (!gateDecision.allowed) {
+      toast.error('Gatekeeper validation failed', {
+        description: gateDecision.reason || 'Please check your inputs and provider selection',
+      });
+      return;
     }
 
     onSaveAndHandoff(combinedPayload, computedSha256, encryptedBase64);
@@ -292,19 +311,42 @@ export const RichVectorInputForm: React.FC<RichVectorInputFormProps> = ({
             <span className="text-emerald-400">Validated</span>
           )}
         </div>
+        {gateDecision.allowed && (
+          <div className="text-green-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+            ✅ Gate Approved
+          </div>
+        )}
+        {!gateDecision.allowed && gateDecision.reason && (
+          <div className="text-rose-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+            🚫 Gate Blocked: {gateDecision.reason}
+          </div>
+        )}
         <div className="font-mono text-[11px] text-slate-300 break-all bg-slate-950/80 p-2 rounded border border-slate-800">
           {computedSha256}
         </div>
       </div>
 
+      {/* Gatekeeper Status */}
+      {gateDecision.reason && (
+        <div className="p-3 rounded-xl bg-slate-950/80 border border-rose-500/30 mb-3">
+          <div className="text-rose-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+            🚫 Gatekeeper Validation
+          </div>
+          <div className="text-slate-400 text-[10px] font-mono">{gateDecision.reason}</div>
+        </div>
+      )}
+
       {/* Action Handoff Button */}
       <button
         type="submit"
-        disabled={isProcessing}
+        disabled={isProcessing || !gateDecision.allowed}
         className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-[#00d4ff] to-cyan-500 hover:from-cyan-400 hover:to-[#00d4ff] text-slate-950 font-orbitron font-bold text-xs uppercase tracking-wider shadow-lg shadow-[#00d4ff]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
       >
-        <Cpu className="w-4 h-4" /> HANDOFF TO ARCHITECT AI (NEMOTRON-3-NANO:4B)
-        <ArrowRight className="w-4 h-4" />
+        {gateDecision.allowed ? (
+          <><Cpu className="w-4 h-4" /> HANDOFF TO ARCHITECT AI (NEMOTRON-3-NANO:4B)⟩
+        ) : (
+          <><ShieldAlert className="w-4 h-4" /> GATEKEEPER DENIED⟩}
+        )}
       </button>
     </form>
   );

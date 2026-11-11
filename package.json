@@ -18,5 +18,8 @@
     "deploy:hosting": "firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
     "deploy:firestore": "firebase deploy --only firestore"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
   }
 }

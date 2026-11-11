@@ -314,15 +314,22 @@ app.post('/api/process-identity-vectors', async (req: express.Request, res: expr
     const {sha256Id, vectors, totalRiskScore, scanTimestamp, status: statusParam} =
       req.body as ProcessIdentityVectorsRequest;
 
+    // Gatekeeper validation start
+    const formData = vectors ? vectors : {};
+    const provider = formData.provider || 'manual-entry';
+    const gateDecision = await gatekeeper.gateData(
+      Object.keys(AGENT_CONFIGS)[0] || 'shadow-purge', // Will be per-module below
+      formData,
+      provider
+    );
+    // Gatekeeper validation end
+
     if (!sha256Id) {
       return res.status(400).json({
         status: 'FAILED',
         error: 'Missing required field: sha256Id',
         generatedAt: new Date().toISOString(),
       });
-    }
-
-    logger.info(`[PIPELINE] Starting identity vector pipeline for SHA-256: ${sha256Id.substring(0, 16)}...`);
 
     // ── Step 1: Execute all 16 identity vector module agents ────────────────
     const agentResults: AgentResult[] = [];
