@@ -1,0 +1,39 @@
+{
+  "project": "agape-sovereign",
+  "version": "1.0.0",
+  "description": "Agape Sovereign AI — Digital Identity Defense Enclave",
+  "artifactUrl": "https://claude.ai/artifacts/agape-sovereign-status",
+  "tabs": [
+    "overview-success-criteria",
+    "workstream-sequence",
+    "next-steps",
+    "background-plan-risks-open-questions",
+    "decisions-faq"
+  ],
+  "lastUpdated": "%DATE%",
+  "stateHash": "%STATE_HASH%",
+  "deltaMode": true,
+  "workstreams": {
+    "identity-vectors": {
+      "status": "active",
+      "vectors": 16,
+      "lastScan": "%LAST_SCAN%",
+      "sovereignScore": "%SOVEREIGN_SCORE%"
+    },
+    "secure-automation": {
+      "status": "active",
+      "plugins": ["zero-knowledge", "identity-vectors", "automation"],
+      "mcpServer": "running"
+    },
+    "encryption": {
+      "status": "active",
+      "cipher": "AES-256-GCM",
+      "envelope": "dual-wrap (passkey + recovery)"
+    },
+    "cloud-ops": {
+      "status": "monitoring",
+      "freeTier": "within limits",
+      "rpm": "under 15 RPM cap"
+    }
+  }
+}

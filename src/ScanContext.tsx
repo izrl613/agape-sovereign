@@ -80,7 +80,6 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ...d.data(),
         timestamp: d.data().timestamp?.toDate() || new Date()
       } as ScanFinding));
-      
       // Check for new NUKED findings to notify
       if (!isLoading) {
         newFindings.forEach(finding => {
@@ -91,24 +90,17 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
             setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
           }
-        } else {
-          // Initial load: just mark existing NUKED as notified so we don't spam on login
-          const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
-          setNotifiedFindingIds(initialNukedIds);
         }
-
         setFindings(newFindings);
         setIsLoading(false);
-        
-        if (newFindings.length > 0) {
-          const latest = newFindings.reduce((prev, current) => 
-            (prev.timestamp > current.timestamp) ? prev : current
-          );
-          setLastScanDate(latest.timestamp);
-        }
-      }, (err) => {
-        handleFirestoreError(err, OperationType.LIST, 'diff_scans');
-      });
+      } else {
+        // Initial load: just mark existing NUKED as notified so we don't spam on login
+        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
+        setNotifiedFindingIds(initialNukedIds);
+      }
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'diff_scans');
+    });
     }, [user]);
 
     
@@ -230,7 +222,6 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useScan = () => {
   const context = useContext(ScanContext);
   if (context === undefined) {
     throw new Error('useScan must be used within a ScanProvider');

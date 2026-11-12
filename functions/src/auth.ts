@@ -475,8 +475,47 @@ async function requireRegisteredUser(
 }
 
 // POST /register-options
+// Supports two modes:
+//  1. Email-based  — body: { email: "user@example.com" }
+//     Creates/associates a passkey with a user account.
+//  2. Device-bound  — body: { reauth: true } (no email)
+//     Creates a device-bound passkey (resident credential).
+//     The authenticator stores the credential ID, and login uses
+//     the discoverable credential flow (no email needed).
 router.post("/register-options", authLimiter, async (req: Request, res: Response) => {
   try {
+    // ── Mode 2: device-bound / resident credential ─────────────────────────────────
+    if (req.body?.reauth === true && !req.body?.email) {
+      const {rpId, expectedOrigin} = getWebAuthnConfig(req);
+      const options = await generateRegistrationOptions({
+        rpName: RP_NAME,
+        rpID: rpId,
+        userID: new TextEncoder().encode("device-bound"), // placeholder; resolved in verify
+        userName: "",
+        userDisplayName: "Device-bound passkey",
+        attestationType: "none",
+        excludeCredentials: [], // no existing credentials to exclude
+        authenticatorSelection: {
+          residentKey: "preferred",
+          userVerification: "preferred",
+          // Omit authenticatorAttachment so platform + roaming authenticators both work
+        },
+      });
+
+      // We don't know the userId yet; it will be resolved during verify-registration
+      // via the userHandle returned by the authenticator.
+      setSessionCookie(res, {
+        registrationChallenge: options.challenge,
+        authUserId: null,
+        rpId,
+        expectedOrigin,
+        residentKey: true,
+      });
+      res.json(options);
+      return;
+    }
+
+    // ── Mode 1: email-based flow ──────────────────────────────────────────────
     const email = normalizeEmail(req.body?.email || "");
     if (!email) {
       res.status(400).json({error: "Missing user email"});
@@ -505,7 +544,7 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
       };
     });
 
-    const {rpId} = getWebAuthnConfig(req);
+    const {rpId, expectedOrigin} = getWebAuthnConfig(req);
     const options = await generateRegistrationOptions({
       rpName: RP_NAME,
       rpID: rpId,
@@ -520,8 +559,6 @@ router.post("/register-options", authLimiter, async (req: Request, res: Response
         // Omit authenticatorAttachment so platform + roaming authenticators both work
       },
     });
-
-    const expectedOrigin = getWebAuthnConfig(req).expectedOrigin;
     setSessionCookie(res, {
       registrationChallenge: options.challenge,
       authUserId: userId,

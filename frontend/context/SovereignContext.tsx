@@ -182,6 +182,17 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     return unsub;
   }, [adoptUser]);
 
+  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
+    const result = await PasskeyService.device_login(email);
+    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY_DEVICE',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
+  }, [adoptUser]);
+
   const loginWithPasskey = useCallback(async (email?: string) => {
     const result = await PasskeyService.login(email);
     sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
@@ -189,6 +200,17 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
       id: result.userId,
       email: result.email,
       method: 'PASSKEY',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
+  }, [adoptUser]);
+
+  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
+    const result = await PasskeyService.device_login(email);
+    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY_DEVICE',
       isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
     });
   }, [adoptUser]);
@@ -210,9 +232,31 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     return accessToken;
   }, [adoptUser]);
 
+  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
+    const result = await PasskeyService.device_login(email);
+    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY_DEVICE',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
+  }, [adoptUser]);
+
   const loginGuest = useCallback(async () => {
     const fbUser = await signInGuest();
     await adoptUser({ id: fbUser.uid, email: '', method: 'ANON', isAdmin: false });
+  }, [adoptUser]);
+
+  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
+    const result = await PasskeyService.device_login(email);
+    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY_DEVICE',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
   }, [adoptUser]);
 
   const attachGoogle = useCallback(async (): Promise<string | null> => {
@@ -342,6 +386,7 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
         recoveryCode,
         acknowledgeRecoveryCode,
         loginWithPasskey,
+        loginWithPasskeyDevice,
         registerPasskey,
         loginWithGoogle,
         loginGuest,

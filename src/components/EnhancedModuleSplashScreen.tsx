@@ -21,6 +21,7 @@ import { gatekeeper, GateDecision, DataProvider } from '../services/gatekeeperSe
 import { generateSHA256, encryptClientSide } from '../utils/crypto';
 import { toast } from 'sonner';
 import { Lock, Key, Plus, Trash2, ShieldCheck, Cpu, ArrowRight, RefreshCw } from 'lucide-react';
+import { VECTOR_MODULES, getModuleById, ENCRYPTION_COLORS } from '../modules/identity-vectors/ModuleConfig';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enhanced ModuleSplashScreen — Per-Module Identity Vector Entry Screen
@@ -73,6 +74,10 @@ const STATUS_LABEL: Record<string, string> = {
   MONITORED: '👁 WATCHING — MONITORED',
 };
 
+// Module config lookup
+const moduleConfig = getModuleById(moduleId) || VECTOR_MODULES.find(m => m.vector === vector);
+const encColor = ENCRYPTION_COLORS[moduleConfig?.encryptionLevel] || NEON.textMuted;
+
 export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   moduleId,
   vector,
@@ -86,17 +91,10 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
   showThirdPartyVerification,
   initialProvider = 'manual-entry',
 }) => {
-  const [visible, setVisible] = useState(true);
-  const [displayHash, setDisplayHash] = useState(storedHash ? randomHex(64) : randomHex(64));
-  const [hashRevealed, setHashRevealed] = useState(false);
-  const [gateDecision, setGateDecision] = useState<GateDecision | null>(null);
-  const [formData, setFormData] = useState<Record<string, string>>({});
-  const [selectedProvider, setSelectedProvider] = useState<DataProvider>(initialProvider);
-  const [providerOptions, setProviderOptions] = useState<DataProvider[]>(['manual-entry']);
-  const [fieldSchemas, setFieldSchemas] = useState<{ key: string; label: string; placeholder: string; type?: string }[]>([]);
-  const [validationState, setValidationState] = useState<{ valid: boolean; message: string; color: string }>({ valid: true, message: 'Ready for secure input', color: '#64748B' });
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const glitchRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const moduleConfig = getModuleById(moduleId) || VECTOR_MODULES.find(m => m.vector === vector);
+  const encColor = ENCRYPTION_COLORS[moduleConfig?.encryptionLevel] || NEON.textMuted;
+  const statusColor = status ? NEON[status.toLowerCase() as keyof typeof NEON] || moduleConfig?.color : NEON.textMuted;
+  const statusLabel = status ? (STATUS_LABEL[status] ?? 'AWAITING CONFIGURATION') : 'AWAITING CONFIGURATION';
 
   // Initialize field schemas based on module
   useEffect(() => {
@@ -315,15 +313,15 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               padding: '4px 16px',
-              background: `${statusColor}11`,
-              border: `1px solid ${statusColor}33`,
+              background: `${encColor}11`,
+              border: `1px solid ${encColor}33`,
               borderRadius: 999,
               marginBottom: 4,
             }}>
               <span style={{ fontFamily: "'Share Tech Mono'", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.2em' }}>
                 {vector} · DIFF VECTOR
               </span>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: encColor, boxShadow: `0 0 6px ${encColor}` }} />
             </div>
 
             {/* Icon */}
@@ -383,14 +381,14 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
                 </div>
               </div>
               <div style={{
-                background: hasData ? `${NEON.blue}11` : `${NEON.orange}11`,
-                border: `1px solid ${hasData ? NEON.blue : NEON.orange}33`,
+                background: hasData ? `${encColor}11` : `${NEON.orange}11`,
+                border: `1px solid ${hasData ? encColor : NEON.orange}33`,
                 borderRadius: 6,
                 padding: '4px 12px',
                 fontFamily: "'Orbitron'",
                 fontSize: '0.5rem',
                 fontWeight: 700,
-                color: hasData ? NEON.blue : NEON.orange,
+                color: hasData ? encColor : NEON.orange,
                 letterSpacing: '0.1em',
                 flexShrink: 0,
               }}>
@@ -437,11 +435,11 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
               <div style={{
                 fontFamily: "'Share Tech Mono'",
                 fontSize: '0.58rem',
-                color: hashRevealed ? NEON.blue : NEON.magenta,
+                color: hashRevealed ? encColor : NEON.magenta,
                 letterSpacing: '0.06em',
                 lineHeight: 1.7,
                 wordBreak: 'break-all',
-                textShadow: `0 0 6px ${hashRevealed ? NEON.blue : NEON.magenta}44`,
+                textShadow: `0 0 6px ${hashRevealed ? encColor : NEON.magenta}44`,
                 transition: 'color 0.4s ease',
               }}>
                 {formatHash(displayHash)}
@@ -453,8 +451,8 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
               <div style={{
                 margin: '20px 0',
                 padding: '12px 16px',
-                background: gateDecision.allowed ? NEON.blue + '15' : NEON.magenta + '15',
-                border: `1px solid ${gateDecision.allowed ? NEON.blue : NEON.magenta}33`,
+                background: gateDecision.allowed ? encColor + '15' : NEON.magenta + '15',
+                border: `1px solid ${gateDecision.allowed ? encColor : NEON.magenta}33`,
                 borderRadius: 8,
                 width: '100%',
                 maxWidth: 500,
@@ -473,12 +471,12 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
                   </div>
                 )}
                 {gateDecision.validatedFields.length > 0 && (
-                  <div style={{ fontSize: '0.45rem', color: NEON.cyan, letterSpacing: '0.08em', marginBottom: 4 }}>
+                  <div style={{ fontSize: '0.45rem', color: encColor, letterSpacing: '0.08em', marginBottom: 4 }}>
                     Validated fields: {gateDecision.validatedFields.join(', ')}
                   </div>
                 )}
                 {gateDecision.encryptedPayload && (
-                  <div style={{ fontSize: '0.45rem', color: NEON.cyan, letterSpacing: '0.08em' }}>
+                  <div style={{ fontSize: '0.45rem', color: encColor, letterSpacing: '0.08em' }}>
                     Encrypted payload: {gateDecision.encryptedPayload.substring(0, 32)}...
                   </div>
                 )}
@@ -582,7 +580,7 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
                   width: '100%',
                   maxWidth: 500,
                   padding: '14px 24px',
-                  background: gateDecision?.allowed ? NEON.blue + ' gradient' : NEON.magenta + ' gradient',
+                  background: gateDecision?.allowed ? encColor + ' gradient' : NEON.magenta + ' gradient',
                   border: 'none',
                   borderRadius: 8,
                   color: 'white',
@@ -591,7 +589,7 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
                   textTransform: 'uppercase',
                   cursor: gateDecision?.allowed ? 'pointer' : 'not-allowed',
                   marginBottom: 8,
-                  boxShadow: gateDecision?.allowed ? '0 0 20px rgba(0,212,255,0.3)' : 'none',
+                  boxShadow: gateDecision?.allowed ? `0 0 20px rgba(${encColor.replace('#','')},0.3)` : 'none',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -604,7 +602,7 @@ export const EnhancedModuleSplashScreen: React.FC<ModuleSplashProps> = ({
             {/* Provider hint */}
             {fieldSchemas.length > 0 && (
               <div style={{
-                marginTop: '12px', fontSize: '0.45rem', color: NEON.textMuted,
+                marginTop: '12px', fontSize: '0.45rem', color: encColor,
                 letterSpacing: '0.08em', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 8,
               }}>
                 Provider: {selectedProvider.replace(/-/, ' ').replace(/\b\w/g, c => c.toUpperCase())} — Switch provider to enable different data fields
