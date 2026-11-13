@@ -3,7 +3,7 @@ import { Fingerprint, ArrowLeft, Shield, EyeOff, KeyRound, Sparkles } from 'luci
 import { useSovereign } from '../context/SovereignContext';
 import { GOOGLE_CANCELLED } from '../firebase';
 
-type AuthMethod = 'PASSKEY' | 'PASSKEY_REGISTER' | 'GOOGLE' | 'ANON';
+type AuthMethod = 'PASSKEY' | 'PASSKEY_DEVICE' | 'PASSKEY_REGISTER' | 'GOOGLE' | 'ANON';
 
 interface LoginPageProps {
   onSuccess?: () => void;
@@ -208,6 +208,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onNavigateHome 
                 type="button"
                 className="auth-row-btn passkey-btn"
                 onClick={() => handleAuth('PASSKEY')}
+
+  <button
+    type="button"
+    className="auth-row-btn passkey-btn"
+    onClick={() => handleAuth('PASSKEY_DEVICE')}
+    id="btn-login-passkey-device">
+    <div className="btn-icon-box passkey-icon-box">
+      <Fingerprint size={22} color={C.blue} />
+    </div>
+    <div className="btn-text-content">
+      <div className="btn-title">Device-bound Passkey</div>
+      <div className="btn-subtitle">Hard device binding · Touch ID / Face ID / Windows Hello / YubiKey</div>
+    </div>
+  </button>
                 id="btn-login-passkey"
               >
                 <div className="btn-icon-box passkey-icon-box">
