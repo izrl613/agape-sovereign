@@ -204,7 +204,6 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   }, [adoptUser]);
 
-  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
     const result = await PasskeyService.device_login(email);
     sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
     await adoptUser({
@@ -232,7 +231,6 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     return accessToken;
   }, [adoptUser]);
 
-  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
     const result = await PasskeyService.device_login(email);
     sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
     await adoptUser({
@@ -248,7 +246,6 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     await adoptUser({ id: fbUser.uid, email: '', method: 'ANON', isAdmin: false });
   }, [adoptUser]);
 
-  const loginWithPasskeyDevice = useCallback(async (email?: string) => {
     const result = await PasskeyService.device_login(email);
     sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
     await adoptUser({
