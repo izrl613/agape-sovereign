@@ -1,4 +1,4 @@
-import {onRequest} from "firebase-functions/https";
+import * as functions from "firebase-functions";
 import {logger} from "firebase-functions";
 import {defineString} from "firebase-functions/params";
 import {randomBytes} from "crypto";
@@ -1000,19 +1000,10 @@ authApp.use((err: Error & {code?: string; status?: number},
   next(err);
 });
 
-export const authApi = onRequest(
-  {
-    region: "us-central1",
-    timeoutSeconds: 30,
-    memory: "256MiB",
-    invoker: "public",
-    serviceAccount:
-      "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-    // Deliberately NO secret bindings here: the CI deployer cannot
-    // validate Secret-Manager versions (403), and same-named plain
-    // env vars collide with the service's existing secret env vars.
-    // Cookie key comes from PASSKEY_COOKIE_SIGNING_KEY (param) with
-    // legacy process.env fallbacks — see configuredCookieSecret.
-  },
-  authApp
-);
+export const authApi = functions.runWith({
+  region: "us-central1",
+  timeoutSeconds: 30,
+  memory: "256MiB",
+  invoker: "public",
+  serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+}).https.onRequest(authApp);

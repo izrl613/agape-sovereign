@@ -1,5 +1,5 @@
 /* eslint-disable require-jsdoc, new-cap, max-len */
-import {onRequest} from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import {logger} from "firebase-functions";
 import {defineString} from "firebase-functions/params";
 
@@ -131,9 +131,9 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
     const {uid} = await requireAuth(req);
 
     // Build context from history
-    const context = history && Array.isArray(history) ?
-      history.slice(-10).map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join("\n") :
-      "";
+    const context = history && Array.isArray(history)
+      ? history.slice(-10).map((m: {role: string; content: string}) => `${m.role}: ${m.content}`).join("\n")
+      : "";
 
     const apiKey = geminiApiKey.value();
     if (!apiKey) {
@@ -145,10 +145,10 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
     }
 
     const receipts = Array.isArray(req.body.receipts) ? req.body.receipts.slice(0, 64) : [];
-    const receiptLines = receipts.length ?
-      receipts.map((r: {module: string; status: string; source: string; sealedAt: string; sha256Id: string}) =>
-        `- ${r.module}: ${r.status} via ${r.source} (sealed ${r.sealedAt}, SHA-256 ${r.sha256Id}...)`).join("\n") :
-      "No sealed module receipts yet.";
+    const receiptLines = receipts.length
+      ? receipts.map((r: {module: string; status: string; source: string; sealedAt: string; sha256Id: string}) =>
+          `- ${r.module}: ${r.status} via ${r.source} (sealed ${r.sealedAt}, SHA-256 ${r.sha256Id}...)`).join("\n")
+      : "No sealed module receipts yet.";
 
     const systemPrompt = [
       "You are Architect AI, the privacy and security assistant inside",
@@ -211,14 +211,11 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
 
 architectApp.use("/api/architect", architectRouter);
 
-export const architectApi = onRequest(
-  {
+export const architectApi = functions.runWith({
     region: "us-central1",
     timeoutSeconds: 60,
     memory: "512MiB",
     invoker: "public",
     // GEMINI_API_KEY arrives via the defaulted param above; no secret binding.
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-  },
-  architectApp
-);
+  }).https.onRequest(architectApp);

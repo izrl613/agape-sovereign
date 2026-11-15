@@ -1,9 +1,9 @@
-import {onRequest} from "firebase-functions/v2/https";
+import * as functions from "firebase-functions";
 import {defineSecret, defineString} from "firebase-functions/params";
 /* eslint-disable */
 import JsPDF from "jspdf";
 import * as crypto from "crypto";
-import {logger} from "firebase-functions/v2";
+import {logger} from "firebase-functions";
 
 // Define the secret that holds the build manifest or the hash itself
 const buildManifestSecret = defineSecret("BUILD_MANIFEST_SECRET");
@@ -14,12 +14,10 @@ const versionNumberParam = defineString("VERSION_NUMBER", {default: "1.0.0"});
  * Cloud Function to generate Privacy Policy or Terms of Service PDFs
  * with an embedded, verifiable SHA256 Identity Hash.
  */
-export const generatePolicyDocument = onRequest(
-  {
-    secrets: [buildManifestSecret],
-    cors: true,
-  },
-  async (req, res) => {
+export const generatePolicyDocument = functions.runWith({
+  secrets: [buildManifestSecret],
+  cors: true,
+}).https.onRequest(async (req, res) => {
     try {
       const docType = req.query.type as string;
 

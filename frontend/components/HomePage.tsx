@@ -68,18 +68,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       {/* Navigation Header */}
       <header className="home-header">
         <div className="brand-group" onClick={onBegin} style={{ cursor: 'pointer' }}>
-          <svg viewBox="0 0 40 40" width="36" height="36" className="pulsing-border" style={{ filter: `drop-shadow(0 0 10px ${NEON.blue})` }}>
-  <style>{`
-    @keyframes pulseBorder {
-      0% { filter: drop-shadow(0 0 5px ${NEON.magenta}); }
-      33% { filter: drop-shadow(0 0 5px ${NEON.blue}); }
-      66% { filter: drop-shadow(0 0 5px ${NEON.orange}); }
-      100% { filter: drop-shadow(0 0 5px ${NEON.magenta}); }
-    }
-    .pulsing-border {
-      animation: pulseBorder 3s infinite;
-    }
-  `}</style>
+          <svg viewBox="0 0 40 40" width="36" height="36" style={{ filter: `drop-shadow(0 0 10px ${NEON.blue})` }}>
             <polygon points="20,2 38,12 38,28 20,38 2,28 2,12" fill="none" stroke={NEON.blue} strokeWidth="1.5" />
             <polygon points="20,8 32,15 32,25 20,32 8,25 8,15" fill="none" stroke={NEON.magenta} strokeWidth="1" opacity="0.75" />
             <polygon points="20,14 26,18 26,22 20,26 14,22 14,18" fill={NEON.orange} fillOpacity="0.85" stroke={NEON.orange} strokeWidth="0.5" />
@@ -98,7 +87,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         <div className="header-actions">
           <button type="button" onClick={onLoginPasskey || onBegin} className="btn-header-passkey">
             <Fingerprint size={14} />
-            Sign Up Here
+            PASSKEY
           </button>
           <button type="button" onClick={onLoginGoogle || onBegin} className="btn-header-google">
             <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 8, background: '#fff', borderRadius: 2, padding: 2 }}>
@@ -107,7 +96,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            Login Here
+            Sign in with Google
           </button>
         </div>
       </header>
@@ -159,12 +148,12 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
-              <span>Login Here</span>
+              <span>Sign in with Google</span>
             </button>
 
             <button type="button" onClick={onLoginPasskey || onBegin} className="btn-passkey-pill">
               <Fingerprint size={16} color={NEON.blue} />
-              <span>Sign Up Here</span>
+              <span>Use Passkey</span>
             </button>
 
             <button type="button" onClick={onLoginAnon || onBegin} className="btn-anon-pill">

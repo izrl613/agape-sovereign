@@ -14,7 +14,7 @@
  * No demo, fake, or simulated data presented as real.
  */
 
-import { onRequest } from "firebase-functions/https";
+
 import { logger } from "firebase-functions";
 import { initializeApp, getApps } from "firebase-admin/app";
 import crypto from "crypto";
@@ -959,7 +959,7 @@ function generateSovereignPDF(
 }
 
 // Export the Express app as a Firebase Gen1 HTTP function
-export const processIdentityVectors = onRequest(
+export const processIdentityVectors = functions.https.onRequest(app);(
   {
     region: "us-central1",
     maxInstances: 10,
