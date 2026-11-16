@@ -103,7 +103,10 @@ async function main() {
   const fs = await import('fs');
   const path = await import('path');
 
-  const landingTsx = fs.readFileSync(path.resolve('./frontend/components/LandingPage.tsx'), 'utf-8');
+  const landingPath = fs.existsSync(path.resolve('./frontend/components/LandingPage.tsx'))
+    ? path.resolve('./frontend/components/LandingPage.tsx')
+    : path.resolve('./frontend/components/HomePage.tsx');
+  const landingTsx = fs.readFileSync(landingPath, 'utf-8');
   const html = fs.readFileSync(path.resolve('./index.html'), 'utf-8');
 
   const oauthChecks = [

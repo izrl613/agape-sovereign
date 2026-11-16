@@ -211,11 +211,13 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
 
 architectApp.use("/api/architect", architectRouter);
 
-export const architectApi = functions.runWith({
-    region: "us-central1",
+export const architectApi = functions
+  .region("us-central1")
+  .runWith({
     timeoutSeconds: 60,
-    memory: "512MiB",
+    memory: "512MB",
     invoker: "public",
     // GEMINI_API_KEY arrives via the defaulted param above; no secret binding.
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-  }).https.onRequest(architectApp);
+  })
+  .https.onRequest(architectApp);

@@ -1000,10 +1000,12 @@ authApp.use((err: Error & {code?: string; status?: number},
   next(err);
 });
 
-export const authApi = functions.runWith({
-  region: "us-central1",
-  timeoutSeconds: 30,
-  memory: "256MiB",
-  invoker: "public",
-  serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-}).https.onRequest(authApp);
+export const authApi = functions
+  .region("us-central1")
+  .runWith({
+    timeoutSeconds: 30,
+    memory: "256MB",
+    invoker: "public",
+    serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
+  })
+  .https.onRequest(authApp);

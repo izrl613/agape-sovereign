@@ -14,10 +14,12 @@ const versionNumberParam = defineString("VERSION_NUMBER", {default: "1.0.0"});
  * Cloud Function to generate Privacy Policy or Terms of Service PDFs
  * with an embedded, verifiable SHA256 Identity Hash.
  */
-export const generatePolicyDocument = functions.runWith({
-  secrets: [buildManifestSecret],
-  cors: true,
-}).https.onRequest(async (req, res) => {
+export const generatePolicyDocument = functions
+  .region("us-central1")
+  .runWith({
+    secrets: [buildManifestSecret],
+  })
+  .https.onRequest(async (req, res) => {
     try {
       const docType = req.query.type as string;
 
