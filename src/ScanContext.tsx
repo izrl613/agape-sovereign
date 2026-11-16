@@ -5,7 +5,6 @@ import { db } from './firebase';
 import { logEvent, AuditLogType } from './services/auditService';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
-// demo data import removed
 
 import { DIFF_MODULES, DiffModule } from './lib/diffModules';
 
@@ -72,39 +71,6 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [findings]);
 
   useEffect(() => {
-    setIsLoading(true);
-    const q = query(collection(db, "diff_scans"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newFindings = snapshot.docs.map(d => ({ 
-        id: d.id, 
-        ...d.data(),
-        timestamp: d.data().timestamp?.toDate() || new Date()
-      } as ScanFinding));
-      // Check for new NUKED findings to notify
-      if (!isLoading) {
-        newFindings.forEach(finding => {
-          if (finding.status === 'NUKED' && finding.id && !notifiedFindingIds.has(finding.id)) {
-            toast.error(`CRITICAL EXPOSURE DETECTED`, {
-              description: `[${finding.module.toUpperCase()}] ${finding.finding}`,
-              duration: 10000,
-            });
-            setNotifiedFindingIds(prev => new Set(prev).add(finding.id as string));
-          }
-        }
-        setFindings(newFindings);
-        setIsLoading(false);
-      } else {
-        // Initial load: just mark existing NUKED as notified so we don't spam on login
-        const initialNukedIds = new Set(newFindings.filter(f => f.status === 'NUKED' && f.id).map(f => f.id as string));
-        setNotifiedFindingIds(initialNukedIds);
-      }
-    }, (err) => {
-      handleFirestoreError(err, OperationType.LIST, 'diff_scans');
-    });
-    }, [user]);
-
-    
-
     if (!user) {
       setFindings([]);
       setLastScanDate(null);
@@ -222,6 +188,7 @@ export const ScanProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
+export const useScan = () => {
   const context = useContext(ScanContext);
   if (context === undefined) {
     throw new Error('useScan must be used within a ScanProvider');

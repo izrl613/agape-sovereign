@@ -12,7 +12,7 @@ import { Bell, BellOff } from 'lucide-react';
 import { passkeyLockService, type PasskeyLockState } from '../services/passkeyLockService';
 
 export const UserProfileSettings = () => {
-  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey,  } = useAuth();
+  const { user, userData, sovereignScore, updateProfile, isAnonymous, bindPasskey } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,10 +33,11 @@ export const UserProfileSettings = () => {
     if (!user) return;
     setLoadingReports(true);
     try {
-      // demo mode removed
-        const localKey = `reports_history_${user.uid}`;
-        const existing = localStorage.getItem(localKey);
-        const list = existing ? JSON.parse(existing) : [];
+      // Try local storage first, then Firestore
+      const localKey = `reports_history_${user.uid}`;
+      const existing = localStorage.getItem(localKey);
+      if (existing) {
+        const list = JSON.parse(existing);
         const formatted = list.map((item: any) => ({
           ...item,
           id: item.reportId,
