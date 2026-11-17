@@ -1,5 +1,5 @@
 /* eslint-disable require-jsdoc, new-cap, max-len */
-import * as functions from "firebase-functions";
+import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
 import {defineString} from "firebase-functions/params";
 
@@ -211,13 +211,14 @@ architectRouter.post("/", architectLimiter, async (req: Request, res: Response) 
 
 architectApp.use("/api/architect", architectRouter);
 
-export const architectApi = functions
-  .region("us-central1")
-  .runWith({
+export const architectApi = onRequest(
+  {
+    region: "us-central1",
     timeoutSeconds: 60,
-    memory: "512MB",
+    memory: "512MiB",
     invoker: "public",
     // GEMINI_API_KEY arrives via the defaulted param above; no secret binding.
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-  })
-  .https.onRequest(architectApp);
+  },
+  architectApp
+);

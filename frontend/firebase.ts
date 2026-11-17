@@ -18,6 +18,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInAnonymously,
+  signInWithCustomToken,
   linkWithPopup,
   signOut as fbSignOut,
   onAuthStateChanged,
@@ -96,5 +97,5 @@ export async function signInGuest(): Promise<User> {
   return credential.user;
 }
 
-export { onAuthStateChanged, fbSignOut };
+export { onAuthStateChanged, fbSignOut, signInWithCustomToken };
 export type { User };

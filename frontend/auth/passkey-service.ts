@@ -202,9 +202,9 @@ export class PasskeyService {
    * Full flow: register-options → startRegistration → verify-registration
    * 
    * @param email User's email address — must be valid and not empty
-   * @returns Promise<void> resolves on success, throws on failure
+   * @returns Promise<PasskeyResult> resolves on success with user info & token
    */
-  static async register(email: string): Promise<void> {
+  static async register(email: string): Promise<PasskeyResult> {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
       throw new Error('Enter your email first so the passkey can be bound to it.');
@@ -225,10 +225,12 @@ export class PasskeyService {
       }
 
       if (!optionsRes.ok) {
+        const errBody = await optionsRes.json().catch(() => ({}));
         throw new Error(
-          optionsRes.status === 401
+          errBody.error ||
+          (optionsRes.status === 401
             ? 'Authentication required — please sign in first'
-            : `Registration options failed (HTTP ${optionsRes.status})`
+            : `Registration options failed (HTTP ${optionsRes.status})`)
         );
       }
 
@@ -274,6 +276,13 @@ export class PasskeyService {
           'The server could not verify the new passkey. Please try again.'
         );
       }
+
+      return {
+        userId: data.userId ?? data.uid,
+        email: data.email ?? normalizedEmail,
+        token: data.token ?? data.customToken,
+        credentialType: this.determineCredentialType(data),
+      };
     } catch (error: any) {
       // Re-throw with user-friendly messages
       throw error;

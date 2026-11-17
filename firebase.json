@@ -61,23 +61,9 @@
     ],
     "rewrites": [
       {
-        "source": "/api/auth/passkey/**",
+        "source": "/api/auth/**",
         "function": {
           "functionId": "authApi",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/auth/google/**",
-        "function": {
-          "functionId": "googleAuthApi",
-          "region": "us-central1"
-        }
-      },
-      {
-        "source": "/api/auth/git/**",
-        "function": {
-          "functionId": "gitAuthApi",
           "region": "us-central1"
         }
       },

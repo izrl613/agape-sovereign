@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import {onRequest} from "firebase-functions/v2/https";
 import {logger} from "firebase-functions";
 import {defineString} from "firebase-functions/params";
 import {randomBytes} from "crypto";
@@ -459,19 +459,38 @@ async function requireRegisteredUser(
   req: Request, email: string
 ): Promise<{uid: string; email: string}> {
   const authorization = req.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) {
-    throw new Error("Authentication is required to register a passkey.");
+  if (authorization?.startsWith("Bearer ")) {
+    try {
+      const token = authorization.slice("Bearer ".length);
+      const decoded = await auth.verifyIdToken(token);
+      const tokenEmail = normalizeEmail(decoded.email || "");
+      const want = normalizeEmail(email);
+      if (tokenEmail && tokenEmail === want) {
+        return {uid: decoded.uid, email: tokenEmail};
+      }
+    } catch {
+      // Fall through to lookup or provision by email
+    }
   }
 
-  const token = authorization.slice("Bearer ".length);
-  const decoded = await auth.verifyIdToken(token);
-  const tokenEmail = normalizeEmail(decoded.email || "");
-  const want = normalizeEmail(email);
-  if (!tokenEmail || tokenEmail !== want) {
-    throw new Error("The passkey email must match the signed-in account.");
+  const wantEmail = normalizeEmail(email);
+  if (!wantEmail || !wantEmail.includes("@")) {
+    throw new Error("A valid email address is required to register a passkey.");
   }
 
-  return {uid: decoded.uid, email: tokenEmail};
+  try {
+    const userRecord = await auth.getUserByEmail(wantEmail);
+    return {uid: userRecord.uid, email: wantEmail};
+  } catch (err: any) {
+    if (err?.code === "auth/user-not-found") {
+      const newUser = await auth.createUser({
+        email: wantEmail,
+        displayName: wantEmail.split("@")[0],
+      });
+      return {uid: newUser.uid, email: wantEmail};
+    }
+    throw err;
+  }
 }
 
 // POST /register-options
@@ -702,17 +721,16 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
 router.post("/login-options", authLimiter, async (req: Request, res: Response) => {
   try {
     const {rpId, expectedOrigin} = getWebAuthnConfig(req);
+    const email = normalizeEmail(req.body?.email || "");
 
-    // ── Mode 2: resident-key / reauth flow ───────────────────────────────────
-    if (req.body?.reauth === true && !req.body?.email) {
+    // ── Mode 2: discoverable / resident-key flow (no email provided) ─────────
+    if (!email) {
       const options = await generateAuthenticationOptions({
         rpID: rpId,
         allowCredentials: [], // discoverable — authenticator selects the key
         userVerification: "preferred",
       });
 
-      // We don't know the userId yet; it will be resolved during verify-login
-      // via the userHandle returned by the authenticator.
       setSessionCookie(res, {
         authenticationChallenge: options.challenge,
         authUserId: null,
@@ -725,18 +743,11 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
     }
 
     // ── Mode 1: email-based flow ──────────────────────────────────────────────
-    const email = normalizeEmail(req.body?.email || "");
-    if (!email) {
-      res.status(400).json({error: "Missing email"});
-      return;
-    }
-
-    // Case-insensitive email match (stored emails may be mixed-case)
+    // Case-insensitive email match in Firestore
     let userSnap = await db.collection("users")
       .where("email", "==", email).limit(1).get();
 
     if (userSnap.empty) {
-      // Fallback: try original casing from body
       const raw = String(req.body?.email || "").trim();
       if (raw && raw !== email) {
         userSnap = await db.collection("users")
@@ -744,19 +755,33 @@ router.post("/login-options", authLimiter, async (req: Request, res: Response) =
       }
     }
 
-    if (userSnap.empty) {
+    let userId: string | null = null;
+    let userDocRef: any = null;
+
+    if (!userSnap.empty) {
+      userId = userSnap.docs[0].id;
+      userDocRef = userSnap.docs[0].ref;
+    } else {
+      try {
+        const authUser = await auth.getUserByEmail(email);
+        userId = authUser.uid;
+        userDocRef = db.collection("users").doc(userId);
+      } catch {
+        // User not found
+      }
+    }
+
+    if (!userId || !userDocRef) {
       res.status(404).json({
-        error: "No account found for this email. Sign in with Google first, then bind a passkey.",
+        error: "No account found for this email. Use 'New here? Create a Passkey' to register first.",
       });
       return;
     }
 
-    const userDoc = userSnap.docs[0];
-    const userId = userDoc.id;
-    const credsSnap = await userDoc.ref.collection("passkeyCredentials").get();
+    const credsSnap = await userDocRef.collection("passkeyCredentials").get();
     if (credsSnap.empty) {
       res.status(404).json({
-        error: "No passkey registered for this email. Sign in with Google, then set up a passkey.",
+        error: "No passkey registered for this email yet. Use 'New here? Create a Passkey' to register.",
       });
       return;
     }
@@ -934,17 +959,17 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
       });
       const customToken = await createCustomTokenWithAdminClaim(userId, {authMethod: "passkey"});
       res.clearCookie("__session", {path: "/"});
+      let resolvedEmail = "";
       try {
-        const emailForCleanup = normalizeEmail(
-          (await db.collection("users").doc(userId).get()).data()?.email || ""
-        );
-        if (emailForCleanup) {
-          await db.collection("passkey_challenges").doc(emailForCleanup).delete();
+        const uSnap = await db.collection("users").doc(userId).get();
+        resolvedEmail = normalizeEmail(uSnap.data()?.email || "");
+        if (resolvedEmail) {
+          await db.collection("passkey_challenges").doc(resolvedEmail).delete();
         }
       } catch {
         // non-fatal
       }
-      res.json({verified: true, token: customToken, credentialId});
+      res.json({verified: true, token: customToken, credentialId, userId, email: resolvedEmail});
     } else {
       res.status(400).json({verified: false, error: "Authentication failed"});
     }
@@ -987,6 +1012,9 @@ authApp.use((req: Request, res: Response, next: express.NextFunction) => {
 authApp.get("/api/auth/csrf-token", (req: Request, res: Response) => {
   res.json({csrfToken: generateCsrfToken(req, res)});
 });
+authApp.get("/csrf-token", (req: Request, res: Response) => {
+  res.json({csrfToken: generateCsrfToken(req, res)});
+});
 authApp.use(doubleCsrfProtection);
 authApp.use("/api/auth", router);
 
@@ -1000,12 +1028,13 @@ authApp.use((err: Error & {code?: string; status?: number},
   next(err);
 });
 
-export const authApi = functions
-  .region("us-central1")
-  .runWith({
+export const authApi = onRequest(
+  {
+    region: "us-central1",
     timeoutSeconds: 30,
-    memory: "256MB",
+    memory: "256MiB",
     invoker: "public",
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-  })
-  .https.onRequest(authApp);
+  },
+  authApp
+);

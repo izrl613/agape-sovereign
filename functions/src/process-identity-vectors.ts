@@ -15,7 +15,7 @@
  */
 
 
-import * as functions from "firebase-functions";
+import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 import { initializeApp, getApps } from "firebase-admin/app";
 import crypto from "crypto";
@@ -959,16 +959,18 @@ function generateSovereignPDF(
   };
 }
 
-// Export the Express app as a Firebase Gen1 HTTP function
-export const processIdentityVectors = functions
-  .region("us-central1")
-  .runWith({
+// Export the Express app as a Firebase Gen2 HTTP function
+export const processIdentityVectors = onRequest(
+  {
+    region: "us-central1",
     maxInstances: 10,
     timeoutSeconds: 120,
-    memory: "1GB",
+    memory: "1GiB",
+    invoker: "public",
     serviceAccount: "firebase-adminsdk-fbsvc@agape-sovereign.iam.gserviceaccount.com",
-  })
-  .https.onRequest(app);
+  },
+  app
+);
 
 // Export utility functions for testing/module usage
 export { calculateSovereignScore, AGENT_CONFIGS };

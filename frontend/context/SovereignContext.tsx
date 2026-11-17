@@ -8,6 +8,7 @@ import {
   signInWithGoogle,
   linkGoogleToCurrentUser,
   signInGuest,
+  signInWithCustomToken,
 } from '../firebase';
 import { PasskeyService } from '../auth/passkey-service';
 import { sovereignIdFor, unwrapDEKFromPasskey, generateDEK, wrapDEKWithPasskey, wrapDEKWithRecoveryCode, generateRecoveryCode } from '../services/sha256Vault';
@@ -206,7 +207,16 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const loginWithPasskey = useCallback(async (email?: string) => {
     const result = await PasskeyService.login(email);
-    sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    try {
+      sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    } catch {}
+    if (result.token) {
+      try {
+        await signInWithCustomToken(auth, result.token);
+      } catch (tokenErr) {
+        console.warn('[AUTH] Custom token sign-in notice:', tokenErr);
+      }
+    }
     await adoptUser({
       id: result.userId,
       email: result.email,
@@ -216,9 +226,24 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, [adoptUser]);
 
   const registerPasskey = useCallback(async (email: string) => {
-    await PasskeyService.register(email);
-    await loginWithPasskey(email);
-  }, [loginWithPasskey]);
+    const result = await PasskeyService.register(email);
+    try {
+      sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
+    } catch {}
+    if (result.token) {
+      try {
+        await signInWithCustomToken(auth, result.token);
+      } catch (tokenErr) {
+        console.warn('[AUTH] Custom token sign-in notice:', tokenErr);
+      }
+    }
+    await adoptUser({
+      id: result.userId,
+      email: result.email,
+      method: 'PASSKEY',
+      isAdmin: ADMIN_EMAILS.includes(result.email.toLowerCase()),
+    });
+  }, [adoptUser]);
 
   const loginWithGoogle = useCallback(async (): Promise<string | null> => {
     const { user: fbUser, accessToken } = await signInWithGoogle();

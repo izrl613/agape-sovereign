@@ -23,7 +23,7 @@ export const dailySmartResolveJob = onSchedule(
     timeoutSeconds: 120,
   },
   async (event) => {
-    logger.info("Executing scheduled Daily Smart-Resolve Job...", { eventId: event.id });
+    logger.info("Executing scheduled Daily Smart-Resolve Job...", { scheduleTime: event.scheduleTime, jobName: event.jobName });
 
     const db = admin.firestore();
 
