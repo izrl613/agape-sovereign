@@ -1,0 +1,39 @@
+[debug] [2026-11-17T02:34:46.472Z] ----------------------------------------------------------------------
+[debug] [2026-11-17T02:34:46.473Z] Command:       /usr/local/bin/node /Users/aarondavid/.npm-global/bin/firebase deploy --only firestore,functions,hosting,apphosting --project agape-sovereign
+[debug] [2026-11-17T02:34:46.473Z] CLI Version:   15.34.1
+[debug] [2026-11-17T02:34:46.473Z] Platform:      darwin
+[debug] [2026-11-17T02:34:46.473Z] Node Version:  v26.12.1
+[debug] [2026-11-17T02:34:46.473Z] Detected Agent: antigravity
+[debug] [2026-11-17T02:34:46.473Z] Time:          Mon Nov 16 2026 21:34:46 GMT-0500 (Eastern Standard Time)
+[debug] [2026-11-17T02:34:46.473Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-17T02:34:47.000Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-17T02:34:47.000Z] > authorizing via signed-in user (idin@agape.nyc)
+[debug] [2026-11-17T02:34:47.000Z] [iam] checking project agape-sovereign for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-11-17T02:34:47.005Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.005Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.005Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign:testIamPermissions [none]
+[debug] [2026-11-17T02:34:47.005Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign:testIamPermissions  x-goog-user-project=agape-sovereign
+[debug] [2026-11-17T02:34:47.005Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-11-17T02:34:47.303Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign:testIamPermissions 200
+[debug] [2026-11-17T02:34:47.303Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-11-17T02:34:47.304Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.304Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.304Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-11-17T02:34:47.304Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-11-17T02:34:47.569Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions 404
+[debug] [2026-11-17T02:34:47.569Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
+[debug] [2026-11-17T02:34:47.569Z] [functions] service account IAM check errored, deploy may fail: Request to https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}},"response":{"statusCode":404}},"exit":1,"message":"Request to https://iam.googleapis.com/v1/projects/agape-sovereign/serviceAccounts/agape-sovereign@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account","status":404}
+[debug] [2026-11-17T02:34:47.570Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.570Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:47.570Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/agape-sovereign [none]
+[debug] [2026-11-17T02:34:47.864Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/agape-sovereign 200
+[debug] [2026-11-17T02:34:47.864Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/agape-sovereign {"projectId":"agape-sovereign","projectNumber":"956088455461","displayName":"agape-sovereign","name":"projects/agape-sovereign","resources":{"hostingSite":"agape-sovereign","realtimeDatabaseInstance":"agape-sovereign-default-rtdb"},"state":"ACTIVE","labels":{"firebase/storage-default-bucket":"created","firebaseworkflows/environment":"production","firebase.ai-integrations/builder":"ai-studio"},"etag":"1_990eeba8-c1e8-4ec2-bcf4-14504b6d1021"}
+[info] 
+[info] === Deploying to 'agape-sovereign'...
+[info] 
+[info] i  deploying firestore, functions, hosting, apphosting 
+[info] Running command: npm --prefix "$RESOURCE_DIR" run build
+[info] ✔  functions: Finished running predeploy script. 
+[info] Running command: npm --prefix "frontend" run lint
+[info] Running command: npm --prefix "frontend" run build
