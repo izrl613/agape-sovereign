@@ -37,3 +37,32 @@
 [info] ✔  functions: Finished running predeploy script. 
 [info] Running command: npm --prefix "frontend" run lint
 [info] Running command: npm --prefix "frontend" run build
+[info] ✔  hosting: Finished running predeploy script. 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-11-17T02:34:49.451Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:49.451Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:49.451Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/agape-sovereign/databases/agape-sovereign [none]
+[debug] [2026-11-17T02:34:49.717Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/agape-sovereign/databases/agape-sovereign 200
+[debug] [2026-11-17T02:34:49.718Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/agape-sovereign/databases/agape-sovereign {"name":"projects/agape-sovereign/databases/agape-sovereign","uid":"c867d345-05b4-4e32-b509-9954393192ad","createTime":"2026-02-13T22:49:09.988770Z","updateTime":"2026-02-13T22:49:09.988770Z","locationId":"nam7","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-11-17T01:34:49.702658Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IN21t+j7jZgDMIXPt9/13JcD"}
+[info] i  firestore: reading indexes from firestore.indexes.json... 
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-11-17T02:34:49.719Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:49.719Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:49.719Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/agape-sovereign:test [none]
+[debug] [2026-11-17T02:34:49.720Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/agape-sovereign:test [omitted]
+[debug] [2026-11-17T02:34:50.045Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/agape-sovereign:test 200
+[debug] [2026-11-17T02:34:50.046Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/agape-sovereign:test {}
+[info] ✔  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-11-17T02:34:50.046Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:50.046Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:50.046Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign [none]
+[debug] [2026-11-17T02:34:50.171Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign 200
+[debug] [2026-11-17T02:34:50.171Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/agape-sovereign {"projectNumber":"956088455461","projectId":"agape-sovereign","lifecycleState":"ACTIVE","name":"agape-sovereign","createTime":"2026-01-22T18:03:30.050071Z","parent":{"type":"organization","id":"230005932885"},"configuredCapabilities":["projects/agape-sovereign/capabilities/app-management"],"isManagementProject":true}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-11-17T02:34:50.172Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:50.172Z] Checked if tokens are valid: true, expires at: 1794883934993
+[debug] [2026-11-17T02:34:50.172Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/agape-sovereign/adminSdkConfig [none]
