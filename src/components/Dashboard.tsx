@@ -14,6 +14,14 @@ import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../utils/firestoreErrorHandler';
 import { calculateEnhancedSovereignScore, calculateSovereignScoreWithDetails } from '../services/scanService';
 import { generateSovereignReport } from '../services/pdfReportService';
+import {
+  runSmartResolveJob,
+  isDailyScheduleDue,
+  getNextScheduledRunEstimate,
+  getSmartResolveHistory,
+  SmartResolveSummary
+} from '../services/smartResolveService';
+import { SmartResolveNotification } from './SmartResolveNotification';
 
 const MODULE_CONFIG = [
   { id: "email",      icon: "✉", label: "Email Breach Scanner",        vector: "V-01" },
@@ -220,6 +228,67 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const [isLocked, setIsLocked] = useState(passkeyLockService.getState().identityLocked && passkeyLockService.getState().identityEnabled);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [smartResolveSummary, setSmartResolveSummary] = useState<SmartResolveSummary | null>(null);
+  const [isSmartResolving, setIsSmartResolving] = useState(false);
+
+  // Smart-Resolve Daily Background Job:
+  // Automatically runs on daily schedule when user opens or maintains dashboard
+  useEffect(() => {
+    if (!user || isLoading) return;
+
+    if (isDailyScheduleDue()) {
+      // Execute automatic background Smart-Resolve
+      setIsSmartResolving(true);
+      runSmartResolveJob(user.uid, user.email || undefined, 'AUTOMATIC_DAILY')
+        .then((summary) => {
+          setSmartResolveSummary(summary);
+          if (summary.status === 'COMPLETED' && summary.resolvedCount > 0) {
+            toast.success(`Smart-Resolve: ${summary.resolvedCount} low-risk findings automatically elevated to KNOXED.`);
+          }
+        })
+        .catch((err) => {
+          console.warn('[Smart-Resolve Daily Job] Non-blocking notice:', err);
+        })
+        .finally(() => {
+          setIsSmartResolving(false);
+        });
+    } else {
+      // If already ran today, check if there's a recent run to show in notifications
+      const history = getSmartResolveHistory(user.uid);
+      if (history.length > 0) {
+        const lastRun = history[0];
+        const runAgeMs = Date.now() - new Date(lastRun.timestamp).getTime();
+        // Show if executed within the last 6 hours
+        if (runAgeMs < 6 * 60 * 60 * 1000 && lastRun.resolvedCount > 0) {
+          setSmartResolveSummary(lastRun);
+        }
+      }
+    }
+  }, [user, isLoading]);
+
+  const handleManualSmartResolve = async () => {
+    if (!user || isSmartResolving) return;
+    setIsSmartResolving(true);
+    const loadingToast = toast.loading('Running Smart-Resolve automated scan...');
+    try {
+      const summary = await runSmartResolveJob(user.uid, user.email || undefined, 'MANUAL');
+      setSmartResolveSummary(summary);
+      toast.dismiss(loadingToast);
+      if (summary.status === 'COMPLETED') {
+        toast.success(`Smart-Resolve Complete: ${summary.resolvedCount} low-risk findings resolved with SHA-256 receipts.`);
+      } else if (summary.status === 'NO_ACTION_NEEDED') {
+        toast.info('Smart-Resolve: All findings are already KNOXED or require manual action.');
+      } else {
+        toast.error(`Smart-Resolve encountered an issue: ${summary.error}`);
+      }
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      toast.error('Failed to run Smart-Resolve.');
+      console.error(err);
+    } finally {
+      setIsSmartResolving(false);
+    }
+  };
 
   useEffect(() => {
     return passkeyLockService.subscribe(state => {
@@ -323,6 +392,12 @@ export const Dashboard = () => {
         transition: 'filter 0.3s ease',
         pointerEvents: isLocked ? 'none' : 'auto',
       }}>
+        {/* ── Smart-Resolve Daily Scan Notification ── */}
+        <SmartResolveNotification
+          summary={smartResolveSummary}
+          onDismiss={() => setSmartResolveSummary(null)}
+        />
+
         {/* ── Status Cards ── */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
           <StatusCard label="NUKED" count={stats.nuked} color={NEON.magenta} glow={`${NEON.magenta}22`} />
@@ -500,6 +575,33 @@ export const Dashboard = () => {
             }}
           >
             {isGeneratingPdf ? '⏳ GENERATING...' : '📄 EXPORT PDF REPORT'}
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: `0 0 30px ${NEON.blue}44` }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleManualSmartResolve}
+            disabled={isScanning || isSmartResolving}
+            style={{
+              flex: 1,
+              padding: '16px 24px',
+              borderRadius: 12,
+              background: `linear-gradient(135deg, ${NEON.blue}20 0%, ${NEON.orange}10 100%)`,
+              border: `1.5px solid ${NEON.blue}66`,
+              color: NEON.blue,
+              fontFamily: "'Orbitron', monospace",
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              letterSpacing: '0.1em',
+              cursor: (isScanning || isSmartResolving) ? 'not-allowed' : 'pointer',
+              opacity: (isScanning || isSmartResolving) ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              transition: 'all 0.3s ease',
+            }}
+          >
+            {isSmartResolving ? '⚡ RESOLVING...' : '✨ SMART-RESOLVE (DAILY)'}
           </motion.button>
         </div>
 

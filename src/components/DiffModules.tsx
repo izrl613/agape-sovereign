@@ -63,38 +63,6 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
   useEffect(() => {
     if (!user) return;
 
-    // demo mode removed
-      const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-      if (localActive) {
-        try {
-          const parsed = JSON.parse(localActive);
-          const encVal = parsed.data?.[moduleId] || "";
-          const hash = parsed.hashes?.[moduleId + "Hash"] || "";
-          setStoredHash(hash);
-          if (encVal) {
-            decryptClientSide(encVal, user.uid).then(dec => {
-              try {
-                const parsed = JSON.parse(dec);
-                if (Array.isArray(parsed)) {
-                  setParameterValues(parsed.length ? parsed : ['']);
-                  setDecryptedValue(parsed.join(' | '));
-                } else {
-                  setParameterValues([dec]);
-                  setDecryptedValue(dec);
-                }
-              } catch {
-                setParameterValues([dec]);
-                setDecryptedValue(dec);
-              }
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-      }
-      return;
-    }
-
     const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
     const unsubscribe = onSnapshot(docRef, async (snapshot) => {
       if (snapshot.exists()) {
@@ -158,14 +126,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
       const newHash = await generateSHA256(stringified);
       const encrypted = await encryptClientSide(stringified, user.uid);
 
-      
-      // demo mode removed
-        const localActive = localStorage.getItem(`module_data_active_${user.uid}`);
-        const parsed = localActive ? JSON.parse(localActive) : { data: {}, hashes: {} };
-        parsed.data[moduleId] = encrypted;
-        parsed.hashes[moduleId + "Hash"] = newHash;
-        localStorage.setItem(`module_data_active_${user.uid}`, JSON.stringify(parsed));
-      } else {
+      // Save encrypted data to Firestore
+      {
         const docRef = doc(db, 'users', user.uid, 'module_data', 'active');
         await setDoc(docRef, {
           data: {
@@ -245,39 +207,8 @@ export const DiffModule = ({ title, description, icon, vector, moduleId, scanLab
         }
       }
 
-      
-      // demo mode removed
-        const localFindings = JSON.parse(localStorage.getItem(`scan_findings_${user.uid}`) || "[]");
-        const filtered = localFindings.filter((f: any) => f.module !== moduleId);
-        filtered.push({
-          id: `local-${moduleId}-${Date.now()}`,
-          userId: user.uid,
-          module: moduleId,
-          finding: findingText,
-          status: status,
-          timestamp: new Date().toISOString(),
-          details: detailsText
-        });
-        localStorage.setItem(`scan_findings_${user.uid}`, JSON.stringify(filtered));
-
-        // Recalculate score
-        const nukedCount = filtered.filter((f: any) => f.status === 'NUKED').length;
-        const knoxedCount = filtered.filter((f: any) => f.status === 'KNOXED').length;
-        const monitoredCount = filtered.filter((f: any) => f.status === 'MONITORED').length;
-        const newScore = Math.max(45, 100 - (nukedCount * 15));
-
-        const history = JSON.parse(localStorage.getItem(`score_history_${user.uid}`) || "[]");
-        history.push({
-          userId: user.uid,
-          score: newScore,
-          timestamp: new Date().toISOString(),
-          nukedCount,
-          knoxedCount,
-          monitoredCount,
-          findings: filtered
-        });
-        localStorage.setItem(`score_history_${user.uid}`, JSON.stringify(history));
-      } else {
+      // Save scan findings to Firestore
+      {
         const q = query(collection(db, 'diff_scans'), where('userId', '==', user.uid), where('module', '==', moduleId));
         const snap = await getDocs(q);
         

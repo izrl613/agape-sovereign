@@ -154,32 +154,54 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Restore Firebase sessions (Google / Anonymous) and passkey sessions.
   useEffect(() => {
-    const passkeyRaw = sessionStorage.getItem(PASSKEY_SESSION_KEY);
-    if (passkeyRaw) {
-      try {
-        const p = JSON.parse(passkeyRaw) as { userId: string; email: string };
-        void adoptUser({ id: p.userId, email: p.email, method: 'PASSKEY', isAdmin: ADMIN_EMAILS.includes(p.email) })
-          .finally(() => setAuthReady(true));
-        return;
-      } catch { sessionStorage.removeItem(PASSKEY_SESSION_KEY); }
-    }
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const method: LoginMethod = fbUser.isAnonymous ? 'ANON' : 'GOOGLE';
-        await adoptUser({
-          id: fbUser.uid,
-          email: fbUser.email ?? '',
-          method,
-          isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
-        });
-      } else if (methodRef.current !== 'PASSKEY') {
-        setUserState(null);
-        setSovereignId(null);
-        setReceipts([]);
+    try {
+      const passkeyRaw = sessionStorage.getItem(PASSKEY_SESSION_KEY);
+      if (passkeyRaw) {
+        try {
+          const p = JSON.parse(passkeyRaw) as { userId: string; email: string };
+          void adoptUser({ id: p.userId, email: p.email, method: 'PASSKEY', isAdmin: ADMIN_EMAILS.includes(p.email) })
+            .finally(() => setAuthReady(true));
+          return;
+        } catch {
+          sessionStorage.removeItem(PASSKEY_SESSION_KEY);
+        }
       }
+    } catch {
+      // In private browsing or storage disabled environments
+    }
+
+    // Safety fallback: ensure authReady is set to true within 1200ms regardless of network state
+    const authTimeout = setTimeout(() => {
       setAuthReady(true);
+    }, 1200);
+
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      clearTimeout(authTimeout);
+      try {
+        if (fbUser) {
+          const method: LoginMethod = fbUser.isAnonymous ? 'ANON' : 'GOOGLE';
+          await adoptUser({
+            id: fbUser.uid,
+            email: fbUser.email ?? '',
+            method,
+            isAdmin: ADMIN_EMAILS.includes((fbUser.email ?? '').toLowerCase()),
+          });
+        } else if (methodRef.current !== 'PASSKEY') {
+          setUserState(null);
+          setSovereignId(null);
+          setReceipts([]);
+        }
+      } catch (err) {
+        console.warn('[AUTH] Session restoration warning:', err);
+      } finally {
+        setAuthReady(true);
+      }
     });
-    return unsub;
+
+    return () => {
+      clearTimeout(authTimeout);
+      unsub();
+    };
   }, [adoptUser]);
 
   const loginWithPasskey = useCallback(async (email?: string) => {

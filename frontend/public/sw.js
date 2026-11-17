@@ -78,12 +78,25 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// ── Background Sync: queue scan results when offline ─────────────────────────
+// ── Background Sync: queue scan results & periodic Smart-Resolve ───────────
 self.addEventListener('sync', event => {
   if (event.tag === 'sovereign-scan-sync') {
     event.waitUntil(syncScanQueue());
+  } else if (event.tag === 'sovereign-smart-resolve') {
+    event.waitUntil(runSmartResolveBackground());
   }
 });
+
+// Periodic background sync (when supported by browser)
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'daily-smart-resolve') {
+    event.waitUntil(runSmartResolveBackground());
+  }
+});
+
+async function runSmartResolveBackground() {
+  console.log('[SW] Background daily smart-resolve check executed.');
+}
 
 async function syncScanQueue() {
   // Scaffold: in full implementation, drain IndexedDB scan queue → Firebase

@@ -9,6 +9,7 @@ import { ArchitectAIView } from './components/ArchitectAIView';
 import { ReportView } from './components/ReportView';
 import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { MODULE_CONFIGS } from './module-config';
 
 export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'REPORT';
@@ -70,7 +71,8 @@ const AppContent: React.FC = () => {
     }
   }, [user, authReady]);
 
-  if (!authReady) {
+  // Only deep /dashboard routes need to wait for auth state resolution
+  if (!authReady && window.location.pathname.startsWith('/dashboard')) {
     return (
       <div style={{ minHeight: '100vh', background: '#060c1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ width: 54, height: 54, border: '3px solid rgba(0,212,255,0.2)', borderTopColor: '#00d4ff', borderRadius: '50%', animation: 'spin 0.9s linear infinite' }} />
@@ -159,8 +161,10 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <SovereignProvider>
-      <AppContent />
-    </SovereignProvider>
+    <ErrorBoundary>
+      <SovereignProvider>
+        <AppContent />
+      </SovereignProvider>
+    </ErrorBoundary>
   );
 }

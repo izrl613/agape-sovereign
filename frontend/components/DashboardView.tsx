@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NEON } from '../theme';
 import { MODULE_CONFIGS } from '../module-config';
 import { ModuleReceipt } from '../services/moduleAgents';
 import { Sha256Badge } from './Sha256Badge';
+import {
+  FrontendSmartResolveSummary,
+  isFrontendDailyScheduleDue,
+  runFrontendSmartResolveScan,
+} from '../services/smartResolveService';
+import { Sparkles, X } from 'lucide-react';
 
 interface Props {
   receipts: ModuleReceipt[];
@@ -23,6 +29,17 @@ const STATUS_COLOR: Record<string, string> = {
 
 /** Real posture only: counts derive exclusively from actual receipts. */
 export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelectModule }) => {
+  const [smartResolveSummary, setSmartResolveSummary] = useState<FrontendSmartResolveSummary | null>(null);
+
+  useEffect(() => {
+    if (!sovereignId || receipts.length === 0) return;
+    if (isFrontendDailyScheduleDue()) {
+      runFrontendSmartResolveScan(receipts, sovereignId).then((res) => {
+        setSmartResolveSummary(res);
+      });
+    }
+  }, [receipts, sovereignId]);
+
   const modules = Object.values(MODULE_CONFIGS);
   const latestByModule = new Map<string, ModuleReceipt>();
   for (const r of receipts) latestByModule.set(r.moduleId, r);
@@ -55,6 +72,45 @@ export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelect
         </div>
         {sovereignId && <Sha256Badge hash={sovereignId} label="YOUR SOVEREIGN SHA-256 ID" size="md" />}
       </div>
+
+      {smartResolveSummary && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(0,212,255,0.1) 0%, rgba(6,12,26,0.95) 100%)',
+          border: '1px solid rgba(0,212,255,0.3)',
+          borderRadius: 12,
+          padding: '14px 18px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          boxShadow: '0 0 16px rgba(0,212,255,0.15)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 8, background: 'rgba(0,212,255,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: NEON.blue
+            }}>
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '0.72rem', fontWeight: 800, color: NEON.blue, letterSpacing: '0.08em' }}>
+                SMART-RESOLVE DAILY SCAN SUMMARY
+              </div>
+              <div style={{ fontSize: '0.78rem', color: NEON.text, marginTop: 2 }}>
+                Evaluated {smartResolveSummary.totalReceiptsScanned} sealed receipts. {smartResolveSummary.actionTaken}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSmartResolveSummary(null)}
+            style={{ background: 'transparent', border: 'none', color: NEON.textMuted, cursor: 'pointer', padding: 4 }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 26 }}>
         {kpis.map((k) => (

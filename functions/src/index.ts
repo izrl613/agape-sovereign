@@ -26,7 +26,5 @@
 // this will be the maximum concurrent request count.
 // setGlobalOptions removed – per-function runWith can be used if needed
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export { dailySmartResolveJob } from "./smartResolveJob.js";
+
