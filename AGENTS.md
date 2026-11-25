@@ -57,3 +57,16 @@ The mandates above are enforced in code, not just prose:
 - **Verify:** `node scripts/run-secure-scan.ts` and `node scripts/verify-plugins.ts`.
 
 See `docs/SOVEREIGN_AUTOMATION.md` for the full security model.
+
+## 📚 Extracted Source Corpus
+
+Text extracted from all source documents (PDFs, DOCX, chat exports, specs) is
+versioned under `docs/corpus/`:
+
+- `docs/corpus/INDEX.md` — per-source manifest, provenance, and coverage map
+  to codebase modules.
+- `docs/corpus/DISTILLED_KNOWLEDGE.md` — synthesized operational rules
+  (pipeline contract, vector priorities, zero-knowledge mandates, cost
+  guardrails, retention, legal posture).
+- `docs/corpus/raw/` — raw text extracts. Treat as read-only reference; do
+  not edit in place (re-extract from source instead).

@@ -28,3 +28,6 @@ __pycache__/
 # Secure scan demo artifacts (regenerate with scripts/run-secure-scan.ts)
 workspace_outputs/secure-scan.*
 .spectra/
+
+# Secret-class clip artifacts (license/recovery tokens) — never commit
+**/Pasted_2026-09-20*
