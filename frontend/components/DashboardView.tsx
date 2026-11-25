@@ -18,6 +18,7 @@ interface Props {
   onSelectModule: (moduleId: string) => void;
   onOpenDignity?: () => void;
   onOpenPipeline?: () => void;
+  onOpenAlpha?: () => void;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -38,6 +39,7 @@ export const DashboardView: React.FC<Props> = ({
   onSelectModule,
   onOpenDignity,
   onOpenPipeline,
+  onOpenAlpha,
 }) => {
   const [smartResolveSummary, setSmartResolveSummary] = useState<FrontendSmartResolveSummary | null>(null);
 
@@ -110,6 +112,19 @@ export const DashboardView: React.FC<Props> = ({
                 }}
               >
                 <Cpu size={13} /> 9-AGENT PIPELINE
+              </button>
+            )}
+            {onOpenAlpha && (
+              <button
+                type="button"
+                onClick={onOpenAlpha}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9,
+                  border: `1px solid ${NEON.magenta}66`, background: 'rgba(255,46,159,0.1)', color: NEON.magenta,
+                  fontFamily: "'Orbitron', monospace", fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <Sparkles size={13} /> ALPHA SANDBOX (/alpha)
               </button>
             )}
           </div>

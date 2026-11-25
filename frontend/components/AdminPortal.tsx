@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Server, X, Smartphone } from 'lucide-react';
+import { Server, X, Smartphone, Sparkles } from 'lucide-react';
 import { NEON } from '../theme';
 import { useSovereign } from '../context/SovereignContext';
 import { checkLocalLlmStatus, type LocalLlmStatus } from '../services/architect';
@@ -15,9 +15,11 @@ const CONFIGURED_ROUTES = [
 export function AdminPortal({
   open,
   onClose,
+  onOpenAlpha,
 }: {
   open: boolean;
   onClose: () => void;
+  onOpenAlpha: () => void;
 }) {
   const { user, receipts, collectedVectors } = useSovereign();
   const [llmStatus, setLlmStatus] = useState<LocalLlmStatus | null>(null);
@@ -100,6 +102,27 @@ export function AdminPortal({
             </p>
           </div>
 
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#FF2E9F]/30 bg-[#FF2E9F]/5 p-4">
+            <div>
+              <div className="font-orbitron text-xs font-bold text-[#FF2E9F]">
+                ARENA ALPHA SANDBOX (/alpha)
+              </div>
+              <p className="mt-0.5 text-xs text-[#7B9BB5]">
+                Isolated alpha build of the Arena prototype — simulated demo data only, never touches live enclave receipts or exports.
+              </p>
+            </div>
+            <NeonButton
+              size="sm"
+              color={NEON.magenta}
+              onClick={() => {
+                onClose();
+                onOpenAlpha();
+              }}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              LAUNCH /alpha
+            </NeonButton>
+          </div>
         </div>
       </GlassCard>
     </SovereignDialog>

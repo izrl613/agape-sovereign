@@ -1,4 +1,4 @@
-import { LogOut, X, HardDrive, Cloud, Compass, ShieldCheck } from 'lucide-react';
+import { LogOut, X, HardDrive, Cloud, Compass, Sparkles, ShieldCheck } from 'lucide-react';
 import { NEON } from '../theme';
 import { useSovereign } from '../context/SovereignContext';
 import { GlassCard, NeonButton, SovereignDialog } from './ui';
@@ -8,10 +8,12 @@ export function ProfilePanel({
   open,
   onClose,
   onSignOut,
+  onOpenAlpha,
 }: {
   open: boolean;
   onClose: () => void;
   onSignOut: () => void;
+  onOpenAlpha: () => void;
 }) {
   const { user, sovereignId, receipts, collectedVectors, attachGoogle } = useSovereign();
 
@@ -103,6 +105,18 @@ export function ProfilePanel({
         )}
 
         <div className="mt-auto space-y-2.5 pt-4">
+          <NeonButton
+            onClick={() => {
+              onClose();
+              onOpenAlpha();
+            }}
+            color={NEON.orange}
+            size="sm"
+            className="w-full"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            OPEN ARENA ALPHA (/alpha)
+          </NeonButton>
           <NeonButton onClick={onSignOut} color={NEON.magenta} size="md" className="w-full" autoFocus>
             <LogOut className="h-4 w-4" />
             SIGN OUT

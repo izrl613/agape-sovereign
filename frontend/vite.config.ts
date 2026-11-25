@@ -9,6 +9,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', 'lucide-react'],
     alias: {
       '@': path.resolve(import.meta.dirname, '.'),
+      '@arena': path.resolve(import.meta.dirname, '../arena/src'),
       react: path.resolve(import.meta.dirname, 'node_modules/react'),
       'react-dom': path.resolve(import.meta.dirname, 'node_modules/react-dom'),
       'lucide-react': path.resolve(import.meta.dirname, 'node_modules/lucide-react'),
@@ -18,7 +19,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: true,
-    fs: { allow: ['..'] }, // import ../firebase-applet-config.json
+    fs: { allow: ['..'] }, // import ../firebase-applet-config.json & ../arena/src (alpha build)
     proxy: {
       // Local development against the Firebase emulator suite
       // (`firebase emulators:start`); production uses Hosting rewrites.
