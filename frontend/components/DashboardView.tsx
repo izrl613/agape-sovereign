@@ -8,12 +8,16 @@ import {
   isFrontendDailyScheduleDue,
   runFrontendSmartResolveScan,
 } from '../services/smartResolveService';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, Scale, Cpu } from 'lucide-react';
+import { SovereignScoreRing } from './ui';
 
 interface Props {
   receipts: ModuleReceipt[];
   sovereignId: string | null;
   onSelectModule: (moduleId: string) => void;
+  onOpenDignity?: () => void;
+  onOpenPipeline?: () => void;
+  onOpenAlpha?: () => void;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -28,7 +32,14 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /** Real posture only: counts derive exclusively from actual receipts. */
-export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelectModule }) => {
+export const DashboardView: React.FC<Props> = ({
+  receipts,
+  sovereignId,
+  onSelectModule,
+  onOpenDignity,
+  onOpenPipeline,
+  onOpenAlpha,
+}) => {
   const [smartResolveSummary, setSmartResolveSummary] = useState<FrontendSmartResolveSummary | null>(null);
 
   useEffect(() => {
@@ -44,6 +55,7 @@ export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelect
   const latestByModule = new Map<string, ModuleReceipt>();
   for (const r of receipts) latestByModule.set(r.moduleId, r);
   const sealedCount = latestByModule.size;
+  const sealedPct = Math.round((sealedCount / 16) * 100);
   const matches = receipts.filter((r) => r.verification.status === 'MATCH_FOUND').length;
   const verified = receipts.filter((r) => ['VERIFIED', 'CHECKED_NO_MATCH', 'LOCAL_CHECK_PASSED'].includes(r.verification.status)).length;
   const selfAttested = receipts.filter((r) => r.verification.status === 'SELF_ATTESTED').length;
@@ -57,7 +69,7 @@ export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelect
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', paddingBottom: 80 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 22 }}>
         <div>
           <div style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.orange, letterSpacing: '0.2em', marginBottom: 6 }}>
             DIGITAL IDENTITY FEDERATED FOOTPRINT
@@ -69,8 +81,52 @@ export const DashboardView: React.FC<Props> = ({ receipts, sovereignId, onSelect
             16 identity vectors, each gated by a Module Agent: validate → SHA-256 → AES-256-GCM →
             third-party verify where a free API honestly exists → sealed receipt. No simulated data — ever.
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
+            {sovereignId && <Sha256Badge hash={sovereignId} label="YOUR SOVEREIGN SHA-256 ID" size="md" />}
+            {onOpenDignity && (
+              <button
+                type="button"
+                onClick={onOpenDignity}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9,
+                  border: `1px solid ${NEON.orange}66`, background: 'rgba(255,122,24,0.1)', color: NEON.orange,
+                  fontFamily: "'Orbitron', monospace", fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <Scale size={13} /> HDI RECTIFICATION
+              </button>
+            )}
+            {onOpenPipeline && (
+              <button
+                type="button"
+                onClick={onOpenPipeline}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9,
+                  border: `1px solid ${NEON.blue}66`, background: 'rgba(0,212,255,0.1)', color: NEON.blue,
+                  fontFamily: "'Orbitron', monospace", fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <Cpu size={13} /> 9-AGENT PIPELINE
+              </button>
+            )}
+            {onOpenAlpha && (
+              <button
+                type="button"
+                onClick={onOpenAlpha}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9,
+                  border: `1px solid ${NEON.magenta}66`, background: 'rgba(255,46,159,0.1)', color: NEON.magenta,
+                  fontFamily: "'Orbitron', monospace", fontSize: '0.65rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                <Sparkles size={13} /> ALPHA SANDBOX (/alpha)
+              </button>
+            )}
+          </div>
         </div>
-        {sovereignId && <Sha256Badge hash={sovereignId} label="YOUR SOVEREIGN SHA-256 ID" size="md" />}
+        <div className="arena-scope">
+          <SovereignScoreRing score={sealedPct} label="SEALED" />
+        </div>
       </div>
 
       {smartResolveSummary && (

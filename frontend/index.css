@@ -1,0 +1,224 @@
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@layer base {
+  body {
+    background-color: #0b1020;
+    color: #f8fafc;
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* Native top-layer modal scroll containment */
+  dialog:modal {
+    overscroll-behavior: contain;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    max-width: min(100vw - 24px, 100%);
+    max-height: calc(100dvh - 24px);
+    overflow: visible;
+  }
+
+  dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background: rgba(6, 13, 31, 0.82);
+    backdrop-filter: blur(8px);
+  }
+
+  /* Scoped preflight reset for Tailwind-styled Arena & Enclave components */
+  .arena-scope *,
+  .arena-scope *::before,
+  .arena-scope *::after {
+    box-sizing: border-box;
+    border-style: solid;
+    border-width: 0;
+    border-color: rgba(0, 212, 255, 0.2);
+  }
+
+  .arena-scope button,
+  .arena-scope input,
+  .arena-scope select,
+  .arena-scope textarea {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    margin: 0;
+  }
+
+  .arena-scope h1,
+  .arena-scope h2,
+  .arena-scope h3,
+  .arena-scope h4,
+  .arena-scope p {
+    margin: 0;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(6, 13, 31, 0.65);
+}
+::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 3px;
+}
+
+.font-orbitron {
+  font-family: 'Orbitron', monospace;
+}
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+}
+.font-mono-tech {
+  font-family: 'Share Tech Mono', monospace;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes scan-line {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px #ff2e9f, 0 0 20px rgba(255, 46, 159, 0.3); }
+  33% { box-shadow: 0 0 8px #00d4ff, 0 0 20px rgba(0, 212, 255, 0.3); }
+  66% { box-shadow: 0 0 8px #ff7a18, 0 0 20px rgba(255, 122, 24, 0.3); }
+}
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes nuke-flash {
+  0%, 100% { background: rgba(255, 46, 159, 0.08); }
+  50% { background: rgba(255, 46, 159, 0.18); }
+}
+@keyframes knox-pulse {
+  0%, 100% { background: rgba(0, 212, 255, 0.06); }
+  50% { background: rgba(0, 212, 255, 0.14); }
+}
+
+.neon-border {
+  position: relative;
+}
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #ff2e9f 0%, #00d4ff 50%, #ff7a18 100%);
+  background-size: 200% 200%;
+  animation: rotate-gradient 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.animate-scan-line {
+  animation: scan-line 4s linear infinite;
+}
+.animate-float-slow {
+  animation: float-slow 4s ease-in-out infinite;
+}
+.animate-pulse-border {
+  animation: pulse-border 1.6s ease-in-out infinite;
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s infinite;
+}
+.nuked-item {
+  animation: nuke-flash 3s ease-in-out infinite;
+}
+.knoxed-item {
+  animation: knox-pulse 3s ease-in-out infinite;
+}
+
+/* Slide-over drawer animation (ProfilePanel) */
+dialog.profile-drawer {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(26rem, 92vw);
+  max-width: none;
+}
+
+/* Mobile navigation drawer with scroll-snap swipe-to-dismiss */
+dialog.nav-drawer {
+  --drawer-width: min(17.5rem, 82dvw, 100dvw - 24px);
+  --drawer-backdrop: 0;
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+dialog.nav-drawer::backdrop {
+  background: #060d1f;
+  opacity: calc(var(--drawer-backdrop) * 0.82);
+  backdrop-filter: none;
+}
+.nav-drawer-scroller {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--drawer-width) 100%;
+  overflow-x: scroll;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nav-drawer-scroller {
+    scroll-behavior: smooth;
+  }
+}
+.nav-drawer-scroller::after {
+  content: '';
+  scroll-snap-align: end;
+  scroll-initial-target: nearest;
+}
+.nav-drawer-sheet {
+  height: 100svh;
+  overflow-y: auto;
+  scroll-snap-align: start;
+  scrollbar-width: none;
+}
+@supports (animation-timeline: scroll()) {
+  dialog.nav-drawer {
+    timeline-scope: --nav-drawer-fade;
+    animation: fade-nav-drawer-backdrop linear both;
+    animation-timeline: --nav-drawer-fade;
+  }
+  .nav-drawer-scroller {
+    scroll-timeline: --nav-drawer-fade x;
+  }
+  @property --drawer-backdrop {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 0;
+  }
+  @keyframes fade-nav-drawer-backdrop {
+    0% { --drawer-backdrop: 1; }
+    100% { --drawer-backdrop: 0; }
+  }
+}

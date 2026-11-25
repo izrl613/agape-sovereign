@@ -1,0 +1,23 @@
+{
+  "name": "Agape Sovereign AI",
+  "short_name": "AgapeAI",
+  "description": "Digital Identity Federated Footprint (DIFF) Privacy & Security Enclave PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060D1F",
+  "theme_color": "#060D1F",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    }
+  ]
+}

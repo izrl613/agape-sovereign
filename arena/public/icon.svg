@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="neonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF2E9F" />
+      <stop offset="50%" stop-color="#00D4FF" />
+      <stop offset="100%" stop-color="#FF7A18" />
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="24" fill="#060D1F" />
+  <polygon points="64,12 110,38 110,90 64,116 18,90 18,38" fill="none" stroke="url(#neonGrad)" stroke-width="3.5" />
+  <polygon points="64,26 96,44 96,84 64,102 32,84 32,44" fill="none" stroke="#00D4FF" stroke-width="1.5" opacity="0.7" />
+  <text x="64" y="72" text-anchor="middle" fill="#00D4FF" font-family="monospace" font-size="28" font-weight="900">AI</text>
+</svg>

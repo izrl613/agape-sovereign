@@ -1,0 +1,101 @@
+@import 'tailwindcss';
+
+@layer base {
+  body {
+    background-color: #060d1f;
+    color: #e8f4ff;
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+}
+::-webkit-scrollbar-thumb {
+  background: #00d4ff;
+  border-radius: 3px;
+}
+
+.font-orbitron {
+  font-family: 'Orbitron', monospace;
+}
+.font-rajdhani {
+  font-family: 'Rajdhani', sans-serif;
+}
+.font-mono-tech {
+  font-family: 'Share Tech Mono', monospace;
+}
+
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes scan-line {
+  0% { top: -2px; }
+  100% { top: 100%; }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px #ff2e9f, 0 0 20px rgba(255, 46, 159, 0.3); }
+  33% { box-shadow: 0 0 8px #00d4ff, 0 0 20px rgba(0, 212, 255, 0.3); }
+  66% { box-shadow: 0 0 8px #ff7a18, 0 0 20px rgba(255, 122, 24, 0.3); }
+}
+@keyframes rotate-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes nuke-flash {
+  0%, 100% { background: rgba(255, 46, 159, 0.08); }
+  50% { background: rgba(255, 46, 159, 0.18); }
+}
+@keyframes knox-pulse {
+  0%, 100% { background: rgba(0, 212, 255, 0.06); }
+  50% { background: rgba(0, 212, 255, 0.14); }
+}
+
+.neon-border {
+  position: relative;
+}
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, #ff2e9f 0%, #00d4ff 50%, #ff7a18 100%);
+  background-size: 200% 200%;
+  animation: rotate-gradient 4s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.animate-scan-line {
+  animation: scan-line 4s linear infinite;
+}
+.animate-float-slow {
+  animation: float-slow 4s ease-in-out infinite;
+}
+.animate-pulse-border {
+  animation: pulse-border 1.6s ease-in-out infinite;
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s infinite;
+}
+.nuked-item {
+  animation: nuke-flash 3s ease-in-out infinite;
+}
+.knoxed-item {
+  animation: knox-pulse 3s ease-in-out infinite;
+}

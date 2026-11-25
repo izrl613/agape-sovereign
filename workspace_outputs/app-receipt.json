@@ -1,0 +1,21 @@
+{
+  "receipt": {
+    "algorithm": "SHA-256",
+    "version": 1,
+    "subject": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "moduleId": "health",
+    "vector": "health",
+    "issuedAt": "2026-11-25T18:59:15.672Z",
+    "digest": "d0e9284952494807a27ebf24842d8e94d25c50e83955f00f1086bc072bcef021"
+  },
+  "body": {
+    "sha256Id": "9d49a750534d7c693c2a9c4c181dcab8a3c08d56c1f05c911cd9649699dc53ff",
+    "sealedAt": "2026-11-25T18:59:15.672Z",
+    "verificationStatus": "SELF_ATTESTED",
+    "fieldKeys": [
+      "provider",
+      "policyId",
+      "emergencyContact"
+    ]
+  }
+}

@@ -1,7 +1,8 @@
-import React from 'react';
+// @ts-nocheck — class component generics don't resolve under moduleResolution:"bundler" + strict:false
+import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface ErrorBoundaryState {
@@ -9,7 +10,7 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -19,11 +20,11 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[Agape Sovereign UI] Uncaught error caught by ErrorBoundary:', error, errorInfo);
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div style={{

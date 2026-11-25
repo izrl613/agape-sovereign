@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { it } from 'vitest';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { generateDEK } from '../frontend/services/sha256Vault';
 import { runModuleAgent } from '../frontend/services/moduleAgents';
 
-const OUT = '/private/var/folders/kr/w89ttzvd4pg4ms72yvlwc2s00000gn/T/opencode/app-receipt.json';
+const OUT = join(__dirname, '..', 'workspace_outputs', 'app-receipt.json');
 
 it('emits an app receipt for MCP interop', async () => {
   const dek = await generateDEK();
@@ -16,5 +17,6 @@ it('emits an app receipt for MCP interop', async () => {
     dek,
   );
   const { body, ...meta } = receipt.attestation!;
+  mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify({ receipt: meta, body }, null, 2));
 });

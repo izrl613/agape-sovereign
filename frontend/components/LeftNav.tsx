@@ -15,6 +15,8 @@ export const LeftNav: React.FC<Props> = ({ activeView, activeModule, collectedVe
   const sections: { id: AppView; icon: string; label: string }[] = [
     { id: 'DASHBOARD', icon: '⬡', label: 'DASHBOARD' },
     { id: 'ARCHITECT', icon: '◈', label: 'ARCHITECT AI' },
+    { id: 'DIGNITY', icon: '⚖', label: 'HDI RECTIFICATION' },
+    { id: 'PIPELINE', icon: '⚙', label: '9-AGENT PIPELINE' },
     { id: 'REPORT', icon: '⊟', label: '26-MONTH AUDIT' },
   ];
   const modules = Object.values(MODULE_CONFIGS);
@@ -32,7 +34,16 @@ export const LeftNav: React.FC<Props> = ({ activeView, activeModule, collectedVe
     <nav aria-label="Primary" style={{
       width: 248, flexShrink: 0, background: 'rgba(6,13,31,0.9)', borderRight: '1px solid rgba(0,212,255,0.1)',
       padding: '18px 12px 90px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4,
+      position: 'relative',
     }}>
+      <div
+        className="animate-scan-line pointer-events-none"
+        style={{
+          position: 'absolute', left: 0, right: 0, height: 2, zIndex: 1,
+          background: 'linear-gradient(90deg, transparent, rgba(0,212,255,0.35), transparent)',
+        }}
+      />
+
       {sections.map((s) => (
         <button key={s.id} type="button" style={{ ...item(activeView === s.id), fontFamily: "'Orbitron', monospace", fontSize: '0.68rem', letterSpacing: '0.08em' }} onClick={() => onNavigate(s.id)}>
           <span>{s.icon}</span> {s.label}

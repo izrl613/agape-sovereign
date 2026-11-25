@@ -9,6 +9,7 @@ interface HomePageProps {
   onLoginGoogle?: () => void;
   onLoginPasskey?: () => void;
   onLoginAnon?: () => void;
+  onOpenAlpha?: () => void;
 }
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -16,6 +17,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onLoginGoogle,
   onLoginPasskey,
   onLoginAnon,
+  onOpenAlpha,
 }) => {
   const [zkHash, setZkHash] = useState<string>('COMPUTING...');
   const [copied, setCopied] = useState(false);
@@ -160,6 +162,12 @@ export const HomePage: React.FC<HomePageProps> = ({
               <EyeOff size={15} color={NEON.orange} />
               <span>Guest Enclave</span>
             </button>
+            {onOpenAlpha && (
+              <button type="button" onClick={onOpenAlpha} className="btn-anon-pill" style={{ borderColor: `${NEON.magenta}66`, color: NEON.magenta }}>
+                <Sparkles size={15} color={NEON.magenta} />
+                <span>Alpha Sandbox (/alpha)</span>
+              </button>
+            )}
           </div>
         </div>
 
