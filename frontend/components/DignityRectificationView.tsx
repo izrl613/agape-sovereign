@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Scale, CheckCircle2, ShieldCheck, Download, FileCheck2, Trash2, AlertTriangle } from 'lucide-react';
+import { Scale, ShieldCheck, Download, FileCheck2, Trash2, AlertTriangle } from 'lucide-react';
 import { NEON } from '../theme';
 import { useSovereign } from '../context/SovereignContext';
 import { sha256Hex } from '../services/sha256Vault';
@@ -15,16 +15,24 @@ import {
 import { GlassCard, NeonButton, SovereignScoreRing } from './ui';
 import { Sha256Badge } from './Sha256Badge';
 
-const VALIDATOR_NODES = [
+// Real statutes a user can invoke. These are legal frameworks, not
+// organizations — no validator node exists yet, so packets are
+// self-issued claim drafts, honestly labelled as such.
+const LEGAL_FRAMEWORKS = [
   {
-    id: 'VALIDATOR-HUMAN-RIGHTS-001',
-    organization: 'Sovereign Human Dignity & Right to Rectification Council',
-    jurisdiction: 'GDPR Art. 16 · UDHR Art. 12',
+    id: 'GDPR-ART16',
+    label: 'GDPR Article 16 — Right to Rectification',
+    jurisdiction: 'EU / UK GDPR',
   },
   {
-    id: 'VALIDATOR-SSI-ADVOCATE-002',
-    organization: 'Global Human Rights Data Steward Node #002',
-    jurisdiction: 'ECRA 2026 · CCPA Right to Correct',
+    id: 'CCPA-1798-106',
+    label: 'CCPA §1798.106 — Right to Correct',
+    jurisdiction: 'California',
+  },
+  {
+    id: 'UDHR-ART12',
+    label: 'UDHR Article 12 — Protection of Honour & Reputation',
+    jurisdiction: 'Universal Declaration of Human Rights',
   },
 ] as const;
 
@@ -47,15 +55,18 @@ const RECTIFICATION_CLAIM_TYPES = [
 ] as const;
 
 export interface RectificationCertificate {
-  status: 'RECTIFIED_ATTESTATION_ISSUED';
+  /** Honest status: this packet is self-issued on-device. It is NOT a
+   *  third-party attestation — submit it to the data controller or your
+   *  supervisory authority to activate the invoked rights. */
+  status: 'SELF_ATTESTED_CLAIM_PACKET_GENERATED';
   rectification_id: string;
   claim_id: string;
   claim_type: string;
   sovereign_id: string;
   timestamp: string;
-  validator: {
-    validator_id: string;
-    organization: string;
+  framework: {
+    framework_id: string;
+    label: string;
     jurisdiction: string;
   };
   bound_receipt_hashes: string[];
@@ -67,7 +78,7 @@ export interface RectificationCertificate {
     exposed_receipts: number;
     real_posture_pct: number;
   };
-  compliance_guarantees: {
+  rights_invoked: {
     gdpr_article_16_right_to_rectification: boolean;
     universal_human_rights_article_12: boolean;
     ccpa_right_to_correct: boolean;
@@ -78,7 +89,7 @@ export interface RectificationCertificate {
 export function DignityRectificationView({ onSelectModule }: { onSelectModule?: (id: string) => void }) {
   const { user, sovereignId, receipts } = useSovereign();
   const [claimType, setClaimType] = useState<string>(RECTIFICATION_CLAIM_TYPES[0].id);
-  const [validatorId, setValidatorId] = useState<string>(VALIDATOR_NODES[0].id);
+  const [frameworkId, setFrameworkId] = useState<string>(LEGAL_FRAMEWORKS[0].id);
   const [correctionNote, setCorrectionNote] = useState<string>(RECTIFICATION_CLAIM_TYPES[0].note);
   const [processing, setProcessing] = useState(false);
   const [certificate, setCertificate] = useState<RectificationCertificate | null>(null);
@@ -119,19 +130,19 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
       const boundHashes = receipts.map((r) => r.sha256Id);
       const oldHash = await sha256Hex(`stale:${sovereignId}:${claimType}:${boundHashes.join(',')}:${now}`);
       const newHash = await sha256Hex(`rectified:${sovereignId}:${claimType}:${correctionNote}:${now}`);
-      const validator = VALIDATOR_NODES.find((v) => v.id === validatorId) || VALIDATOR_NODES[0];
+      const framework = LEGAL_FRAMEWORKS.find((f) => f.id === frameworkId) || LEGAL_FRAMEWORKS[0];
 
       const cert: RectificationCertificate = {
-        status: 'RECTIFIED_ATTESTATION_ISSUED',
-        rectification_id: `RECTIFIED-${oldHash.slice(0, 8).toUpperCase()}`,
+        status: 'SELF_ATTESTED_CLAIM_PACKET_GENERATED',
+        rectification_id: `RECT-CLAIM-${oldHash.slice(0, 8).toUpperCase()}`,
         claim_id: `CLAIM-${newHash.slice(0, 8).toUpperCase()}`,
         claim_type: claimType,
         sovereign_id: sovereignId,
         timestamp: now,
-        validator: {
-          validator_id: validator.id,
-          organization: validator.organization,
-          jurisdiction: validator.jurisdiction,
+        framework: {
+          framework_id: framework.id,
+          label: framework.label,
+          jurisdiction: framework.jurisdiction,
         },
         bound_receipt_hashes: boundHashes,
         old_data_purged_hash: oldHash,
@@ -142,7 +153,7 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
           exposed_receipts: posture.exposed,
           real_posture_pct: posture.basePct,
         },
-        compliance_guarantees: {
+        rights_invoked: {
           gdpr_article_16_right_to_rectification: true,
           universal_human_rights_article_12: true,
           ccpa_right_to_correct: true,
@@ -185,7 +196,7 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
             HUMAN DIGNITY RECTIFICATION ENGINE
           </h1>
           <p className="mt-1 text-sm text-[#7B9BB5]">
-            Cryptographic rectification proofs anchored to your real SHA-256 receipts &amp; stored locally in IndexedDB (26-month window).
+            Self-issued, zero-PII claim packets anchored to your real SHA-256 receipts &amp; stored locally in IndexedDB (26-month window).
           </p>
           {sovereignId && (
             <div className="mt-3">
@@ -217,7 +228,7 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
           <div className="mb-4 flex items-center gap-2.5">
             <Scale className="h-5 w-5 text-[#FF7A18]" />
             <h2 className="font-orbitron text-sm font-bold tracking-wider text-[#FF7A18]">
-              ISSUE RECTIFICATION PROOF
+              GENERATE RECTIFICATION CLAIM PACKET
             </h2>
           </div>
 
@@ -246,18 +257,18 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
             </div>
 
             <div>
-              <label htmlFor="validator-node" className="font-mono-tech mb-1 block text-[11px] text-[#7B9BB5]">
-                ATTESTATION FRAMEWORK / STEWARD PROFILE
+              <label htmlFor="legal-framework" className="font-mono-tech mb-1 block text-[11px] text-[#7B9BB5]">
+                LEGAL FRAMEWORK TO INVOKE
               </label>
               <select
-                id="validator-node"
-                value={validatorId}
-                onChange={(e) => setValidatorId(e.target.value)}
+                id="legal-framework"
+                value={frameworkId}
+                onChange={(e) => setFrameworkId(e.target.value)}
                 className="font-rajdhani w-full rounded-lg border border-[#00D4FF]/25 bg-[#060D1F] px-3 py-2.5 text-sm text-[#F8FAFC] outline-none focus:border-[#00D4FF]"
               >
-                {VALIDATOR_NODES.map((v) => (
-                  <option key={v.id} value={v.id} className="bg-[#060D1F] text-[#F8FAFC]">
-                    {v.id} — {v.jurisdiction}
+                {LEGAL_FRAMEWORKS.map((f) => (
+                  <option key={f.id} value={f.id} className="bg-[#060D1F] text-[#F8FAFC]">
+                    {f.label} — {f.jurisdiction}
                   </option>
                 ))}
               </select>
@@ -278,7 +289,7 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
 
             <NeonButton type="submit" color={NEON.blue} size="lg" disabled={processing || !sovereignId} className="w-full">
               <FileCheck2 className="h-4 w-4" />
-              {processing ? 'COMPUTING SHA-256 RECTIFICATION PROOF...' : 'MINT & ARCHIVE SHA-256 PROOF'}
+              {processing ? 'COMPUTING SHA-256 CLAIM DIGEST...' : 'GENERATE & ARCHIVE CLAIM PACKET'}
             </NeonButton>
           </form>
         </GlassCard>
@@ -286,8 +297,13 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
         <div className="space-y-4">
           <GlassCard className="p-5">
             <h2 className="font-orbitron mb-3 text-xs font-bold tracking-wider text-[#00D4FF]">
-              ENFORCED HUMAN DIGNITY GUARANTEES
+              RIGHTS THIS CLAIM INVOKES
             </h2>
+            <p className="mb-3 text-[11px] leading-relaxed text-[#7B9BB5]">
+              These are statutes <em>you</em> invoke by submitting the packet to the data
+              controller or supervisory authority. Agape does not guarantee outcomes —
+              it produces a tamper-evident, zero-PII claim draft bound to your real receipts.
+            </p>
             <div className="space-y-2 text-xs">
               {[
                 ['GDPR Article 16', 'Right to Rectification without undue delay'],
@@ -303,7 +319,7 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
                     <span className="font-orbitron font-bold text-[#00D4FF]">{law}</span>
                     <span className="ml-2 text-[#7B9BB5]">{desc}</span>
                   </div>
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-[#00FF87]" />
+                  <Scale className="h-4 w-4 shrink-0 text-[#00FF87]" />
                 </div>
               ))}
             </div>
@@ -325,15 +341,16 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
                     onClick={() =>
                       void downloadStructuredPdf(
                         `${certificate.rectification_id}.pdf`,
-                        `AGAPE SOVEREIGN — RECTIFICATION PROOF (${certificate.rectification_id})`,
-                        `Issued: ${certificate.timestamp} · Sovereign ID: ${certificate.sovereign_id}`,
+                        `AGAPE SOVEREIGN — RECTIFICATION CLAIM PACKET (${certificate.rectification_id})`,
+                        `Self-issued on-device: ${certificate.timestamp} · Sovereign ID: ${certificate.sovereign_id} · Status: ${certificate.status}`,
                         [
                           {
                             heading: 'Claim & Framework',
                             lines: [
                               `Claim ID: ${certificate.claim_id}`,
                               `Claim Type: ${certificate.claim_type}`,
-                              `Framework: ${certificate.validator.validator_id} (${certificate.validator.jurisdiction})`,
+                              `Legal Framework Invoked: ${certificate.framework.label} (${certificate.framework.jurisdiction})`,
+                              'NOTE: This packet is self-issued by the sovereign identity holder. It is not a third-party attestation. Submit it to the data controller or your supervisory authority to activate the invoked rights.',
                             ],
                           },
                           {
@@ -377,7 +394,8 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
               </div>
 
               <div className="font-mono-tech space-y-1.5 rounded-lg border border-[#00FF87]/25 bg-[#060D1F]/80 p-3 text-[11px] text-[#E8F4FF]/90">
-                <div>FRAMEWORK: {certificate.validator.validator_id}</div>
+                <div>FRAMEWORK: {certificate.framework.label} ({certificate.framework.jurisdiction})</div>
+                <div>STATUS: {certificate.status} — self-issued, not a third-party attestation</div>
                 <div>SEALED VECTORS BOUND: {certificate.bound_receipt_hashes.length} receipt(s)</div>
                 <div className="truncate text-[#FF2E9F]">PURGE DIGEST: {certificate.old_data_purged_hash}</div>
                 <div className="truncate text-[#00D4FF]">RECTIFIED DIGEST: {certificate.corrected_data_hash}</div>
@@ -391,13 +409,13 @@ export function DignityRectificationView({ onSelectModule }: { onSelectModule?: 
       <GlassCard className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-orbitron text-xs font-bold tracking-wider text-[#FF7A18]">
-            ARCHIVED RECTIFICATION PROOFS (LOCAL INDEXEDDB VAULT)
+            ARCHIVED RECTIFICATION CLAIM PACKETS (LOCAL INDEXEDDB VAULT)
           </h2>
           <span className="font-mono-tech text-xs text-[#7B9BB5]">{archivedCerts.length} stored</span>
         </div>
         {archivedCerts.length === 0 ? (
           <p className="font-mono-tech py-2 text-xs text-[#7B9BB5]">
-            No rectification proofs archived yet. Mint a SHA-256 proof above to save one locally for 26 months.
+            No claim packets archived yet. Generate a SHA-256 claim packet above to save one locally for 26 months.
           </p>
         ) : (
           <div className="space-y-2">

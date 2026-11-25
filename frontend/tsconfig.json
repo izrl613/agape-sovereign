@@ -13,7 +13,6 @@
     "strict": false,
     "paths": {
       "@/*": ["./*"],
-      "@arena/*": ["../arena/src/*"],
       "react": ["./node_modules/react"],
       "react/jsx-runtime": ["./node_modules/react/jsx-runtime"],
       "react-dom": ["./node_modules/react-dom"],
@@ -21,5 +20,5 @@
       "lucide-react": ["./node_modules/lucide-react"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "vite.config.ts", "../arena/src/**/*.ts", "../arena/src/**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx", "vite.config.ts"]
 }

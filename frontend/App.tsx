@@ -11,7 +11,6 @@ import { RecoveryCodeModal } from './components/RecoveryCodeModal';
 import { LegalPage } from './components/LegalPage';
 import { MODULE_CONFIGS } from './module-config';
 
-const ArenaAlphaRoot = lazy(() => import('./alpha/ArenaAlphaRoot'));
 const ModuleInterface = lazy(() => import('./components/ModuleInterface').then((m) => ({ default: m.ModuleInterface })));
 const ArchitectAIView = lazy(() => import('./components/ArchitectAIView').then((m) => ({ default: m.ArchitectAIView })));
 const DignityRectificationView = lazy(() => import('./components/DignityRectificationView').then((m) => ({ default: m.DignityRectificationView })));
@@ -20,12 +19,11 @@ const ReportView = lazy(() => import('./components/ReportView').then((m) => ({ d
 const AdminPortal = lazy(() => import('./components/AdminPortal').then((m) => ({ default: m.AdminPortal })));
 const ProfilePanel = lazy(() => import('./components/ProfilePanel').then((m) => ({ default: m.ProfilePanel })));
 
-export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'ALPHA' | 'TERMS' | 'PRIVACY' | 'CONTACT';
+export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'TERMS' | 'PRIVACY' | 'CONTACT';
 
 function pathFor(view: AppView, moduleId: string | null): string {
   if (view === 'HOME') return '/';
   if (view === 'LOGIN') return '/login';
-  if (view === 'ALPHA') return '/alpha';
   if (view === 'TERMS') return '/terms';
   if (view === 'PRIVACY') return '/privacy';
   if (view === 'CONTACT') return '/contact';
@@ -40,7 +38,6 @@ function pathFor(view: AppView, moduleId: string | null): string {
 function viewFromPath(): { view: AppView; moduleId: string | null } {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   if (path === '/login') return { view: 'LOGIN', moduleId: null };
-  if (path === '/alpha') return { view: 'ALPHA', moduleId: null };
   if (path === '/terms') return { view: 'TERMS', moduleId: null };
   if (path === '/privacy') return { view: 'PRIVACY', moduleId: null };
   if (path === '/contact') return { view: 'CONTACT', moduleId: null };
@@ -96,21 +93,6 @@ const AppContent: React.FC = () => {
     return <LegalPage kind={view} onBack={() => navigate(user ? 'DASHBOARD' : 'HOME')} />;
   }
 
-  // Standalone Arena Alpha sandbox route (/alpha) — works signed in or out
-  if (view === 'ALPHA') {
-    return (
-      <Suspense
-        fallback={
-          <div style={{ minHeight: '100vh', background: '#060c1a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00d4ff', fontFamily: "'Orbitron', monospace" }}>
-            LOADING ARENA ALPHA SANDBOX…
-          </div>
-        }
-      >
-        <ArenaAlphaRoot onExit={() => navigate(user ? 'DASHBOARD' : 'HOME')} />
-      </Suspense>
-    );
-  }
-
   // Only deep /dashboard routes need to wait for auth state resolution
   if (!authReady && window.location.pathname.startsWith('/dashboard')) {
     return (
@@ -137,7 +119,6 @@ const AppContent: React.FC = () => {
         onLoginGoogle={() => navigate('LOGIN')}
         onLoginPasskey={() => navigate('LOGIN')}
         onLoginAnon={() => navigate('LOGIN')}
-        onOpenAlpha={() => navigate('ALPHA')}
       />
     );
   }
@@ -154,7 +135,6 @@ const AppContent: React.FC = () => {
         }}
         onOpenProfile={() => setShowProfile(true)}
         onOpenAdmin={() => setShowAdmin(true)}
-        onOpenAlpha={() => navigate('ALPHA')}
       />
       <div className="app-body">
         <LeftNav
@@ -173,7 +153,6 @@ const AppContent: React.FC = () => {
                 onSelectModule={(id) => navigate('MODULE', id)}
                 onOpenDignity={() => navigate('DIGNITY')}
                 onOpenPipeline={() => navigate('PIPELINE')}
-                onOpenAlpha={() => navigate('ALPHA')}
               />
             )}
             {view === 'MODULE' && activeModule && (
@@ -201,7 +180,6 @@ const AppContent: React.FC = () => {
           <AdminPortal
             open={showAdmin}
             onClose={() => setShowAdmin(false)}
-            onOpenAlpha={() => navigate('ALPHA')}
           />
         )}
         <ProfilePanel
@@ -212,7 +190,6 @@ const AppContent: React.FC = () => {
             void clearSession();
             navigate('HOME');
           }}
-          onOpenAlpha={() => navigate('ALPHA')}
         />
       </Suspense>
       <style>{`

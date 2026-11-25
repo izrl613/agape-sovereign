@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LogOut, Server, User, Sparkles } from 'lucide-react';
+import { LogOut, Server, User } from 'lucide-react';
 import { NEON, GRADIENT_BORDER } from '../theme';
 import { SovereignUser } from '../context/SovereignContext';
 import { Sha256Badge } from './Sha256Badge';
@@ -10,7 +10,6 @@ interface Props {
   onLogout: () => void;
   onOpenProfile: () => void;
   onOpenAdmin: () => void;
-  onOpenAlpha: () => void;
 }
 
 const METHOD_LABEL: Record<SovereignUser['method'], string> = {
@@ -25,7 +24,6 @@ export const TopHeader: React.FC<Props> = ({
   onLogout,
   onOpenProfile,
   onOpenAdmin,
-  onOpenAlpha,
 }) => {
   const [time, setTime] = useState(new Date());
   useEffect(() => {
@@ -62,16 +60,6 @@ export const TopHeader: React.FC<Props> = ({
       }}>
         {METHOD_LABEL[user.method]}{user.isAdmin ? ' · ADMIN' : ''}
       </span>
-      <button
-        type="button" onClick={onOpenAlpha} aria-label="Open Arena Alpha Build"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(255,122,24,0.09)',
-          border: `1px solid ${NEON.orange}55`, color: NEON.orange, borderRadius: 8,
-          padding: '6px 10px', cursor: 'pointer', fontFamily: "'Orbitron', monospace", fontSize: '0.62rem', fontWeight: 700,
-        }}
-      >
-        <Sparkles size={12} /> ALPHA
-      </button>
       {user.isAdmin && (
         <button
           type="button" onClick={onOpenAdmin} aria-label="Open Enclave Admin Portal"
