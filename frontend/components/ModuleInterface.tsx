@@ -11,6 +11,7 @@ import {
 } from '../services/moduleAgents';
 import { Sha256Badge } from './Sha256Badge';
 import { ModuleSplash } from './ModuleSplash';
+import { CLASSIFICATION_META, classifyVerification } from '../services/classification';
 
 interface Props {
   moduleId: string;
@@ -219,6 +220,22 @@ export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
         <section aria-label="Sealed receipt" style={{ marginTop: 22, background: 'rgba(0,255,135,0.04)', border: `1px solid ${NEON.green}55`, borderRadius: 14, padding: 20, boxShadow: '0 0 22px rgba(0,255,135,0.1)' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
             <strong style={{ fontFamily: "'Orbitron', monospace", color: NEON.green, fontSize: '0.8rem' }}>SEALED ✓</strong>
+            {(() => {
+              const cls = classifyVerification(receipt.verification.status);
+              const meta = CLASSIFICATION_META[cls];
+              return (
+                <span
+                  className={cls === 'NUKED' ? 'nuked-item' : cls === 'KNOXED' ? 'knoxed-item' : undefined}
+                  title={meta.description}
+                  style={{
+                    fontFamily: "'Orbitron', monospace", fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.1em',
+                    color: meta.color, border: `1px solid ${meta.color}88`, borderRadius: 999, padding: '3px 10px',
+                  }}
+                >
+                  {cls}
+                </span>
+              );
+            })()}
             <Sha256Badge hash={receipt.sha256Id} label="ENTRY SHA-256 ID" size="md" />
             <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.textMuted }}>
               {receipt.storage} · {receipt.sealedAt.slice(0, 19).replace('T', ' ')}Z
@@ -254,6 +271,12 @@ export const ModuleInterface: React.FC<Props> = ({ moduleId, onBack }) => {
           {priorReceipts.map((r) => (
             <div key={r.sha256Id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <Sha256Badge hash={r.sha256Id} />
+              <span style={{
+                fontFamily: "'Orbitron', monospace", fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.08em',
+                color: CLASSIFICATION_META[classifyVerification(r.verification.status)].color,
+              }}>
+                {classifyVerification(r.verification.status)}
+              </span>
               <span style={{ fontSize: '0.7rem', color: NEON.textMuted }}>
                 {r.verification.status.replace(/_/g, ' ')} · {r.sealedAt.slice(0, 10)} · {r.storage}
               </span>

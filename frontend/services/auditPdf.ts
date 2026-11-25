@@ -14,6 +14,7 @@
  */
 import { ModuleReceipt } from './moduleAgents';
 import { sha256Hex } from './sha256Vault';
+import { classifyReceipt, type DiffClassification } from './classification';
 
 export interface AuditContext {
   email: string;
@@ -78,6 +79,11 @@ export async function buildAuditPdf(ctx: AuditContext): Promise<{ blob: Blob; fi
   line(`Account: ${ctx.email || '(anonymous guest — no email on file)'} · Login method: ${ctx.method}`);
   line(`Audit opened: ${start.toISOString()} · Expires (26 months): ${expiry.toISOString().slice(0, 10)}`);
   line(`Modules sealed: ${new Set(ctx.receipts.map((r) => r.moduleId)).size} of 16 · Total sealed entries: ${ctx.receipts.length}`);
+  const posture: Record<DiffClassification, number> = { NUKED: 0, KNOXED: 0, MONITORED: 0 };
+  const latestByModule = new Map<string, ModuleReceipt>();
+  for (const r of ctx.receipts) latestByModule.set(r.moduleId, r);
+  for (const r of latestByModule.values()) posture[classifyReceipt(r)] += 1;
+  line(`DIFF posture (latest receipt per module): NUKED ${posture.NUKED} · KNOXED ${posture.KNOXED} · MONITORED ${posture.MONITORED}`, 10, true);
   rule();
 
   line('HOW TO READ THIS DOCUMENT', 12, true);
@@ -89,7 +95,7 @@ export async function buildAuditPdf(ctx: AuditContext): Promise<{ blob: Blob; fi
     line('No modules have been sealed yet. Complete modules from the dashboard, then regenerate this audit.');
   }
   for (const r of ctx.receipts) {
-    line(`${r.moduleName} — ${r.verification.status}`, 10, true);
+    line(`${r.moduleName} — ${r.verification.status} — ${classifyReceipt(r)}`, 10, true);
     line(`SHA-256 ID: ${r.sha256Id}`, 8);
     line(`Sealed: ${r.sealedAt} · Storage: ${r.storage} · Fields sealed: ${r.fieldKeys.join(', ') || 'none'}`, 8);
     line(`Verified by: ${r.verification.source} (${r.verification.checkedAt})`, 8);

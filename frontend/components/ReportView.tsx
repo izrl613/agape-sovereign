@@ -21,6 +21,7 @@ import {
 } from '../services/localVaultService';
 import { Sha256Badge } from './Sha256Badge';
 import { SaveExportWarningModal } from './SaveExportWarningModal';
+import { classifyReceipt } from '../services/classification';
 import { GOOGLE_CANCELLED } from '../firebase';
 
 /**
@@ -97,6 +98,7 @@ export const ReportView: React.FC = () => {
             moduleId: r.moduleId,
             sha256Id: r.sha256Id,
             status: r.verification.status,
+            classification: classifyReceipt(r),
             source: r.verification.source,
             sealedAt: r.sealedAt,
             storage: r.storage,

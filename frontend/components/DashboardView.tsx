@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NEON } from '../theme';
 import { MODULE_CONFIGS } from '../module-config';
 import { ModuleReceipt } from '../services/moduleAgents';
+import { CLASSIFICATION_META, classifyReceipt, type DiffClassification } from '../services/classification';
 import { Sha256Badge } from './Sha256Badge';
 import {
   FrontendSmartResolveSummary,
@@ -59,6 +60,10 @@ export const DashboardView: React.FC<Props> = ({
   const matches = receipts.filter((r) => r.verification.status === 'MATCH_FOUND').length;
   const verified = receipts.filter((r) => ['VERIFIED', 'CHECKED_NO_MATCH', 'LOCAL_CHECK_PASSED'].includes(r.verification.status)).length;
   const selfAttested = receipts.filter((r) => r.verification.status === 'SELF_ATTESTED').length;
+
+  // NUKED / KNOXED / MONITORED posture — latest receipt per module only.
+  const posture: Record<DiffClassification, number> = { NUKED: 0, KNOXED: 0, MONITORED: 0 };
+  for (const r of latestByModule.values()) posture[classifyReceipt(r)] += 1;
 
   const kpis = [
     { label: 'VECTORS SEALED', value: `${sealedCount}/16`, sub: 'Agent-gated receipts', color: NEON.blue },
@@ -187,10 +192,30 @@ export const DashboardView: React.FC<Props> = ({
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+        {(Object.keys(CLASSIFICATION_META) as DiffClassification[]).map((c) => {
+          const meta = CLASSIFICATION_META[c];
+          return (
+            <div key={c} title={meta.description} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 12,
+              border: `1px solid ${meta.color}55`, background: `${meta.color}0d`,
+            }}>
+              <span style={{ fontFamily: "'Orbitron', monospace", fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.12em', color: meta.color, textShadow: `0 0 10px ${meta.color}66` }}>
+                {c}
+              </span>
+              <span style={{ fontFamily: "'Orbitron', monospace", fontSize: '1.3rem', fontWeight: 900, color: NEON.text }}>{posture[c]}</span>
+              <span style={{ fontSize: '0.62rem', color: NEON.textMuted, maxWidth: 190 }}>{meta.description}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
         {modules.map((m, i) => {
           const receipt = latestByModule.get(m.id);
           const color = receipt ? STATUS_COLOR[receipt.verification.status] : 'rgba(255,255,255,0.25)';
+          const cls = receipt ? classifyReceipt(receipt) : null;
+          const clsColor = cls ? CLASSIFICATION_META[cls].color : null;
           return (
             <button
               key={m.id} type="button" onClick={() => onSelectModule(m.id)}
@@ -204,11 +229,21 @@ export const DashboardView: React.FC<Props> = ({
                 <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: '0.6rem', color: NEON.textMuted }}>
                   VECTOR {String(i + 1).padStart(2, '0')}
                 </span>
-                <span style={{
-                  fontFamily: "'Orbitron', monospace", fontSize: '0.55rem', fontWeight: 700, color,
-                  border: `1px solid ${color}66`, borderRadius: 999, padding: '2px 8px',
-                }}>
-                  {receipt ? receipt.verification.status.replace(/_/g, ' ') : 'NOT SEALED'}
+                <span style={{ display: 'inline-flex', gap: 5 }}>
+                  {cls && clsColor && (
+                    <span className={cls === 'NUKED' ? 'nuked-item' : cls === 'KNOXED' ? 'knoxed-item' : undefined} style={{
+                      fontFamily: "'Orbitron', monospace", fontSize: '0.55rem', fontWeight: 900, color: clsColor,
+                      border: `1px solid ${clsColor}88`, borderRadius: 999, padding: '2px 8px', letterSpacing: '0.06em',
+                    }}>
+                      {cls}
+                    </span>
+                  )}
+                  <span style={{
+                    fontFamily: "'Orbitron', monospace", fontSize: '0.55rem', fontWeight: 700, color,
+                    border: `1px solid ${color}66`, borderRadius: 999, padding: '2px 8px',
+                  }}>
+                    {receipt ? receipt.verification.status.replace(/_/g, ' ') : 'NOT SEALED'}
+                  </span>
                 </span>
               </div>
               <div style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 700, fontSize: '0.92rem', marginBottom: 5 }}>{m.name}</div>
