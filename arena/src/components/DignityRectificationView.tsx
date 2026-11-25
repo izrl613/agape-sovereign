@@ -9,7 +9,8 @@ import {
 import { downloadTextArtifact, sha256Hex } from '../services/localVaultService';
 
 export interface RectificationCertificate {
-  status: 'RECTIFIED';
+  /** ALPHA SANDBOX: simulated demo output — not a real attestation. */
+  status: 'SIMULATED_RECTIFIED_DEMO';
   rectification_id: string;
   claim_id: string;
   claim_type: string;
@@ -17,7 +18,7 @@ export interface RectificationCertificate {
   validator: {
     validator_id: string;
     organization: string;
-    signature_status: 'CRYPTOGRAPHICALLY_VERIFIED';
+    signature_status: 'SIMULATED_NOT_VERIFIED';
   };
   old_data_purged_hash: string;
   corrected_data_hash: string;
@@ -62,7 +63,7 @@ export function DignityRectificationView({
 
     setTimeout(() => {
       const cert: RectificationCertificate = {
-        status: 'RECTIFIED',
+        status: 'SIMULATED_RECTIFIED_DEMO',
         rectification_id: `RECTIFIED-${oldHash.slice(0, 8).toUpperCase()}`,
         claim_id: `CLAIM-${newHash.slice(0, 8).toUpperCase()}`,
         claim_type: claimType,
@@ -70,7 +71,7 @@ export function DignityRectificationView({
         validator: {
           validator_id: validator.id,
           organization: validator.organization,
-          signature_status: 'CRYPTOGRAPHICALLY_VERIFIED',
+          signature_status: 'SIMULATED_NOT_VERIFIED',
         },
         old_data_purged_hash: oldHash,
         corrected_data_hash: newHash,
@@ -104,7 +105,7 @@ export function DignityRectificationView({
             HUMAN DIGNITY RECTIFICATION ENGINE
           </h2>
           <p className="text-sm text-[#7B9BB5]">
-            Third-Party Validator attestation, atomic stale-data purging & Zero-PII cryptographic proofs
+            Simulated validator attestation, atomic stale-data purging & Zero-PII cryptographic proofs — ALPHA DEMO DATA
           </p>
         </div>
         <SovereignScoreRing score={Math.round(hdiScore)} label="HDI INDEX" />
@@ -145,7 +146,7 @@ export function DignityRectificationView({
 
             <div>
               <label className="font-mono-tech mb-1 block text-[11px] text-[#7B9BB5]">
-                THIRD-PARTY VALIDATOR NODE
+                SIMULATED VALIDATOR NODE (DEMO)
               </label>
               <select
                 value={validatorId}
@@ -231,7 +232,8 @@ export function DignityRectificationView({
               </div>
 
               <div className="font-mono-tech space-y-1.5 rounded-lg border border-emerald-400/20 bg-black/40 p-3 text-[11px] text-[#E8F4FF]/85">
-                <div>VALIDATOR: {certificate.validator.validator_id}</div>
+                <div>VALIDATOR (SIMULATED): {certificate.validator.validator_id}</div>
+                <div>STATUS: {certificate.status} — simulated demo output, not a real attestation</div>
                 <div>HDI DELTA: {certificate.human_dignity_index.score_before} → {certificate.human_dignity_index.score_after} (+{certificate.human_dignity_index.improvement_delta})</div>
                 <div className="truncate text-[#FF2E9F]">PURGED HASH: {certificate.old_data_purged_hash}</div>
                 <div className="truncate text-[#00D4FF]">RECTIFIED HASH: {certificate.corrected_data_hash}</div>

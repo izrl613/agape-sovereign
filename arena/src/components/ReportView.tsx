@@ -48,7 +48,9 @@ export function ReportView({
   const handleConfirmExport = async (target: 'local' | 'drive' | 'download') => {
     setShowExportModal(false);
     const payload = {
-      system: 'AGAPE SOVEREIGN ENCLAVE 2026',
+      system: 'AGAPE SOVEREIGN ENCLAVE 2026 — ARENA ALPHA SANDBOX',
+      simulated_demo_data: true,
+      notice: 'SIMULATED DEMO DATA — Arena alpha build. Not a real Agape Sovereign audit.',
       compliance: ['ECRA 2026', 'GDPR Article 16', 'UDHR Article 12', 'CCPA Right to Correct'],
       generatedAt: new Date().toISOString(),
       sovereignScore,
@@ -105,7 +107,7 @@ export function ReportView({
             DIFF SOVEREIGNTY REPORT
           </h2>
           <p className="text-sm text-[#7B9BB5]">
-            Zero-knowledge DPC export to IndexedDB Local Vault, Google Drive, or local artifact
+            Zero-knowledge DPC export to IndexedDB Local Vault, Google Drive, or local artifact — <span className="text-[#FF2E9F] font-bold">SIMULATED DEMO DATA (ALPHA)</span>
           </p>
         </div>
         <NeonButton onClick={() => setShowExportModal(true)} color={NEON.blue} size="lg">

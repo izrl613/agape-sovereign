@@ -126,12 +126,30 @@ export async function deleteVaultReport(id: string): Promise<void> {
   db.close();
 }
 
+/**
+ * Arena is an ISOLATED ALPHA BUILD running on simulated demo data.
+ * Every downloadable artifact is stamped so it can never be mistaken
+ * for a real Agape Sovereign export: filename prefix + embedded flag.
+ */
 export function downloadTextArtifact(filename: string, content: string, mimeType = 'application/json') {
-  const blob = new Blob([content], { type: mimeType });
+  let stamped = content;
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      stamped = JSON.stringify(
+        { __alpha_simulated_demo_data: true, __notice: 'SIMULATED DEMO DATA — Arena alpha build. Not a real Agape Sovereign audit, receipt, or attestation.', ...parsed },
+        null,
+        2,
+      );
+    }
+  } catch {
+    stamped = `SIMULATED DEMO DATA — Arena alpha build. Not a real Agape Sovereign audit.\n\n${content}`;
+  }
+  const blob = new Blob([stamped], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = `ALPHA-SIMULATED-${filename}`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
