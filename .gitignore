@@ -27,3 +27,4 @@ __pycache__/
 
 # Secure scan demo artifacts (regenerate with scripts/run-secure-scan.ts)
 workspace_outputs/secure-scan.*
+.spectra/

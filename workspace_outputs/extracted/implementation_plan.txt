@@ -1,0 +1,100 @@
+# Auth & Export Enhancement Plan
+
+Three tightly connected features that improve the login experience and data-portability story.
+
+---
+
+## What We're Building
+
+### 1. Dual Auth Paths — Passkey + Google (redesigned Login)
+The login screen gets a **two-panel card** layout:
+
+| Left card | Right card |
+|---|---|
+| 🔑 **Passkey / WebAuthn** | **G** Sign in with Google |
+| "Device-bound · Local vault" | "Save reports to Google Drive" |
+
+- Passkey path: email field → browser biometric / security key → signs in via existing `loginWithPasskey()` + `signInWithCustomToken`
+- Google path: existing `loginWithGoogle()` OAuth popup/redirect
+- Both paths are always visible side-by-side (no toggling)
+
+### 2. Local Profile Vault vs. Google Drive — clarified save destinations
+- **Passkey users** → reports save to **IndexedDB encrypted local vault** (`sovereign.nyc` origin) with a **26-month rolling window** of PDF DPCs
+- **Google users** → reports optionally push to **Google Drive** (via `gapi`/Google Picker) in addition to local download
+- When a user tries to export/save a DPC PDF, a **`SaveExportWarningModal`** appears explaining:
+  - Where the file will be stored (device vault or Drive)
+  - 26-month retention policy (Passkey vault)
+  - Privacy reminder (no server storage, zero-knowledge)
+
+### 3. Demo / Guest Bypass Button — always visible
+- Remove `VITE_DEMO_MODE` flag gate from `DemoBypassButton`
+- Button is **always rendered** on the Login page below both auth cards
+- Styled prominently as "🚀 Explore as Guest" with a 30-min TTL disclaimer
+
+---
+
+## Files Changed
+
+### NEW files
+
+#### [NEW] `src/components/auth/SaveExportWarningModal.tsx`
+Full-screen warning splash that appears before any PDF DPC export.
+- Props: `authType`, `storageTarget ('local'|'drive'|'download')`, `onConfirm`, `onCancel`
+- Shows vault location, 26-month retention, zero-knowledge reminder
+- "Save to Device" vs "Save to Google Drive" action buttons (contextual to authType)
+
+#### [NEW] `src/services/localVaultService.ts`
+IndexedDB wrapper for the 26-month DPC archive:
+- `saveReport(uid, pdfBlob, metadata)` — stores encrypted PDF + metadata
+- `listReports(uid)` — returns list of stored reports (newest first)
+- `pruneOldReports(uid)` — deletes anything older than 26 months
+- `exportReport(id)` — retrieves blob for download
+
+#### [NEW] `src/services/driveExportService.ts`
+Google Drive upload via Google Identity Services + Drive REST API v3:
+- `initDriveClient()` — lazy-loads `gapi` script
+- `exportToDrive(pdfBlob, fileName)` — uploads to `Agape Sovereign/DPC Reports/` folder
+- Only called for Google-authenticated users
+
+---
+
+### MODIFIED files
+
+#### [MODIFY] [`Login.tsx`](file:///Users/aarondavid/Documents/agape-sovereign/src/components/Login.tsx)
+- Replace single-column card with **two side-by-side auth panels** (Passkey | Google)
+- Move `DemoBypassButton` below both panels, always visible
+- Add subtle "Local Vault" / "Google Drive" storage tag under each panel
+
+#### [MODIFY] [`DemoBypassButton.tsx`](file:///Users/aarondavid/Documents/agape-sovereign/src/components/auth/DemoBypassButton.tsx)
+- Remove `isDemoVisible()` env-flag guard — button always renders
+- Rename label: **"🚀 Explore as Guest · No Account Needed"**
+- Keep 30-min TTL session and `DATA NOT SAVED` disclaimer
+
+#### [MODIFY] [`AuthContext.tsx`](file:///Users/aarondavid/Documents/agape-sovereign/src/AuthContext.tsx)
+- Add `vaultReady: boolean` to context (true when IndexedDB vault is initialized for passkey user)
+- Add `saveToVault(pdfBlob, metadata)` convenience method
+- Add `exportToDrive(pdfBlob, fileName)` convenience method (no-op for passkey users, Drive upload for Google users)
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Google Drive scope**: Exporting to Drive requires the `https://www.googleapis.com/auth/drive.file` OAuth scope. This scope must be added to the Firebase/Google OAuth consent screen in the Firebase Console. Should I add it now or plan it as a separate step?
+
+> [!IMPORTANT]
+> **PDF generation**: The existing DPC PDF export — is it already implemented (e.g. via `jsPDF` or a Cloud Function)? Or should I add a client-side PDF generator to `localVaultService`? I'll check `SovereignPassportModal.tsx` and `ShieldModule.tsx` but want to confirm before wiring the vault.
+
+> [!NOTE]
+> **Demo bypass visibility**: Removing the `VITE_DEMO_MODE` flag means the Guest button will appear on the production site at `sovereign.nyc`. This is intentional per your request (let users experience the full PWA) — just confirming before removing the gate.
+
+---
+
+## Verification Plan
+
+- `npm run build` — confirm no TS errors
+- `npm test -- --run` — confirm 4/4 unit tests still pass
+- Manual: open `/login` → both auth panels visible, Guest button below
+- Manual: passkey flow → biometric prompt → dashboard → DPC export → `SaveExportWarningModal` → save to device vault
+- Manual: Google flow → OAuth redirect → dashboard → DPC export → `SaveExportWarningModal` → Drive upload option
+- Manual: Guest flow → dashboard accessible with demo data, 30-min banner visible

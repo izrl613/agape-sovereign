@@ -1,0 +1,93 @@
+# AGAPE AI KIMI3 DRAFT — PWA Operation Framework Integration
+
+## Overview
+
+Integration of the Agape Sovereign PWA Operation Framework into the Android app
+`com.agape.sovereign.ai`. This bridges the native Android privacy/security vault
+with the PWA frontend (React/TypeScript) and the agent-based orchestration pipeline.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 Android App (APK/AAB)                │
+│  ┌──────────┐  ┌────────────┐  ┌────────────────┐   │
+│  │ Native UI │  │  WebView   │  │ InAppMcpServer │   │
+│  │ (Compose) │  │  (PWA)     │  │ (Port 3001)    │   │
+│  └────┬─────┘  └─────┬──────┘  └───────┬────────┘   │
+│       │              │                 │            │
+│       └──────┬───────┘                 │            │
+│              │                         │            │
+│         ┌────▼────┐              ┌─────▼──────┐     │
+│         │ JS      │              │ Agent      │     │
+│         │ Bridge  │◄────────────►│ Pipeline   │     │
+│         └─────────┘              │ Endpoints  │     │
+│                                  └─────┬──────┘     │
+└────────────────────────────────────────┼────────────┘
+                                         │
+                                    ┌────▼──────┐
+                                    │ Ollama    │
+                                    │ gemma4:e2b│
+                                    └───────────┘
+```
+
+## Components
+
+### 1. PWA WebView Screen (`PwaScreen.kt`)
+- Loads PWA frontend from embedded server or remote URL
+- Enables JavaScript, DOM storage, service workers
+- Full-screen immersive mode
+
+### 2. JavaScript Bridge (`PwaBridgeInterface.kt`)
+- `getBiometricStatus()` — Biometric availability check
+- `unlockWithBiometric()` — Trigger biometric authentication
+- `getLocalData(key)` — Read from Room/SecureStorage
+- `setLocalData(key, value)` — Write to Room/SecureStorage
+- `getMcpServerUrl()` — Get in-app MCP server URL
+- `getOllamaUrl()` — Get Ollama base URL
+- `triggerPipeline(type)` — Trigger agent pipeline workflow
+
+### 3. In-App MCP Server Extensions (`InAppMcpServer.kt`)
+- `GET /android/pwa/*` — Serve PWA static assets
+- `POST /android/run_pipeline` — Execute agent orchestration pipeline
+- `POST /android/pwa/scan` — Trigger identity vector scan
+- `POST /android/pwa/export` — Generate sovereign export
+
+### 4. Agent Pipeline Integration
+The Android app can trigger the Python agent pipeline via:
+- Local subprocess (if Python runtime available on device)
+- Remote call to the backend server
+- Delegation to the InAppMcpServer which forwards to a backend
+
+## File Changes
+
+| File | Action |
+|------|--------|
+| `app/src/main/java/.../ui/PwaScreen.kt` | **NEW** WebView composable |
+| `app/src/main/java/.../ui/PwaBridgeInterface.kt` | **NEW** JS bridge |
+| `app/src/main/java/.../ui/PwaViewModel.kt` | **NEW** PWA state management |
+| `app/src/main/java/.../ui/PrivacyAppScreen.kt` | **MODIFY** Add PWA tab |
+| `app/src/main/java/.../MainActivity.kt` | **MODIFY** PWA hosting setup |
+| `app/src/main/java/.../ai/InAppMcpServer.kt` | **MODIFY** PWA+agent endpoints |
+| `app/src/main/assets/pwa/` | **NEW** PWA static files |
+
+## Build & Verify
+
+```bash
+cd /Users/aarondavid/Documents/com.agape.sovereign.ai
+./gradlew assembleDebug
+# APK at: app/build/outputs/apk/debug/app-debug.apk
+```
+
+## GitHub Repo
+
+- Android: https://github.com/izrl613/android
+- PWA/Backend: https://github.com/izrl613/agape-sovereign
+
+## Next Steps
+
+1. [ ] Serve PWA static files from InAppMcpServer
+2. [ ] WebView screen with JS bridge
+3. [ ] Agent pipeline endpoint
+4. [ ] Build release APK/AAB
+5. [ ] Deploy to Firebase App Distribution

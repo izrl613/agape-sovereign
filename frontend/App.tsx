@@ -2,28 +2,33 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { SovereignProvider, useSovereign } from './context/SovereignContext';
 import { HomePage } from './components/HomePage';
 import { LoginPage } from './components/LoginPage';
-import { ModuleInterface } from './components/ModuleInterface';
 import { ZkFooter } from './components/ZkFooter';
 import { DashboardView } from './components/DashboardView';
-import { ArchitectAIView } from './components/ArchitectAIView';
-import { DignityRectificationView } from './components/DignityRectificationView';
-import { PipelineView } from './components/PipelineView';
-import { ReportView } from './components/ReportView';
 import { TopHeader } from './components/TopHeader';
 import { LeftNav } from './components/LeftNav';
-import { AdminPortal } from './components/AdminPortal';
-import { ProfilePanel } from './components/ProfilePanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { RecoveryCodeModal } from './components/RecoveryCodeModal';
+import { LegalPage } from './components/LegalPage';
 import { MODULE_CONFIGS } from './module-config';
 
 const ArenaAlphaRoot = lazy(() => import('./alpha/ArenaAlphaRoot'));
+const ModuleInterface = lazy(() => import('./components/ModuleInterface').then((m) => ({ default: m.ModuleInterface })));
+const ArchitectAIView = lazy(() => import('./components/ArchitectAIView').then((m) => ({ default: m.ArchitectAIView })));
+const DignityRectificationView = lazy(() => import('./components/DignityRectificationView').then((m) => ({ default: m.DignityRectificationView })));
+const PipelineView = lazy(() => import('./components/PipelineView').then((m) => ({ default: m.PipelineView })));
+const ReportView = lazy(() => import('./components/ReportView').then((m) => ({ default: m.ReportView })));
+const AdminPortal = lazy(() => import('./components/AdminPortal').then((m) => ({ default: m.AdminPortal })));
+const ProfilePanel = lazy(() => import('./components/ProfilePanel').then((m) => ({ default: m.ProfilePanel })));
 
-export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'ALPHA';
+export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'ALPHA' | 'TERMS' | 'PRIVACY' | 'CONTACT';
 
 function pathFor(view: AppView, moduleId: string | null): string {
   if (view === 'HOME') return '/';
   if (view === 'LOGIN') return '/login';
   if (view === 'ALPHA') return '/alpha';
+  if (view === 'TERMS') return '/terms';
+  if (view === 'PRIVACY') return '/privacy';
+  if (view === 'CONTACT') return '/contact';
   if (view === 'MODULE' && moduleId) return `/dashboard/${moduleId}`;
   if (view === 'ARCHITECT') return '/dashboard/architect';
   if (view === 'DIGNITY') return '/dashboard/dignity';
@@ -36,6 +41,9 @@ function viewFromPath(): { view: AppView; moduleId: string | null } {
   const path = window.location.pathname.replace(/\/+$/, '') || '/';
   if (path === '/login') return { view: 'LOGIN', moduleId: null };
   if (path === '/alpha') return { view: 'ALPHA', moduleId: null };
+  if (path === '/terms') return { view: 'TERMS', moduleId: null };
+  if (path === '/privacy') return { view: 'PRIVACY', moduleId: null };
+  if (path === '/contact') return { view: 'CONTACT', moduleId: null };
   const parts = path.split('/').filter(Boolean);
   if (parts[0] === 'dashboard') {
     if (parts[1] === 'architect') return { view: 'ARCHITECT', moduleId: null };
@@ -82,6 +90,11 @@ const AppContent: React.FC = () => {
       navigate('LOGIN');
     }
   }, [user, authReady]);
+
+  // Legal / compliance pages (/terms, /privacy, /contact) — work signed in or out
+  if (view === 'TERMS' || view === 'PRIVACY' || view === 'CONTACT') {
+    return <LegalPage kind={view} onBack={() => navigate(user ? 'DASHBOARD' : 'HOME')} />;
+  }
 
   // Standalone Arena Alpha sandbox route (/alpha) — works signed in or out
   if (view === 'ALPHA') {
@@ -152,51 +165,56 @@ const AppContent: React.FC = () => {
           onSelectModule={(id) => navigate('MODULE', id)}
         />
         <main className="content-area">
-          {(view === 'HOME' || view === 'DASHBOARD') && (
-            <DashboardView
-              receipts={receipts}
-              sovereignId={sovereignId}
-              onSelectModule={(id) => navigate('MODULE', id)}
-              onOpenDignity={() => navigate('DIGNITY')}
-              onOpenPipeline={() => navigate('PIPELINE')}
-              onOpenAlpha={() => navigate('ALPHA')}
-            />
-          )}
-          {view === 'MODULE' && activeModule && (
-            <ModuleInterface
-              key={activeModule}
-              moduleId={activeModule}
-              onBack={() => navigate('DASHBOARD')}
-            />
-          )}
-          {view === 'ARCHITECT' && <ArchitectAIView />}
-          {view === 'DIGNITY' && (
-            <DignityRectificationView onSelectModule={(id) => navigate('MODULE', id)} />
-          )}
-          {view === 'PIPELINE' && (
-            <PipelineView onOpenReport={() => navigate('REPORT')} />
-          )}
-          {view === 'REPORT' && <ReportView />}
+          <Suspense fallback={<div style={{ color: '#00d4ff', fontFamily: "'Share Tech Mono', monospace", padding: 24 }}>LOADING ENCLAVE MODULE…</div>}>
+            {(view === 'HOME' || view === 'DASHBOARD') && (
+              <DashboardView
+                receipts={receipts}
+                sovereignId={sovereignId}
+                onSelectModule={(id) => navigate('MODULE', id)}
+                onOpenDignity={() => navigate('DIGNITY')}
+                onOpenPipeline={() => navigate('PIPELINE')}
+                onOpenAlpha={() => navigate('ALPHA')}
+              />
+            )}
+            {view === 'MODULE' && activeModule && (
+              <ModuleInterface
+                key={activeModule}
+                moduleId={activeModule}
+                onBack={() => navigate('DASHBOARD')}
+              />
+            )}
+            {view === 'ARCHITECT' && <ArchitectAIView />}
+            {view === 'DIGNITY' && (
+              <DignityRectificationView onSelectModule={(id) => navigate('MODULE', id)} />
+            )}
+            {view === 'PIPELINE' && (
+              <PipelineView onOpenReport={() => navigate('REPORT')} />
+            )}
+            {view === 'REPORT' && <ReportView />}
+          </Suspense>
         </main>
       </div>
       <ZkFooter pageId={view.toLowerCase()} />
-      {user.isAdmin && (
-        <AdminPortal
-          open={showAdmin}
-          onClose={() => setShowAdmin(false)}
+      <RecoveryCodeModal />
+      <Suspense fallback={null}>
+        {user.isAdmin && (
+          <AdminPortal
+            open={showAdmin}
+            onClose={() => setShowAdmin(false)}
+            onOpenAlpha={() => navigate('ALPHA')}
+          />
+        )}
+        <ProfilePanel
+          open={showProfile}
+          onClose={() => setShowProfile(false)}
+          onSignOut={() => {
+            setShowProfile(false);
+            void clearSession();
+            navigate('HOME');
+          }}
           onOpenAlpha={() => navigate('ALPHA')}
         />
-      )}
-      <ProfilePanel
-        open={showProfile}
-        onClose={() => setShowProfile(false)}
-        onSignOut={() => {
-          setShowProfile(false);
-          void clearSession();
-          navigate('HOME');
-        }}
-        onOpenAlpha={() => navigate('ALPHA')}
-      />
+      </Suspense>
       <style>{`
         .main-app { display: flex; flex-direction: column; height: 100vh; background: #060c1a; color: #e8f4ff; font-family: 'Rajdhani', sans-serif; }
         .app-body { display: flex; flex: 1; overflow: hidden; }

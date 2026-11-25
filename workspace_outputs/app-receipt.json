@@ -5,12 +5,12 @@
     "subject": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "moduleId": "health",
     "vector": "health",
-    "issuedAt": "2026-11-25T18:59:15.672Z",
-    "digest": "d0e9284952494807a27ebf24842d8e94d25c50e83955f00f1086bc072bcef021"
+    "issuedAt": "2026-11-25T19:05:39.638Z",
+    "digest": "5b631ac4bcf9fd4e39a939730f25a1fd1c439423d2736786a06784402ebc54c1"
   },
   "body": {
     "sha256Id": "9d49a750534d7c693c2a9c4c181dcab8a3c08d56c1f05c911cd9649699dc53ff",
-    "sealedAt": "2026-11-25T18:59:15.672Z",
+    "sealedAt": "2026-11-25T19:05:39.638Z",
     "verificationStatus": "SELF_ATTESTED",
     "fieldKeys": [
       "provider",
