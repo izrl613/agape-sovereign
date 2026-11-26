@@ -36,7 +36,10 @@ jobs:
         id: secret_check
         run: |
           ISSUES=""
-          CRED_FILES=$(git ls-files | grep -E '(\.env$|\.env\.|service[-_]account.*\.json$|credentials\.json$)' || true)
+          # Exclude intentionally tracked template files — same
+          # exclusion list as the Compliance Gate secret-scan job.
+          CRED_FILES=$(git ls-files | grep -E '(\.env$|\.env\.|service[-_]account.*\.json$|credentials\.json$)' \
+            | grep -vE '(\.env\.example$|\.env\.sample$|\.env\.template$|\.env\.test$|\.env\.ci$)' || true)
           if [ -n "$CRED_FILES" ]; then
             ISSUES="$ISSUES\n- CRITICAL: Credential files tracked in git: $CRED_FILES"
           fi
@@ -61,7 +64,7 @@ jobs:
           if ! grep -q 'allow read, write: if false' firestore.rules 2>/dev/null; then
             ISSUES="$ISSUES\n- CRITICAL: firestore.rules deny-all catch-all is missing"
           fi
-          if ! grep -q 'rulesVersion.*2' firestore.rules 2>/dev/null; then
+          if ! grep -q "rules_version *= *'2'" firestore.rules 2>/dev/null; then
             ISSUES="$ISSUES\n- HIGH: firestore.rules not using rules_version = '2'"
           fi
           if ! grep -q 'allow read, write: if false' storage.rules 2>/dev/null; then
