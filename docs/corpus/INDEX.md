@@ -57,6 +57,8 @@ Extraction notes:
 | Auth + export plan (vault, Drive, guest) | `frontend/services/localVaultService.ts`, `services/auditPdf.ts`, `components/SaveExportWarningModal.tsx`, `implementation_plan.txt` |
 | GitHub/GCP agentic automation mandate | `.github/` workflows, `docs/gcp/`, `docs/GCP_OPS_STATUS.md` |
 | Local-LLM unlimited-token rationale | `frontend/services/architect.ts` (LOCAL_QWEN → LOCAL_GEMMA → GEMINI → LOCAL_KB chain) |
+| NUKED / KNOXED / MONITORED framework | `frontend/services/classification.ts`, surfaced in DashboardView, ModuleInterface, auditPdf |
+| Arena alpha sandbox (simulated demo data) | `arena/` → `/alpha` route via `frontend/alpha/ArenaAlphaRoot.tsx`; all exports stamped `ALPHA-SIMULATED` |
 
 See `DISTILLED_KNOWLEDGE.md` for the synthesized operational rules extracted
 from this corpus.
