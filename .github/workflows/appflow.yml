@@ -167,8 +167,12 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      # Frontend + functions lockfiles only — root package.json carries
+      # the local `openclaw` agent CLI whose preinstall needs Node
+      # >=24.16. Root `npm audit` below reads the lockfile without
+      # needing root node_modules.
       - name: Install dependencies
-        run: npm ci && npm ci --prefix functions
+        run: npm --prefix frontend ci && npm --prefix functions ci
 
       # npm audit
       - name: Run npm audit

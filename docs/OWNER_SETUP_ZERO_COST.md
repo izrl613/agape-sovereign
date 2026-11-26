@@ -22,6 +22,24 @@ Hosting + Functions deploys no longer wait on this (split pipeline);
 the rules step warns loudly until the grant exists, after which the
 `continue-on-error` in `.github/workflows/deploy.yml` can be removed.
 
+## 0b. CI service-account Service Usage Admin (required for Functions deploys — currently missing)
+
+`firebase deploy --only hosting,functions` now fails at
+`Permissions denied enabling eventarc.googleapis.com` because the CI
+service account cannot enable APIs. One-time owner grant (same
+service-account email as above):
+
+```bash
+gcloud projects add-iam-policy-binding agape-sovereign \
+  --member="serviceAccount:<CI-SERVICE-ACCOUNT-EMAIL>" \
+  --role="roles/serviceusage.serviceUsageAdmin"
+```
+
+Alternative without the role: enable the APIs once as owner —
+`eventarc.googleapis.com` plus any others firebase-tools requests
+(`run.googleapis.com`, `cloudscheduler.googleapis.com`). The role is
+recommended so future deploys never block on API enablement.
+
 ## 1. Firebase Authentication providers (required for real logins)
 
 Firebase Console → project **agape-sovereign** → Authentication → Sign-in method:
@@ -67,7 +85,8 @@ deploy env file on the next merge. Do NOT add the legacy names to
 ## 4. Deploy
 
 ```bash
-npm ci                       # root (workspaces: frontend, backend)
+npm --prefix frontend ci    # frontend lockfile (root npm ci pulls the
+                            # local openclaw agent CLI — not needed here)
 npm --prefix functions ci
 npm run build                # builds frontend/
 npx firebase-tools deploy --only hosting,functions,firestore --project agape-sovereign
