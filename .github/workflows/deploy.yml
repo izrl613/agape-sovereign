@@ -57,9 +57,17 @@ jobs:
           # Plain params only. The legacy PASSKEY_COOKIE_SECRET /
           # COOKIE_SECRET names exist on the service as SECRET env
           # vars and must not be re-declared here (overlap rejection).
+          # Non-secret config values mirror the previously committed
+          # functions/.env.agape-sovereign (now gitignored); secrets
+          # come from GitHub Secrets with empty = documented fallback.
           {
             echo "GEMINI_API_KEY=${GEMINI_API_KEY}"
+            echo "GEMINI_MODEL=gemini-2.5-flash-lite"
             echo "PASSKEY_COOKIE_SIGNING_KEY=${PASSKEY_COOKIE_SIGNING_KEY}"
+            echo "RECAPTCHA_ENABLED=true"
+            echo "NODE_ENV=production"
+            echo "WEBAUTHN_RP_ID=sovereign.nyc"
+            echo "WEBAUTHN_ORIGIN=https://sovereign.nyc"
           } > functions/.env.agape-sovereign
 
       - name: Authenticate to Google Cloud
