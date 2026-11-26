@@ -35,3 +35,4 @@ workspace_outputs/secure-scan.*
 
 # Secret-class clip artifacts (license/recovery tokens) — never commit
 **/Pasted_2026-09-20*
+firebase-debug.log
