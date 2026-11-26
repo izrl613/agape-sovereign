@@ -43,11 +43,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
+      # Frontend lockfile only — the repo-root package.json carries the
+      # local `openclaw` agent CLI (preinstall needs Node >=24.16) which
+      # no CI job here uses. All root scripts delegate via --prefix.
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
 
       - name: Install functions dependencies
-        run: npm ci --prefix functions
+        run: npm --prefix functions ci
 
       - name: Run root lint
         run: npm run lint
@@ -77,11 +80,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
+      # Frontend lockfile only — the repo-root package.json carries the
+      # local `openclaw` agent CLI (preinstall needs Node >=24.16) which
+      # no CI job here uses. All root scripts delegate via --prefix.
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
 
       - name: Install functions dependencies
-        run: npm ci --prefix functions
+        run: npm --prefix functions ci
 
       - name: Run frontend tests
         run: npm test --if-present
@@ -108,11 +114,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
-      - name: Install root dependencies
-        run: npm ci
+      # Frontend lockfile only — the repo-root package.json carries the
+      # local `openclaw` agent CLI (preinstall needs Node >=24.16) which
+      # no CI job here uses. All root scripts delegate via --prefix.
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
 
       - name: Install functions dependencies
-        run: npm ci --prefix functions
+        run: npm --prefix functions ci
 
       - name: Build frontend
         run: npm run build:frontend

@@ -71,29 +71,41 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install root deps
-        run: npm ci --prefer-offline || npm install
-
-      - name: Audit root dependencies (CRITICAL/HIGH only)
+      # `npm audit` reads the lockfile — no install needed, so the
+      # root `openclaw` agent CLI (preinstall requires Node >=24.16)
+      # never blocks this job. Audit all three packages that ship.
+      - name: Audit dependencies (CRITICAL/HIGH only)
         run: |
-          npm audit --audit-level=high --json > audit-report.json || true
-          CRITICAL=$(node -e "const r=require('./audit-report.json'); const v=r.vulnerabilities||{}; let c=0; Object.values(v).forEach(x=>{ if(x.severity==='critical') c++; }); console.log(c);")
-          HIGH=$(node -e "const r=require('./audit-report.json'); const v=r.vulnerabilities||{}; let h=0; Object.values(v).forEach(x=>{ if(x.severity==='high') h++; }); console.log(h);")
-          echo "Critical: $CRITICAL | High: $HIGH"
-          if [ "$CRITICAL" -gt 0 ]; then
-            echo "::error::$CRITICAL CRITICAL vulnerabilities found. Must fix before merge."
-            exit 1
-          fi
-          if [ "$HIGH" -gt 5 ]; then
-            echo "::warning::$HIGH HIGH vulnerabilities found. Review and remediate."
-          fi
+          for dir in . frontend functions; do
+            name=root; [ "$dir" != "." ] && name=$(basename "$dir")
+            npm audit --prefix "$dir" --json > "audit-${name}.json" || true
+          done
+          node -e "
+            const fs = require('fs');
+            let critical = 0, high = 0;
+            for (const f of fs.readdirSync('.').filter(f => f.startsWith('audit-'))) {
+              try {
+                const r = JSON.parse(fs.readFileSync(f, 'utf8'));
+                for (const v of Object.values(r.vulnerabilities || {})) {
+                  if (v.severity === 'critical') critical++;
+                  if (v.severity === 'high') high++;
+                }
+              } catch (e) { /* unparseable report — npm audit already logged */ }
+            }
+            console.log('Critical:', critical, '| High:', high);
+            if (critical > 0) {
+              console.error('::error::' + critical + ' CRITICAL vulnerabilities found. Must fix before merge.');
+              process.exit(1);
+            }
+            if (high > 5) console.warn('::warning::' + high + ' HIGH vulnerabilities found. Review and remediate.');
+          "
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: npm-audit-report
-          path: audit-report.json
+          path: audit-*.json
 
   # ----------------------------------------------------------
   # 3. Firebase Security Rules Validation
@@ -194,7 +206,9 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - run: npm ci
+      # Frontend lockfile only — root package.json carries the local
+      # `openclaw` agent CLI whose preinstall requires Node >=24.16.
+      - run: npm --prefix frontend ci
 
       # Type-check the code that actually ships: Firebase Hosting serves
       # frontend/dist and Cloud Functions run functions/lib (see

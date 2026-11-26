@@ -358,6 +358,13 @@ jobs:
             TRIGGER_SHA="${{ github.sha }}"
             TRIGGER_REF="${{ github.ref_name }}"
             git commit -m "Auto-update wiki from ${TRIGGER_REF} (${TRIGGER_SHA:0:7}) [skip ci]"
+            # The wiki repo can diverge when pages are edited via the
+            # GitHub UI or a concurrent run pushes first. Merge remote
+            # changes before pushing; -X ours keeps generated content
+            # on conflicts while preserving non-conflicting edits.
+            BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            git fetch origin "$BRANCH"
+            git merge "origin/${BRANCH}" -X ours -m "Merge remote wiki changes" || git merge --abort
             git push
             echo "Wiki updated successfully."
           fi

@@ -22,8 +22,12 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      # Install the FRONTEND lockfile, not the repo root: the root
+      # package.json only carries the local `openclaw` agent CLI whose
+      # preinstall requires Node >=24.16 and breaks `npm ci` here.
+      # Nothing in this job uses root deps (firebase-tools via npx).
       - name: Install Frontend Dependencies
-        run: npm ci
+        run: npm --prefix frontend ci
 
       - name: Build Frontend
         run: npm run build

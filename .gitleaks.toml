@@ -35,3 +35,13 @@ title = "agape-sovereign gitleaks config"
     # AIza... string anywhere is still a hard failure.
     '''AIzaSyAKooAY5zYjxsCrcSAXjm--a77GQ2E4u9g''',
   ]
+
+  commits = [
+    # functions/.env and functions/.env.agape-sovereign were committed
+    # in this commit with real values. They are now untracked and
+    # gitignored; this allowlists ONLY that historical commit so
+    # full-history scans stay green. The exposed
+    # PASSKEY_COOKIE_SIGNING_KEY / GEMINI_API_KEY must still be rotated —
+    # they remain readable in git history regardless of this entry.
+    "10143bc9c58b01c2f1c3457318a226535efc91ae",
+  ]

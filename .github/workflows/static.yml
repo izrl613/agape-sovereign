@@ -26,11 +26,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
+      # Frontend lockfile only — root package.json carries the local
+      # `openclaw` agent CLI whose preinstall requires Node >=24.16.
       - name: Install dependencies
-        run: npm ci
+        run: npm --prefix frontend ci
 
       - name: Build
         run: npm run build
