@@ -2,10 +2,7 @@
   "name": "agape-sovereign",
   "version": "1.0.0",
   "private": true,
-  "description": "Agape Sovereign AI — Digital Identity Defense Enclave",
-  "dependencies": {
-    "openclaw": "2026.11.5-beta.2"
-  },
+  "description": "Agape Sovereign AI \u2014 Digital Identity Defense Enclave",
   "scripts": {
     "commit": "git add -A && git commit",
     "devcommit": "npm run lint && npm run commit",

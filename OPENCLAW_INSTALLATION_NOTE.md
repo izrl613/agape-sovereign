@@ -39,3 +39,20 @@ openclaw --help
 - The installation succeeded despite the `ERR_PNPM_IGNORED_BUILDS` warning, which only affects build scripts in transitive dependencies.
 - The package is fully functional and includes all scripts, CLI commands, and built distributions.
 - This version provides the full openclaw suite with gateways, plugins, agents, and Docker test infrastructure.
+## Update — removed from package.json (2026-11-26)
+
+`openclaw` is no longer a project dependency. Its preinstall requires
+Node >=24.16 <25 || >=26.1 and broke every CI `npm ci` at the repo
+root (Deploy, AppFlow, Compliance, Dependabot). Nothing in the app or
+CI imports it — it is a local agent CLI only.
+
+To use it locally, install on demand (nothing is committed):
+
+```bash
+npx openclaw@2026.11.5-beta.2
+# or
+npm install -g openclaw@2026.11.5-beta.2
+```
+
+The existing `node_modules/openclaw` install remains until the next
+`npm ci`/`npm prune` at the root.
