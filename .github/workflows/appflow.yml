@@ -249,8 +249,9 @@ jobs:
       # firebase.json predeploy hooks re-run lint+build for hosting and
       # functions, so this job needs real node_modules (previously it
       # only downloaded artifacts and the deploy failed at predeploy).
-      - name: Install root dependencies
-        run: npm ci
+      # Frontend lockfile only — root deps are dev-tooling, not runtime.
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
 
       - name: Install functions dependencies
         working-directory: functions
