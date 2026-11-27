@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Activity, ClipboardCheck, Server, X, Smartphone, Sparkles , BarChart3 , CheckCircle2, KeyRound , Fingerprint } from 'lucide-react';
+import { Activity, ClipboardCheck, Server, X, Smartphone, Sparkles , BarChart3 , CheckCircle2, KeyRound , Fingerprint, Trash2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { NEON } from '../theme';
 import { useSovereign } from '../context/SovereignContext';
+import { auth } from '../firebase';
+import { PasskeyService, type RegisteredPasskey } from '../auth/passkey-service';
 import { checkLocalLlmStatus, type LocalLlmStatus } from '../services/architect';
 import { GlassCard, NeonButton, SovereignDialog } from './ui';
 import { LiveOpsView } from './LiveOpsView';
 import { ProjectStatusView } from './ProjectStatusView';
-import { PasskeyManager } from './PasskeyManager';
 import { EvalReviewQueue } from './EvalReviewQueue';
 
 const CONFIGURED_ROUTES = [
@@ -27,10 +28,35 @@ export function AdminPortal({
 }) {
   const { user, receipts, collectedVectors, registerPasskey, loginWithPasskey } = useSovereign();
   const [passkeyEmail, setPasskeyEmail] = useState(user?.email || '');
-  const [passkeyBusy, setPasskeyBusy] = useState<'register' | 'login' | null>(null);
+  const [passkeyLabel, setPasskeyLabel] = useState('');
+  const [passkeyBusy, setPasskeyBusy] = useState<'register' | 'login' | 'list' | string | null>(null);
   const [passkeyMsg, setPasskeyMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [registeredPasskeys, setRegisteredPasskeys] = useState<RegisteredPasskey[]>([]);
+  const [passkeySupported, setPasskeySupported] = useState<boolean>(true);
   const [llmStatus, setLlmStatus] = useState<LocalLlmStatus | null>(null);
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'LIVE_OPS' | 'REVIEW_QUEUE' | 'PASSKEYS'>('LIVE_OPS');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'LIVE_OPS' | 'REVIEW_QUEUE' | 'PASSKEYS' | 'STATUS'>('LIVE_OPS');
+
+  const refreshPasskeys = async () => {
+    const current = auth.currentUser;
+    if (!current) return;
+    setPasskeyBusy('list');
+    try {
+      const idToken = await current.getIdToken();
+      const list = await PasskeyService.listPasskeys(idToken);
+      setRegisteredPasskeys(list);
+    } catch {
+      // Backend may be offline in local dev; keep existing list
+    } finally {
+      setPasskeyBusy(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!open || activeTab !== 'PASSKEYS') return;
+    const supported = typeof window !== 'undefined' && Boolean(window.PublicKeyCredential);
+    setPasskeySupported(supported);
+    void refreshPasskeys();
+  }, [open, activeTab]);
 
   useEffect(() => {
     if (!open) return;
