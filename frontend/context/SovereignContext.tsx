@@ -43,7 +43,7 @@ interface SovereignContextType {
   recoveryCode: string | null;
   acknowledgeRecoveryCode: () => void;
   loginWithPasskey: (email?: string) => Promise<void>;
-  registerPasskey: (email: string) => Promise<void>;
+  registerPasskey: (email: string, label?: string) => Promise<void>;
   loginWithGoogle: () => Promise<string | null>;
   loginGuest: () => Promise<void>;
   /** Attach Google (dual protection + Drive) to the current session. */
@@ -225,8 +225,8 @@ export const SovereignProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   }, [adoptUser]);
 
-  const registerPasskey = useCallback(async (email: string) => {
-    const result = await PasskeyService.register(email);
+  const registerPasskey = useCallback(async (email: string, label?: string) => {
+    const result = await PasskeyService.register(email, label);
     try {
       sessionStorage.setItem(PASSKEY_SESSION_KEY, JSON.stringify(result));
     } catch {}
