@@ -5,6 +5,7 @@
   "private": true,
   "description": "Cloud Run auto-cap on billing budget breach (Agape Sovereign)",
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "google-auth-library": "^9.14.0"
   }
 }

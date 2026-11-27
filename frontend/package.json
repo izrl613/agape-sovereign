@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@simplewebauthn/browser": "latest",
     "firebase": "^13.1.0",
     "jspdf": "^4.2.1",

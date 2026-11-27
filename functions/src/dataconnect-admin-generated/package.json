@@ -20,6 +20,6 @@
     "./package.json": "./package.json"
   },
   "peerDependencies": {
-    "firebase-admin": "^13.4.0"
+    "firebase-admin": "^13.4.0 || ^14.0.0"
   }
 }

@@ -10,6 +10,7 @@
     "dev": "nodemon --env-file=.env.local server.js"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.0",

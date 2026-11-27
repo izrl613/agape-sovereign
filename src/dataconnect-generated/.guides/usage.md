@@ -7,62 +7,6 @@ best practices are followed.
 
 
 
-### React
-For each operation, there is a wrapper hook that can be used to call the operation.
-
-Here are all of the hooks that get generated:
-```ts
-import { useCreateMovie, useUpsertUser, useAddReview, useDeleteReview, useListMovies, useListUsers, useListUserReviews, useGetMovieById, useSearchMovie } from '@dataconnect/generated/react';
-// The types of these hooks are available in react/index.d.ts
-
-const { data, isPending, isSuccess, isError, error } = useCreateMovie(createMovieVars);
-
-const { data, isPending, isSuccess, isError, error } = useUpsertUser(upsertUserVars);
-
-const { data, isPending, isSuccess, isError, error } = useAddReview(addReviewVars);
-
-const { data, isPending, isSuccess, isError, error } = useDeleteReview(deleteReviewVars);
-
-const { data, isPending, isSuccess, isError, error } = useListMovies();
-
-const { data, isPending, isSuccess, isError, error } = useListUsers();
-
-const { data, isPending, isSuccess, isError, error } = useListUserReviews();
-
-const { data, isPending, isSuccess, isError, error } = useGetMovieById(getMovieByIdVars);
-
-const { data, isPending, isSuccess, isError, error } = useSearchMovie(searchMovieVars);
-
-```
-
-Here's an example from a different generated SDK:
-
-```ts
-import { useListAllMovies } from '@dataconnect/generated/react';
-
-function MyComponent() {
-  const { isLoading, data, error } = useListAllMovies();
-  if(isLoading) {
-    return <div>Loading...</div>
-  }
-  if(error) {
-    return <div> An Error Occurred: {error} </div>
-  }
-}
-
-// App.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import MyComponent from './my-component';
-
-function App() {
-  const queryClient = new QueryClient();
-  return <QueryClientProvider client={queryClient}>
-    <MyComponent />
-  </QueryClientProvider>
-}
-```
-
-
 
 ## Advanced Usage
 If a user is not using a supported framework, they can use the generated SDK directly.
