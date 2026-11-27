@@ -1,4 +1,4 @@
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import {defineSecret, defineString} from "firebase-functions/params";
 /* eslint-disable */
 import JsPDF from "jspdf";

@@ -557,7 +557,7 @@ router.post("/register-options", authLimiter, async (req, res) => {
 });
 // POST /verify-registration
 router.post("/verify-registration", strictLimiter, async (req, res) => {
-    var _a;
+    var _a, _b;
     try {
         const body = req.body;
         let sessionData = readSession(req);
@@ -600,16 +600,27 @@ router.post("/verify-registration", strictLimiter, async (req, res) => {
             expectedRPID: [rpId, DEFAULT_RP_ID],
         });
         if (verification.verified && verification.registrationInfo) {
-            const { credential } = verification.registrationInfo;
+            // Explicit attestation check for production security
+            if (!verification.registrationInfo.attestation) {
+                firebase_functions_1.logger.warn("[authApi] WebAuthn registration verification passed but no attestation evidence");
+            }
+            const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
             const credentialId = encodeCredentialId(credential.id);
             const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
+            const transports = ((_a = body.response) === null || _a === void 0 ? void 0 : _a.transports) || credential.transports || [];
+            const sanitizedLabel = typeof body.label === "string" && body.label.trim()
+                ? body.label.trim().slice(0, 80)
+                : "Enclave Passkey";
             await db.collection("users").doc(userId).collection("passkeyCredentials")
                 .doc(credentialId)
                 .set({
                 publicKey: publicKeyB64,
                 credentialID: credentialId,
+                label: sanitizedLabel,
                 counter: credential.counter,
-                transports: ((_a = body.response) === null || _a === void 0 ? void 0 : _a.transports) || credential.transports || [],
+                credentialDeviceType,
+                credentialBackedUp,
+                transports,
                 rpId,
                 createdAt: firestore_1.FieldValue.serverTimestamp(),
             }, { merge: true });
@@ -633,11 +644,22 @@ router.post("/verify-registration", strictLimiter, async (req, res) => {
                 try {
                     await db.collection("passkey_challenges").doc(normalizeEmail(body.email)).delete();
                 }
-                catch (_b) {
+                catch (_c) {
                     // non-fatal
                 }
             }
-            res.json({ verified: true, token: customToken, credentialId });
+            res.json({
+                verified: true,
+                token: customToken,
+                credentialId,
+                userId,
+                email: body.email ? normalizeEmail(body.email) : undefined,
+                credentialInfo: {
+                    credentialDeviceType: verification.registrationInfo.credentialDeviceType,
+                    credentialBackedUp: verification.registrationInfo.credentialBackedUp,
+                    transports: ((_b = body.response) === null || _b === void 0 ? void 0 : _b.transports) || verification.registrationInfo.credential.transports || [],
+                },
+            });
         }
         else {
             res.status(400).json({ verified: false, error: "Verification failed" });
@@ -908,6 +930,78 @@ router.post("/verify-login", strictLimiter, async (req, res) => {
         res.status(500).json({
             error: message.length < 200 ? message : "Internal Server Error",
         });
+    }
+});
+// GET /passkeys — list registered passkeys for the authenticated user
+router.get("/passkeys", authLimiter, async (req, res) => {
+    try {
+        const authHeader = req.get("authorization") || "";
+        const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+        if (!idToken) {
+            res.status(401).json({ error: "Authentication required" });
+            return;
+        }
+        const decoded = await auth.verifyIdToken(idToken);
+        const snap = await db.collection("users").doc(decoded.uid).collection("passkeyCredentials").get();
+        const passkeys = snap.docs.map((doc) => {
+            const d = doc.data();
+            const toIso = (val) => {
+                if (!val)
+                    return null;
+                if (typeof val === "number")
+                    return new Date(val).toISOString();
+                if (typeof val.toDate === "function") {
+                    return val.toDate().toISOString();
+                }
+                return null;
+            };
+            return {
+                credentialID: d.credentialID || doc.id,
+                label: d.label || "Enclave Passkey",
+                transports: Array.isArray(d.transports) ? d.transports : [],
+                credentialDeviceType: d.credentialDeviceType || "unknown",
+                credentialBackedUp: Boolean(d.credentialBackedUp),
+                rpId: d.rpId || DEFAULT_RP_ID,
+                createdAt: toIso(d.createdAt),
+                lastUsedAt: toIso(d.lastUsedAt),
+            };
+        });
+        res.json({ passkeys });
+    }
+    catch (error) {
+        firebase_functions_1.logger.error("List Passkeys Error:", error);
+        res.status(401).json({ error: "Invalid or expired authentication token" });
+    }
+});
+// DELETE /passkeys/:credentialId — revoke a registered passkey
+router.delete("/passkeys/:credentialId", strictLimiter, async (req, res) => {
+    try {
+        const authHeader = req.get("authorization") || "";
+        const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+        if (!idToken) {
+            res.status(401).json({ error: "Authentication required" });
+            return;
+        }
+        const decoded = await auth.verifyIdToken(idToken);
+        const credentialId = String(req.params.credentialId || "").trim();
+        if (!credentialId) {
+            res.status(400).json({ error: "credentialId is required" });
+            return;
+        }
+        const credsCol = db.collection("users").doc(decoded.uid).collection("passkeyCredentials");
+        await credsCol.doc(credentialId).delete();
+        const remaining = await credsCol.limit(1).get();
+        if (remaining.empty) {
+            await db.collection("users").doc(decoded.uid).set({
+                hasPasskey: false,
+                updatedAt: firestore_1.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        res.json({ deleted: true, credentialId });
+    }
+    catch (error) {
+        firebase_functions_1.logger.error("Delete Passkey Error:", error);
+        res.status(500).json({ error: "Failed to delete passkey" });
     }
 });
 // Mount router at / (direct URL) and /api/auth (Hosting rewrite)
