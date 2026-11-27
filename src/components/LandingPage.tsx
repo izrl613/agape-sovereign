@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Shield, Lock, Eye, Cpu, Globe, ArrowRight,
   CheckCircle, Fingerprint, Loader2,
-  Zap, Database, AlertTriangle
+  Zap, Database, AlertTriangle, UserRound, Sparkles, Key
 } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 
@@ -253,7 +253,7 @@ export const LandingPage = () => {
         </motion.div>
 
         {/* Nav actions */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {user ? (
             <motion.button
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
@@ -269,27 +269,29 @@ export const LandingPage = () => {
               GO TO DASHBOARD
             </motion.button>
           ) : (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                id="nav-passkey-btn"
-                onClick={() => navigate('/login')}
-                style={{
-                  background: 'rgba(0,212,255,0.06)', color: C.blue,
-                  border: `1px solid rgba(0,212,255,0.25)`, borderRadius: 10,
-                  padding: '9px 18px', fontWeight: 700, fontSize: 11,
-                  letterSpacing: '0.12em', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                }}
-              >
-                <Fingerprint size={13} /> PASSKEY
-              </motion.button>
-              <GoogleSignInButton
-                id="nav-google-btn"
-                onClick={handleGoogleSignIn}
-                loading={googleLoading}
-              />
-            </>
+            <motion.button
+              whileHover={{ scale: 1.03, borderColor: 'rgba(0,212,255,0.6)', boxShadow: '0 0 20px rgba(0,212,255,0.2)' }}
+              whileTap={{ scale: 0.97 }}
+              id="nav-portal-btn"
+              onClick={() => navigate('/login')}
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,212,255,0.12), rgba(255,46,159,0.12))',
+                color: '#fff',
+                border: '1px solid rgba(0,212,255,0.35)',
+                borderRadius: 10,
+                padding: '8px 16px',
+                fontWeight: 700,
+                fontSize: 11,
+                letterSpacing: '0.12em',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.blue, boxShadow: `0 0 8px ${C.blue}` }} />
+              ENTER PORTAL <ArrowRight size={12} color={C.blue} />
+            </motion.button>
           )}
         </div>
       </nav>
@@ -387,71 +389,109 @@ export const LandingPage = () => {
             </motion.div>
           )}
 
-          {/* CTA group */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, maxWidth: 360, margin: '0 auto' }}>
+          {/* Creative Portal Gateway Entry Point */}
+          <div style={{ maxWidth: 540, margin: '0 auto', width: '100%' }}>
             {user ? (
               <motion.button
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 id="hero-dashboard-btn"
                 onClick={() => navigate('/dashboard')}
                 style={{
-                  width: '100%', padding: '15px 28px',
+                  width: '100%', padding: '16px 28px',
                   background: 'rgba(0,212,255,0.07)',
                   border: `1px solid rgba(0,212,255,0.3)`,
-                  borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 14,
+                  borderRadius: 12, color: '#fff', fontWeight: 700, fontSize: 14,
                   letterSpacing: '0.06em', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                 }}
               >
-                <Zap size={16} color={C.blue} /> Go to Dashboard
+                <Zap size={16} color={C.blue} /> Go to Enclave Dashboard
               </motion.button>
             ) : (
-              <>
-                {/* Primary: Google */}
-                <GoogleSignInButton
-                  id="hero-google-btn"
-                  onClick={handleGoogleSignIn}
-                  loading={googleLoading}
-                  fullWidth
-                />
-
-                {/* Secondary: Passkey */}
-                <motion.button
-                  whileHover={{ scale: 1.015, borderColor: 'rgba(0,212,255,0.4)', background: 'rgba(0,212,255,0.07)' }}
-                  whileTap={{ scale: 0.975 }}
-                  id="hero-passkey-btn"
+              <motion.div
+                whileHover={{ scale: 1.01 }}
+                style={{
+                  position: 'relative',
+                  padding: '2px',
+                  borderRadius: 18,
+                  background: 'linear-gradient(135deg, rgba(0,212,255,0.45), rgba(255,46,159,0.45) 50%, rgba(255,107,0,0.45))',
+                  boxShadow: '0 0 35px rgba(0,212,255,0.15)',
+                }}
+              >
+                <div
                   onClick={() => navigate('/login')}
                   style={{
-                    width: '100%', padding: '14px 24px',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid rgba(0,212,255,0.2)`,
-                    borderRadius: 8, color: 'rgba(255,255,255,0.7)',
-                    fontWeight: 600, fontSize: 13, letterSpacing: '0.04em',
+                    background: 'rgba(6,12,26,0.92)',
+                    backdropFilter: 'blur(20px)',
+                    borderRadius: 16,
+                    padding: '20px 24px',
                     cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    transition: 'all 0.2s',
+                    textAlign: 'left',
                   }}
                 >
-                  <Fingerprint size={16} color={C.blue} />
-                  or use a Passkey →
-                </motion.button>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 8,
+                        background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Shield size={16} color={C.blue} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>
+                          ACCESS SOVEREIGN ENCLAVE
+                        </div>
+                        <div style={{ fontSize: 9.5, color: C.blue, fontFamily: 'monospace', letterSpacing: '0.1em' }}>
+                          3-VECTOR ZERO-KNOWLEDGE GATEWAY
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      fontSize: 10, color: 'rgba(255,255,255,0.7)',
+                      background: 'rgba(255,255,255,0.06)', padding: '5px 10px',
+                      borderRadius: 100, border: '1px solid rgba(255,255,255,0.1)',
+                      fontFamily: 'monospace',
+                    }}>
+                      OPEN PORTAL <ArrowRight size={11} color={C.blue} />
+                    </div>
+                  </div>
 
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)', letterSpacing: '0.04em', marginTop: 2 }}>
-                  No credit card · No data stored unencrypted · Cancel anytime
-                </p>
-              </>
+                  {/* 3 Pillars indicator */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+                    paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>
+                      <Fingerprint size={13} color={C.blue} />
+                      <span style={{ fontFamily: 'monospace' }}>WebAuthn</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>
+                      <GoogleIcon />
+                      <span style={{ fontFamily: 'monospace' }}>Google OAuth</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>
+                      <UserRound size={13} color={C.orange} />
+                      <span style={{ fontFamily: 'monospace' }}>Anon Bypass</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             )}
 
-            <a
-              href="#features"
-              style={{
-                fontSize: 11, color: 'rgba(255,255,255,0.3)', textDecoration: 'none',
-                letterSpacing: '0.16em', fontFamily: 'monospace',
-                display: 'flex', alignItems: 'center', gap: 5, marginTop: 4,
-              }}
-            >
-              LEARN MORE <ArrowRight size={11} />
-            </a>
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
+              <a
+                href="#features"
+                style={{
+                  fontSize: 11, color: 'rgba(255,255,255,0.3)', textDecoration: 'none',
+                  letterSpacing: '0.16em', fontFamily: 'monospace',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                }}
+              >
+                LEARN MORE <ArrowRight size={11} />
+              </a>
+            </div>
           </div>
 
         </motion.div>
@@ -605,7 +645,7 @@ export const LandingPage = () => {
           Join thousands securing their digital sovereignty. Google sign-in takes 30 seconds. Your data stays yours — always encrypted, always sovereign.
         </p>
 
-        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto' }}>
           {user ? (
             <motion.button
               whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -616,34 +656,62 @@ export const LandingPage = () => {
                 border: `1px solid rgba(0,212,255,0.25)`, borderRadius: 10,
                 padding: '16px 32px', fontWeight: 700, fontSize: 14,
                 letterSpacing: '0.1em', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'inline-flex', alignItems: 'center', gap: 10,
               }}
             >
-              GO TO DASHBOARD
+              GO TO ENCLAVE DASHBOARD
             </motion.button>
           ) : (
-            <>
-              <GoogleSignInButton
-                id="cta-google-btn"
-                onClick={handleGoogleSignIn}
-                loading={googleLoading}
-              />
-              <motion.button
-                whileHover={{ scale: 1.03, borderColor: 'rgba(0,212,255,0.45)' }}
-                whileTap={{ scale: 0.97 }}
-                id="cta-passkey-btn"
-                onClick={() => navigate('/login')}
-                style={{
-                  background: 'rgba(0,212,255,0.05)', color: '#fff',
-                  border: `1px solid rgba(0,212,255,0.22)`, borderRadius: 10,
-                  padding: '16px 28px', fontWeight: 700, fontSize: 13,
-                  letterSpacing: '0.08em', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}
-              >
-                <Fingerprint size={16} color={C.blue} /> Use Passkey
-              </motion.button>
-            </>
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/login')}
+              id="cta-portal-gateway"
+              style={{
+                cursor: 'pointer',
+                padding: '2px',
+                borderRadius: 16,
+                background: 'linear-gradient(135deg, rgba(255,46,159,0.6), rgba(0,212,255,0.6) 50%, rgba(255,107,0,0.6))',
+                boxShadow: '0 8px 32px rgba(0,212,255,0.25)',
+              }}
+            >
+              <div style={{
+                background: 'rgba(6,12,26,0.95)',
+                backdropFilter: 'blur(16px)',
+                borderRadius: 14,
+                padding: '18px 28px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 16,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Lock size={18} color={C.blue} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>
+                      ENTER SECURE PORTAL
+                    </div>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', fontFamily: 'monospace' }}>
+                      WebAuthn · Google OAuth · Anon Bypass
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  color: C.blue, fontWeight: 700, fontSize: 12, fontFamily: 'monospace',
+                  background: 'rgba(0,212,255,0.1)', padding: '8px 14px', borderRadius: 8,
+                  border: '1px solid rgba(0,212,255,0.25)',
+                }}>
+                  LAUNCH <ArrowRight size={14} />
+                </div>
+              </div>
+            </motion.div>
           )}
         </div>
       </motion.section>

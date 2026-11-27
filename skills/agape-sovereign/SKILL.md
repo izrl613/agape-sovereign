@@ -1,3 +1,20 @@
+---
+name: agape-sovereign
+description: >-
+  Comprehensive skill for the Agape Sovereign AI platform — a Digital Identity
+  Federated Footprint (DIFF) Intelligence Platform with 16-vector identity
+  scanning, zero-knowledge AES-256-GCM encryption, WebAuthn/FIDO2 passkeys,
+  and Firebase free-tier infrastructure. Activate when working on any
+  feature, bug fix, security review, or infrastructure change for the
+  agape-sovereign project (sovereign.nyc).
+metadata:
+  category: project
+  version: "1.0"
+  project: agape-sovereign
+  firebase_project: agape-sovereign
+  live_url: https://sovereign.nyc
+---
+
 # Agape Sovereign AI
 
 > **Digital Identity Federated Footprint (DIFF) Intelligence Platform** — Scan, analyze, and reclaim control over your digital identity across 16 attack vectors with zero-knowledge encryption and AI-powered sovereignty.

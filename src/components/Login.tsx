@@ -11,7 +11,7 @@ const C = {
   magenta: '#FF2E9F',
   orange:  '#FF7A18',
   green:   '#00FF87',
-  muted:   'rgba(180,190,220,0.45)',
+  muted:   'rgba(180,190,220,0.55)',
   surface: 'rgba(255,255,255,0.025)',
 } as const;
 
@@ -472,25 +472,23 @@ export const Login = () => {
                 initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
                 transition={{ duration: 0.28 }}
               >
-                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginBottom: 6, fontWeight: 500 }}>
-                  Digital Identity Federated Footprint
+                <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 13, marginBottom: 4, fontWeight: 600 }}>
+                  Select Sovereign Gateway
                 </div>
-                <div style={{ color: C.muted, fontSize: 12, marginBottom: 24, lineHeight: 1.65 }}>
-                  Authenticate to begin your{' '}
-                  <span style={{ color: C.magenta, fontWeight: 700 }}>DIFF</span>{' '}
-                  analysis. Your sovereignty begins here.
+                <div style={{ color: C.muted, fontSize: 11, marginBottom: 20, lineHeight: 1.6 }}>
+                  Choose your authentication vector to access the <span style={{ color: C.blue, fontWeight: 700 }}>DIFF</span> Enclave:
                 </div>
 
-                {/* ── Dual authentication options ── */}
+                {/* ── 3-Part Authentication Matrix ── */}
                 <div className="auth-options" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
-                  {/* OPTION 1 — Passkey / WebAuthn */}
+                  {/* VECTOR 1 — Passkey / WebAuthn (Device Sovereign) */}
                   <motion.div
-                    whileHover={{ scale: 1.015, borderColor: 'rgba(0,212,255,0.45)' }}
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(0,212,255,0.5)', background: 'rgba(0,212,255,0.08)' }}
                     whileTap={{ scale: 0.985 }}
                     onClick={handleDirectPasskeyLogin}
                     style={{
-                      background: 'rgba(0,212,255,0.05)',
-                      border: '1px solid rgba(0,212,255,0.22)',
+                      background: 'rgba(0,212,255,0.04)',
+                      border: '1px solid rgba(0,212,255,0.25)',
                       borderRadius: 14,
                       padding: '14px 16px',
                       cursor: 'pointer',
@@ -500,34 +498,43 @@ export const Login = () => {
                       textAlign: 'left',
                       transition: 'all 0.2s',
                     }}
-                    aria-label="Sign in with Passkey"
+                    aria-label="Sign in with Passkey WebAuthn"
                   >
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10,
+                      width: 42, height: 42, borderRadius: 10,
                       background: 'rgba(0,212,255,0.12)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, border: '1px solid rgba(0,212,255,0.25)',
+                      flexShrink: 0, border: '1px solid rgba(0,212,255,0.3)',
                     }}>
-                      <Fingerprint size={20} color={C.blue} />
+                      <Fingerprint size={22} color={C.blue} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2 }}>
-                        Passkey / WebAuthn
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+                          Passkey / WebAuthn
+                        </span>
+                        <span style={{
+                          fontSize: 9, padding: '2px 6px', borderRadius: 4,
+                          background: 'rgba(0,212,255,0.15)', color: C.blue,
+                          border: '1px solid rgba(0,212,255,0.3)', fontFamily: 'monospace', fontWeight: 600,
+                        }}>
+                          FIDO2
+                        </span>
                       </div>
-                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        Device-bound · Local encrypted vault
+                      <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+                        Device-bound biometric · Local encrypted vault
                       </div>
                     </div>
                     <ChevronRight size={16} color={C.blue} style={{ opacity: 0.7 }} />
                   </motion.div>
 
-                  {/* OPTION 2 — Sign in with Google */}
+                  {/* VECTOR 2 — Sign in with Google (OAuth 2.0) */}
                   <motion.div
-                    whileHover={{ scale: 1.015, borderColor: 'rgba(66,133,244,0.5)' }}
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(66,133,244,0.55)', background: 'rgba(66,133,244,0.09)' }}
                     whileTap={{ scale: 0.985 }}
                     onClick={handleGoogleLogin}
                     style={{
-                      background: 'rgba(66,133,244,0.07)',
+                      background: 'rgba(66,133,244,0.05)',
                       border: '1px solid rgba(66,133,244,0.25)',
                       borderRadius: 14,
                       padding: '14px 16px',
@@ -541,76 +548,109 @@ export const Login = () => {
                     aria-label="Sign in with Google"
                   >
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10,
+                      width: 42, height: 42, borderRadius: 10,
                       background: 'rgba(66,133,244,0.12)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0, border: '1px solid rgba(66,133,244,0.25)',
+                      flexShrink: 0, border: '1px solid rgba(66,133,244,0.3)',
                     }}>
-                      <GoogleIcon style={{ width: 18, height: 18 }} />
+                      <GoogleIcon style={{ width: 20, height: 20 }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em', marginBottom: 2 }}>
-                        Sign in with Google
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+                          Sign in with Google
+                        </span>
+                        <span style={{
+                          fontSize: 9, padding: '2px 6px', borderRadius: 4,
+                          background: 'rgba(66,133,244,0.15)', color: '#4285F4',
+                          border: '1px solid rgba(66,133,244,0.3)', fontFamily: 'monospace', fontWeight: 600,
+                        }}>
+                          OAUTH
+                        </span>
                       </div>
-                      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                        OAuth 2.0 · Fast, Secure Access
+                      <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+                        Google OAuth 2.0 · Zero-Knowledge sync
                       </div>
                     </div>
                     <ChevronRight size={16} color="#4285F4" style={{ opacity: 0.7 }} />
                   </motion.div>
 
-                  {/* OPTION 3 — Continue anonymously (real Firebase anonymous account) */}
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.5)' }}
+                  {/* VECTOR 3 — Anonymous Bypass (Instant Zero-Knowledge) */}
+                  <motion.div
+                    whileHover={{ scale: 1.015, borderColor: 'rgba(255,122,24,0.55)', background: 'rgba(255,122,24,0.09)' }}
                     whileTap={{ scale: 0.985 }}
                     onClick={handleAnonymousLogin}
                     style={{
-                      gridColumn: '1 / -1',
-                      width: '100%',
-                      background: 'rgba(255,122,24,0.06)',
-                      border: '1px solid rgba(255,122,24,0.3)',
+                      background: 'rgba(255,122,24,0.05)',
+                      border: '1px solid rgba(255,122,24,0.25)',
                       borderRadius: 14,
                       padding: '14px 16px',
-                      color: '#fff',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 14,
                       textAlign: 'left',
+                      transition: 'all 0.2s',
                     }}
-                    aria-label="Continue anonymously"
+                    aria-label="Continue with Anonymous Bypass"
                   >
-                    <UserRound size={19} color={C.orange} />
-                    <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Continue anonymously</span>
-                      <span style={{ display: 'block', color: 'rgba(255,255,255,0.55)', fontSize: 10, fontFamily: 'monospace' }}>
-                        Link Google from your profile later to keep the same account. Passkey registration becomes available once your anonymous account is linked.
-                      </span>
-                    </span>
-                    <ChevronRight size={16} color={C.orange} />
-                  </motion.button>
+                    <div style={{
+                      width: 42, height: 42, borderRadius: 10,
+                      background: 'rgba(255,122,24,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, border: '1px solid rgba(255,122,24,0.3)',
+                    }}>
+                      <UserRound size={21} color={C.orange} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>
+                          Anonymous Bypass
+                        </span>
+                        <span style={{
+                          fontSize: 9, padding: '2px 6px', borderRadius: 4,
+                          background: 'rgba(255,122,24,0.15)', color: C.orange,
+                          border: '1px solid rgba(255,122,24,0.3)', fontFamily: 'monospace', fontWeight: 600,
+                        }}>
+                          EPHEMERAL
+                        </span>
+                      </div>
+                      <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontFamily: 'monospace', letterSpacing: '0.03em' }}>
+                        Instant entry · Ephemeral session · Upgrade anytime
+                      </div>
+                    </div>
+                    <ChevronRight size={16} color={C.orange} style={{ opacity: 0.7 }} />
+                  </motion.div>
 
-                  {/* Registration is account setup, separate from the three entry paths. */}
+                  {/* Passkey Registration / Enrollment Link */}
                   <button
                     type="button"
                     onClick={handleRegisterPasskey}
                     style={{
-                      gridColumn: '1 / -1', width: '100%', marginTop: 8,
-                      background: 'rgba(0,255,135,0.045)', border: '1px solid rgba(0,255,135,0.22)',
-                      borderRadius: 12, padding: '12px 14px', color: '#fff', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                      gridColumn: '1 / -1', width: '100%', marginTop: 4,
+                      background: 'rgba(0,255,135,0.035)', border: '1px solid rgba(0,255,135,0.18)',
+                      borderRadius: 12, padding: '10px 14px', color: '#fff', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+                      transition: 'border-color 0.2s, background 0.2s',
                     }}
-                    aria-label="Register a passkey"
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,135,0.4)';
+                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,135,0.07)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,135,0.18)';
+                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,255,135,0.035)';
+                    }}
+                    aria-label="Register a new passkey"
                   >
-                    <Fingerprint size={19} color={C.green} />
+                    <Fingerprint size={16} color={C.green} />
                     <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>Register a passkey</span>
-                      <span style={{ display: 'block', color: 'rgba(255,255,255,0.5)', fontSize: 10, fontFamily: 'monospace' }}>
-                        Authenticate first, then add a device passkey
+                      <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>Need to register a new Passkey?</span>
+                      <span style={{ display: 'block', color: 'rgba(255,255,255,0.45)', fontSize: 9.5, fontFamily: 'monospace' }}>
+                        Link device biometric security to an established identity
                       </span>
                     </span>
-                    <ChevronRight size={16} color={C.green} />
+                    <ChevronRight size={14} color={C.green} />
                   </button>
                 </div>
 
