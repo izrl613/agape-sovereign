@@ -1,0 +1,61 @@
+- release_tracks: [ALPHA, BETA, GA]
+  hints:
+    read_only: false
+  help_text:
+    brief: Update a tenant.
+    description: |-
+      Update an App Lifecycle Manager tenant.
+    examples: |-
+      To add or update the label `env=prod` on the tenant named `my-tenant` in
+      location `us-central1`, run:
+
+        $ {command} my-tenant --location=us-central1 --update-labels=env=prod
+
+      To remove all labels from the tenant named `my-tenant` in location
+      `us-central1`, run:
+
+        $ {command} my-tenant --location=us-central1 --clear-labels
+  ALPHA:
+    help_text:
+      brief: Update tenants
+      description: Update a tenant
+      examples: |-
+        To update the tenant, run:
+
+        $ {command}
+  arguments:
+    params:
+    - help_text: |-
+        Tenant to update.
+      ALPHA:
+        help_text: |-
+          Identifier. The resource name (full URI of the resource) following the standard naming
+          scheme:
+
+            "projects/{project}/locations/{location}/tenants/{tenant}"
+      is_positional: true
+      resource_spec: !REF googlecloudsdk.command_lib.saas_runtime.resources:tenant
+      required: true
+    - arg_name: labels
+      api_field: tenant.labels
+      required: false
+      repeated: true
+      help_text: |-
+        Labels on the resource, which can be used for categorization, similar
+        to Kubernetes resource labels.
+      ALPHA:
+        help_text: |-
+          The labels on the resource, which can be used for categorization.
+          similar to Kubernetes resource labels.
+      clearable: true
+      spec:
+      - api_field: key
+      - api_field: value
+  request:
+    api_version: v1beta1
+    GA:
+      api_version: v1
+    collection:
+    - saasservicemgmt.projects.locations.tenants
+  update:
+    read_modify_update: true

@@ -1,0 +1,103 @@
+# -*- coding: utf-8 -*- #
+# Copyright 2026 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+- release_tracks:
+  - ALPHA
+  auto_generated: false
+  help_text:
+    brief: Start continuous profiling for a machine learning run.
+    description: |-
+      Start continuous profiling on one or more profiler targets of an active
+      machine learning run.
+
+      While continuous profiling is active, the XProf profiler on each target
+      keeps the most recent trace data in an in-memory circular buffer. To save
+      the buffered data as a profiler session, run
+      `gcloud alpha mldiagnostics profiler-session capture` with
+      `--kind=snapshot`. On-demand profiler sessions can't be captured while
+      continuous profiling is active.
+
+      Continuous profiling records device (TPU) traces only. Host and Python
+      tracing are always disabled for continuous profiling, because their trace
+      data is not bounded by the circular buffer.
+
+      Only one continuous profiling session can be active on a machine learning
+      run at a time. The device tracer level and XProf server port can't be
+      changed while continuous profiling is active. To change them, stop
+      continuous profiling by running
+      `gcloud alpha mldiagnostics machine-learning-run stop-continuous-profiling`,
+      and then start it again.
+    examples: |-
+      To start continuous profiling on the profiler targets `my-node-0` and
+      `my-node-1` of the machine learning run `my-run` in `us-central1`, run:
+
+          $ {command} --machine-learning-run=my-run --location=us-central1 --targets=my-node-0,my-node-1
+
+      To start continuous profiling when the XProf profiler server in your
+      workload listens on port 9012, run:
+
+          $ {command} --machine-learning-run=my-run --location=us-central1 --targets=my-node-0 --xprof-server-port=9012
+
+      To list the profiler targets of the machine learning run `my-run`, run:
+
+          $ gcloud alpha mldiagnostics profiler-target list --machine-learning-run=my-run --location=us-central1
+
+  request:
+    collection: hypercomputecluster.projects.locations.machineLearningRuns
+    method: startContinuousProfiling
+
+  arguments:
+    params:
+    - help_text: The machine learning run you want to start profiling for.
+      is_positional: false
+      is_primary_resource: true
+      resource_spec: !REF googlecloudsdk.command_lib.mldiagnostics.machine_learning_run.v1alpha_resources:projects_locations_machine_learning_runs
+      required: true
+    - arg_name: targets
+      help_text: |-
+        Profiler targets on which to start continuous profiling. To list the
+        profiler targets of a machine learning run, run
+        `gcloud alpha mldiagnostics profiler-target list`.
+      is_positional: false
+      is_primary_resource: false
+      resource_spec: !REF googlecloudsdk.command_lib.mldiagnostics.machine_learning_run.v1alpha_resources:projects_locations_machine_learning_runs_profiler_targets
+      resource_method_params:
+        startContinuousProfilingRequest.profilerTargets: '{__relative_name__}'
+      required: true
+      repeated: true
+    - arg_name: device-tracer-level
+      api_field: startContinuousProfilingRequest.deviceTracerLevel
+      required: false
+      default: enabled
+      help_text: |-
+        Device tracer level for the session. If the field is not set or
+        unspecified, the default is `DEVICE_TRACER_LEVEL_ENABLED`.
+      choices:
+      - arg_value: disabled
+        enum_value: DEVICE_TRACER_LEVEL_DISABLED
+        help_text: |-
+          Tracer level is disabled.
+      - arg_value: enabled
+        enum_value: DEVICE_TRACER_LEVEL_ENABLED
+        help_text: |-
+          Tracer level is enabled.
+    - arg_name: xprof-server-port
+      api_field: startContinuousProfilingRequest.xprofServerPort
+      required: false
+      help_text: |-
+        Port of the XProf profiler server that runs in your workload on each
+        profiler target. If unspecified, port 9999 is used.
+
+  async:
+    collection: hypercomputecluster.projects.locations.operations

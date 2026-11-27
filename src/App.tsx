@@ -47,6 +47,7 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { TermsOfService } from './components/TermsOfService';
 import { ContactPage } from './components/ContactPage';
 import { OfflinePage } from './components/OfflinePage';
+import { DesignGallery } from './components/DesignGallery';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, setupComplete, setSetupComplete } = useAuth();
@@ -99,6 +100,7 @@ const AppRoutes = () => {
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/offline" element={<OfflinePage />} />
+      <Route path="/gallery" element={<DesignGallery />} />
 
       {/* Auth route — redirect to dashboard if already signed in */}
       <Route path="/register-passkey" element={<Navigate to="/login?intent=register-passkey" replace />} />

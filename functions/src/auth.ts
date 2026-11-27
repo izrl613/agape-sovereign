@@ -616,6 +616,7 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
     const body = req.body as RegistrationResponseJSON & {
       userId?: string;
       email?: string;
+      label?: string;
     };
     let sessionData = readSession(req);
     // Fallback to Firestore challenge when cookie is missing (rewrite/cookie issues).
@@ -660,17 +661,24 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
     });
 
     if (verification.verified && verification.registrationInfo) {
-      const {credential} = verification.registrationInfo;
+      const {credential, credentialDeviceType, credentialBackedUp} = verification.registrationInfo;
       const credentialId = encodeCredentialId(credential.id);
       const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
+      const transports = body.response?.transports || credential.transports || [];
+      const sanitizedLabel = typeof body.label === "string" && body.label.trim()
+        ? body.label.trim().slice(0, 80)
+        : "Enclave Passkey";
 
       await db.collection("users").doc(userId).collection("passkeyCredentials")
         .doc(credentialId)
         .set({
           publicKey: publicKeyB64,
           credentialID: credentialId,
+          label: sanitizedLabel,
           counter: credential.counter,
-          transports: body.response?.transports || credential.transports || [],
+          credentialDeviceType,
+          credentialBackedUp,
+          transports,
           rpId,
           createdAt: FieldValue.serverTimestamp(),
         }, {merge: true});
@@ -698,7 +706,18 @@ router.post("/verify-registration", strictLimiter, async (req: Request, res: Res
           // non-fatal
         }
       }
-      res.json({verified: true, token: customToken, credentialId});
+      res.json({
+        verified: true,
+        token: customToken,
+        credentialId,
+        userId,
+        email: body.email ? normalizeEmail(body.email) : undefined,
+        credentialInfo: {
+          credentialDeviceType: verification.registrationInfo.credentialDeviceType,
+          credentialBackedUp: verification.registrationInfo.credentialBackedUp,
+          transports: body.response?.transports || verification.registrationInfo.credential.transports || [],
+        },
+      });
     } else {
       res.status(400).json({verified: false, error: "Verification failed"});
     }
@@ -980,6 +999,76 @@ router.post("/verify-login", strictLimiter, async (req: Request, res: Response) 
     res.status(500).json({
       error: message.length < 200 ? message : "Internal Server Error",
     });
+  }
+});
+
+// GET /passkeys — list registered passkeys for the authenticated user
+router.get("/passkeys", authLimiter, async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.get("authorization") || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!idToken) {
+      res.status(401).json({error: "Authentication required"});
+      return;
+    }
+    const decoded = await auth.verifyIdToken(idToken);
+    const snap = await db.collection("users").doc(decoded.uid).collection("passkeyCredentials").get();
+    const passkeys = snap.docs.map((doc) => {
+      const d = doc.data();
+      const toIso = (val: unknown): string | null => {
+        if (!val) return null;
+        if (typeof val === "number") return new Date(val).toISOString();
+        if (typeof (val as {toDate?: () => Date}).toDate === "function") {
+          return (val as {toDate: () => Date}).toDate().toISOString();
+        }
+        return null;
+      };
+      return {
+        credentialID: (d.credentialID as string) || doc.id,
+        label: (d.label as string) || "Enclave Passkey",
+        transports: Array.isArray(d.transports) ? d.transports : [],
+        credentialDeviceType: (d.credentialDeviceType as string) || "unknown",
+        credentialBackedUp: Boolean(d.credentialBackedUp),
+        rpId: (d.rpId as string) || DEFAULT_RP_ID,
+        createdAt: toIso(d.createdAt),
+        lastUsedAt: toIso(d.lastUsedAt),
+      };
+    });
+    res.json({passkeys});
+  } catch (error) {
+    logger.error("List Passkeys Error:", error);
+    res.status(401).json({error: "Invalid or expired authentication token"});
+  }
+});
+
+// DELETE /passkeys/:credentialId — revoke a registered passkey
+router.delete("/passkeys/:credentialId", strictLimiter, async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.get("authorization") || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!idToken) {
+      res.status(401).json({error: "Authentication required"});
+      return;
+    }
+    const decoded = await auth.verifyIdToken(idToken);
+    const credentialId = String(req.params.credentialId || "").trim();
+    if (!credentialId) {
+      res.status(400).json({error: "credentialId is required"});
+      return;
+    }
+    const credsCol = db.collection("users").doc(decoded.uid).collection("passkeyCredentials");
+    await credsCol.doc(credentialId).delete();
+    const remaining = await credsCol.limit(1).get();
+    if (remaining.empty) {
+      await db.collection("users").doc(decoded.uid).set({
+        hasPasskey: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      }, {merge: true});
+    }
+    res.json({deleted: true, credentialId});
+  } catch (error) {
+    logger.error("Delete Passkey Error:", error);
+    res.status(500).json({error: "Failed to delete passkey"});
   }
 });
 

@@ -1,0 +1,1858 @@
+# -*- coding: utf-8 -*- #
+# Copyright 2026 Google LLC. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Orchestrator configuration utilities for clusters command group."""
+
+from __future__ import annotations
+
+import collections
+from collections.abc import Mapping
+import enum
+import os
+import re
+from typing import Any
+
+from apitools.base.py import encoding
+from googlecloudsdk.api_lib.util import messages as messages_util
+from googlecloudsdk.calliope import exceptions
+from googlecloudsdk.command_lib.cluster_director.clusters import _validator
+from googlecloudsdk.command_lib.cluster_director.clusters import errors
+from googlecloudsdk.command_lib.projects import util as projects_util
+from googlecloudsdk.core.util import files
+
+ClusterDirectorError = errors.ClusterDirectorError
+
+
+def _GetStoragePoolZone(storage_pool: str) -> str:
+  """Returns the storage pool zone from a storage pool resource string.
+
+  Args:
+    storage_pool: The storage pool resource string.
+
+  Returns:
+    The zone extracted from the storage pool string.
+
+  Raises:
+    ClusterDirectorError: If the storage pool string does not contain a zone.
+  """
+
+  # projects/{project}/zones/{zone}/storagePools/{storagePool}
+  parts = storage_pool.split("/")
+  for current_part, next_part in zip(parts, parts[1:]):
+    if current_part == "zones" and next_part:
+      return next_part
+  raise ClusterDirectorError(
+      f"Storage pool {storage_pool} does not contain a zone."
+  )
+
+
+def _GetStoragePoolName(cluster_ref: Any, storage_pool: str) -> str:
+  """Returns the full storage pool name including project.
+
+  Args:
+    cluster_ref: The cluster resource reference.
+    storage_pool: The storage pool string, which may or may not include
+      'projects/'.
+
+  Returns:
+    The full storage pool name.
+
+  Raises:
+    ClusterDirectorError: If the storage pool string does not contain a zone.
+  """
+  if not cluster_ref:
+    raise ClusterDirectorError(
+        "Cluster reference is required to resolve storage pool name."
+    )
+  project = cluster_ref.Parent().projectsId
+  if storage_pool.startswith("projects/"):
+    storage_pool_name = storage_pool
+  else:
+    storage_pool_name = f"projects/{project}/{storage_pool}"
+  _GetStoragePoolZone(storage_pool)
+  return storage_pool_name
+
+
+_GCE_INSTANCE_FIELDS = frozenset([
+    "computeInstance",
+    "startupScript",
+    "labels",
+    "bootDisk",
+    "startupScriptTimeout",
+])
+_GKE_NODE_POOL_FIELDS = frozenset([
+    "containerNodePool",
+    "container-resource-labels",
+    "container-startup-script",
+])
+
+# Error messages
+_GCE_FIELDS_ON_GKE_NODE_SET_ERROR = (
+    "GCE node set fields (startupScript, labels, bootDisk, "
+    "startupScriptTimeout) cannot be specified for GKE node sets."
+)
+_GKE_FIELDS_ON_GCE_NODE_SET_ERROR = (
+    "GKE node set fields (container-*) cannot be specified for GCE node sets."
+)
+_SLURM_NODESET_ALREADY_EXISTS_ERROR = (
+    "Slurm nodesets with id={0} already exist."
+)
+_SLURM_NODESET_NOT_FOUND_ERROR = "Slurm nodesets with id={0} not found."
+_SLURM_PARTITION_ALREADY_EXISTS_ERROR = (
+    "Slurm partitions with id={0} already exist."
+)
+_SLURM_PARTITION_NOT_FOUND_ERROR = "Slurm partitions with id={0} not found."
+_MIG_ALREADY_EXISTS_ERROR = (
+    "Managed instance group with id={0} already exists."
+)
+_MIG_NOT_FOUND_ERROR = "Managed instance group with id={0} not found."
+_EXISTING_INSTANCES_ALREADY_EXISTS_ERROR = (
+    "Existing instances with id={0} already exist."
+)
+_EXISTING_INSTANCES_NOT_FOUND_ERROR = (
+    "Existing instances with id={0} not found."
+)
+_UPDATE_GCE_FIELDS_ON_GKE_NODE_SET_ERROR = (
+    "Cannot update compute instance fields for a GKE node set."
+)
+_UPDATE_GKE_FIELDS_ON_GCE_NODE_SET_ERROR = (
+    "Cannot update GKE node set fields for a compute instance node set."
+)
+
+
+class NodeSetType(enum.Enum):
+  """Represents the type of a Slurm Node Set."""
+
+  GCE = "gce"
+  GKE = "gke"
+
+
+def _ConvertMessageToDict(message) -> dict[str, Any]:
+  """Convert a message with list of type AdditionalProperty(key=str, value=Any) to a dict."""
+  if not message:
+    return {}
+  return {each.key: each.value for each in message.additionalProperties}
+
+
+def _ConvertSlurmMessageToDict(message):
+  """Convert a list of slurm message (SlurmNodeSet, SlurmPartition) to a dict."""
+  if not message:
+    return {}
+  return {each.id: each for each in message}
+
+
+def _AddKeyToDictSpec(
+    key: str,
+    dict_spec: dict[str, Any],
+    value: Any,
+    exception_message: str,
+) -> None:
+  """Adds a cluster identifier (key) with value, if not present in dict spec."""
+  if key in dict_spec:
+    raise ClusterDirectorError(exception_message.format(key))
+  dict_spec[key] = value
+
+
+def _RemoveKeyFromDictSpec(
+    key: str, dict_spec: dict[str, Any], exception_message: str
+) -> None:
+  """Removes a cluster identifier (key), if present in dict spec."""
+  if key not in dict_spec:
+    raise ClusterDirectorError(exception_message.format(key))
+  dict_spec.pop(key)
+
+
+def _GetValueFromDictSpec(
+    key: str, dict_spec: Mapping[str, Any], exception_message: str
+) -> Any:
+  """Returns the value message by cluster identifier (key) from a dict spec."""
+  if key not in dict_spec:
+    raise ClusterDirectorError(exception_message.format(key))
+  return dict_spec[key]
+
+
+def _CheckIfBashFileFormat(arg_value: str) -> bool:
+  """Checks if the argument is a bash file format."""
+  return bool(re.match(r"^\S*\.(sh|bash)$", arg_value))
+
+
+def _GetBashScript(arg_value: str) -> str | exceptions.BadFileException:
+  """Returns the bash script if argument is a valid bash file path."""
+  if not arg_value or not _CheckIfBashFileFormat(arg_value):
+    return arg_value
+  path = arg_value
+  if not os.path.isabs(path):
+    raise exceptions.BadFileException(
+        f"Script file path must be absolute, got {path}"
+    )
+  if not os.path.exists(path) or not os.path.isfile(path):
+    raise exceptions.BadFileException(
+        f"Script file not found at absolute path={path}"
+    )
+  return files.ReadFileContents(path)
+
+
+def MakeLabels(label_args, label_cls):
+  """Returns the labels message."""
+  if not label_args:
+    return None
+  return label_cls(
+      additionalProperties=[
+          label_cls.AdditionalProperty(key=key, value=value)
+          for key, value in sorted(label_args.items())
+      ]
+  )
+
+
+def _GetStorageConfigs(message_module, cluster, existing_storage_configs=None):
+  """Returns the storage configs."""
+  storage_configs: list[Any] = []
+  if not cluster.storageResources:
+    return storage_configs
+  sorted_storages = sorted(
+      cluster.storageResources.additionalProperties,
+      key=lambda storage: storage.key,
+  )
+  if not sorted_storages:
+    return storage_configs
+
+  occupied_mounts = set()
+  existing_mounts_by_id = {}
+  counters = collections.defaultdict(int)
+  if existing_storage_configs:
+    for existing_sc in existing_storage_configs:
+      occupied_mounts.add(existing_sc.localMount)
+      existing_mounts_by_id[existing_sc.id] = existing_sc.localMount
+      if existing_sc.localMount.startswith("/shared"):
+        try:
+          val = int(existing_sc.localMount[len("/shared"):])
+          counters["filestore"] = max(counters["filestore"], val + 1)
+        except ValueError:
+          pass
+      elif existing_sc.localMount.startswith("/scratch"):
+        try:
+          val = int(existing_sc.localMount[len("/scratch"):])
+          counters["lustre"] = max(counters["lustre"], val + 1)
+        except ValueError:
+          pass
+      elif existing_sc.localMount.startswith("/data"):
+        try:
+          val = int(existing_sc.localMount[len("/data"):])
+          counters["bucket"] = max(counters["bucket"], val + 1)
+        except ValueError:
+          pass
+      elif existing_sc.localMount.startswith("/nfs"):
+        try:
+          val = int(existing_sc.localMount[len("/nfs"):])
+          counters["nfs"] = max(counters["nfs"], val + 1)
+        except ValueError:
+          pass
+
+  new_storages = [
+      s for s in sorted_storages if s.key not in existing_mounts_by_id
+  ]
+  home_mounted_id = None
+  if "/home" not in occupied_mounts and new_storages:
+    home_mounted_id = new_storages[0].key
+
+  for storage in sorted_storages:
+    if storage.key in existing_mounts_by_id:
+      storage_configs.append(
+          message_module.StorageConfig(
+              id=storage.key,
+              localMount=existing_mounts_by_id[storage.key],
+          )
+      )
+      continue
+
+    if storage.key == home_mounted_id:
+      storage_configs.append(
+          message_module.StorageConfig(
+              id=storage.key,
+              localMount="/home",
+          )
+      )
+      continue
+
+    local_mount = None
+    if storage.value:
+      if (
+          storage.value.config.newFilestore
+          or storage.value.config.existingFilestore
+      ):
+        local_mount = f"/shared{counters['filestore']}"
+        counters["filestore"] += 1
+      elif (
+          storage.value.config.newLustre or storage.value.config.existingLustre
+      ):
+        local_mount = f"/scratch{counters['lustre']}"
+        counters["lustre"] += 1
+      elif (
+          storage.value.config.newBucket
+          or storage.value.config.existingBucket
+      ):
+        local_mount = f"/data{counters['bucket']}"
+        counters["bucket"] += 1
+      elif (
+          hasattr(storage.value.config, "existingNfs")
+          and storage.value.config.existingNfs
+      ):
+        local_mount = f"/nfs{counters['nfs']}"
+        counters["nfs"] += 1
+    if not local_mount:
+      raise ClusterDirectorError("Storage configuration is not supported.")
+
+    storage_configs.append(
+        message_module.StorageConfig(
+            id=storage.key,
+            localMount=local_mount,
+        )
+    )
+  return storage_configs
+
+
+def _GetComputeMachineType(
+    compute_id: str, compute_resources: dict[str, Any]
+) -> Any:
+  """Returns the compute machine type from compute resources."""
+  compute_resource = compute_resources[compute_id]
+  if compute_resource.config.newOnDemandInstances:
+    return compute_resource.config.newOnDemandInstances.machineType
+  if compute_resource.config.newSpotInstances:
+    return compute_resource.config.newSpotInstances.machineType
+  if compute_resource.config.newFlexStartInstances:
+    return compute_resource.config.newFlexStartInstances.machineType
+  raise ClusterDirectorError("Compute instances type not supported.")
+
+
+def _GetComputeMachineTypeFromCluster(
+    compute_id: str, cluster, existing_cluster=None, use_existing_cluster=False
+) -> Any:
+  """Returns the compute machine type from cluster."""
+  if cluster:
+    compute_resources = _ConvertMessageToDict(cluster.computeResources)
+    if compute_id in compute_resources:
+      if compute_resources[compute_id].config.newReservedInstances:
+        return None
+      return _GetComputeMachineType(compute_id, compute_resources)
+  if use_existing_cluster and existing_cluster:
+    compute_resources = _ConvertMessageToDict(existing_cluster.computeResources)
+    if compute_id in compute_resources:
+      if compute_resources[compute_id].config.newReservedInstances:
+        return None
+      return _GetComputeMachineType(compute_id, compute_resources)
+  raise ClusterDirectorError(
+      f"Compute instances with id={compute_id} not found."
+  )
+
+
+def _GetComputeMachineTypeFromArgs(args, compute_id):
+  """Returns the compute machine type from args."""
+  if args.IsSpecified("reserved_instances"):
+    for instance in args.reserved_instances:
+      if instance.get("id") == compute_id:
+        return None
+  instances = []
+  if args.IsSpecified("on_demand_instances"):
+    instances.extend(args.on_demand_instances)
+  if args.IsSpecified("spot_instances"):
+    instances.extend(args.spot_instances)
+  if args.IsSpecified("flex_start_instances"):
+    instances.extend(args.flex_start_instances)
+  for instance in instances:
+    if instance.get("id") == compute_id:
+      return instance.get("machineType")
+  raise ClusterDirectorError(
+      f"Compute instances with id={compute_id} not found."
+  )
+
+
+def _MakeSlurmPartition(message_module, partition):
+  """Makes a cluster slurm partition message from partition args."""
+  slurm_partition = message_module.SlurmPartition(
+      id=partition.get("id"),
+      nodeSetIds=partition.get("nodeSetIds"),
+  )
+  if partition.get("config") is not None and hasattr(
+      message_module, "SlurmPartitionConfig"
+  ):
+    slurm_partition.config = messages_util.DictToMessageWithErrorCheck(
+        partition.get("config"), message_module.SlurmPartitionConfig
+    )
+  return slurm_partition
+
+
+def _MakeSlurmNodeSet(
+    message_module,
+    node_set,
+    storage_configs,
+    cluster_ref=None,
+    machine_type=None,
+):
+  """Makes a cluster slurm node set message from node set args."""
+  node_set_keys = set(node_set.keys())
+  node_set_type_str = node_set.get("type")
+  has_gke_fields = node_set_keys.intersection(_GKE_NODE_POOL_FIELDS)
+  has_gce_fields = node_set_keys.intersection(_GCE_INSTANCE_FIELDS)
+
+  node_set_type = None
+  if node_set_type_str:
+    try:
+      node_set_type = NodeSetType(node_set_type_str)
+    except ValueError as exc:
+      raise ClusterDirectorError(
+          f"Invalid node set type: {node_set_type_str!r}. "
+          "Must be 'gce' or 'gke'."
+      ) from exc
+
+  is_container_node_pool = node_set_type == NodeSetType.GKE or (
+      node_set_type is None and has_gke_fields
+  )
+  if is_container_node_pool and has_gce_fields:
+    raise ClusterDirectorError(_GCE_FIELDS_ON_GKE_NODE_SET_ERROR)
+  if not is_container_node_pool and has_gke_fields:
+    raise ClusterDirectorError(_GKE_FIELDS_ON_GCE_NODE_SET_ERROR)
+
+  node_set_storage_configs = storage_configs
+  if "storageConfigs" in node_set:
+    node_set_storage_configs = [
+        message_module.StorageConfig(
+            id=sc.get("id"), localMount=sc.get("localMount")
+        )
+        for sc in node_set.get("storageConfigs")
+    ]
+
+  slurm_node_set = message_module.SlurmNodeSet(
+      id=node_set.get("id"),
+      staticNodeCount=node_set.get("staticNodeCount"),
+      maxDynamicNodeCount=node_set.get("maxDynamicNodeCount"),
+      storageConfigs=node_set_storage_configs,
+      computeId=node_set.get("computeId"),
+  )
+  if is_container_node_pool:
+    if not hasattr(slurm_node_set, "containerNodePool"):
+      raise ClusterDirectorError(
+          "GKE node set fields (container-*) are not supported in this API "
+          "version."
+      )
+    slurm_node_set.containerNodePool = (
+        message_module.ContainerNodePoolSlurmNodeSet(
+            resourceLabels=MakeLabels(
+                label_args=node_set.get("container-resource-labels"),
+                label_cls=(
+                    message_module.ContainerNodePoolSlurmNodeSet
+                    .ResourceLabelsValue
+                ),
+            ),
+            startupScript=_GetBashScript(
+                node_set.get("container-startup-script")
+            ),
+        )
+    )
+  else:
+    if not node_set.get("computeId"):
+      raise ClusterDirectorError(
+          "computeId is required for node sets not backed by GKE."
+      )
+    conf = node_set.get("computeInstance") or node_set
+    startup_script = _GetBashScript(conf.get("startupScript"))
+    compute_instance_labels = MakeLabels(
+        label_args=conf.get("labels"),
+        label_cls=message_module.ComputeInstanceSlurmNodeSet.LabelsValue,
+    )
+    boot_disk = conf.get("bootDisk")
+    if (
+        not boot_disk
+        and machine_type
+        and not machine_type.startswith(("n2-", "ct5p-"))
+    ):
+      boot_disk = {"type": "hyperdisk-balanced", "sizeGb": 100}
+
+    if boot_disk and machine_type:
+      _validator.ValidateBootDisk(machine_type, boot_disk)
+
+    compute_instance_boot_disk = None
+    if boot_disk:
+      compute_instance_boot_disk = message_module.BootDisk(
+          type=boot_disk.get("type"),
+          sizeGb=boot_disk.get("sizeGb", 100),
+      )
+      if compute_instance_boot_disk and hasattr(
+          compute_instance_boot_disk, "image"
+      ):
+        compute_instance_boot_disk.image = boot_disk.get("image")
+      if compute_instance_boot_disk and hasattr(
+          compute_instance_boot_disk, "storagePools"
+      ):
+        storage_pools = boot_disk.get("storagePools")
+        if storage_pools is not None:
+          compute_instance_boot_disk.storagePools = [
+              _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+          ]
+    compute_instance = message_module.ComputeInstanceSlurmNodeSet(
+        bootDisk=compute_instance_boot_disk,
+        startupScript=startup_script,
+        labels=compute_instance_labels,
+    )
+    if conf.get("startupScriptTimeout"):
+      compute_instance.startupScriptTimeout = conf.get(
+          "startupScriptTimeout")
+    if hasattr(slurm_node_set, "computeId"):
+      slurm_node_set.computeId = node_set.get("computeId")
+    slurm_node_set.computeInstance = compute_instance
+
+  if node_set.get("config") is not None and hasattr(
+      message_module, "SlurmNodeConfig"
+  ):
+    _validator.ValidateSlurmNodeConfig(node_set.get("config"))
+    slurm_node_set.config = messages_util.DictToMessageWithErrorCheck(
+        node_set.get("config"), message_module.SlurmNodeConfig
+    )
+
+  resource_policy_config = node_set.get("resourcePolicyConfig")
+  if resource_policy_config and hasattr(message_module, "ResourcePolicyConfig"):
+    slurm_node_set.resourcePolicyConfig = (
+        messages_util.DictToMessageWithErrorCheck(
+            resource_policy_config, message_module.ResourcePolicyConfig
+        )
+    )
+
+  if node_set.get("enablePublicIps") is not None and hasattr(
+      slurm_node_set, "enablePublicIps"
+  ):
+    slurm_node_set.enablePublicIps = node_set.get("enablePublicIps")
+
+  return slurm_node_set
+
+
+def MakeClusterSlurmOrchestrator(
+    args, message_module, cluster, cluster_ref=None
+):
+  """Makes a cluster message with slurm orchestrator fields."""
+  slurm = message_module.SlurmOrchestrator()
+  default_storage_configs = _GetStorageConfigs(message_module, cluster)
+  if args.IsSpecified("slurm_node_sets"):
+    for node_set in args.slurm_node_sets:
+      node_set_id = node_set.get("id")
+      _validator.ValidateResourceID(node_set_id)
+      node_set_keys = set(node_set.keys())
+      node_set_type = node_set.get("type")
+      has_gke_fields = node_set_keys.intersection(_GKE_NODE_POOL_FIELDS)
+      is_gke = node_set_type == NodeSetType.GKE.value or (
+          node_set_type is None and has_gke_fields
+      )
+      machine_type = None
+      if not is_gke:
+        compute_id = node_set.get("computeId")
+        if compute_id:
+          machine_type = _GetComputeMachineTypeFromArgs(args, compute_id)
+      storage_configs = default_storage_configs
+      slurm.nodeSets.append(
+          _MakeSlurmNodeSet(
+              message_module,
+              node_set,
+              storage_configs,
+              cluster_ref,
+              machine_type=machine_type,
+          )
+      )
+
+  if args.IsSpecified("slurm_partitions"):
+    for partition in args.slurm_partitions:
+      partition_id = partition.get("id")
+      _validator.ValidateResourceID(partition_id)
+      slurm.partitions.append(_MakeSlurmPartition(message_module, partition))
+
+  if args.IsSpecified("slurm_default_partition"):
+    slurm.defaultPartition = args.slurm_default_partition
+
+  if args.IsSpecified("slurm_login_node"):
+    login_node = args.slurm_login_node
+    machine_type = login_node.get("machineType")
+    storage_configs = default_storage_configs
+    if "storageConfigs" in login_node:
+      storage_configs = [
+          message_module.StorageConfig(
+              id=sc.get("id"), localMount=sc.get("localMount")
+          )
+          for sc in login_node.get("storageConfigs")
+      ]
+    slurm.loginNodes = message_module.SlurmLoginNodes(
+        count=login_node.get("count", 1),
+        machineType=machine_type,
+        zone=login_node.get("zone"),
+        storageConfigs=storage_configs,
+        enableOsLogin=login_node.get("enableOsLogin", True),
+        enablePublicIps=login_node.get("enablePublicIps", True),
+        startupScript=_GetBashScript(login_node.get("startupScript")),
+        labels=MakeLabels(
+            label_args=login_node.get("labels"),
+            label_cls=message_module.SlurmLoginNodes.LabelsValue,
+        ),
+    )
+    boot_disk_args = login_node.get("bootDisk")
+    if boot_disk_args:
+      boot_disk = message_module.BootDisk(
+          type=boot_disk_args.get("type"),
+          sizeGb=boot_disk_args.get("sizeGb", 100),
+      )
+      if hasattr(boot_disk, "image"):
+        boot_disk.image = boot_disk_args.get("image")
+      if hasattr(boot_disk, "storagePools"):
+        storage_pools = boot_disk_args.get("storagePools")
+        if storage_pools is not None:
+          boot_disk.storagePools = [
+              _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+          ]
+      slurm.loginNodes.bootDisk = boot_disk
+    tags = login_node.get("networkTags")
+    if tags:
+      slurm.loginNodes.networkTags = tags
+  if args.IsSpecified("slurm_prolog_scripts"):
+    slurm.prologBashScripts = args.slurm_prolog_scripts
+  if args.IsSpecified("slurm_epilog_scripts"):
+    slurm.epilogBashScripts = args.slurm_epilog_scripts
+  if args.IsKnownAndSpecified("slurm_task_prolog_scripts"):
+    slurm.taskPrologBashScripts = args.slurm_task_prolog_scripts
+  if args.IsKnownAndSpecified("slurm_task_epilog_scripts"):
+    slurm.taskEpilogBashScripts = args.slurm_task_epilog_scripts
+  if args.IsKnownAndSpecified("slurm_config"):
+    slurm.config = messages_util.DictToMessageWithErrorCheck(
+        args.slurm_config, message_module.SlurmConfig
+    )
+  if args.IsKnownAndSpecified("enable_slurm_health_check"):
+    slurm.disableHealthCheckProgram = not args.enable_slurm_health_check
+  if args.IsKnownAndSpecified("controller_version"):
+    _validator.ValidateControllerVersion(args.controller_version)
+    slurm.controllerVersion = args.controller_version
+  return slurm
+
+
+def _GetOrCreateComputeInstance(message_module, existing_node_set):
+  """Gets or creates the computeInstance for a SlurmNodeSet."""
+  if not existing_node_set.computeInstance:
+    existing_node_set.computeInstance = (
+        message_module.ComputeInstanceSlurmNodeSet()
+    )
+  return existing_node_set.computeInstance
+
+
+def _GetOrCreateContainerNodePool(message_module, existing_node_set):
+  """Gets or creates the containerNodePool for a SlurmNodeSet."""
+  if not existing_node_set.containerNodePool:
+    existing_node_set.containerNodePool = (
+        message_module.ContainerNodePoolSlurmNodeSet()
+    )
+  return existing_node_set.containerNodePool
+
+
+def _PatchBootDiskForNodeSet(
+    message_module, *, existing_node_set, node_set_patch, cluster_ref=None
+):
+  """Patches the bootDisk of a SlurmNodeSet."""
+  if not existing_node_set.computeInstance:
+    return
+  if not existing_node_set.computeInstance.bootDisk:
+    return
+  boot_disk_patch = node_set_patch.get("bootDisk")
+
+  # Determine the base bootDisk to patch.
+  boot_disk = existing_node_set.computeInstance.bootDisk
+
+  boot_disk.type = boot_disk_patch.get("type", boot_disk.type)
+  boot_disk.sizeGb = boot_disk_patch.get("sizeGb", boot_disk.sizeGb)
+  if hasattr(boot_disk, "image"):
+    boot_disk.image = boot_disk_patch.get("image", boot_disk.image)
+  if hasattr(boot_disk, "storagePools"):
+    storage_pools = boot_disk_patch.get("storagePools")
+    if storage_pools is not None:
+      boot_disk.storagePools = [
+          _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+      ]
+
+  # Assign the patched bootDisk to computeInstance.
+  if not existing_node_set.computeInstance:
+    existing_node_set.computeInstance = (
+        message_module.ComputeInstanceSlurmNodeSet(bootDisk=boot_disk)
+    )
+  else:
+    existing_node_set.computeInstance.bootDisk = boot_disk
+
+
+def _PatchResourcePolicyConfigForNodeSet(
+    message_module, *, existing_node_set, resource_policy_config_patch
+):
+  """Patches the resourcePolicyConfig of a SlurmNodeSet.
+
+  An empty patch clears the resourcePolicyConfig. Otherwise, the specified
+  fields are merged into the existing resourcePolicyConfig, and fields set to
+  an empty value are cleared.
+
+  Args:
+    message_module: The API messages module.
+    existing_node_set: The SlurmNodeSet message to patch in place.
+    resource_policy_config_patch: The parsed resourcePolicyConfig flag value.
+  """
+  if not resource_policy_config_patch:
+    existing_node_set.resourcePolicyConfig = None
+    return
+  resource_policy_config = (
+      existing_node_set.resourcePolicyConfig
+      or message_module.ResourcePolicyConfig()
+  )
+  for key, value in resource_policy_config_patch.items():
+    setattr(resource_policy_config, key, value or None)
+  existing_node_set.resourcePolicyConfig = resource_policy_config
+
+
+def MakeClusterSlurmOrchestratorPatch(
+    args,
+    message_module,
+    existing_cluster,
+    cluster_patch,
+    update_mask,
+    cluster_ref=None,
+):
+  """Makes a cluster slurm orchestrator patch message with slurm fields."""
+  slurm = message_module.SlurmOrchestrator()
+  if args.IsSpecified("slurm_default_partition"):
+    slurm.defaultPartition = args.slurm_default_partition
+    update_mask.add("orchestrator.slurm.default_partition")
+
+  storage_resources_map = {}
+  if existing_cluster and existing_cluster.storageResources:
+    for prop in existing_cluster.storageResources.additionalProperties:
+      storage_resources_map[prop.key] = prop.value
+  if cluster_patch and cluster_patch.storageResources:
+    for prop in cluster_patch.storageResources.additionalProperties:
+      storage_resources_map[prop.key] = prop.value
+
+  removed_storage_ids = set()
+  if (
+      existing_cluster
+      and existing_cluster.storageResources
+      and cluster_patch
+      and cluster_patch.storageResources
+  ):
+    existing_ids = {
+        prop.key
+        for prop in existing_cluster.storageResources.additionalProperties
+    }
+    updated_ids = {
+        prop.key for prop in cluster_patch.storageResources.additionalProperties
+    }
+    removed_storage_ids = existing_ids - updated_ids
+
+  existing_storage_configs = []
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+      and existing_cluster.orchestrator.slurm.nodeSets
+  ):
+    existing_storage_configs = (
+        existing_cluster.orchestrator.slurm.nodeSets[0].storageConfigs or []
+    )
+
+  filtered_existing_storage_configs = [
+      sc for sc in existing_storage_configs if sc.id not in removed_storage_ids
+  ]
+
+  existing_slurm_node_sets = None
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+  ):
+    existing_slurm_node_sets = existing_cluster.orchestrator.slurm.nodeSets
+  slurm_node_sets = _ConvertSlurmMessageToDict(existing_slurm_node_sets)
+  is_node_sets_updated = False
+  if args.IsSpecified("remove_slurm_node_sets"):
+    for node_set_id in args.remove_slurm_node_sets:
+      _RemoveKeyFromDictSpec(
+          node_set_id, slurm_node_sets, _SLURM_NODESET_NOT_FOUND_ERROR
+      )
+      is_node_sets_updated = True
+  if args.IsSpecified("update_slurm_node_sets"):
+    for node_set in args.update_slurm_node_sets:
+      node_set_id = node_set.get("id")
+      existing_node_set = _GetValueFromDictSpec(
+          node_set_id, slurm_node_sets, _SLURM_NODESET_NOT_FOUND_ERROR
+      )
+      node_set_keys = set(node_set.keys())
+      is_gke_node_set = (
+          getattr(existing_node_set, "containerNodePool", None) is not None
+      )
+      if is_gke_node_set and node_set_keys.intersection(_GCE_INSTANCE_FIELDS):
+        raise ClusterDirectorError(_UPDATE_GCE_FIELDS_ON_GKE_NODE_SET_ERROR)
+      elif not is_gke_node_set and node_set_keys.intersection(
+          _GKE_NODE_POOL_FIELDS
+      ):
+        raise ClusterDirectorError(_UPDATE_GKE_FIELDS_ON_GCE_NODE_SET_ERROR)
+      if "staticNodeCount" in node_set:
+        existing_node_set.staticNodeCount = node_set.get("staticNodeCount")
+      if "maxDynamicNodeCount" in node_set:
+        existing_node_set.maxDynamicNodeCount = node_set.get(
+            "maxDynamicNodeCount"
+        )
+      if "enablePublicIps" in node_set:
+        existing_node_set.enablePublicIps = node_set.get("enablePublicIps")
+      conf = {**node_set, **(node_set.get("computeInstance") or {})}
+      if "startupScript" in conf:
+        _GetOrCreateComputeInstance(message_module, existing_node_set)
+        existing_node_set.computeInstance.startupScript = _GetBashScript(
+            conf.get("startupScript")
+        )
+      if "labels" in conf:
+        _GetOrCreateComputeInstance(message_module, existing_node_set)
+        existing_node_set.computeInstance.labels = MakeLabels(
+            label_args=conf.get("labels"),
+            label_cls=message_module.ComputeInstanceSlurmNodeSet.LabelsValue,
+        )
+      if "startupScriptTimeout" in conf:
+        _GetOrCreateComputeInstance(message_module, existing_node_set)
+        existing_node_set.computeInstance.startupScriptTimeout = conf.get(
+            "startupScriptTimeout"
+        )
+      if "bootDisk" in conf:
+        if not is_gke_node_set:
+          compute_id = getattr(existing_node_set, "computeId", None)
+          if compute_id:
+            machine_type = _GetComputeMachineTypeFromCluster(
+                compute_id,
+                cluster_patch,
+                existing_cluster=existing_cluster,
+                use_existing_cluster=True,
+            )
+            _validator.ValidateBootDisk(machine_type, conf.get("bootDisk"))
+        _PatchBootDiskForNodeSet(
+            message_module,
+            existing_node_set=existing_node_set,
+            node_set_patch=conf,
+            cluster_ref=cluster_ref,
+        )
+      container_conf = node_set.get("containerNodePool") or {}
+      if (
+          "container-resource-labels" in node_set
+          or "resourceLabels" in container_conf
+      ):
+        _GetOrCreateContainerNodePool(message_module, existing_node_set)
+        label_args = (
+            container_conf.get("resourceLabels")
+            if "resourceLabels" in container_conf
+            else node_set.get("container-resource-labels")
+        )
+        existing_node_set.containerNodePool.resourceLabels = MakeLabels(
+            label_args=label_args,
+            label_cls=(
+                message_module.ContainerNodePoolSlurmNodeSet
+                .ResourceLabelsValue
+            ),
+        )
+      if (
+          "container-startup-script" in node_set
+          or "startupScript" in container_conf
+      ):
+        _GetOrCreateContainerNodePool(message_module, existing_node_set)
+        startup_script_arg = (
+            container_conf.get("startupScript")
+            if "startupScript" in container_conf
+            else node_set.get("container-startup-script")
+        )
+        existing_node_set.containerNodePool.startupScript = _GetBashScript(
+            startup_script_arg
+        )
+
+      if "storageConfigs" in node_set:
+        existing_mounts_by_id = {}
+        if existing_node_set.storageConfigs:
+          existing_mounts_by_id = {
+              esc.id: esc.localMount
+              for esc in existing_node_set.storageConfigs
+          }
+        _validator.ValidateStorageConfigs(
+            storage_resources_map,
+            node_set.get("storageConfigs"),
+            existing_mounts_by_id,
+        )
+        custom_storage_configs = [
+            message_module.StorageConfig(
+                id=sc.get("id"), localMount=sc.get("localMount")
+            )
+            for sc in node_set.get("storageConfigs")
+        ]
+        for ns in slurm_node_sets.values():
+          ns.storageConfigs = custom_storage_configs
+
+        if (
+            not slurm.loginNodes
+            and existing_cluster
+            and existing_cluster.orchestrator
+            and existing_cluster.orchestrator.slurm
+            and existing_cluster.orchestrator.slurm.loginNodes
+        ):
+          slurm.loginNodes = existing_cluster.orchestrator.slurm.loginNodes
+        if slurm.loginNodes:
+          slurm.loginNodes.storageConfigs = custom_storage_configs
+          update_mask.add("orchestrator.slurm.login_nodes")
+
+      if "config" in node_set:
+        node_config = node_set.get("config")
+        if not node_config:
+          existing_node_set.config = None
+        else:
+          _validator.ValidateSlurmNodeConfig(node_config)
+          if not existing_node_set.config and hasattr(
+              message_module, "SlurmNodeConfig"
+          ):
+            existing_node_set.config = message_module.SlurmNodeConfig()
+          if existing_node_set.config:
+            for k, v in node_config.items():
+              if hasattr(existing_node_set.config, k):
+                setattr(existing_node_set.config, k, v if v else None)
+
+      if "resourcePolicyConfig" in node_set:
+        _PatchResourcePolicyConfigForNodeSet(
+            message_module,
+            existing_node_set=existing_node_set,
+            resource_policy_config_patch=node_set.get("resourcePolicyConfig"),
+        )
+
+      slurm_node_sets[node_set_id] = existing_node_set
+      is_node_sets_updated = True
+  if args.IsSpecified("add_slurm_node_sets"):
+    for node_set in args.add_slurm_node_sets:
+      storage_configs_source = existing_cluster
+      if (
+          cluster_patch.storageResources
+          and cluster_patch.storageResources.additionalProperties
+      ):
+        storage_configs_source = cluster_patch
+      storage_configs = _GetStorageConfigs(
+          message_module,
+          storage_configs_source,
+          existing_storage_configs=filtered_existing_storage_configs,
+      )
+      node_set_id = node_set.get("id")
+      _validator.ValidateResourceID(node_set_id)
+      node_set_keys = set(node_set.keys())
+      node_set_type_str = node_set.get("type")
+      has_gke_fields = node_set_keys.intersection(_GKE_NODE_POOL_FIELDS)
+      is_gke_node_set = (
+          node_set_type_str == NodeSetType.GKE.value
+          or (node_set_type_str is None and has_gke_fields)
+      )
+      machine_type = None
+      if not is_gke_node_set:
+        compute_id = node_set.get("computeId")
+        machine_type = _GetComputeMachineTypeFromCluster(
+            compute_id,
+            cluster_patch,
+            existing_cluster=existing_cluster,
+            use_existing_cluster=True,
+        )
+      _AddKeyToDictSpec(
+          key=node_set_id,
+          dict_spec=slurm_node_sets,
+          value=_MakeSlurmNodeSet(
+              message_module,
+              node_set,
+              storage_configs,
+              cluster_ref,
+              machine_type=machine_type,
+          ),
+          exception_message=_SLURM_NODESET_ALREADY_EXISTS_ERROR,
+      )
+      is_node_sets_updated = True
+  if is_node_sets_updated:
+    slurm.nodeSets = list(slurm_node_sets.values())
+    if not slurm.nodeSets:
+      raise ClusterDirectorError("Slurm nodesets cannot be empty.")
+    update_mask.add("orchestrator.slurm.node_sets")
+
+  existing_slurm_partitions = None
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+  ):
+    existing_slurm_partitions = existing_cluster.orchestrator.slurm.partitions
+  slurm_partitions = _ConvertSlurmMessageToDict(existing_slurm_partitions)
+  is_partitions_updated = False
+  if args.IsSpecified("remove_slurm_partitions"):
+    for partition_id in args.remove_slurm_partitions:
+      _RemoveKeyFromDictSpec(
+          partition_id, slurm_partitions, _SLURM_PARTITION_NOT_FOUND_ERROR
+      )
+      is_partitions_updated = True
+  if args.IsSpecified("update_slurm_partitions"):
+    for partition in args.update_slurm_partitions:
+      partition_id = partition.get("id")
+      existing_partition = _GetValueFromDictSpec(
+          partition_id, slurm_partitions, _SLURM_PARTITION_NOT_FOUND_ERROR
+      )
+      if "nodeSetIds" in partition:
+        existing_partition.nodeSetIds = partition.get("nodeSetIds")
+      if "config" in partition:
+        partition_config = partition.get("config")
+        if not partition_config:
+          existing_partition.config = None
+        else:
+          if not existing_partition.config and hasattr(
+              message_module, "SlurmPartitionConfig"
+          ):
+            existing_partition.config = message_module.SlurmPartitionConfig()
+          if existing_partition.config:
+            for k, v in partition_config.items():
+              if hasattr(existing_partition.config, k):
+                setattr(existing_partition.config, k, v if v else None)
+      slurm_partitions[partition_id] = existing_partition
+      is_partitions_updated = True
+  if args.IsSpecified("add_slurm_partitions"):
+    for partition in args.add_slurm_partitions:
+      partition_id = partition.get("id")
+      _validator.ValidateResourceID(partition_id)
+      _AddKeyToDictSpec(
+          key=partition_id,
+          dict_spec=slurm_partitions,
+          value=_MakeSlurmPartition(message_module, partition),
+          exception_message=_SLURM_PARTITION_ALREADY_EXISTS_ERROR,
+      )
+      is_partitions_updated = True
+  if is_partitions_updated:
+    slurm.partitions = list(slurm_partitions.values())
+    if not slurm.partitions:
+      raise ClusterDirectorError("Slurm partitions cannot be empty.")
+    update_mask.add("orchestrator.slurm.partitions")
+
+  if args.IsSpecified("update_slurm_login_node"):
+    if (
+        not existing_cluster
+        or not existing_cluster.orchestrator
+        or not existing_cluster.orchestrator.slurm
+        or not existing_cluster.orchestrator.slurm.loginNodes
+    ):
+      raise ClusterDirectorError(
+          "Login node is not part of existing cluster spec and cannot be "
+          "updated."
+      )
+    login_nodes = existing_cluster.orchestrator.slurm.loginNodes
+    login_node_patch = args.update_slurm_login_node
+
+    if (count := login_node_patch.get("count")) is not None:
+      login_nodes.count = count
+    if "startupScript" in login_node_patch:
+      login_nodes.startupScript = _GetBashScript(
+          login_node_patch.get("startupScript")
+      )
+    if (boot_disk_patch := login_node_patch.get("bootDisk")) is not None:
+      boot_disk = login_nodes.bootDisk
+      if boot_disk is None:
+        boot_disk = message_module.BootDisk()
+      boot_disk.type = boot_disk_patch.get("type", boot_disk.type)
+      boot_disk.sizeGb = boot_disk_patch.get("sizeGb", boot_disk.sizeGb)
+      if hasattr(boot_disk, "image"):
+        boot_disk.image = boot_disk_patch.get("image", boot_disk.image)
+      if hasattr(boot_disk, "storagePools"):
+        storage_pools = boot_disk_patch.get("storagePools")
+        if storage_pools is not None:
+          boot_disk.storagePools = [
+              _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+          ]
+      login_nodes.bootDisk = boot_disk
+    slurm.loginNodes = login_nodes
+    update_mask.add("orchestrator.slurm.login_nodes")
+
+  if "storage_resources" in update_mask:
+    existing_storage_configs = []
+    if (
+        existing_cluster
+        and existing_cluster.orchestrator
+        and existing_cluster.orchestrator.slurm
+        and existing_cluster.orchestrator.slurm.nodeSets
+    ):
+      existing_storage_configs = existing_cluster.orchestrator.slurm.nodeSets[
+          0
+      ].storageConfigs
+
+    new_storage_configs = _GetStorageConfigs(
+        message_module, cluster_patch, filtered_existing_storage_configs
+    )
+
+    if not slurm.nodeSets and slurm_node_sets:
+      slurm.nodeSets = list(slurm_node_sets.values())
+
+    if slurm.nodeSets:
+      for ns in slurm.nodeSets:
+        if ns.storageConfigs:
+          ns.storageConfigs = [
+              sc for sc in ns.storageConfigs if sc.id not in removed_storage_ids
+          ]
+        if not ns.storageConfigs:
+          ns.storageConfigs = new_storage_configs
+        else:
+          existing_ids = {sc.id for sc in ns.storageConfigs}
+          for sc in new_storage_configs:
+            if sc.id not in existing_ids:
+              ns.storageConfigs.append(sc)
+      update_mask.add("orchestrator.slurm.node_sets")
+
+    if (
+        not slurm.loginNodes
+        and existing_cluster
+        and existing_cluster.orchestrator
+        and existing_cluster.orchestrator.slurm
+        and existing_cluster.orchestrator.slurm.loginNodes
+    ):
+      slurm.loginNodes = existing_cluster.orchestrator.slurm.loginNodes
+    if slurm.loginNodes:
+      node_sets = None
+      if slurm.nodeSets:
+        node_sets = slurm.nodeSets
+      elif (
+          existing_cluster
+          and existing_cluster.orchestrator
+          and existing_cluster.orchestrator.slurm
+      ):
+        node_sets = existing_cluster.orchestrator.slurm.nodeSets
+      if node_sets:
+        slurm.loginNodes.storageConfigs = node_sets[0].storageConfigs
+        # Verify that the storageConfig update is successfully applied to the
+        # login nodes
+        if slurm.loginNodes.storageConfigs != node_sets[0].storageConfigs:
+          raise ClusterDirectorError(
+              "Login node storage configurations must match node set"
+              " configurations."
+          )
+        update_mask.add("orchestrator.slurm.login_nodes")
+
+  # Prolog scripts
+  prolog_scripts = []
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+  ):
+    prolog_scripts = existing_cluster.orchestrator.slurm.prologBashScripts or []
+
+  is_prolog_updated = False
+  if args.IsSpecified("remove_slurm_prolog_scripts"):
+    prolog_scripts = [
+        s for s in prolog_scripts if s not in args.remove_slurm_prolog_scripts
+    ]
+    is_prolog_updated = True
+  if args.IsSpecified("add_slurm_prolog_scripts"):
+    prolog_scripts.extend(args.add_slurm_prolog_scripts)
+    is_prolog_updated = True
+
+  if is_prolog_updated:
+    slurm.prologBashScripts = prolog_scripts
+    update_mask.add("orchestrator.slurm.prolog_bash_scripts")
+
+  # Epilog scripts
+  epilog_scripts = []
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+  ):
+    epilog_scripts = existing_cluster.orchestrator.slurm.epilogBashScripts or []
+
+  is_epilog_updated = False
+  if args.IsSpecified("remove_slurm_epilog_scripts"):
+    epilog_scripts = [
+        s for s in epilog_scripts if s not in args.remove_slurm_epilog_scripts
+    ]
+    is_epilog_updated = True
+  if args.IsSpecified("add_slurm_epilog_scripts"):
+    epilog_scripts.extend(args.add_slurm_epilog_scripts)
+    is_epilog_updated = True
+
+  if is_epilog_updated:
+    slurm.epilogBashScripts = epilog_scripts
+    update_mask.add("orchestrator.slurm.epilog_bash_scripts")
+
+  # Task Prolog scripts (v1alpha only or safe check)
+  if args.IsKnownAndSpecified(
+      "remove_slurm_task_prolog_scripts"
+  ) or args.IsKnownAndSpecified("add_slurm_task_prolog_scripts"):
+    task_prolog_scripts = []
+    if (
+        existing_cluster
+        and existing_cluster.orchestrator
+        and existing_cluster.orchestrator.slurm
+    ):
+      task_prolog_scripts = (
+          existing_cluster.orchestrator.slurm.taskPrologBashScripts or []
+      )
+
+    is_task_prolog_updated = False
+    if args.IsKnownAndSpecified("remove_slurm_task_prolog_scripts"):
+      task_prolog_scripts = [
+          s
+          for s in task_prolog_scripts
+          if s not in args.remove_slurm_task_prolog_scripts
+      ]
+      is_task_prolog_updated = True
+    if args.IsKnownAndSpecified("add_slurm_task_prolog_scripts"):
+      task_prolog_scripts.extend(args.add_slurm_task_prolog_scripts)
+      is_task_prolog_updated = True
+
+    if is_task_prolog_updated:
+      slurm.taskPrologBashScripts = task_prolog_scripts
+      update_mask.add("orchestrator.slurm.task_prolog_bash_scripts")
+
+  # Task Epilog scripts (v1alpha only or safe check)
+  if args.IsKnownAndSpecified(
+      "remove_slurm_task_epilog_scripts"
+  ) or args.IsKnownAndSpecified("add_slurm_task_epilog_scripts"):
+    task_epilog_scripts = []
+    if (
+        existing_cluster
+        and existing_cluster.orchestrator
+        and existing_cluster.orchestrator.slurm
+    ):
+      task_epilog_scripts = (
+          existing_cluster.orchestrator.slurm.taskEpilogBashScripts or []
+      )
+
+    is_task_epilog_updated = False
+    if args.IsKnownAndSpecified("remove_slurm_task_epilog_scripts"):
+      task_epilog_scripts = [
+          s
+          for s in task_epilog_scripts
+          if s not in args.remove_slurm_task_epilog_scripts
+      ]
+      is_task_epilog_updated = True
+    if args.IsKnownAndSpecified("add_slurm_task_epilog_scripts"):
+      task_epilog_scripts.extend(args.add_slurm_task_epilog_scripts)
+      is_task_epilog_updated = True
+
+    if is_task_epilog_updated:
+      slurm.taskEpilogBashScripts = task_epilog_scripts
+      update_mask.add("orchestrator.slurm.task_epilog_bash_scripts")
+
+  if args.IsKnownAndSpecified("update_slurm_config"):
+    if not args.update_slurm_config:
+      slurm.config = None
+      update_mask.add("orchestrator.slurm.config")
+    else:
+      existing_config_dict = {}
+      if (
+          existing_cluster
+          and existing_cluster.orchestrator
+          and existing_cluster.orchestrator.slurm
+          and existing_cluster.orchestrator.slurm.config
+      ):
+        existing_config_dict = encoding.MessageToDict(
+            existing_cluster.orchestrator.slurm.config
+        )
+      for k, v in args.update_slurm_config.items():
+        if not v and not isinstance(v, (int, bool)):
+          existing_config_dict.pop(k, None)
+        elif isinstance(v, dict):
+          merged_subdict = dict(existing_config_dict.get(k, {}))
+          for sub_k, sub_v in v.items():
+            if not sub_v and not isinstance(sub_v, (int, bool)):
+              merged_subdict.pop(sub_k, None)
+            else:
+              merged_subdict[sub_k] = sub_v
+          if not merged_subdict:
+            existing_config_dict.pop(k, None)
+          else:
+            existing_config_dict[k] = merged_subdict
+        else:
+          existing_config_dict[k] = v
+      # Intentionally do not filter existing_config_dict by known local fields:
+      # since updateMask=orchestrator.slurm.config replaces the entire
+      # SlurmConfig submessage, silently stripping unrecognized fields from a
+      # newer server version would wipe them on the server. Failing loudly via
+      # DictToMessageWithErrorCheck prevents silent data loss on version skew.
+      slurm.config = messages_util.DictToMessageWithErrorCheck(
+          existing_config_dict, message_module.SlurmConfig
+      )
+      update_mask.add("orchestrator.slurm.config")
+  if args.IsKnownAndSpecified("enable_slurm_health_check"):
+    slurm.disableHealthCheckProgram = (
+        not args.enable_slurm_health_check
+    )
+    update_mask.add("orchestrator.slurm.disable_health_check_program")
+  if args.IsKnownAndSpecified("controller_version"):
+    _validator.ValidateControllerVersion(args.controller_version)
+    slurm.controllerVersion = args.controller_version
+    update_mask.add("orchestrator.slurm.controller_version")
+
+  # Validate that all slurm node sets have identical storage configurations
+  final_node_sets = None
+  if slurm.nodeSets:
+    final_node_sets = slurm.nodeSets
+  elif (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and existing_cluster.orchestrator.slurm
+  ):
+    final_node_sets = existing_cluster.orchestrator.slurm.nodeSets
+
+  if final_node_sets and len(final_node_sets) > 1:
+    first_ns = final_node_sets[0]
+    first_configs = first_ns.storageConfigs or []
+    first_configs_map = {sc.id: sc.localMount for sc in first_configs}
+    for ns in final_node_sets[1:]:
+      current_configs = ns.storageConfigs or []
+      current_configs_map = {sc.id: sc.localMount for sc in current_configs}
+      if len(first_configs_map) != len(current_configs_map):
+        raise ClusterDirectorError(
+            "All Slurm node sets must have identical storage configurations. "
+            f"Node set '{ns.id}' has a different number of storage configs "
+            f"than '{first_ns.id}'."
+        )
+      for sc_id, local_mount in first_configs_map.items():
+        if (
+            sc_id not in current_configs_map
+            or current_configs_map[sc_id] != local_mount
+        ):
+          raise ClusterDirectorError(
+              "All Slurm node sets must have identical storage configurations. "
+              f"Node set '{ns.id}' does not match '{first_ns.id}'."
+          )
+
+  return slurm
+
+
+def _GetDefaultComputeServiceAccountEmail(cluster_ref: Any = None) -> str:
+  """Returns the default Compute Engine service account email for the project."""
+  project_id = None
+  if cluster_ref and getattr(cluster_ref, "Parent", None):
+    parent = cluster_ref.Parent()
+    project_id = getattr(parent, "projectsId", None)
+  if not project_id:
+    raise ClusterDirectorError(
+        "Cluster reference is required to resolve the default Compute Engine"
+        " service account. Please specify serviceAccount.email for Managed"
+        " Instance Groups."
+    )
+  if str(project_id).isdigit():
+    project_number = str(project_id)
+  else:
+    project_number = projects_util.GetProjectNumber(project_id)
+  return f"{project_number}-compute@developer.gserviceaccount.com"
+
+
+def _MakeAdditionalDisk(
+    message_module: Any,
+    device_name: str,
+    disk_args: dict[str, Any],
+    cluster_ref: Any = None,
+) -> Any:
+  """Makes a Disk message for ManagedInstanceGroup.additionalDisks."""
+  _validator.ValidateAdditionalDisk(device_name, disk_args)
+  if any(disk_args.get(k) for k in ("existingDisk", "image", "snapshot")):
+    if not cluster_ref:
+      raise ClusterDirectorError(
+          "Cluster reference is required to resolve additional disk resource"
+          f" name for '{device_name}'."
+      )
+    project = cluster_ref.Parent().projectsId
+    if disk_args.get("existingDisk"):
+      return message_module.Disk(
+          existingDisk=f"projects/{project}/{disk_args['existingDisk']}"
+      )
+    disk_msg = message_module.Disk(
+        type=disk_args["type"], sizeGb=disk_args["sizeGb"]
+    )
+    if disk_args.get("image"):
+      disk_msg.image = f"projects/{project}/{disk_args['image']}"
+    else:
+      disk_msg.snapshot = f"projects/{project}/{disk_args['snapshot']}"
+    return disk_msg
+  return message_module.Disk(
+      type=disk_args["type"], sizeGb=disk_args["sizeGb"]
+  )
+
+
+def _MergeStringMap(
+    existing_map_msg: Any, patch_dict: Mapping[str, str], map_cls: Any
+) -> Any:
+  """Merges string map updates; empty patch clears, empty value removes key."""
+  if not patch_dict:
+    return None
+  merged = _ConvertMessageToDict(existing_map_msg)
+  for k, v in patch_dict.items():
+    if v == "":  # pylint: disable=g-explicit-bool-comparison
+      merged.pop(k, None)
+    else:
+      merged[k] = v
+  return MakeLabels(merged, map_cls)
+
+
+def _PatchAdditionalDisks(
+    message_module: Any,
+    disks_args: Mapping[str, Any] | None,
+    existing_disks_msg: Any = None,
+    cluster_ref: Any = None,
+    is_update: bool = False,
+) -> Any:
+  """Builds or merges ManagedInstanceGroup.AdditionalDisksValue."""
+  if not disks_args:
+    return None
+  merged = _ConvertMessageToDict(existing_disks_msg) if is_update else {}
+  for device_name, disk_args in disks_args.items():
+    if not disk_args:
+      if not is_update:
+        raise ClusterDirectorError(
+            f"Additional disk '{device_name}' configuration cannot be empty."
+        )
+      merged.pop(device_name, None)
+    else:
+      merged[device_name] = _MakeAdditionalDisk(
+          message_module, device_name, dict(disk_args), cluster_ref=cluster_ref
+      )
+  return MakeLabels(
+      merged, message_module.ManagedInstanceGroup.AdditionalDisksValue
+  )
+
+
+def _MakeManagedInstanceGroup(
+    message_module,
+    mig: Mapping[str, Any],
+    storage_configs,
+    cluster_ref=None,
+    machine_type=None,
+):
+  """Makes a ManagedInstanceGroup message from a dict."""
+  _validator.ValidateMigTargetSize(mig.get("id"), mig.get("targetSize"))
+  if "storageConfigs" in mig:
+    storage_configs = [
+        message_module.StorageConfig(
+            id=sc.get("id"), localMount=sc.get("localMount")
+        )
+        for sc in mig.get("storageConfigs")
+    ]
+  mig_msg = message_module.ManagedInstanceGroup(
+      computeId=mig.get("computeId"),
+      targetSize=mig.get("targetSize"),
+      enableOsLogin=mig.get("enableOsLogin"),
+      enablePublicIps=mig.get("enablePublicIps"),
+      startupScript=_GetBashScript(mig.get("startupScript")),
+      startupScriptTimeout=mig.get("startupScriptTimeout") or None,
+      labels=MakeLabels(
+          mig.get("labels"), message_module.ManagedInstanceGroup.LabelsValue
+      ),
+      metadata=MakeLabels(
+          mig.get("metadata"), message_module.ManagedInstanceGroup.MetadataValue
+      ),
+      additionalDisks=_PatchAdditionalDisks(
+          message_module, mig.get("additionalDisks"), cluster_ref=cluster_ref
+      ),
+      storageConfigs=storage_configs,
+  )
+  if mig.get("acceleratorTopology"):
+    mig_msg.resourcePolicyConfig = message_module.ResourcePolicyConfig(
+        acceleratorTopology=mig.get("acceleratorTopology")
+    )
+  boot_disk_args = mig.get("bootDisk")
+  if boot_disk_args:
+    _validator.ValidateBootDisk(machine_type, boot_disk_args)
+    boot_disk = message_module.BootDisk(
+        type=boot_disk_args.get("type"),
+        sizeGb=boot_disk_args.get("sizeGb"),
+    )
+    if hasattr(boot_disk, "image"):
+      boot_disk.image = boot_disk_args.get("image")
+    if hasattr(boot_disk, "storagePools"):
+      storage_pools = boot_disk_args.get("storagePools")
+      if storage_pools is not None:
+        boot_disk.storagePools = [
+            _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+        ]
+    mig_msg.bootDisk = boot_disk
+  sa_args = mig.get("serviceAccount") or {}
+  email = sa_args.get("email") or _GetDefaultComputeServiceAccountEmail(
+      cluster_ref
+  )
+  scopes = sa_args.get("scopes") or []
+  mig_msg.serviceAccount = message_module.ServiceAccount(
+      email=email,
+      scopes=scopes,
+  )
+  return mig_msg
+
+
+def _MakeExistingInstances(
+    message_module,
+    existing_instance: Mapping[str, Any],
+    cluster_ref=None,
+):
+  """Makes an ExistingInstances message from a dict."""
+  ei_id = existing_instance.get("id")
+  source_key = _validator.ValidateExistingInstancesSource(
+      ei_id, dict(existing_instance)
+  )
+  source_value = existing_instance.get(source_key)
+  if source_key == "project":
+    full_source = f"projects/{source_value}"
+  else:
+    project = cluster_ref.Parent().projectsId
+    full_source = f"projects/{project}/{source_value}"
+  ei_msg = message_module.ExistingInstances()
+  setattr(ei_msg, source_key, full_source)
+  if existing_instance.get("labels"):
+    ei_msg.labels = MakeLabels(
+        existing_instance.get("labels"),
+        message_module.ExistingInstances.LabelsValue,
+    )
+  return ei_msg
+
+
+def MakeClusterComputeEngineOrchestrator(
+    args, message_module, cluster, cluster_ref=None
+):
+  """Makes a ComputeEngineOrchestrator message from args."""
+  compute_engine = message_module.ComputeEngineOrchestrator()
+  default_storage_configs = _GetStorageConfigs(message_module, cluster)
+  storage_resources_map = {}
+  if cluster and cluster.storageResources:
+    for prop in cluster.storageResources.additionalProperties:
+      storage_resources_map[prop.key] = prop.value
+  migs_cls = message_module.ComputeEngineOrchestrator.ManagedInstanceGroupsValue
+  migs_dict = {}
+  if _validator.IsFlagSpecified(args, "managed_instance_groups"):
+    for mig in args.managed_instance_groups:
+      mig_id = mig.get("id")
+      _validator.ValidateResourceID(mig_id)
+      compute_id = mig.get("computeId")
+      machine_type = None
+      if compute_id:
+        machine_type = _GetComputeMachineTypeFromArgs(args, compute_id)
+      if "storageConfigs" in mig:
+        _validator.ValidateStorageConfigs(
+            storage_resources_map, mig.get("storageConfigs"), {}
+        )
+      mig_msg = _MakeManagedInstanceGroup(
+          message_module,
+          mig,
+          default_storage_configs,
+          cluster_ref=cluster_ref,
+          machine_type=machine_type,
+      )
+      _AddKeyToDictSpec(
+          mig_id, migs_dict, mig_msg, _MIG_ALREADY_EXISTS_ERROR
+      )
+  if migs_dict:
+    compute_engine.managedInstanceGroups = migs_cls(
+        additionalProperties=[
+            migs_cls.AdditionalProperty(key=k, value=v)
+            for k, v in sorted(migs_dict.items())
+        ]
+    )
+  if _validator.IsFlagSpecified(args, "existing_instances"):
+    existing_instances_cls = (
+        message_module.ComputeEngineOrchestrator.ExistingInstancesValue
+    )
+    existing_instances_dict = {}
+    for ei in args.existing_instances:
+      ei_id = ei.get("id")
+      _validator.ValidateResourceID(ei_id)
+      ei_msg = _MakeExistingInstances(
+          message_module, ei, cluster_ref=cluster_ref
+      )
+      _AddKeyToDictSpec(
+          ei_id,
+          existing_instances_dict,
+          ei_msg,
+          _EXISTING_INSTANCES_ALREADY_EXISTS_ERROR,
+      )
+    if existing_instances_dict:
+      compute_engine.existingInstances = existing_instances_cls(
+          additionalProperties=[
+              existing_instances_cls.AdditionalProperty(key=k, value=v)
+              for k, v in sorted(existing_instances_dict.items())
+          ]
+      )
+  return compute_engine
+
+
+def MakeClusterComputeEngineOrchestratorPatch(
+    args,
+    message_module,
+    existing_cluster,
+    cluster_patch,
+    update_mask,
+    cluster_ref=None,
+):
+  """Makes a ComputeEngineOrchestrator patch message."""
+  compute_engine = message_module.ComputeEngineOrchestrator()
+  migs_cls = message_module.ComputeEngineOrchestrator.ManagedInstanceGroupsValue
+
+  storage_resources_map = {}
+  if existing_cluster and existing_cluster.storageResources:
+    for prop in existing_cluster.storageResources.additionalProperties:
+      storage_resources_map[prop.key] = prop.value
+  if cluster_patch and cluster_patch.storageResources:
+    for prop in cluster_patch.storageResources.additionalProperties:
+      storage_resources_map[prop.key] = prop.value
+
+  removed_storage_ids = set()
+  if (
+      existing_cluster
+      and existing_cluster.storageResources
+      and cluster_patch
+      and cluster_patch.storageResources
+  ):
+    existing_ids = {
+        prop.key
+        for prop in existing_cluster.storageResources.additionalProperties
+    }
+    updated_ids = {
+        prop.key for prop in cluster_patch.storageResources.additionalProperties
+    }
+    removed_storage_ids = existing_ids - updated_ids
+
+  existing_migs_msg = None
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and getattr(existing_cluster.orchestrator, "computeEngine", None)
+  ):
+    existing_migs_msg = (
+        existing_cluster.orchestrator.computeEngine.managedInstanceGroups
+    )
+  migs_dict = _ConvertMessageToDict(existing_migs_msg)
+
+  existing_storage_configs = []
+  if migs_dict:
+    first_mig = next(iter(migs_dict.values()))
+    existing_storage_configs = first_mig.storageConfigs or []
+
+  filtered_existing_storage_configs = [
+      sc for sc in existing_storage_configs if sc.id not in removed_storage_ids
+  ]
+
+  is_migs_updated = False
+  if _validator.IsFlagSpecified(args, "remove_managed_instance_groups"):
+    for mig_id in args.remove_managed_instance_groups:
+      _RemoveKeyFromDictSpec(
+          mig_id, migs_dict, _MIG_NOT_FOUND_ERROR
+      )
+      is_migs_updated = True
+
+  if _validator.IsFlagSpecified(args, "update_managed_instance_groups"):
+    for mig in args.update_managed_instance_groups:
+      mig_id = mig.get("id")
+      existing_mig = _GetValueFromDictSpec(
+          mig_id, migs_dict, _MIG_NOT_FOUND_ERROR
+      )
+      if "computeId" in mig:
+        _GetComputeMachineTypeFromCluster(
+            mig.get("computeId"),
+            cluster_patch,
+            existing_cluster=existing_cluster,
+            use_existing_cluster=True,
+        )
+        existing_mig.computeId = mig.get("computeId")
+      if "targetSize" in mig:
+        _validator.ValidateMigTargetSize(mig_id, mig.get("targetSize"))
+        existing_mig.targetSize = mig.get("targetSize")
+      if "enableOsLogin" in mig:
+        existing_mig.enableOsLogin = mig.get("enableOsLogin")
+      if "enablePublicIps" in mig:
+        existing_mig.enablePublicIps = mig.get("enablePublicIps")
+      if "startupScript" in mig:
+        existing_mig.startupScript = _GetBashScript(mig.get("startupScript"))
+      if "startupScriptTimeout" in mig:
+        existing_mig.startupScriptTimeout = (
+            mig.get("startupScriptTimeout") or None
+        )
+      if "labels" in mig:
+        existing_mig.labels = _MergeStringMap(
+            existing_mig.labels,
+            mig.get("labels"),
+            message_module.ManagedInstanceGroup.LabelsValue,
+        )
+      if "metadata" in mig:
+        existing_mig.metadata = _MergeStringMap(
+            existing_mig.metadata,
+            mig.get("metadata"),
+            message_module.ManagedInstanceGroup.MetadataValue,
+        )
+      if "additionalDisks" in mig:
+        existing_mig.additionalDisks = _PatchAdditionalDisks(
+            message_module,
+            mig.get("additionalDisks"),
+            existing_mig.additionalDisks,
+            cluster_ref=cluster_ref,
+            is_update=True,
+        )
+      if "acceleratorTopology" in mig:
+        if not existing_mig.resourcePolicyConfig:
+          existing_mig.resourcePolicyConfig = (
+              message_module.ResourcePolicyConfig()
+          )
+        existing_mig.resourcePolicyConfig.acceleratorTopology = mig.get(
+            "acceleratorTopology"
+        )
+      if "bootDisk" in mig:
+        compute_id = getattr(existing_mig, "computeId", None)
+        machine_type = None
+        if compute_id:
+          machine_type = _GetComputeMachineTypeFromCluster(
+              compute_id,
+              cluster_patch,
+              existing_cluster=existing_cluster,
+              use_existing_cluster=True,
+          )
+        _validator.ValidateBootDisk(machine_type, mig.get("bootDisk"))
+        boot_disk_patch = mig.get("bootDisk")
+        boot_disk = existing_mig.bootDisk
+        if boot_disk is None:
+          boot_disk = message_module.BootDisk()
+        boot_disk.type = boot_disk_patch.get("type", boot_disk.type)
+        boot_disk.sizeGb = boot_disk_patch.get("sizeGb", boot_disk.sizeGb)
+        if hasattr(boot_disk, "image"):
+          boot_disk.image = boot_disk_patch.get("image", boot_disk.image)
+        if hasattr(boot_disk, "storagePools"):
+          storage_pools = boot_disk_patch.get("storagePools")
+          if storage_pools is not None:
+            boot_disk.storagePools = [
+                _GetStoragePoolName(cluster_ref, p) for p in storage_pools
+            ]
+        existing_mig.bootDisk = boot_disk
+      if "storageConfigs" in mig:
+        existing_mounts_by_id = {}
+        if existing_mig.storageConfigs:
+          existing_mounts_by_id = {
+              esc.id: esc.localMount for esc in existing_mig.storageConfigs
+          }
+        _validator.ValidateStorageConfigs(
+            storage_resources_map,
+            mig.get("storageConfigs"),
+            existing_mounts_by_id,
+        )
+        existing_mig.storageConfigs = [
+            message_module.StorageConfig(
+                id=sc.get("id"), localMount=sc.get("localMount")
+            )
+            for sc in mig.get("storageConfigs")
+        ]
+      migs_dict[mig_id] = existing_mig
+      is_migs_updated = True
+
+  if _validator.IsFlagSpecified(args, "add_managed_instance_groups"):
+    for mig in args.add_managed_instance_groups:
+      storage_configs_source = existing_cluster
+      if (
+          cluster_patch.storageResources
+          and cluster_patch.storageResources.additionalProperties
+      ):
+        storage_configs_source = cluster_patch
+      storage_configs = _GetStorageConfigs(
+          message_module,
+          storage_configs_source,
+          existing_storage_configs=filtered_existing_storage_configs,
+      )
+      mig_id = mig.get("id")
+      _validator.ValidateResourceID(mig_id)
+      compute_id = mig.get("computeId")
+      machine_type = None
+      if compute_id:
+        machine_type = _GetComputeMachineTypeFromCluster(
+            compute_id,
+            cluster_patch,
+            existing_cluster=existing_cluster,
+            use_existing_cluster=True,
+        )
+      if "storageConfigs" in mig:
+        _validator.ValidateStorageConfigs(
+            storage_resources_map, mig.get("storageConfigs"), {}
+        )
+      mig_msg = _MakeManagedInstanceGroup(
+          message_module,
+          mig,
+          storage_configs,
+          cluster_ref=cluster_ref,
+          machine_type=machine_type,
+      )
+      _AddKeyToDictSpec(
+          mig_id, migs_dict, mig_msg, _MIG_ALREADY_EXISTS_ERROR
+      )
+      is_migs_updated = True
+
+  if "storage_resources" in update_mask and migs_dict:
+    new_storage_configs = _GetStorageConfigs(
+        message_module, cluster_patch, filtered_existing_storage_configs
+    )
+    for mig in migs_dict.values():
+      if mig.storageConfigs:
+        mig.storageConfigs = [
+            sc for sc in mig.storageConfigs if sc.id not in removed_storage_ids
+        ]
+      if not mig.storageConfigs:
+        mig.storageConfigs = new_storage_configs
+      else:
+        existing_ids = {sc.id for sc in mig.storageConfigs}
+        for sc in new_storage_configs:
+          if sc.id not in existing_ids:
+            mig.storageConfigs.append(sc)
+    is_migs_updated = True
+
+  if is_migs_updated:
+    compute_engine.managedInstanceGroups = migs_cls(
+        additionalProperties=[
+            migs_cls.AdditionalProperty(key=k, value=v)
+            for k, v in sorted(migs_dict.items())
+        ]
+    )
+    update_mask.add("orchestrator.compute_engine.managed_instance_groups")
+
+  existing_ei_msg = None
+  if (
+      existing_cluster
+      and existing_cluster.orchestrator
+      and getattr(existing_cluster.orchestrator, "computeEngine", None)
+  ):
+    existing_ei_msg = getattr(
+        existing_cluster.orchestrator.computeEngine, "existingInstances", None
+    )
+  ei_dict = _ConvertMessageToDict(existing_ei_msg)
+  is_ei_updated = False
+  if _validator.IsFlagSpecified(args, "remove_existing_instances"):
+    for ei_id in args.remove_existing_instances:
+      _RemoveKeyFromDictSpec(
+          ei_id, ei_dict, _EXISTING_INSTANCES_NOT_FOUND_ERROR
+      )
+      is_ei_updated = True
+
+  if _validator.IsFlagSpecified(args, "add_existing_instances"):
+    for ei in args.add_existing_instances:
+      ei_id = ei.get("id")
+      _validator.ValidateResourceID(ei_id)
+      ei_msg = _MakeExistingInstances(
+          message_module, ei, cluster_ref=cluster_ref
+      )
+      _AddKeyToDictSpec(
+          ei_id, ei_dict, ei_msg, _EXISTING_INSTANCES_ALREADY_EXISTS_ERROR
+      )
+      is_ei_updated = True
+
+  if is_ei_updated:
+    ei_cls = message_module.ComputeEngineOrchestrator.ExistingInstancesValue
+    compute_engine.existingInstances = ei_cls(
+        additionalProperties=[
+            ei_cls.AdditionalProperty(key=k, value=v)
+            for k, v in sorted(ei_dict.items())
+        ]
+    )
+    update_mask.add("orchestrator.compute_engine.existing_instances")
+
+  return compute_engine

@@ -2,7 +2,7 @@
   "name": "agape-sovereign",
   "version": "1.0.0",
   "private": true,
-  "description": "Agape Sovereign AI \u2014 Digital Identity Defense Enclave",
+  "description": "Agape Sovereign AI — Digital Identity Defense Enclave",
   "scripts": {
     "commit": "git add -A && git commit",
     "devcommit": "npm run lint && npm run commit",
@@ -26,5 +26,8 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "brew": "^0.0.8"
   }
 }

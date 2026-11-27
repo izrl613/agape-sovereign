@@ -1,0 +1,42 @@
+- release_tracks: [ALPHA, BETA, GA]
+  hints:
+    read_only: true
+  help_text:
+    brief: List Cloud Backup and DR restore templates.
+    description: List restore templates in the project.
+    examples: |
+      To list restore templates for all locations, run:
+
+        $ {command}
+
+      To list restore templates in location `us-central1`, run:
+
+        $ {command} --location=us-central1
+
+  request:
+    GA:
+      api_version: v1
+    BETA:
+      api_version: v1beta
+    ALPHA:
+      api_version: v1alpha
+    collection: backupdr.projects.locations.restoreTemplates
+
+  response:
+    id_field: name
+
+  arguments:
+    resource:
+      help_text: Location to list restore templates from.
+      spec: !REF googlecloudsdk.command_lib.backupdr.resources:locationDefaultGlobal
+      is_positional: false
+
+  output:
+    format: |
+      table(
+        name:label=NAME:sort=1,
+        resourceType,
+        backupSelectionConfig.dataSource:label=DATA_SOURCE,
+        state,
+        createTime
+      )

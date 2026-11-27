@@ -1,0 +1,77 @@
+$schema: "http://json-schema.org/draft-06/schema#"
+
+title: networkservices v1 HeaderMatch export schema
+description: A gcloud export/import command YAML validation schema.
+type: object
+required:
+- headerName
+additionalProperties: false
+properties:
+  COMMENT:
+    type: object
+    description: User specified info ignored by gcloud import.
+    additionalProperties: false
+    properties:
+      template-id:
+        type: string
+      region:
+        type: string
+      description:
+        type: string
+      date:
+        type: string
+      version:
+        type: string
+  UNKNOWN:
+    type: array
+    description: Unknown API fields that cannot be imported.
+    items:
+      type: string
+  exactMatch:
+    description: |-
+      The value of the header must exactly match contents of `exact_match`. Only
+      one of `exact_match`, `prefix_match`, `suffix_match`, `regex_match`, or
+      `present_match` must be set.
+    type: string
+  headerName:
+    description: |-
+      The header name to match on. The `:method` pseudo- header may be used to
+      match on the request HTTP method.
+    type: string
+  invertMatch:
+    description: |-
+      If set to `false`, HeaderMatch is considered a match when the match
+      criteria above are met. If set to `true`, `HeaderMatch` is considered a
+      match when the match criteria above are not met. The default is `false`.
+    type: boolean
+  prefixMatch:
+    description: |-
+      The value of the header must start with the contents of `prefix_match`.
+      Only one of `exact_match`, `prefix_match`, `suffix_match`, `regex_match`,
+      or `present_match` must be set.
+    type: string
+  presentMatch:
+    description: |-
+      A header with the contents of `header_name` must exist. The match takes
+      place whether or not the request's header has a value. Only one of
+      `exact_match`, `prefix_match`, `suffix_match`, `regex_match`, or
+      `present_match` must be set.
+    type: boolean
+  regexMatch:
+    description: |-
+      The value of the header (not the header name) must match the regular
+      expression specified in `regex_match`. `regex_match` must match the entire
+      header value. The value must be between 1 and 1024 characters (inclusive)
+      and must conform to RE2 specifications. Capture groups cannot be nested or
+      repeated, contain `.*`, `.+`, or `.?`, or be combined with `.*`, `.+`, or
+      `.?` in the same sequence. Repetitions cannot be nested. Character classes
+      cannot contain `/` or non-ASCII characters. Only one of `exact_match`,
+      `prefix_match`, `suffix_match`, `regex_match`, or `present_match` must be
+      set.
+    type: string
+  suffixMatch:
+    description: |-
+      The value of the header must end with the contents of `suffix_match`. Only
+      one of `exact_match`, `prefix_match`, `suffix_match`, `regex_match`, or
+      `present_match` must be set.
+    type: string

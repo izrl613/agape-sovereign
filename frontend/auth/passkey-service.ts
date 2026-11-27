@@ -28,10 +28,23 @@ export type AuthMethod = 'PASSKEY' | 'GOOGLE' | 'ANON';
 export interface PasskeyResult {
   userId: string;
   email: string;
+  /** Registered or verified credential ID (base64url). */
+  credentialId?: string;
   /** Firebase custom token / session token returned by the backend, if any. */
   token?: string;
   /** Indicates if this was a hardware key vs platform authenticator */
   credentialType?: 'platform' | 'cross-platform' | 'unknown';
+}
+
+export interface RegisteredPasskey {
+  credentialID: string;
+  label: string;
+  transports: string[];
+  credentialDeviceType: string;
+  credentialBackedUp: boolean;
+  rpId: string;
+  createdAt: string | null;
+  lastUsedAt: string | null;
 }
 
 /**
@@ -204,7 +217,7 @@ export class PasskeyService {
    * @param email User's email address — must be valid and not empty
    * @returns Promise<PasskeyResult> resolves on success with user info & token
    */
-  static async register(email: string): Promise<PasskeyResult> {
+  static async register(email: string, label?: string): Promise<PasskeyResult> {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
       throw new Error('Enter your email first so the passkey can be bound to it.');
@@ -260,7 +273,11 @@ export class PasskeyService {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...(await csrfHeaders()) },
-        body: JSON.stringify({ ...attestation, email: normalizedEmail }),
+        body: JSON.stringify({
+          ...attestation,
+          email: normalizedEmail,
+          ...(label?.trim() ? { label: label.trim() } : {}),
+        }),
       });
 
       if (!verifyRes.ok) {
@@ -280,6 +297,7 @@ export class PasskeyService {
       return {
         userId: data.userId ?? data.uid,
         email: data.email ?? normalizedEmail,
+        credentialId: data.credentialId,
         token: data.token ?? data.customToken,
         credentialType: this.determineCredentialType(data),
       };
@@ -323,6 +341,36 @@ export class PasskeyService {
       }
     } catch {
       // CSRF refresh failure is non-critical — next fetch will get a fresh one
+    }
+  }
+
+  /** Lists registered passkeys for the currently authenticated Firebase user. */
+  static async listPasskeys(idToken: string): Promise<RegisteredPasskey[]> {
+    const res = await fetch(`${BASE}/passkeys`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { Authorization: `Bearer ${idToken}` },
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to load passkeys (HTTP ${res.status})`);
+    }
+    const data = await res.json();
+    return Array.isArray(data.passkeys) ? data.passkeys : [];
+  }
+
+  /** Revokes a registered passkey by credentialId for the authenticated user. */
+  static async deletePasskey(credentialId: string, idToken: string): Promise<void> {
+    const res = await fetch(`${BASE}/passkeys/${encodeURIComponent(credentialId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        ...(await csrfHeaders()),
+      },
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Failed to remove passkey (HTTP ${res.status})`);
     }
   }
 }

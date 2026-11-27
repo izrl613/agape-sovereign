@@ -1,0 +1,136 @@
+# -*- coding: utf-8 -*-
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+from __future__ import annotations
+
+from typing import MutableMapping, MutableSequence
+
+import proto  # type: ignore
+
+from googlecloudsdk.generated_clients.gapic_clients.run_v2.types import k8s_min
+
+
+__protobuf__ = proto.module(
+    package='google.cloud.run.v2',
+    manifest={
+        'UploadSourceRequest',
+        'UploadSourceResponse',
+    },
+)
+
+
+class UploadSourceRequest(proto.Message):
+    r"""The request message for the UploadSource method.
+
+    This message has `oneof`_ fields (mutually exclusive fields).
+    For each oneof, at most one member field can be set at the same time.
+    Setting any member of the oneof automatically clears all other
+    members.
+
+    .. _oneof: https://proto-plus-python.readthedocs.io/en/stable/fields.html#oneofs-mutually-exclusive-fields
+
+    Attributes:
+        parent (str):
+            Required. The project and location in which the source
+            archive should be uploaded to, specified in the format
+            ``projects/*/locations/*``.
+        service (str):
+            The name of Cloud Run Service upload source
+            archive will be used for.
+
+            This field is a member of `oneof`_ ``target``.
+        worker_pool (str):
+            The name of Cloud Run Worker Pool upload
+            source archive will be used for.
+
+            This field is a member of `oneof`_ ``target``.
+        job (str):
+            The name of Cloud Run Job upload source
+            archive will be used for.
+
+            This field is a member of `oneof`_ ``target``.
+        instance (str):
+            The name of Cloud Run Instance upload source
+            archive will be used for.
+
+            This field is a member of `oneof`_ ``target``.
+        container_id (str):
+            Optional. The Container name the upload
+            source archive will be used for. When specified,
+            the source archive will be uploaded to a Cloud
+            Storage object with the container name in the
+            path. This field helps to organize the uploaded
+            source archive when a single Cloud Run resource
+            has multiple containers. Allowed characters are
+            lowercase letters, digits, hyphens, and periods;
+            must begin and end with a letter or digit; and
+            must be no longer than 63 characters.
+        encryption_key (str):
+            Optional. A reference to a customer managed
+            encryption key (CMEK) to use to encrypt the
+            uploaded source archive in Cloud Storage.
+    """
+
+    parent: str = proto.Field(
+        proto.STRING,
+        number=1,
+    )
+    service: str = proto.Field(
+        proto.STRING,
+        number=2,
+        oneof='target',
+    )
+    worker_pool: str = proto.Field(
+        proto.STRING,
+        number=7,
+        oneof='target',
+    )
+    job: str = proto.Field(
+        proto.STRING,
+        number=8,
+        oneof='target',
+    )
+    instance: str = proto.Field(
+        proto.STRING,
+        number=9,
+        oneof='target',
+    )
+    container_id: str = proto.Field(
+        proto.STRING,
+        number=10,
+    )
+    encryption_key: str = proto.Field(
+        proto.STRING,
+        number=3,
+    )
+
+
+class UploadSourceResponse(proto.Message):
+    r"""The response message for the UploadSource method.
+
+    Attributes:
+        cloud_storage_source (googlecloudsdk.generated_clients.gapic_clients.run_v2.types.SourceCode.CloudStorageSource):
+            The Cloud Storage object path the source
+            archive is uploaded to.
+    """
+
+    cloud_storage_source: k8s_min.SourceCode.CloudStorageSource = proto.Field(
+        proto.MESSAGE,
+        number=3,
+        message=k8s_min.SourceCode.CloudStorageSource,
+    )
+
+
+__all__ = tuple(sorted(__protobuf__.manifest))

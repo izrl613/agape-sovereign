@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eval Review Queue</title>
+  <style>
+    :root {
+      --bg: #0B1020;
+      --surface: #121A33;
+      --surface-2: #182344;
+      --border: #263563;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --accent: #00D4FF;
+      --pass: #10B981;
+      --fail: #EF4444;
+      --flag: #FF7A18;
+      --skip: #64748B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .badge {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--accent);
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="text"], select, textarea {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary {
+      background: var(--accent);
+      color: #06101F;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    .progress-bar-wrap {
+      height: 4px;
+      background: var(--surface-2);
+      width: 100%;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FF2E9F, #00D4FF, #FF7A18);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+    main {
+      max-width: 1040px;
+      margin: 24px auto;
+      padding: 0 20px 60px;
+    }
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pill {
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin: 14px 0 6px;
+      font-weight: 600;
+    }
+    pre {
+      margin: 0;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    .label-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .label-btn {
+      padding: 8px 16px;
+      font-weight: 600;
+      border-width: 2px;
+    }
+    .label-btn.active[data-label="pass"] { background: rgba(16,185,129,0.2); border-color: var(--pass); color: var(--pass); }
+    .label-btn.active[data-label="fail"] { background: rgba(239,68,68,0.2); border-color: var(--fail); color: var(--fail); }
+    .label-btn.active[data-label="flag"] { background: rgba(255,122,24,0.2); border-color: var(--flag); color: var(--flag); }
+    .label-btn.active[data-label="skip"] { background: rgba(100,116,139,0.2); border-color: var(--skip); color: var(--text); }
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+    }
+    .shortcuts {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    kbd {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 11px;
+      color: var(--text);
+    }
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Eval Review Queue</h1>
+      <span class="badge" id="run-badge">Loading...</span>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="reviewer-input" placeholder="Your name (e.g. Aaron)" style="width: 160px;" />
+      <select id="filter-select">
+        <option value="all">All</option>
+        <option value="unreviewed">Unreviewed</option>
+        <option value="pass">Pass</option>
+        <option value="fail">Fail</option>
+        <option value="flag">Flagged</option>
+        <option value="skip">Skipped</option>
+      </select>
+      <label for="file-input" style="cursor:pointer;">
+        <button type="button" onclick="document.getElementById('file-input').click()">Load Run File</button>
+      </label>
+      <input type="file" id="file-input" accept=".json,.jsonl" style="display:none;" />
+      <button type="button" id="export-json-btn" class="primary">Export JSON</button>
+      <button type="button" id="export-csv-btn">Export CSV</button>
+    </div>
+  </header>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+
+  <main>
+    <div class="nav-row">
+      <div>
+        <button type="button" id="prev-btn">← Prev</button>
+        <button type="button" id="next-btn">Next →</button>
+        <span id="counter-text" style="margin-left: 10px; font-size: 13px; color: var(--muted);">0 / 0</span>
+      </div>
+      <div id="stats-text" style="font-size: 13px; color: var(--muted);"></div>
+    </div>
+
+    <div id="example-container" class="card">
+      <div class="empty-state">Loading sample run...</div>
+    </div>
+
+    <div class="card" id="review-controls" style="display:none;">
+      <div class="section-label" style="margin-top:0;">Label</div>
+      <div class="label-buttons">
+        <button type="button" class="label-btn" data-label="pass">Pass (1)</button>
+        <button type="button" class="label-btn" data-label="fail">Fail (2)</button>
+        <button type="button" class="label-btn" data-label="flag">Flag (3)</button>
+        <button type="button" class="label-btn" data-label="skip">Skip (S)</button>
+      </div>
+
+      <div class="section-label">Comment</div>
+      <textarea id="comment-input" placeholder="Leave notes on why this passed, failed, or needs follow-up..."></textarea>
+
+      <div class="shortcuts">
+        Shortcuts: <kbd>1</kbd> Pass · <kbd>2</kbd> Fail · <kbd>3</kbd> Flag · <kbd>S</kbd> Skip · <kbd>C</kbd> Comment · <kbd>←</kbd>/<kbd>→</kbd> Navigate
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let runData = { run_id: 'unknown', examples: [] };
+    let reviews = {};
+    let filteredIndices = [];
+    let currentPos = 0;
+
+    const reviewerInput = document.getElementById('reviewer-input');
+    const filterSelect = document.getElementById('filter-select');
+    const runBadge = document.getElementById('run-badge');
+    const progressFill = document.getElementById('progress-fill');
+    const counterText = document.getElementById('counter-text');
+    const statsText = document.getElementById('stats-text');
+    const exampleContainer = document.getElementById('example-container');
+    const reviewControls = document.getElementById('review-controls');
+    const commentInput = document.getElementById('comment-input');
+
+    reviewerInput.value = localStorage.getItem('eval_reviewer_name') || '';
+    reviewerInput.addEventListener('input', () => {
+      localStorage.setItem('eval_reviewer_name', reviewerInput.value.trim());
+    });
+
+    function storageKey() {
+      return `eval_reviews_${runData.run_id || 'default'}`;
+    }
+
+    function loadSavedReviews() {
+      try {
+        reviews = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+      } catch {
+        reviews = {};
+      }
+    }
+
+    function saveReviews() {
+      localStorage.setItem(storageKey(), JSON.stringify(reviews));
+      updateStats();
+    }
+
+    function parseRunText(text, filename) {
+      const trimmed = text.trim();
+      if (filename.endsWith('.jsonl') || (!trimmed.startsWith('{') && !trimmed.startsWith('['))) {
+        const examples = trimmed.split('\n').filter(Boolean).map((line, i) => {
+          const obj = JSON.parse(line);
+          return { id: obj.id || `ex-${i + 1}`, ...obj };
+        });
+        return { run_id: filename.replace(/\.(jsonl|json)$/, ''), examples };
+      }
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return { run_id: filename.replace(/\.json$/, ''), examples: parsed };
+      }
+      return {
+        run_id: parsed.run_id || filename.replace(/\.json$/, ''),
+        model: parsed.model,
+        examples: parsed.examples || parsed.results || parsed.items || []
+      };
+    }
+
+    function initRun(data) {
+      runData = data;
+      runBadge.textContent = `${runData.run_id}${runData.model ? ' · ' + runData.model : ''}`;
+      loadSavedReviews();
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const f = filterSelect.value;
+      filteredIndices = runData.examples
+        .map((ex, idx) => ({ ex, idx, rev: reviews[ex.id || idx] }))
+        .filter(({ rev }) => {
+          if (f === 'all') return true;
+          if (f === 'unreviewed') return !rev || !rev.label;
+          return rev && rev.label === f;
+        })
+        .map(item => item.idx);
+      currentPos = 0;
+      render();
+    }
+
+    function updateStats() {
+      const total = runData.examples.length;
+      let reviewed = 0, pass = 0, fail = 0, flag = 0;
+      runData.examples.forEach((ex, idx) => {
+        const r = reviews[ex.id || idx];
+        if (r && r.label) {
+          reviewed++;
+          if (r.label === 'pass') pass++;
+          if (r.label === 'fail') fail++;
+          if (r.label === 'flag') flag++;
+        }
+      });
+      const pct = total ? Math.round((reviewed / total) * 100) : 0;
+      progressFill.style.width = `${pct}%`;
+      statsText.textContent = `${reviewed}/${total} reviewed (${pct}%) · Pass: ${pass} · Fail: ${fail} · Flag: ${flag}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function render() {
+      updateStats();
+      if (!filteredIndices.length) {
+        counterText.textContent = '0 / 0';
+        exampleContainer.innerHTML = '<div class="empty-state">No examples match the current filter.</div>';
+        reviewControls.style.display = 'none';
+        return;
+      }
+      if (currentPos >= filteredIndices.length) currentPos = filteredIndices.length - 1;
+      if (currentPos < 0) currentPos = 0;
+
+      const idx = filteredIndices[currentPos];
+      const ex = runData.examples[idx];
+      const exId = ex.id || `ex-${idx + 1}`;
+      const rev = reviews[exId] || {};
+
+      counterText.textContent = `${currentPos + 1} / ${filteredIndices.length} (Example #${idx + 1})`;
+      reviewControls.style.display = 'block';
+
+      const metricsHtml = ex.metrics
+        ? Object.entries(ex.metrics).map(([k, v]) => `<span class="pill">${escapeHtml(k)}: ${escapeHtml(v)}</span>`).join('')
+        : '';
+      const categoryHtml = ex.category ? `<span class="pill">${escapeHtml(ex.category)}</span>` : '';
+
+      exampleContainer.innerHTML = `
+        <div class="meta-row">
+          <span class="pill" style="color:var(--accent);font-weight:600;">${escapeHtml(exId)}</span>
+          ${categoryHtml}
+          ${metricsHtml}
+        </div>
+        <div class="section-label">Input / Prompt</div>
+        <pre>${escapeHtml(ex.input ?? ex.prompt ?? JSON.stringify(ex, null, 2))}</pre>
+        <div class="grid-2">
+          <div>
+            <div class="section-label">Model Output</div>
+            <pre>${escapeHtml(ex.output ?? ex.response ?? ex.completion ?? '')}</pre>
+          </div>
+          <div>
+            <div class="section-label">Expected / Reference</div>
+            <pre>${escapeHtml(ex.expected ?? ex.reference ?? '—')}</pre>
+          </div>
+        </div>
+      `;
+
+      document.querySelectorAll('.label-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.label === rev.label);
+      });
+      commentInput.value = rev.comment || '';
+    }
+
+    function setLabel(label) {
+      if (!filteredIndices.length) return;
+      const idx = filteredIndices[currentPos];
+      const ex = runData.examples[idx];
+      const exId = ex.id || `ex-${idx + 1}`;
+      reviews[exId] = {
+        ...reviews[exId],
+        label,
+        reviewer: reviewerInput.value.trim() || 'anonymous',
+        reviewed_at: new Date().toISOString()
+      };
+      saveReviews();
+      render();
+    }
+
+    commentInput.addEventListener('input', () => {
+      if (!filteredIndices.length) return;
+      const idx = filteredIndices[currentPos];
+      const ex = runData.examples[idx];
+      const exId = ex.id || `ex-${idx + 1}`;
+      reviews[exId] = {
+        ...reviews[exId],
+        comment: commentInput.value,
+        reviewer: reviewerInput.value.trim() || 'anonymous',
+        reviewed_at: new Date().toISOString()
+      };
+      saveReviews();
+    });
+
+    document.querySelectorAll('.label-btn').forEach(btn => {
+      btn.addEventListener('click', () => setLabel(btn.dataset.label));
+    });
+
+    document.getElementById('prev-btn').addEventListener('click', () => {
+      if (currentPos > 0) { currentPos--; render(); }
+    });
+    document.getElementById('next-btn').addEventListener('click', () => {
+      if (currentPos < filteredIndices.length - 1) { currentPos++; render(); }
+    });
+    filterSelect.addEventListener('change', applyFilter);
+
+    document.getElementById('file-input').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => initRun(parseRunText(reader.result, file.name));
+      reader.readAsText(file);
+    });
+
+    function downloadFile(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('export-json-btn').addEventListener('click', () => {
+      const out = {
+        ...runData,
+        exported_at: new Date().toISOString(),
+        examples: runData.examples.map((ex, idx) => ({
+          ...ex,
+          review: reviews[ex.id || idx] || null
+        }))
+      };
+      downloadFile(`${runData.run_id}-reviewed.json`, JSON.stringify(out, null, 2), 'application/json');
+    });
+
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+      const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const header = ['id', 'label', 'comment', 'reviewer', 'reviewed_at', 'input', 'output', 'expected'];
+      const rows = runData.examples.map((ex, idx) => {
+        const id = ex.id || `ex-${idx + 1}`;
+        const r = reviews[id] || {};
+        return [
+          id, r.label || '', r.comment || '', r.reviewer || '', r.reviewed_at || '',
+          ex.input ?? ex.prompt ?? '', ex.output ?? ex.response ?? '', ex.expected ?? ex.reference ?? ''
+        ].map(esc).join(',');
+      });
+      downloadFile(`${runData.run_id}-reviewed.csv`, [header.join(','), ...rows].join('\n'), 'text/csv');
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (['TEXTAREA', 'INPUT', 'SELECT'].includes(document.activeElement.tagName)) return;
+      if (e.key === '1') setLabel('pass');
+      else if (e.key === '2') setLabel('fail');
+      else if (e.key === '3') setLabel('flag');
+      else if (e.key.toLowerCase() === 's') setLabel('skip');
+      else if (e.key.toLowerCase() === 'c') { e.preventDefault(); commentInput.focus(); }
+      else if (e.key === 'ArrowLeft') { if (currentPos > 0) { currentPos--; render(); } }
+      else if (e.key === 'ArrowRight') { if (currentPos < filteredIndices.length - 1) { currentPos++; render(); } }
+    });
+
+    fetch('./sample-run.json')
+      .then(r => r.json())
+      .then(initRun)
+      .catch(() => {
+        exampleContainer.innerHTML = '<div class="empty-state">Click <b>Load Run File</b> above to open a <code>.json</code> or <code>.jsonl</code> eval run.</div>';
+        runBadge.textContent = 'No run loaded';
+      });
+  </script>
+</body>
+</html>

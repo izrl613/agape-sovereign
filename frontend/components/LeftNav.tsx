@@ -14,10 +14,12 @@ interface Props {
 export const LeftNav: React.FC<Props> = ({ activeView, activeModule, collectedVectors, onNavigate, onSelectModule }) => {
   const sections: { id: AppView; icon: string; label: string }[] = [
     { id: 'DASHBOARD', icon: '⬡', label: 'DASHBOARD' },
+    { id: 'LIVE_OPS', icon: '◉', label: 'LIVE OPS' },
     { id: 'ARCHITECT', icon: '◈', label: 'ARCHITECT AI' },
     { id: 'DIGNITY', icon: '⚖', label: 'HDI RECTIFICATION' },
     { id: 'PIPELINE', icon: '⚙', label: '9-AGENT PIPELINE' },
     { id: 'REPORT', icon: '⊟', label: '26-MONTH AUDIT' },
+    { id: 'ACCOUNTS', icon: '◎', label: 'ACCOUNT EXPLORER' },
   ];
   const modules = Object.values(MODULE_CONFIGS);
 

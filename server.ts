@@ -69,6 +69,135 @@ async function startServer() {
     }
   });
 
+  // 15 RPM hard cap rate limiter for Vertex AI Agent Builder endpoints
+  const agentRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  function checkAgentRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const entry = agentRateLimitMap.get(ip);
+    if (!entry || now > entry.resetAt) {
+      agentRateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 });
+      return true;
+    }
+    if (entry.count >= 15) return false;
+    entry.count += 1;
+    return true;
+  }
+
+  async function getGcpAccessToken(): Promise<string> {
+    if (process.env.GCP_ACCESS_TOKEN) return process.env.GCP_ACCESS_TOKEN;
+    const res = await fetch(
+      "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+      { headers: { "Metadata-Flavor": "Google" } }
+    );
+    if (!res.ok) {
+      throw new Error(`Failed to fetch GCP metadata token (${res.status})`);
+    }
+    const data = (await res.json()) as { access_token: string };
+    return data.access_token;
+  }
+
+  const VERTEX_PROJECT_ID = process.env.GCP_PROJECT_ID || "agape-sovereign";
+  const VERTEX_LOCATION = process.env.VERTEX_AGENT_LOCATION || "global";
+  const VERTEX_ENGINE_ID = process.env.VERTEX_AGENT_ENGINE_ID || "";
+
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const ip = req.ip || "unknown";
+      if (!checkAgentRateLimit(ip)) {
+        res.status(429).json({ error: "Rate limit exceeded (15 RPM max)" });
+        return;
+      }
+      const { query, sessionId } = req.body as { query?: string; sessionId?: string };
+      if (!query || typeof query !== "string") {
+        res.status(400).json({ error: "Missing required 'query' string" });
+        return;
+      }
+      if (!VERTEX_ENGINE_ID) {
+        res.status(503).json({ error: "VERTEX_AGENT_ENGINE_ID is not configured" });
+        return;
+      }
+
+      const token = await getGcpAccessToken();
+      const baseUrl = `https://discoveryengine.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/collections/default_collection/engines/${VERTEX_ENGINE_ID}`;
+      const endpoint = `${baseUrl}/servingConfigs/default_search:answer`;
+
+      const apiRes = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: { text: query },
+          ...(sessionId ? { session: `${baseUrl}/sessions/${sessionId}` } : {}),
+        }),
+      });
+
+      if (!apiRes.ok) {
+        const errText = await apiRes.text();
+        throw new Error(`Discovery Engine /api/chat error ${apiRes.status}: ${errText}`);
+      }
+
+      const data = (await apiRes.json()) as any;
+      res.json({
+        reply: data.answer?.answerText || "",
+        sessionId: data.session?.name?.split("/").pop() || sessionId || null,
+        citations: data.answer?.citations || [],
+      });
+    } catch (error) {
+      console.error("/api/chat error:", error);
+      res.status(500).json({ error: "Failed to query Vertex AI Agent Builder" });
+    }
+  });
+
+  app.post("/api/search", async (req, res) => {
+    try {
+      const ip = req.ip || "unknown";
+      if (!checkAgentRateLimit(ip)) {
+        res.status(429).json({ error: "Rate limit exceeded (15 RPM max)" });
+        return;
+      }
+      const { query, pageSize = 5 } = req.body as { query?: string; pageSize?: number };
+      if (!query || typeof query !== "string") {
+        res.status(400).json({ error: "Missing required 'query' string" });
+        return;
+      }
+      if (!VERTEX_ENGINE_ID) {
+        res.status(503).json({ error: "VERTEX_AGENT_ENGINE_ID is not configured" });
+        return;
+      }
+
+      const token = await getGcpAccessToken();
+      const endpoint = `https://discoveryengine.googleapis.com/v1/projects/${VERTEX_PROJECT_ID}/locations/${VERTEX_LOCATION}/collections/default_collection/engines/${VERTEX_ENGINE_ID}/servingConfigs/default_search:search`;
+
+      const apiRes = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query,
+          pageSize: Math.min(Number(pageSize) || 5, 10),
+        }),
+      });
+
+      if (!apiRes.ok) {
+        const errText = await apiRes.text();
+        throw new Error(`Discovery Engine /api/search error ${apiRes.status}: ${errText}`);
+      }
+
+      const data = (await apiRes.json()) as any;
+      res.json({
+        results: data.results || [],
+        totalSize: data.totalSize || 0,
+      });
+    } catch (error) {
+      console.error("/api/search error:", error);
+      res.status(500).json({ error: "Failed to search Vertex AI Agent Builder" });
+    }
+  });
+
   app.post("/api/erasure/initiate", async (req, res) => {
     try {
       const { brokerName, userEmail, userName, userState } = req.body;
@@ -196,6 +325,11 @@ async function startServer() {
     };
   }
 
+  // ── GET /api/auth/csrf-token ────────────────────────────────────
+  app.get("/api/auth/csrf-token", (_req, res) => {
+    res.json({ csrfToken: "local-dev-csrf" });
+  });
+
   // ── POST /api/auth/register-options ──────────────────────────────
   // Called when a logged-in user wants to bind a new passkey (hardware or platform).
   // Also used during registration-at-login if no account exists yet.
@@ -251,7 +385,7 @@ async function startServer() {
   // Verifies the attestation response from the browser, stores credential.
   app.post("/api/auth/verify-registration", async (req, res) => {
     try {
-      const { email, userId, ...attestationResponse } = req.body;
+      const { email, userId, label, ...attestationResponse } = req.body;
       const resolvedEmail = (email || "").trim().toLowerCase();
       if (!resolvedEmail) return res.status(400).json({ error: "email is required" });
 
@@ -288,10 +422,14 @@ async function startServer() {
       const resolvedUserId = userId || resolvedEmail;
       const credentialID = Buffer.from(credential.id).toString("base64url");
       const publicKeyB64 = Buffer.from(credential.publicKey).toString("base64url");
+      const sanitizedLabel = typeof label === "string" && label.trim()
+        ? label.trim().slice(0, 80)
+        : "Enclave Passkey";
 
       // Persist credential in user subcollection
       await db.collection("users").doc(resolvedUserId).collection("passkeyCredentials").doc(credentialID).set({
         credentialID,
+        label: sanitizedLabel,
         publicKey: publicKeyB64,
         credentialPublicKey: publicKeyB64,
         counter: credential.counter,
@@ -315,7 +453,18 @@ async function startServer() {
         email: resolvedEmail,
       });
 
-      res.json({ verified: true, token: firebaseToken });
+      res.json({
+        verified: true,
+        token: firebaseToken,
+        credentialId: credentialID,
+        userId: resolvedUserId,
+        email: resolvedEmail,
+        credentialInfo: {
+          credentialDeviceType,
+          credentialBackedUp,
+          transports: attestationResponse.response?.transports || [],
+        },
+      });
     } catch (err: any) {
       console.error("[WebAuthn] verify-registration error:", err);
       res.status(500).json({ error: err.message });

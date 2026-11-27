@@ -1,0 +1,61 @@
+- release_tracks: [ALPHA]
+  hints:
+    read_only: false
+  hidden: true
+
+  help_text:
+    brief: Create a Backup and DR Backup Insight Plan.
+    description: |
+      Create a Backup and DR Backup Insight Plan in a specified backup vault.
+    examples: |
+      To create a Backup Insight Plan named 'my-insight-plan' in backup vault 'my-vault' and location 'us-central1' that processes backups from daily and weekly backup rules:
+
+        $ {command} my-insight-plan --backup-vault=my-vault --location=us-central1 --insight-type=backup-metadata-indexing --allowed-rule-recurrence-criteria=daily,weekly
+
+  request:
+    collection: backupdr.projects.locations.backupVaults.backupInsightPlans
+    regional_endpoint_compatibility: SUPPORTED
+    display_resource_type: backup insight plan
+    ALPHA:
+      api_version: v1alpha
+
+  async:
+    collection: backupdr.projects.locations.operations
+    ALPHA:
+      api_version: v1alpha
+
+  arguments:
+    resource:
+      help_text: The Backup Insight Plan to create.
+      spec: !REF googlecloudsdk.command_lib.backupdr.resources:backupInsightPlan
+      is_positional: true
+
+    params:
+    - arg_name: insight-type
+      api_field: backupInsightPlan.backupInsightType
+      required: true
+      help_text: |
+        The type of insight this plan enables.
+      choices:
+      - arg_value: backup-metadata-indexing
+        enum_value: BACKUP_METADATA_INDEXING
+        help_text: Backup metadata indexing insight.
+
+    - arg_name: allowed-rule-recurrence-criteria
+      api_field: backupInsightPlan.allowedRuleRecurrenceCriteria
+      required: true
+      help_text: |
+        Backup rule recurrences whose backups are processed by this plan.
+      choices:
+      - arg_value: daily
+        enum_value: DAILY
+        help_text: Backups from backup rules with daily recurrence.
+      - arg_value: weekly
+        enum_value: WEEKLY
+        help_text: Backups from backup rules with weekly recurrence.
+      - arg_value: monthly
+        enum_value: MONTHLY
+        help_text: Backups from backup rules with monthly recurrence.
+      - arg_value: yearly
+        enum_value: YEARLY
+        help_text: Backups from backup rules with yearly recurrence.

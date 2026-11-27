@@ -17,10 +17,12 @@ const ArchitectAIView = lazy(() => import('./components/ArchitectAIView').then((
 const DignityRectificationView = lazy(() => import('./components/DignityRectificationView').then((m) => ({ default: m.DignityRectificationView })));
 const PipelineView = lazy(() => import('./components/PipelineView').then((m) => ({ default: m.PipelineView })));
 const ReportView = lazy(() => import('./components/ReportView').then((m) => ({ default: m.ReportView })));
+const AccountExplorerView = lazy(() => import('./components/AccountExplorerView').then((m) => ({ default: m.AccountExplorerView })));
+const LiveOpsView = lazy(() => import('./components/LiveOpsView').then((m) => ({ default: m.LiveOpsView })));
 const AdminPortal = lazy(() => import('./components/AdminPortal').then((m) => ({ default: m.AdminPortal })));
 const ProfilePanel = lazy(() => import('./components/ProfilePanel').then((m) => ({ default: m.ProfilePanel })));
 
-export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'ALPHA' | 'TERMS' | 'PRIVACY' | 'CONTACT';
+export type AppView = 'HOME' | 'LOGIN' | 'DASHBOARD' | 'LIVE_OPS' | 'MODULE' | 'ARCHITECT' | 'DIGNITY' | 'PIPELINE' | 'REPORT' | 'ACCOUNTS' | 'ALPHA' | 'TERMS' | 'PRIVACY' | 'CONTACT';
 
 function pathFor(view: AppView, moduleId: string | null): string {
   if (view === 'HOME') return '/';
@@ -30,10 +32,12 @@ function pathFor(view: AppView, moduleId: string | null): string {
   if (view === 'PRIVACY') return '/privacy';
   if (view === 'CONTACT') return '/contact';
   if (view === 'MODULE' && moduleId) return `/dashboard/${moduleId}`;
+  if (view === 'LIVE_OPS') return '/dashboard/live-ops';
   if (view === 'ARCHITECT') return '/dashboard/architect';
   if (view === 'DIGNITY') return '/dashboard/dignity';
   if (view === 'PIPELINE') return '/dashboard/pipeline';
   if (view === 'REPORT') return '/dashboard/report';
+  if (view === 'ACCOUNTS') return '/dashboard/accounts';
   return '/dashboard';
 }
 
@@ -46,10 +50,12 @@ function viewFromPath(): { view: AppView; moduleId: string | null } {
   if (path === '/contact') return { view: 'CONTACT', moduleId: null };
   const parts = path.split('/').filter(Boolean);
   if (parts[0] === 'dashboard') {
+    if (parts[1] === 'live-ops') return { view: 'LIVE_OPS', moduleId: null };
     if (parts[1] === 'architect') return { view: 'ARCHITECT', moduleId: null };
     if (parts[1] === 'dignity') return { view: 'DIGNITY', moduleId: null };
     if (parts[1] === 'pipeline') return { view: 'PIPELINE', moduleId: null };
     if (parts[1] === 'report') return { view: 'REPORT', moduleId: null };
+    if (parts[1] === 'accounts') return { view: 'ACCOUNTS', moduleId: null };
     if (parts[1] && MODULE_CONFIGS[parts[1]]) return { view: 'MODULE', moduleId: parts[1] };
     return { view: 'DASHBOARD', moduleId: null };
   }
@@ -191,7 +197,9 @@ const AppContent: React.FC = () => {
             {view === 'PIPELINE' && (
               <PipelineView onOpenReport={() => navigate('REPORT')} />
             )}
+            {view === 'LIVE_OPS' && <LiveOpsView />}
             {view === 'REPORT' && <ReportView />}
+            {view === 'ACCOUNTS' && <AccountExplorerView />}
           </Suspense>
         </main>
       </div>
