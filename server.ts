@@ -601,15 +601,81 @@ async function startServer() {
         return res.status(400).json({ verified: false, error: "Authentication failed" });
       }
 
+      await db.collection("users").doc(userId).collection("passkeyCredentials").doc(credentialID).set({
+        lastUsedAt: Date.now(),
+      }, { merge: true });
+
       // Mint Firebase custom token
       const firebaseToken = await getAdminAuth().createCustomToken(userId, {
         passkey: true,
         email: storedCred.email,
       });
 
-      res.json({ verified: true, token: firebaseToken });
+      res.json({
+        verified: true,
+        token: firebaseToken,
+        userId,
+        email: storedCred.email,
+        credentialId: credentialID,
+      });
     } catch (err: any) {
       console.error("[WebAuthn] verify-login error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/auth/passkeys", async (req, res) => {
+    try {
+      const authHeader = req.get("authorization") || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+      if (!idToken) return res.status(401).json({ error: "Authentication required" });
+      const decoded = await getAdminAuth().verifyIdToken(idToken);
+      const snap = await db.collection("users").doc(decoded.uid).collection("passkeyCredentials").get();
+      const passkeys = snap.docs.map((doc) => {
+        const d = doc.data();
+        const toIso = (val: unknown): string | null => {
+          if (!val) return null;
+          if (typeof val === "number") return new Date(val).toISOString();
+          if (typeof (val as { toDate?: () => Date }).toDate === "function") {
+            return (val as { toDate: () => Date }).toDate().toISOString();
+          }
+          return null;
+        };
+        return {
+          credentialID: (d.credentialID as string) || doc.id,
+          label: (d.label as string) || "Enclave Passkey",
+          transports: Array.isArray(d.transports) ? d.transports : [],
+          credentialDeviceType: (d.credentialDeviceType as string) || "unknown",
+          credentialBackedUp: Boolean(d.credentialBackedUp),
+          rpId: (d.rpId as string) || DEFAULT_RP_ID,
+          createdAt: toIso(d.createdAt),
+          lastUsedAt: toIso(d.lastUsedAt),
+        };
+      });
+      res.json({ passkeys });
+    } catch (err: any) {
+      console.error("[WebAuthn] list passkeys error:", err);
+      res.status(401).json({ error: "Invalid or expired authentication token" });
+    }
+  });
+
+  app.delete("/api/auth/passkeys/:credentialId", async (req, res) => {
+    try {
+      const authHeader = req.get("authorization") || "";
+      const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+      if (!idToken) return res.status(401).json({ error: "Authentication required" });
+      const decoded = await getAdminAuth().verifyIdToken(idToken);
+      const credentialId = String(req.params.credentialId || "").trim();
+      if (!credentialId) return res.status(400).json({ error: "credentialId is required" });
+      const credsCol = db.collection("users").doc(decoded.uid).collection("passkeyCredentials");
+      await credsCol.doc(credentialId).delete();
+      const remaining = await credsCol.limit(1).get();
+      if (remaining.empty) {
+        await db.collection("users").doc(decoded.uid).set({ hasPasskey: false, updatedAt: Date.now() }, { merge: true });
+      }
+      res.json({ deleted: true, credentialId });
+    } catch (err: any) {
+      console.error("[WebAuthn] delete passkey error:", err);
       res.status(500).json({ error: err.message });
     }
   });

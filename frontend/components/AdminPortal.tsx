@@ -181,33 +181,62 @@ export function AdminPortal({
               </div>
 
               <div className="space-y-3 rounded-xl border border-[#00D4FF]/20 bg-[#060D1F]/70 p-4">
-                <label className="block">
-                  <span className="font-orbitron mb-1.5 block text-[11px] font-bold tracking-wider text-[#00D4FF]">
-                    ACCOUNT EMAIL FOR PASSKEY BINDING
-                  </span>
-                  <input
-                    type="email"
-                    value={passkeyEmail}
-                    onChange={(e) => setPasskeyEmail(e.target.value)}
-                    placeholder="admin@sovereign.nyc"
-                    className="w-full rounded-lg border border-[#00D4FF]/25 bg-[#0B1020] px-3.5 py-2 text-xs text-[#F8FAFC] outline-none focus:border-[#00D4FF]"
-                  />
-                </label>
+                {!passkeySupported && (
+                  <div className="rounded-lg border border-[#FF2E9F]/40 bg-[#FF2E9F]/10 px-3 py-2 text-xs text-[#FF2E9F]">
+                    WebAuthn / Passkeys are not supported in this browser context.
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="font-orbitron mb-1.5 block text-[11px] font-bold tracking-wider text-[#00D4FF]">
+                      ACCOUNT EMAIL FOR PASSKEY BINDING
+                    </span>
+                    <input
+                      type="email"
+                      value={passkeyEmail}
+                      onChange={(e) => setPasskeyEmail(e.target.value)}
+                      placeholder="admin@sovereign.nyc"
+                      className="w-full rounded-lg border border-[#00D4FF]/25 bg-[#0B1020] px-3.5 py-2 text-xs text-[#F8FAFC] outline-none focus:border-[#00D4FF]"
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="font-orbitron mb-1.5 block text-[11px] font-bold tracking-wider text-[#00D4FF]">
+                      PASSKEY LABEL (OPTIONAL)
+                    </span>
+                    <input
+                      type="text"
+                      value={passkeyLabel}
+                      onChange={(e) => setPasskeyLabel(e.target.value)}
+                      placeholder="e.g. MacBook Touch ID or YubiKey 5C"
+                      className="w-full rounded-lg border border-[#00D4FF]/25 bg-[#0B1020] px-3.5 py-2 text-xs text-[#F8FAFC] outline-none focus:border-[#00D4FF]"
+                    />
+                  </label>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
                   <NeonButton
                     size="sm"
                     color={NEON.green}
-                    disabled={passkeyBusy !== null || !passkeyEmail.trim()}
+                    disabled={!passkeySupported || passkeyBusy !== null || !passkeyEmail.trim()}
                     onClick={async () => {
                       setPasskeyBusy('register');
                       setPasskeyMsg(null);
                       try {
-                        await registerPasskey(passkeyEmail);
+                        const email = passkeyEmail.trim();
+                        const label = passkeyLabel.trim();
+                        if (label) {
+                          await PasskeyService.register(email, label);
+                        } else {
+                          await registerPasskey(email);
+                        }
+                        setPasskeyLabel('');
                         setPasskeyMsg({
                           kind: 'ok',
-                          text: `Passkey registered for ${passkeyEmail.trim()}.`,
+                          text: `Passkey${label ? ` "${label}"` : ''} registered for ${email}.`,
                         });
+                        await refreshPasskeys();
                       } catch (err) {
                         setPasskeyMsg({
                           kind: 'err',
@@ -225,7 +254,7 @@ export function AdminPortal({
                   <NeonButton
                     size="sm"
                     color={NEON.blue}
-                    disabled={passkeyBusy !== null}
+                    disabled={!passkeySupported || passkeyBusy !== null}
                     onClick={async () => {
                       setPasskeyBusy('login');
                       setPasskeyMsg(null);
@@ -235,6 +264,7 @@ export function AdminPortal({
                           kind: 'ok',
                           text: `Passkey verified for ${passkeyEmail.trim() || user.email || user.id}.`,
                         });
+                        await refreshPasskeys();
                       } catch (err) {
                         setPasskeyMsg({
                           kind: 'err',
@@ -264,6 +294,86 @@ export function AdminPortal({
                   <div className="font-semibold">{passkeyMsg.text}</div>
                 </div>
               )}
+
+              <div className="space-y-2.5 rounded-xl border border-[#00D4FF]/20 bg-[#060D1F]/70 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-[#00D4FF]" />
+                    <span className="font-orbitron text-[11px] font-bold tracking-wider text-[#00D4FF]">
+                      REGISTERED PASSKEYS ({registeredPasskeys.length})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void refreshPasskeys()}
+                    disabled={passkeyBusy !== null}
+                    className="inline-flex items-center gap-1 rounded border border-[#00D4FF]/25 bg-[#0B1020] px-2.5 py-1 text-[11px] text-[#00D4FF] hover:border-[#00D4FF] disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${passkeyBusy === 'list' ? 'animate-spin' : ''}`} />
+                    REFRESH
+                  </button>
+                </div>
+
+                {registeredPasskeys.length === 0 ? (
+                  <p className="text-xs text-[#7B9BB5]">
+                    No registered passkeys found for this account yet. Register one above to bind a device or hardware key.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {registeredPasskeys.map((pk) => (
+                      <div
+                        key={pk.credentialID}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#00D4FF]/15 bg-[#0B1020] px-3.5 py-2.5 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[#F8FAFC]">{pk.label || 'Enclave Passkey'}</span>
+                            <span className="rounded border border-[#00D4FF]/30 bg-[#00D4FF]/10 px-1.5 py-0.5 font-mono-tech text-[10px] text-[#00D4FF]">
+                              {pk.credentialDeviceType === 'multiDevice' ? 'SYNCED' : 'DEVICE-BOUND'}
+                            </span>
+                            {pk.credentialBackedUp && (
+                              <span className="rounded border border-[#00FF87]/30 bg-[#00FF87]/10 px-1.5 py-0.5 font-mono-tech text-[10px] text-[#00FF87]">
+                                BACKED UP
+                              </span>
+                            )}
+                          </div>
+                          <div className="font-mono-tech text-[11px] text-[#7B9BB5]">
+                            ID: {pk.credentialID.slice(0, 14)}… · {pk.transports.join(', ') || 'internal'}
+                            {pk.lastUsedAt ? ` · Last used ${new Date(pk.lastUsedAt).toLocaleDateString()}` : ''}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={passkeyBusy !== null}
+                          onClick={async () => {
+                            const current = auth.currentUser;
+                            if (!current) return;
+                            setPasskeyBusy(pk.credentialID);
+                            setPasskeyMsg(null);
+                            try {
+                              const idToken = await current.getIdToken();
+                              await PasskeyService.deletePasskey(pk.credentialID, idToken);
+                              setRegisteredPasskeys((prev) => prev.filter((p) => p.credentialID !== pk.credentialID));
+                              setPasskeyMsg({ kind: 'ok', text: `Revoked passkey "${pk.label || pk.credentialID.slice(0, 12)}".` });
+                            } catch (err) {
+                              setPasskeyMsg({
+                                kind: 'err',
+                                text: err instanceof Error ? err.message : 'Failed to revoke passkey.',
+                              });
+                            } finally {
+                              setPasskeyBusy(null);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded border border-[#FF2E9F]/35 bg-[#FF2E9F]/10 px-2.5 py-1 text-[11px] font-semibold text-[#FF2E9F] hover:bg-[#FF2E9F]/20 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          REVOKE
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <>
