@@ -24,21 +24,18 @@ export interface AuditLogEntry {
 export const logEvent = async (
   type: AuditLogType, 
   action: string, 
-  userId?: string, 
-  userEmail?: string, 
+  sessionHash: string, 
   metadata?: Record<string, unknown>
 ) => {
   try {
     const logData: Record<string, unknown> = {
       type,
       action,
+      sessionHash,
       timestamp: serverTimestamp(),
       metadata: metadata || {}
     };
-
-    if (userId) logData.userId = userId;
-    if (userEmail) logData.userEmail = userEmail;
-
+    
     await addDoc(collection(db, "audit_logs"), logData);
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, "audit_logs");
