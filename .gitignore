@@ -36,3 +36,47 @@ workspace_outputs/secure-scan.*
 # Secret-class clip artifacts (license/recovery tokens) — never commit
 **/Pasted_2026-09-20*
 firebase-debug.log
+
+# Firebase hosting cache
+.firebase/hosting.*.cache
+
+# Agent/AI tool folders
+.agent/
+.agents/
+.claude/
+.metadata/
+.skills/
+.unsloth_tool_output/
+
+# Secret keys — never commit
+.env.keys
+
+# Workspace run outputs (auto-generated)
+workspace_outputs/
+
+# Python virtual environment
+scripts/venv/
+
+# Data analysis outputs
+extracted_files/
+ocr_output/
+output/
+audit-report.json
+
+# Build artifacts in public
+public/assets/
+
+# Duplicate skill folders (with spaces in names)
+"skills/* 2"
+skills/*\ 2
+
+# Debug/session screenshots and Apple Pages scratch docs
+*.pages
+architect-ai/
+72480F0E-3018-46C0-AF76-77B1685A04A8.png
+C42B9B1C-B6A0-4BEB-A6A5-DE420625960F.png
+Screenshot\ *.png
+Screenshot*.png
+
+# Generated PDF artifacts (privacy report)
+privacy.pdf
