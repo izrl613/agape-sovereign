@@ -125,7 +125,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     },
     {
       "backendId": "agape-sovereign",
@@ -136,7 +137,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     },
     {
       "backendId": "agape-sovereign",
@@ -147,7 +149,8 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "functions"
-      ]
+      ],
+      "alwaysDeployFromSource": true
     }
   ],
   "emulators": {
