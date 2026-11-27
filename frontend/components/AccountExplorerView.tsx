@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -11,9 +11,11 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useSovereign } from '../context/SovereignContext';
 import { NEON } from '../theme';
 import {
-  CUSTOMER_ACCOUNTS,
   type AccountPlan,
   type CustomerAccount,
   type TicketSeverity,
@@ -80,15 +82,81 @@ function severityColor(severity: TicketSeverity): string {
 }
 
 export const AccountExplorerView: React.FC = () => {
+  const { user, receipts, collectedVectors } = useSovereign();
+  const [liveAccounts, setLiveAccounts] = useState<CustomerAccount[]>([]);
   const [query, setQuery] = useState('');
   const [planFilter, setPlanFilter] = useState<'ALL' | AccountPlan>('ALL');
   const [attentionFilter, setAttentionFilter] = useState<AttentionFilter>('all');
   const [sortKey, setSortKey] = useState<SortKey>('tickets');
   const [sortDir, setSortDir] = useState<SortDirection>('descending');
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
-    CUSTOMER_ACCOUNTS[0]?.id ?? null,
-  );
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (!user) {
+      setLiveAccounts([]);
+      return;
+    }
+
+    const currentAccount: CustomerAccount = {
+      id: user.id,
+      name: user.email ? user.email.split('@')[0] : 'Sovereign Operator',
+      email: user.email || 'anonymous@sovereign.nyc',
+      organization: user.isAdmin ? 'Agape Sovereign Admin' : 'Personal Enclave',
+      plan: user.isAdmin ? 'Sentinel Enterprise' : 'Sovereign Free',
+      monthlyQuotaLimit: 1500,
+      recentUsageCount: receipts.length,
+      usageTrendPct: 0,
+      activeVectors: collectedVectors.length,
+      lastActiveDaysAgo: 0,
+      lastActiveLabel: 'Active now',
+      billingStatus: 'healthy',
+      tickets: [],
+    };
+
+    if (!user.isAdmin) {
+      setLiveAccounts([currentAccount]);
+      setSelectedAccountId(currentAccount.id);
+      return;
+    }
+
+    let active = true;
+    getDocs(collection(db, 'users'))
+      .then((snap) => {
+        if (!active) return;
+        const rows: CustomerAccount[] = snap.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          const email = String(data.email ?? '');
+          return {
+            id: d.id,
+            name: String(data.name ?? (email ? email.split('@')[0] : d.id.slice(0, 10))),
+            email: email || 'no-email@sovereign.nyc',
+            organization: String(data.organization ?? 'Sovereign Enclave'),
+            plan: (data.plan as AccountPlan) || 'Sovereign Free',
+            monthlyQuotaLimit: Number(data.monthlyQuotaLimit ?? 1500),
+            recentUsageCount: Number(data.recentUsageCount ?? (d.id === user.id ? receipts.length : 0)),
+            usageTrendPct: Number(data.usageTrendPct ?? 0),
+            activeVectors: Number(data.activeVectors ?? (d.id === user.id ? collectedVectors.length : 0)),
+            lastActiveDaysAgo: Number(data.lastActiveDaysAgo ?? 0),
+            lastActiveLabel: String(data.lastActiveLabel ?? 'Live'),
+            billingStatus: (data.billingStatus as CustomerAccount['billingStatus']) || 'healthy',
+            tickets: Array.isArray(data.tickets) ? (data.tickets as CustomerAccount['tickets']) : [],
+          };
+        });
+        const finalRows = rows.length > 0 ? rows : [currentAccount];
+        setLiveAccounts(finalRows);
+        setSelectedAccountId(finalRows[0]?.id ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLiveAccounts([currentAccount]);
+        setSelectedAccountId(currentAccount.id);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user, receipts.length, collectedVectors.length]);
 
   const handleSort = (key: SortKey, label: string) => {
     const nextDir: SortDirection =
@@ -100,7 +168,7 @@ export const AccountExplorerView: React.FC = () => {
 
   const filteredAndSorted = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const filtered = CUSTOMER_ACCOUNTS.filter((acc) => {
+    const filtered = liveAccounts.filter((acc) => {
       if (planFilter !== 'ALL' && acc.plan !== planFilter) return false;
 
       if (q) {
@@ -140,7 +208,7 @@ export const AccountExplorerView: React.FC = () => {
           return factor * (a.lastActiveDaysAgo - b.lastActiveDaysAgo);
       }
     });
-  }, [query, planFilter, attentionFilter, sortKey, sortDir]);
+  }, [liveAccounts, query, planFilter, attentionFilter, sortKey, sortDir]);
 
   const selectedAccount = useMemo(
     () =>
@@ -151,12 +219,12 @@ export const AccountExplorerView: React.FC = () => {
   );
 
   const summary = useMemo(() => {
-    const total = CUSTOMER_ACCOUNTS.length;
-    const attention = CUSTOMER_ACCOUNTS.filter((a) => getAttentionReasons(a).length > 0).length;
-    const openTickets = CUSTOMER_ACCOUNTS.reduce((sum, a) => sum + a.tickets.length, 0);
-    const highUsage = CUSTOMER_ACCOUNTS.filter((a) => usagePct(a) >= 85).length;
+    const total = liveAccounts.length;
+    const attention = liveAccounts.filter((a) => getAttentionReasons(a).length > 0).length;
+    const openTickets = liveAccounts.reduce((sum, a) => sum + a.tickets.length, 0);
+    const highUsage = liveAccounts.filter((a) => usagePct(a) >= 85).length;
     return { total, attention, openTickets, highUsage };
-  }, []);
+  }, [liveAccounts]);
 
   const hasActiveFilters = query.trim() !== '' || planFilter !== 'ALL' || attentionFilter !== 'all';
 
@@ -337,7 +405,7 @@ export const AccountExplorerView: React.FC = () => {
             );
           })}
           <span style={{ marginLeft: 'auto', fontFamily: "'Share Tech Mono', monospace", fontSize: '0.72rem', color: NEON.textMuted }}>
-            SHOWING {filteredAndSorted.length} OF {CUSTOMER_ACCOUNTS.length}
+            SHOWING {filteredAndSorted.length} OF {liveAccounts.length}
           </span>
         </div>
       </div>

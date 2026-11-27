@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Activity, ClipboardCheck, Server, X, Smartphone, Sparkles, BarChart3, KeyRound, Fingerprint } from 'lucide-react';
 import { NEON } from '../theme';
 import { useSovereign } from '../context/SovereignContext';
@@ -45,7 +45,7 @@ export function AdminPortal({
   const hasAndroidBridge =
     typeof window !== 'undefined' && Boolean((window as unknown as Record<string, unknown>).AgapeAndroidBridge);
 
-  const tabs: { id: typeof activeTab; icon: React.ReactNode; label: string; borderColor: string; bgColor: string; textColor: string }[] = [
+  const tabs: { id: typeof activeTab; icon: ReactNode; label: string; borderColor: string; bgColor: string; textColor: string }[] = [
     { id: 'LIVE_OPS', icon: <Activity className="h-3.5 w-3.5" />, label: 'LIVE OPS', borderColor: '#00D4FF', bgColor: '#00D4FF', textColor: '#00D4FF' },
     { id: 'REVIEW_QUEUE', icon: <ClipboardCheck className="h-3.5 w-3.5" />, label: 'REVIEW QUEUE', borderColor: '#FF2E9F', bgColor: '#FF2E9F', textColor: '#FF2E9F' },
     { id: 'STATUS', icon: <BarChart3 className="h-3.5 w-3.5" />, label: 'STATUS', borderColor: '#FF2E9F', bgColor: '#FF2E9F', textColor: '#FF2E9F' },
